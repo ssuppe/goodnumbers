@@ -1,10 +1,10 @@
 module.exports.SITE = {
-  name: 'TailNext',
+  name: 'GoodNumbers',
 
-  origin: 'https://tailnext.vercel.app',
+  origin: 'https://goodnumbers.vercel.app',
   basePathname: '/',
   trailingSlash: false,
 
-  title: 'TailNext — Your website with Next.js + Tailwind CSS',
-  description: 'TailNext is a free and ready to start template to make your website using Next.js and Tailwind CSS.',
+  title: 'GoodNumbers — Your personalized week in blood sugar management',
+  description: 'GoodNumbers is a personalized podcast about your blood sugar levels. Analyzed with statistical algorithms, we create an AI-generated podcast you can listen to, identifying your highs, lows, and strategies to address them.',
 };

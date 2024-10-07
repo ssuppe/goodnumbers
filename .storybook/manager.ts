@@ -6,7 +6,7 @@ addons.setConfig({
     base: 'light',
 
     // Logo
-    brandTitle: 'TailNext',
+    brandTitle: 'GoodNumbers',
     brandUrl: 'https://github.com/onwidget/tailnext',
     brandTarget: '_blank',
   }),
