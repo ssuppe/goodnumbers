@@ -9,6 +9,7 @@ import {
   IconClock,
   IconComponents,
   IconDownload,
+  IconBrandApplePodcast,
   IconListCheck,
   IconMail,
   IconMapPin,
@@ -41,36 +42,35 @@ import gasImg from '~/assets/images/gas.jpg';
 export const heroHome: HeroProps = {
   title: (
     <>
-      Free template for <span className="hidden md:inline">starts a website using</span> <span>Next.js</span> +{' '}
-      <span className="sm:whitespace-nowrap">Tailwind CSS</span>
+      Personalized podcast about your weekly diabetes numbers
     </>
   ),
   subtitle: (
     <>
       <span className="hidden md:inline">
         <span className="font-semibold underline decoration-primary-600 decoration-wavy decoration-1 underline-offset-2">
-          TailNext
+          GoodNumbers Weekly
         </span>{' '}
-        is a production ready template to start your new website using <em>Next.js</em> + <em>Tailwind CSS</em>.
-      </span>{' '}
-      It has been designed following Best Practices, SEO, Accessibility, Dark Mode, great Page Speed, image
-      optimization.
+        is a weekly personalized podcast about your blood sugar levels. Analyzed with statistical algorithms,
+        we create an AI-generated podcast you can listen to, identifying your highs, lows, and strategies
+        to address them.
+      </span>
     </>
   ),
   callToAction: {
-    text: 'Get template',
-    href: 'https://github.com/onwidget/tailnext',
-    icon: IconDownload,
-    targetBlank: true,
+    text: 'Create Podcast',
+    href: 'trynow',
+    icon: IconBrandApplePodcast,
+    targetBlank: false,
   },
   callToAction2: {
     text: 'Learn more',
-    href: '/',
+    href: '/about',
   },
-  image: {
-    src: heroImg,
-    alt: 'Hero TailNext',
-  },
+  // image: {
+  //   src: heroImg,
+  //   alt: 'Hero TailNext',
+  // },
 };
 
 // SocialProof data on Home page *******************
