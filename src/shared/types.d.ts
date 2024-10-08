@@ -100,6 +100,8 @@ type FormProps = {
   btn: Button;
   btnPosition?: 'center' | 'right' | 'left';
   containerClass?: string;
+  isLoading: boolean;
+  onSubmit;
 };
 
 type Image = {
@@ -322,6 +324,17 @@ type PricingProps = Widget & {
   prices: Array<Price>;
 };
 
+type LoadingSpinnerProps = Widget & {
+  header?: Header;
+  message?: string;
+};
+
+type PodcastDialogProps = Widget & {
+  header?: Header;
+  id : string;
+  content?: string;
+}
+
 type ComparisonProps = Widget & {
   header?: Header;
   columns: Array<Column>;
@@ -336,6 +349,13 @@ type SocialProofProps = Widget & {
 };
 
 type ContactProps = Widget & {
+  header?: Header;
+  content?: string;
+  items?: Array<Item>;
+  form: FormProps;
+};
+
+type NightscoutProps = Widget & {
   header?: Header;
   content?: string;
   items?: Array<Item>;

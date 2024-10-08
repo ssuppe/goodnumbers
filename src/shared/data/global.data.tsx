@@ -52,13 +52,13 @@ export const headerData: HeaderProps = {
       href: '/contact',
     },
   ],
-  actions: [
-    {
-      text: 'Try Now',
-      href: '/trynow',
-      targetBlank: false,
-    },
-  ],
+  // actions: [
+  //   {
+  //     text: 'Try Now',
+  //     href: '/trynow',
+  //     targetBlank: false,
+  //   },
+  // ],
   isSticky: true,
   showToggleTheme: true,
   showRssFeed: false,

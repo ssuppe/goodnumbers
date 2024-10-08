@@ -14,11 +14,20 @@ const Form = ({
   btn,
   btnPosition,
   containerClass,
+  isLoading,
+  onSubmit
 }: FormProps) => {
   const [inputValues, setInputValues] = useState([]);
   const [radioBtnValue, setRadioBtnValue] = useState('');
   const [textareaValues, setTextareaValues] = useState('');
   const [checkedState, setCheckedState] = useState<boolean[]>(new Array(checkboxes && checkboxes.length).fill(false));
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    onSubmit(data);
+  };
 
   // Update the value of the entry fields
   const changeInputValueHandler = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,7 +61,7 @@ const Form = ({
   };
 
   return (
-    <form id="contactForm" className={twMerge('', containerClass)}>
+    <form onSubmit={handleSubmit} id="contactForm" className={twMerge('', containerClass)}>
       {title && <h2 className={`${description ? 'mb-2' : 'mb-4'} text-2xl font-bold`}>{title}</h2>}
       {description && <p className="mb-4">{description}</p>}
       <div className="mb-6">

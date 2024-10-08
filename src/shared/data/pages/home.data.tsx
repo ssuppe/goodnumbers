@@ -49,10 +49,10 @@ export const heroHome: HeroProps = {
     <>
       <span className="hidden md:inline">
         <span className="font-semibold underline decoration-primary-600 decoration-wavy decoration-1 underline-offset-2">
-          GoodNumbers Weekly
+          GoodNumbers
         </span>{' '}
-        is a weekly personalized podcast about your blood sugar levels. Analyzed with statistical algorithms,
-        we create an AI-generated podcast you can listen to, identifying your highs, lows, and strategies
+        is an experimental weekly personalized podcast about your blood sugar levels. Analyzed with statistical algorithms,
+        it creates an AI-generated podcast you can listen to, discussing your highs, lows, and strategies
         to address them.
       </span>
     </>
