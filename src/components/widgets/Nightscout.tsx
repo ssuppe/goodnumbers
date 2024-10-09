@@ -11,7 +11,6 @@ import LoadingSpinner from './LoadingSpinner';
 import Cookies from 'js-cookie';
 import axios from 'axios';
 
-
 const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground = false }: NightscoutProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [podcastDialog, setPodcastDialog] = useState('');
@@ -22,7 +21,6 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
     setIsLoading(true);
 
     try {
-
       // 1. Get Nighscout data
       console.log('Getting nightscout data');
 
@@ -56,7 +54,7 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
         ]);
 
         if (!entriesResponse.ok || !treatmentsResponse.ok) {
-          throw new Error('API request failed');
+          throw new Error('Nightscout API request failed');
         }
 
         sgvData = await entriesResponse.json();
@@ -77,39 +75,36 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
         console.log('Local override, using local data');
       }
 
-
-
       // 1) Get Nightscout notes
-      const get_notes_response = await axios.post('http://localhost:5000/api/get_notes', {
-        sgv: sgvData,
-        treatments: treatmentsData
-      });
-      
+      const get_notes_response = await axios
+        .post('http://localhost:5000/api/get_notes', {
+          sgv: sgvData,
+          treatments: treatmentsData,
+        })
+        .catch(function (error) {
+          if (error.response) {
+            console.log(error.response.data);
+            console.log(error.response.status);
+            console.log(error.response.headers);
+          }
+        });
+
       const notes = get_notes_response.data;
       console.log(notes);
-      // const nightscoutResponse = await fetch('/api/getNightscoutData', {
-      //   method: 'POST',
-      //   body: formData,
-      // });
-
-      // if (!nightscoutResponse.ok) {
-      //   throw new Error(`Nightscout data fetch failed: ${nightscoutResponse.statusText}`);
-      // }
-
-      // const { treatments, carbs } = await nightscoutResponse.json();
 
       // // 1.5) Update spinner message
       // setIsLoading(true);
 
-      // // Construct notes for the podcast
-      // const notes = `Treatments: ${JSON.stringify(treatments)}, Carbs: ${JSON.stringify(carbs)}`;
-
       // // 2) Get podcast dialog
-      // const podcastResponse = await fetch('/api/getPodcast', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ notes }),
-      // });
+      const get_report_response = await axios.post('/api/get_dialog', {
+        notes: notes
+      });
+
+      const report = get_report_response.data; 
+      console.log(report); // This should log the actual data
+
+      console.log(report.assessment1);
+
 
       // if (!podcastResponse.ok) {
       //   throw new Error(`Podcast fetch failed: ${podcastResponse.statusText}`);
