@@ -1,9 +1,10 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 // import { NextResponse } from "next/server";
 import fs from 'fs';
 import path from 'path';
 
-export default async function handler(req, res) {
+export default async function handler(req : NextApiRequest, res : NextApiResponse) {
   if (req.method === 'GET') {
     res.status(405).json({ message: 'Method Not Allowed' });
   } else {
