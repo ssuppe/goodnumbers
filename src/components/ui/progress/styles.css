@@ -6,7 +6,7 @@
 	overflow: hidden;
 	background: var(--black-a9);
 	border-radius: 99999px;
-	width: 300px;
+	width: 100%;
 	height: 25px;
 
 	/* Fix overflow clipping in Safari */
