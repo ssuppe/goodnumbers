@@ -37,8 +37,18 @@ export default async function handler(req : NextApiRequest, res : NextApiRespons
         maxOutputTokens: 32000,
         responseMimeType: 'text/plain', // fails only if this option is sent.
       };
+
+      let geminiKey = "";
+      if (process.env.GEMINI_API_KEY) {
+        geminiKey = process.env.GEMINI_API_KEY;
+      } else {
+        // Handle the case where GEMINI_API_KEY is not set
+        console.error('GEMINI_API_KEY is not defined!');
+        throw new Error('GEMINI_API_KEY environment variable is not defined!');
+        // You might want to throw an error here or provide a fallback mechanism 
+      }
       // Access your API key by creating an instance of GoogleGenerativeAI we'll call it GenAI
-      let genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+      let genAI = new GoogleGenerativeAI(geminiKey);
       console.log(process.env.GEMINI_API_KEY);
       let model = genAI.getGenerativeModel({
         model: 'gemini-1.5-pro',
