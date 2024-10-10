@@ -1,0 +1,64 @@
+import ruptures as rpt
+import pandas as pd
+
+def calculate_average_day(insulin_sgv, period='30min', quantile=0.8):
+    """
+    For a pandas dataframe of a timeseries, turn it into a
+    24-hour day, with average/quantile for each hour
+    """
+    tmp = insulin_sgv.copy()
+    tmp['time'] = tmp['date'].dt.round(period).dt.time
+    tmp = tmp.groupby(tmp['time'])['sgv'].quantile(quantile)
+    return pd.DataFrame(tmp)
+
+
+def find_all_periods(sgvdf : pd.DataFrame):
+    """
+    Convert pandas dataframe into an average day, and then find the periods
+    where there is a step function change from the previous period
+    """
+    avg_day = calculate_average_day(sgvdf)
+    # display(avg_day)
+    # detection of breakpoints
+    algo = rpt.Dynp(model="rbf", min_size=6, jump=1).fit(avg_day)
+    windows = algo.predict(n_bkps=6)
+    
+    # fig, axarr = rpt.display(avg_day, windows, windows)
+    windows.insert(0, 0)
+    # display(windows)
+    window_dist = []
+    for i in range(0, len(windows)-1):
+        # display(avg_day.index[windows[i]].strftime("%H:%M"))        
+        
+        if i < len(windows) - 2:
+            # display(avg_day.index[windows[i+1]].strftime("%H:%M"))
+            window_dist.append([avg_day.index[windows[i]].strftime("%H:%M"),\
+                                avg_day.index[windows[i+1]].strftime("%H:%M"),\
+                                float(avg_day.iloc[windows[i]:windows[i+1]].median().values[0])])
+        else:
+            # display(avg_day.index[-1].strftime("%H:%M"))
+            window_dist.append([avg_day.index[windows[i]].strftime("%H:%M"),\
+                        avg_day.index[-1].strftime("%H:%M"),\
+                        float(avg_day.iloc[windows[i]:windows[-1]].median().values[0])])
+
+    window_dist = pd.DataFrame(window_dist)
+    window_dist.columns = ['start_time', 'end_time', 'sgv']
+    window_dist.set_index(['start_time', 'end_time'], inplace=True)
+    window_dist["sgv"] = pd.to_numeric(window_dist["sgv"])   
+    return window_dist
+
+def find_high_periods(sgvdf, high_threshold=150):
+    """
+    Return just the step function periods of an average day that are > threshold
+    """
+    all_periods = find_all_periods(sgvdf)
+    all_periods = all_periods[(all_periods.sgv > high_threshold)]
+    return all_periods.reset_index(inplace=False)
+
+def find_low_periods(sgvdf, low_threshold=80):
+    """
+    Return just the step function periods of an average day that are < threshold
+    """
+    all_periods = find_all_periods(sgvdf)
+    all_periods = all_periods[(all_periods.sgv < low_threshold)]
+    return all_periods.reset_index(inplace=False)

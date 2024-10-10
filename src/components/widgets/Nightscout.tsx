@@ -48,7 +48,7 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
 
     try {
       // Simulating progress for fetching Nightscout data
-      for (let i = 0; i <= 50; i++) {
+      for (let i = 0; i <= 25; i++) {
         setProgress(i);
         await new Promise(resolve => setTimeout(resolve, 50));
       }
@@ -115,7 +115,7 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
       }
 
       const get_notes_response = await axios
-        .post('http://localhost:5000/api/get_notes', {
+        .post('/api/get_notes', {
           sgv: sgvData,
           treatments: treatmentsData,
         })
@@ -130,7 +130,7 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
       const notes = get_notes_response.data;
 
       // Simulating progress for getting notes
-      for (let i = 51; i <= 75; i++) {
+      for (let i = 76; i <= 100; i++) {
         setProgress(i);
         await new Promise(resolve => setTimeout(resolve, 50));
       }
