@@ -6,7 +6,7 @@ import { NightscoutProps } from '~/shared/types';
 import WidgetWrapper from '../common/WidgetWrapper';
 import { useSearchParams } from 'next/navigation';
 import Progress from '@/components/ui/progress';
-import Cookies from "js-cookie";
+import Cookies from 'js-cookie';
 import axios from 'axios';
 
 const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground = false }: NightscoutProps) => {
@@ -17,9 +17,8 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
   const [progress, setProgress] = useState(0);
   const [progressText, setProgressText] = useState('');
   const searchParams = useSearchParams();
-  const local = searchParams.get('local');
+  const local = searchParams ? searchParams.get('local') : null;
 
-  
   const storedUrl = Cookies.get('url');
   const storedToken = Cookies.get('token');
 
@@ -32,7 +31,7 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
@@ -40,8 +39,8 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    Cookies.set('url', formData.nightscout_url, {expires : 30});
-    Cookies.set('token', formData.nightscout_token, {expires: 30});
+    Cookies.set('url', formData.nightscout_url, { expires: 30 });
+    Cookies.set('token', formData.nightscout_token, { expires: 30 });
     setIsLoading(true);
     setProgress(0);
     setProgressText('Fetching Nightscout data');
@@ -50,7 +49,7 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
       // Simulating progress for fetching Nightscout data
       for (let i = 0; i <= 25; i++) {
         setProgress(i);
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
 
       console.log('Getting nightscout data');
@@ -90,7 +89,7 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
 
         sgvData = await entriesResponse.json();
         // console.log(sgvData);
-        sgvData = sgvData.filter((item) => {
+        sgvData = sgvData.filter((item: { date: string }) => {
           const itemDate = new Date(item.date);
           return itemDate >= thirtyDaysAgo;
         });
@@ -107,42 +106,50 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
       }
 
       setProgressText('Generating report');
-      
+
       // Simulating progress for getting notes
       for (let i = 51; i <= 75; i++) {
         setProgress(i);
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
 
-      const get_notes_response = await axios
-        .post('/api/get_notes', {
+      try {
+        const getNotesResponse = await axios.post('/api/get_notes', {
           sgv: sgvData,
           treatments: treatmentsData,
-        })
-        .catch(function (error) {
+        });
+
+        // Access the response data:
+        const notes = getNotesResponse.data;
+        console.log(notes); // Log the response data
+
+        // Simulating progress for getting notes
+        for (let i = 76; i <= 100; i++) {
+          setProgress(i);
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        const get_report_response = await axios.post('/api/get_dialog', {
+          notes: notes,
+        });
+
+        const report = get_report_response.data;
+        console.log(report); // This should log the actual data
+
+        console.log(report.assessment1);
+      } catch (error) {
+        if (axios.isAxiosError(error)) {
+          // Handle Axios errors (network errors, server errors)
+          console.error('Axios Error:', error.message);
           if (error.response) {
             console.log(error.response.data);
             console.log(error.response.status);
             console.log(error.response.headers);
           }
-        });
-
-      const notes = get_notes_response.data;
-
-      // Simulating progress for getting notes
-      for (let i = 76; i <= 100; i++) {
-        setProgress(i);
-        await new Promise(resolve => setTimeout(resolve, 50));
+        } else {
+          // Handle other types of errors
+          console.error('Unexpected Error:', error);
+        }
       }
-      const get_report_response = await axios.post('/api/get_dialog', {
-        notes: notes
-      });
-
-      const report = get_report_response.data; 
-      console.log(report); // This should log the actual data
-
-      console.log(report.assessment1);
-
     } catch (error) {
       console.error('Error submitting form:', error);
       // Handle error, e.g., show an error message to the user
