@@ -22,10 +22,11 @@ const Form = ({
   const [textareaValues, setTextareaValues] = useState('');
   const [checkedState, setCheckedState] = useState<boolean[]>(new Array(checkboxes && checkboxes.length).fill(false));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e : React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData);
+    const formData = new FormData(e.currentTarget);
+    const formDataArray = Array.from(formData.entries()); 
+    const data = Object.fromEntries(formDataArray);
     onSubmit(data);
   };
 
