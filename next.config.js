@@ -18,11 +18,17 @@ module.exports = {
   rewrites: async () => {
     return [
       {
-        source: "/api/py/:path*",
+        source: "/pyapi/:path*",
         destination:
           process.env.NODE_ENV === "development"
-            ? "http://127.0.0.1:8000/api/py/:path*"
-            : "/api/",
-      }]
-}
-}
+            ? "http://127.0.0.1:8000/pyapi/:path*"
+            : "/api/py/:path*",
+      },
+      // Add this new rule for your Next.js API routes
+      {
+        source: "/api/:path*",
+        destination: "/api/:path*",
+      }
+    ]
+  },
+};
