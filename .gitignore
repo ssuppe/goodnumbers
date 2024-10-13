@@ -44,3 +44,5 @@ public/sitemap-0.xml
 public/robots.txt
 .venv
 
+__pycache__
+
