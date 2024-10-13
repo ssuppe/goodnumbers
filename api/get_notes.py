@@ -1,13 +1,17 @@
-from http.server import BaseHTTPRequestHandler
+from http import HTTPStatus
+import json
+from typing import Dict, Any
 
-class handler(BaseHTTPRequestHandler):
-
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type','text/plain')
-        self.end_headers()
-        self.wfile.write('Hello, world!'.encode('utf-8'))
-        return
+def GET(request: Dict[str, Any]) -> Dict[str, Any]:
+    # Replace this with your actual logic to get notes
+    notes = [
+        {"id": 1, "content": "First note"},
+        {"id": 2, "content": "Second note"}
+    ]
+    return {
+        'status': HTTPStatus.OK,
+        'body': json.dumps(notes)
+    }
 
 # """
 # Generate clinical notes
