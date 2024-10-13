@@ -1,1 +1,1 @@
-from api.index import app
+from pyapi.index import app

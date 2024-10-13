@@ -1,8 +1,8 @@
 {
   "devCommand": "uvicorn main:app --host 0.0.0.0 --port 8000",
-    "functions": {
-      "api/**/*.py": {
-        "runtime": "@vercel/python@4.3.1"
-      }
+  "functions": {
+    "api/py/**/*.py": {
+      "runtime": "@vercel/python@4.3.1"
     }
   }
+}
