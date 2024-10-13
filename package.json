@@ -4,7 +4,9 @@
   "version": "1.0.0-beta.4",
   "private": true,
   "scripts": {
-    "dev": "next dev --port=$PORT --debug",
+    "fastapi-dev": "pip3 install -r requirements.txt && python3 -m uvicorn api.index:app --reload",
+    "next-dev": "next dev",
+    "dev": "concurrently \"npm run next-dev\" \"npm run fastapi-dev\"",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -20,6 +22,7 @@
     "@radix-ui/react-progress": "^1.1.0",
     "@tabler/icons-react": "^3.12.0",
     "@vercel/python": "^4.3.1",
+    "concurrently": "^9.0.1",
     "axios": "^1.7.7",
     "cookie": "^1.0.0",
     "gray-matter": "^4.0.3",
