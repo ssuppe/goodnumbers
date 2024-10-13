@@ -97,35 +97,32 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
 
         // console.log(sgvData);
         treatmentsData = await treatmentsResponse.json();
-        // treatmentsData = treatmentsData.filter(item => {
-        //   const itemDate = new Date(item.created_at);
+        treatmentsData = treatmentsData.filter(item => {
+          const itemDate = new Date(item.created_at);
 
-        //   return itemDate >= thirtyDaysAgo;
-        // });
-
-        getNotesResponse = await axios.post('/api/py/get_notes', {
-          "treatments": sgvData ? sgvData.stringify() : undefined,
-          "carbs": treatmentsData ? treatmentsData.stringify() : undefined,
+          return itemDate >= thirtyDaysAgo;
         });
 
+        getNotesResponse = await axios.post('/pyapi/get_notes', {
+          treatments: sgvData ? sgvData.stringify() : undefined,
+          carbs: treatmentsData ? treatmentsData.stringify() : undefined,
+        });
       } else {
         console.log('Local override, using local data');
-        getNotesResponse = await axios.post('/api/py/get_notes', {
-          "treatments": null,
-          "carbs": null,
+        getNotesResponse = await axios.post('/pyapi/get_notes', {
+          treatments: null,
+          carbs: null,
         });
       }
 
       setProgressText('Generating report');
 
       // Simulating progress for getting notes
-      for (let i = 51; i <= 75; i++) {
+      for (let i = 25; i <= 50; i++) {
         setProgress(i);
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
-
       try {
-
         // Access the response data:
         const notes = getNotesResponse.data;
         console.log(notes); // Log the response data
@@ -135,14 +132,30 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
           setProgress(i);
           await new Promise((resolve) => setTimeout(resolve, 50));
         }
-        const get_report_response = await axios.post('/api/get_dialog', {
+        const get_assessment1_response = await axios.post('/api/get_dialog', {
           notes: notes,
+          template_num : 1
         });
 
-        const report = get_report_response.data;
-        console.log(report); // This should log the actual data
+        const assessment1 = get_assessment1_response.data.response;
+        console.log("ASSESSMENT 1:" + assessment1);
+        
+        const get_assessment2_response = await axios.post('/api/get_dialog', {
+          notes: notes,
+          assessment1 : assessment1,
+          template_num : 2
+        });
+        const assessment2 = get_assessment2_response.data.response;
+        console.log("ASSESSMENT 2:" + assessment2);
 
-        console.log(report.assessment1);
+        const get_assessment3_response = await axios.post('/api/get_dialog', {
+          notes: notes,
+          assessment1 : assessment1,
+          template_num : 3
+        });
+        const assessment3 = get_assessment3_response.data.response;
+        console.log("ASSESSMENT 3:" + assessment3);
+
       } catch (error) {
         if (axios.isAxiosError(error)) {
           // Handle Axios errors (network errors, server errors)

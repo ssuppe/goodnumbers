@@ -17,7 +17,7 @@ class NightscoutData(BaseModel):
     treatments: Optional[str] = None
     carbs: Optional[str] = None
 
-@app.post("/api/py/get_notes")
+@app.post("/pyapi/get_notes")
 async def get_analysis(data: NightscoutData):
     """
     Create manual notes
@@ -48,6 +48,3 @@ async def get_analysis(data: NightscoutData):
         raise e
 
     return podcast_dialog
-
-
-    return {"message": notes}
