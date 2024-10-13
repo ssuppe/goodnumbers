@@ -61,6 +61,7 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
 
       let sgvData = null;
       let treatmentsData = null;
+      let getNotesResponse = null;
 
       if (!local) {
         console.log('Not local, calling Nightscout');
@@ -101,8 +102,18 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
 
         //   return itemDate >= thirtyDaysAgo;
         // });
+
+        getNotesResponse = await axios.post('/api/py/get_notes', {
+          "treatments": sgvData ? sgvData.stringify() : undefined,
+          "carbs": treatmentsData ? treatmentsData.stringify() : undefined,
+        });
+
       } else {
         console.log('Local override, using local data');
+        getNotesResponse = await axios.post('/api/py/get_notes', {
+          "treatments": null,
+          "carbs": null,
+        });
       }
 
       setProgressText('Generating report');
@@ -114,10 +125,6 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
       }
 
       try {
-        const getNotesResponse = await axios.post('/api/get_notes', {
-          sgv: sgvData,
-          treatments: treatmentsData,
-        });
 
         // Access the response data:
         const notes = getNotesResponse.data;
