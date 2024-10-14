@@ -9,7 +9,17 @@ import Progress from '@/components/ui/progress';
 import Cookies from 'js-cookie';
 import axios from 'axios';
 
-const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground = false }: NightscoutProps) => {
+// Extend the NightscoutProps interface to include the new callback
+interface ExtendedNightscoutProps extends NightscoutProps {
+  onAssessmentComplete?: (data: {
+    notes: string;
+    assessment1: string;
+    assessment2: string;
+    assessment3: string;
+  }) => void;
+}
+
+const Nightscout: React.FC<ExtendedNightscoutProps> = ({ header, form, id, hasBackground = false, onAssessmentComplete }: ExtendedNightscoutProps) => {
   const [url, setUrl] = useState('');
   const [token, setToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -63,6 +73,11 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
       let treatmentsData = null;
       let getNotesResponse = null;
 
+      const options = {
+        timeout: 180000, // Timeout in milliseconds (120 seconds = 2 minutes)
+        // ... your other axios options ... 
+      };
+
       if (!local) {
         console.log('Not local, calling Nightscout');
         const today = new Date();
@@ -104,15 +119,15 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
         });
 
         getNotesResponse = await axios.post('/pyapi/get_notes', {
-          treatments: sgvData ? sgvData.stringify() : undefined,
-          carbs: treatmentsData ? treatmentsData.stringify() : undefined,
-        });
+          treatments: sgvData ? JSON.stringify(sgvData) : undefined,
+          carbs: treatmentsData ? JSON.stringify(treatmentsData) : undefined,
+        }, options);
       } else {
         console.log('Local override, using local data');
         getNotesResponse = await axios.post('/pyapi/get_notes', {
           treatments: null,
           carbs: null,
-        });
+        }, options);
       }
 
       setProgressText('Generating report');
@@ -125,7 +140,7 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
       try {
         // Access the response data:
         const notes = getNotesResponse.data;
-        console.log(notes); // Log the response data
+        console.log("Notes: " + notes.substring(0,100)); // Log the response data
 
         // Simulating progress for getting notes
         for (let i = 76; i <= 100; i++) {
@@ -135,26 +150,37 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
         const get_assessment1_response = await axios.post('/pyapi/get_assessment', {
           notes: notes,
           template_num : 1
-        });
+        }, options);
 
         const assessment1 = get_assessment1_response.data.response;
-        console.log("ASSESSMENT 1:" + assessment1);
+        console.log("ASSESSMENT 1:" + assessment1.substring(0,100));
         
         const get_assessment2_response = await axios.post('/pyapi/get_assessment', {
           notes: notes,
           assessment1 : assessment1,
           template_num : 2
-        });
+        }, options);
         const assessment2 = get_assessment2_response.data.response;
-        console.log("ASSESSMENT 2:" + assessment2);
+        console.log("ASSESSMENT 2:" + assessment2.substring(0,100));
 
         const get_assessment3_response = await axios.post('/pyapi/get_assessment', {
           notes: notes,
           assessment1 : assessment1,
+          assessment2 : assessment2,
           template_num : 3
-        });
+        }, options);
         const assessment3 = get_assessment3_response.data.response;
-        console.log("ASSESSMENT 3:" + assessment3);
+        console.log("ASSESSMENT 3:" + assessment3.substring(0,100));
+
+        // Call the onAssessmentComplete callback with the assessment data
+        if (onAssessmentComplete) {
+          onAssessmentComplete({
+            notes,
+            assessment1,
+            assessment2,
+            assessment3
+          });
+        }
 
       } catch (error) {
         if (axios.isAxiosError(error)) {

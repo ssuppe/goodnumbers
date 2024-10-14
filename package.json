@@ -22,8 +22,9 @@
     "@radix-ui/react-progress": "^1.1.0",
     "@tabler/icons-react": "^3.12.0",
     "@vercel/python": "^4.3.1",
-    "concurrently": "^9.0.1",
     "axios": "^1.7.7",
+    "axios-retry": "^4.5.0",
+    "concurrently": "^9.0.1",
     "cookie": "^1.0.0",
     "gray-matter": "^4.0.3",
     "js-cookie": "^3.0.5",
@@ -33,6 +34,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
+    "react-tabs": "^6.0.2",
     "sharp": "^0.33.5",
     "tailwind-merge": "^2.5.2"
   },
