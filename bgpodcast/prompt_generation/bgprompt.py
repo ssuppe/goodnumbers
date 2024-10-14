@@ -5,11 +5,6 @@ import pandas as pd
 import numpy as np
 from bgpodcast.data_analysis import nightscout as nsanalyze
 from bgpodcast.utils import bgutils
-from l2m2.client import LLMClient
-
-GEMINI_KEY  = bgutils.get_gemini_key()
-
-client = LLMClient(providers={"google" : GEMINI_KEY})
 
 def get_probable_mealtimes(carbs : pd.DataFrame):
     number_of_days = bgutils.get_number_of_days(carbs, 'date')
@@ -20,21 +15,6 @@ def get_probable_mealtimes(carbs : pd.DataFrame):
     carbs = carbs.pivot_table(index='start_time', values = 'carbs', aggfunc=["median", "mean", 'count', "sum"])
     carbs = carbs[(carbs["count"]["carbs"] >= number_of_days*.3) & (carbs["median"]["carbs"] >= np.quantile(carbs["median"]["carbs"], .5))]
     return carbs
-
-def call_llm(model="gemini-1.5-pro", prompt_filename="", **kwargs):
-    # print(client.call(model="gpt-4o", prompt="What is my name?", bypass_memory=True))
-
-    response = None
-    with open(f"{prompt_filename}", "r", encoding="utf-8") as promptf:
-        prompt = promptf.read()
-        for key, value in kwargs.items():
-            prompt = prompt.replace(f"{{{key}}}", value)
-        
-        print(f"{prompt_filename}")
-        print(f"{prompt}")
-
-        response = client.call(model=model, prompt = prompt, timeout=60, bypass_memory=True)
-    return response
 
 def generate_notes(patient_name: str, gender : str, sgv : pd.DataFrame, carbs : pd.DataFrame) -> str:
 
