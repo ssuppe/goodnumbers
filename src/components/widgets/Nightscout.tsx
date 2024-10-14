@@ -132,7 +132,7 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
           setProgress(i);
           await new Promise((resolve) => setTimeout(resolve, 50));
         }
-        const get_assessment1_response = await axios.post('/api/get_dialog', {
+        const get_assessment1_response = await axios.post('/pyapi/get_assessment', {
           notes: notes,
           template_num : 1
         });
@@ -140,7 +140,7 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
         const assessment1 = get_assessment1_response.data.response;
         console.log("ASSESSMENT 1:" + assessment1);
         
-        const get_assessment2_response = await axios.post('/api/get_dialog', {
+        const get_assessment2_response = await axios.post('/pyapi/get_assessment', {
           notes: notes,
           assessment1 : assessment1,
           template_num : 2
@@ -148,7 +148,7 @@ const Nightscout: React.FC<NightscoutProps> = ({ header, form, id, hasBackground
         const assessment2 = get_assessment2_response.data.response;
         console.log("ASSESSMENT 2:" + assessment2);
 
-        const get_assessment3_response = await axios.post('/api/get_dialog', {
+        const get_assessment3_response = await axios.post('/pyapi/get_assessment', {
           notes: notes,
           assessment1 : assessment1,
           template_num : 3
