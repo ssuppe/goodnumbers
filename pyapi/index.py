@@ -1,16 +1,24 @@
 """
 Python APIs
 """
-from typing import Optional
-from fastapi import FastAPI
-from pydantic import BaseModel
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
-from google.generativeai import GenerativeModel
 import os
-
+from typing import Optional
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
+import google.generativeai as genai
+from google.generativeai.types import RequestOptions
+# from google.api_core import retry
+from google.api_core import retry_async
 from bgpodcast.data_ingestion import nightscout as nsingest
 from bgpodcast.prompt_generation import bgprompt
+from bgpodcast.utils import bgutils
+
+class Settings(BaseSettings):
+    gemini_api_key: str
+    pythonpath: str
+    model_config = SettingsConfigDict(env_file=".env.development")
 
 # Load templates from files
 with open(os.path.join("app", "_prompts", "pass1.txt"), "r", encoding="utf-8") as f:
@@ -20,8 +28,10 @@ with open(os.path.join("app", "_prompts", "pass2.txt"), "r", encoding="utf-8") a
 with open(os.path.join("app", "_prompts", "pass3.txt"), "r", encoding="utf-8") as f:
     template3 = f.read()
 
-### Create FastAPI instance with custom docs and openapi url
+settings = Settings()
 app = FastAPI()
+
+genai.configure(api_key=settings.gemini_api_key)
 
 class NightscoutData(BaseModel):
     """
@@ -38,16 +48,13 @@ async def get_analysis(data: NightscoutData):
     podcast_dialog = ""
     # Process the data (replace with your actual logic)
     try :
-        # treatments = nsingest.load_sgv_json(data.treatments)
-        # carbs = nsingest.load_carb_json(data.carbs)
-        print(f"Treatments: {data.treatments}")
+        # print(f"Treatments: {data.treatments}")
         if data.treatments is None:
             treatments = nsingest.load_entries_data("24Sept.30d", "24Sept.30d")
             carbs = nsingest.load_carb_data("24Sept.30d", "24Sept.30d")
         else:
             treatments = nsingest.load_sgv_json(data.treatments)
             carbs = nsingest.load_carb_json(data.carbs)
-
         notes = None
         notes = bgprompt.generate_notes("Steve", "male", treatments, carbs)
         # Call LLM for first pass
@@ -62,13 +69,20 @@ async def get_analysis(data: NightscoutData):
 
     return podcast_dialog
 
-@app.post("/pyapi/get_assessment")
-async def get_assessment(notes : str = None, assessment1 : str = None, assessment2 : str = None, template_num : int = 1):
-    try:
-        gemini_key = os.getenv("GEMINI_API_KEY")
-        if not gemini_key:
-            raise ValueError("GEMINI_API_KEY environment variable is not defined!")
+class Assessment(BaseModel):
+    notes : str | None = None
+    assessment1 : str | None = None
+    assessment2 : str | None = None
+    template_num : int | None = 1
 
+@app.post("/pyapi/get_assessment")
+async def get_assessment(data : Assessment):
+    """
+    Get assessment
+    """
+    print("get_assessment started")
+    print(f"Notes {data.notes}")
+    try:
         generation_config = {
             "temperature": 1.0,
             "top_p": 0.95,
@@ -77,49 +91,73 @@ async def get_assessment(notes : str = None, assessment1 : str = None, assessmen
             "response_mime_type": "text/plain",
         }
 
-        model = GenerativeModel(
+        model = genai.GenerativeModel(
             model_name="gemini-1.5-pro",
-            api_key=gemini_key,
             generation_config=generation_config,
         )
 
-        # data = await request.json()
-        # notes = data.get("notes")
-        # assessment1 = data.get("assessment1")
-        # assessment2 = data.get("assessment2")
-        # template_num = data.get("template_num")
-
-        if not template_num:
+        if not data.template_num:
             raise ValueError("Missing 'template_num' in request body")
 
         response_text = ""
 
-        if template_num == 1:
-            prompt = template1.format(notes=notes)
-            response = model.generate_text(prompt)
+        if data.template_num == 1:
+            # print(f"Template1: {template1}")
+            prompt = bgutils.interpolate(template1, notes=data.notes)
+            # print(f"Prompt1: {prompt}")
+            response = await model.generate_content_async(prompt, request_options=RequestOptions(
+                                        retry=retry_async.AsyncRetry(
+                                            initial=10, 
+                                            multiplier=2, 
+                                            maximum=60, 
+                                            timeout=300
+                                        )
+                                       ))         
             response_text = response.text
-        elif template_num == 2:
-            prompt = template2.format(notes=notes, assessment1=assessment1)
-            response = model.generate_text(prompt)
+            print(f"Response1: {response_text[0:100]}")
+        elif data.template_num == 2:
+            # print(f"Template2: {template2}")
+            prompt = bgutils.interpolate(template2, notes=data.notes, assessment1=data.assessment1)
+            response = await model.generate_content_async(prompt, request_options=RequestOptions(
+                                        retry=retry_async.AsyncRetry(
+                                            initial=10, 
+                                            multiplier=2, 
+                                            maximum=60, 
+                                            timeout=300
+                                        )
+                                       ))
             response_text = response.text
-        elif template_num == 3:
-            prompt = template3.format(
-                notes=notes, assessment1=assessment1, assessment2=assessment2
-            )
+            print(f"Response2: {response_text[0:100]}")
+        elif data.template_num == 3:
+            # print(f"Template3: {template3}")
+            prompt = bgutils.interpolate(template3, notes=data.notes, assessment1=data.assessment1, assessment2=data.assessment2)
             generation_config["temperature"] = 1.5
             generation_config["max_output_tokens"] = 128000
-            model = GenerativeModel(
+            model = genai.GenerativeModel(
                 model_name="gemini-1.5-pro",
-                api_key=gemini_key,
                 generation_config=generation_config,
             )
-            response = model.generate_text(prompt)
+            response = await model.generate_content_async(prompt, request_options=RequestOptions(
+                                        retry=retry_async.AsyncRetry(
+                                            initial=10, 
+                                            multiplier=2, 
+                                            maximum=60, 
+                                            timeout=300
+                                        )
+                                       ))
             response_text = response.text
+            print(f"Response3: {response_text[0:100]}")
         else:
-            raise ValueError(f"Invalid template number: {template_num}")
+            raise ValueError(f"Invalid template number: {data.template_num}")
 
         return JSONResponse({"response": response_text})
 
+    except ValueError as ve:
+        error_message = str(ve)
+        print(f"ValueError: {error_message}")
+        raise HTTPException(status_code=400, detail=error_message) 
+
     except Exception as e:
-        print(e)
+        error_message = f"An unexpected error occurred: {str(e)}" 
+        print(f"Unexpected Error: {error_message}")
         raise HTTPException(status_code=500, detail="Internal Server Error")

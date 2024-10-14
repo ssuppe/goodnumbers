@@ -10,7 +10,7 @@ export const nightscout: NightscoutProps = {
     title: 'Try Now with Nightscout',
     subtitle: (
       <>
-        Are you using <a href="https://nightscout.github.io/" target="_blank">Nighscout</a>?{' '}
+        Are you using <a href="https://nightscout.github.io/" target="_blank">Nightscout</a>?{' '}
         <span className="hidden md:inline">{`Enter your details and we can generate a podcast for you based on your last 7 days of data.`}</span>
       </>
     ),
