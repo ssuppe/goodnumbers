@@ -56,7 +56,7 @@ def get_weeks(df, date_col):
     return [week for week in unique_weeks]
 
 def get_sgv_stats(mdf : pd.DataFrame):
-    print(mdf)
+    # print(mdf)
     monthly_mean = mdf['sgv'].mean()
     monthly_stddev = mdf['sgv'].std()
     monthly_pct_low = len(mdf[mdf.sgv < 70]) / len(mdf)
@@ -87,3 +87,9 @@ def is_near_meal_time(start_time, meal_times):
 
   # Return the boolean mask.
   return mask.any()
+
+def interpolate(prompt="", **kwargs):
+    for key, value in kwargs.items():
+        prompt = prompt.replace(f"{{{key}}}", value)
+        
+    return prompt
