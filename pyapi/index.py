@@ -5,7 +5,7 @@ import os
 from typing import Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import google.generativeai as genai
 from google.generativeai.types import RequestOptions
@@ -16,9 +16,9 @@ from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils
 
 class Settings(BaseSettings):
-    gemini_api_key: str
-    pythonpath: str
-    model_config = SettingsConfigDict(env_file=".env.development")
+    gemini_api_key: str = Field(..., env="GEMINI_API_KEY")
+    pythonpath: str = Field(..., env="PYTHONPATH")
+    model_config = SettingsConfigDict() # Removed env_file
 
 # Load templates from files
 with open(os.path.join("app", "_prompts", "pass1.txt"), "r", encoding="utf-8") as f:
