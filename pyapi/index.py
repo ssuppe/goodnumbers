@@ -5,8 +5,8 @@ import os
 from typing import Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseModel, SecretStr
+from pydantic_settings import BaseSettings
 import google.generativeai as genai
 from google.generativeai.types import RequestOptions
 # from google.api_core import retry
@@ -16,9 +16,11 @@ from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils
 
 class Settings(BaseSettings):
-    gemini_api_key: str = Field(..., env="GEMINI_API_KEY")
-    pythonpath: str = Field(..., env="PYTHONPATH")
-    model_config = SettingsConfigDict() # Removed env_file
+    gemini_api_key: SecretStr
+    pythonpath: str
+    class Config:
+        env_file = ".env.development"
+        env_file_encoding = "utf-8"
 
 # Load templates from files
 with open(os.path.join("app", "_prompts", "pass1.txt"), "r", encoding="utf-8") as f:
@@ -107,9 +109,9 @@ async def get_assessment(data : Assessment):
             # print(f"Prompt1: {prompt}")
             response = await model.generate_content_async(prompt, request_options=RequestOptions(
                                         retry=retry_async.AsyncRetry(
-                                            initial=10, 
-                                            multiplier=2, 
-                                            maximum=60, 
+                                            initial=10,
+                                            multiplier=2,
+                                            maximum=60,
                                             timeout=300
                                         )
                                        ))         
@@ -120,9 +122,9 @@ async def get_assessment(data : Assessment):
             prompt = bgutils.interpolate(template2, notes=data.notes, assessment1=data.assessment1)
             response = await model.generate_content_async(prompt, request_options=RequestOptions(
                                         retry=retry_async.AsyncRetry(
-                                            initial=10, 
-                                            multiplier=2, 
-                                            maximum=60, 
+                                            initial=10,
+                                            multiplier=2,
+                                            maximum=60,
                                             timeout=300
                                         )
                                        ))

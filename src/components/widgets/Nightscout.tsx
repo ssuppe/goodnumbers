@@ -1,31 +1,29 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Headline from '../common/Headline';
 import { NightscoutProps } from '~/shared/types';
 import WidgetWrapper from '../common/WidgetWrapper';
 import { useSearchParams } from 'next/navigation';
-import Progress from '@/components/ui/progress';
+import Progress from '../ui/progress';
 import Cookies from 'js-cookie';
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
 
-// Extend the NightscoutProps interface to include the new callback
 interface ExtendedNightscoutProps extends NightscoutProps {
   onAssessmentComplete?: (data: {
     notes: string;
     assessment1: string;
     assessment2: string;
-    assessment3: string;
+    dialog: string;
   }) => void;
 }
 
-const Nightscout: React.FC<ExtendedNightscoutProps> = ({ header, form, id, hasBackground = false, onAssessmentComplete }: ExtendedNightscoutProps) => {
-  const [url, setUrl] = useState('');
-  const [token, setToken] = useState('');
+const Nightscout: React.FC<ExtendedNightscoutProps> = ({ header, id, hasBackground = false, onAssessmentComplete }) => {
   const [isLoading, setIsLoading] = useState(false);
-
   const [progress, setProgress] = useState(0);
   const [progressText, setProgressText] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const local = searchParams ? searchParams.get('local') : null;
 
@@ -33,10 +31,11 @@ const Nightscout: React.FC<ExtendedNightscoutProps> = ({ header, form, id, hasBa
   const storedToken = Cookies.get('token');
 
   const [formData, setFormData] = useState({
-    nightscout_url: storedUrl ? storedUrl : '',
-    nightscout_token: storedToken ? storedToken : '',
+    nightscout_url: storedUrl || '',
+    nightscout_token: storedToken || '',
     terms_accepted: false,
   });
+
   const isFormValid = formData.nightscout_url && formData.nightscout_token && formData.terms_accepted;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,8 +46,41 @@ const Nightscout: React.FC<ExtendedNightscoutProps> = ({ header, form, id, hasBa
     }));
   };
 
+  // Create an axios instance with retry configuration
+  const axiosInstance = axios.create({
+    timeout: 300000, // 5 minutes
+  });
+
+  axiosRetry(axiosInstance, {
+    retries: 5,
+    retryDelay: axiosRetry.exponentialDelay,
+    shouldResetTimeout : true,
+    retryCondition: (error) => {
+      return axiosRetry.isNetworkOrIdempotentRequestError(error) || error.code === 'ECONNRESET';
+    },
+  });
+
+  const fetchData = async (url: string, options: any) => {
+    try {
+      const response = await axiosInstance({ url, ...options });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNABORTED') {
+          throw new Error('Request timed out. Please try again.');
+        } else if (error.response) {
+          throw new Error(`Server responded with status ${error.response.status}: ${error.response.data}`);
+        } else if (error.request) {
+          throw new Error('No response received from the server. Please check your internet connection.');
+        }
+      }
+      throw new Error('An unexpected error occurred. Please try again.');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
     Cookies.set('url', formData.nightscout_url, { expires: 30 });
     Cookies.set('token', formData.nightscout_token, { expires: 30 });
     setIsLoading(true);
@@ -56,149 +88,93 @@ const Nightscout: React.FC<ExtendedNightscoutProps> = ({ header, form, id, hasBa
     setProgressText('Fetching Nightscout data');
 
     try {
-      // Simulating progress for fetching Nightscout data
       for (let i = 0; i <= 25; i++) {
         setProgress(i);
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
 
-      console.log('Getting nightscout data');
-
-      // If the token accidentally starts with token=, then remove it
-      let nightscout_token = formData['nightscout_token'].toString().replace(/^token=/, '');
-      let nightscout_url = formData['nightscout_url'];
-      // console.log(nightscout_token);
+      const nightscout_token = formData.nightscout_token.replace(/^token=/, '');
+      const nightscout_url = formData.nightscout_url;
 
       let sgvData = null;
       let treatmentsData = null;
-      let getNotesResponse = null;
-
-      const options = {
-        timeout: 180000, // Timeout in milliseconds (120 seconds = 2 minutes)
-        // ... your other axios options ... 
-      };
 
       if (!local) {
-        console.log('Not local, calling Nightscout');
         const today = new Date();
         const thirtyDaysAgo = new Date(today.setDate(today.getDate() - 30));
-        const thirtyDaysAgoStr = thirtyDaysAgo
-          .toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-          })
-          .replace(/\//g, '-');
-        //                    /api/v1/entries/sgv.json?token=autotune-ca4f6201c17a55b0&find[date][$gte]=2024-08-31&count=10000
+        const thirtyDaysAgoStr = thirtyDaysAgo.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).replace(/\//g, '-');
+
         const sgvUrl = `${nightscout_url}/api/v1/entries/sgv.json?token=${nightscout_token}&find[date][$gte]=${thirtyDaysAgoStr}&count=10000`;
-        console.log(`svgURL: ${sgvUrl}`);
         const treatmentsUrl = `${nightscout_url}/api/v1/treatments.json?token=${nightscout_token}&find[created_at][$gte]=${thirtyDaysAgoStr}&count=20000`;
-        console.log(`treatmentsUrl: ${treatmentsUrl}`);
-        const [entriesResponse, treatmentsResponse] = await Promise.all([
-          fetch(sgvUrl, { headers: { accept: 'application/json' } }),
-          fetch(treatmentsUrl, { headers: { accept: 'application/json' } }),
+
+        [sgvData, treatmentsData] = await Promise.all([
+          fetchData(sgvUrl, { method: 'GET', headers: { accept: 'application/json' } }),
+          fetchData(treatmentsUrl, { method: 'GET', headers: { accept: 'application/json' } }),
         ]);
 
-        if (!entriesResponse.ok || !treatmentsResponse.ok) {
-          throw new Error('Nightscout API request failed');
-        }
-
-        sgvData = await entriesResponse.json();
-        // console.log(sgvData);
-        sgvData = sgvData.filter((item: { date: string }) => {
-          const itemDate = new Date(item.date);
-          return itemDate >= thirtyDaysAgo;
-        });
-
-        // console.log(sgvData);
-        treatmentsData = await treatmentsResponse.json();
-        treatmentsData = treatmentsData.filter(item => {
-          const itemDate = new Date(item.created_at);
-
-          return itemDate >= thirtyDaysAgo;
-        });
-
-        getNotesResponse = await axios.post('/pyapi/get_notes', {
-          treatments: sgvData ? JSON.stringify(sgvData) : undefined,
-          carbs: treatmentsData ? JSON.stringify(treatmentsData) : undefined,
-        }, options);
-      } else {
-        console.log('Local override, using local data');
-        getNotesResponse = await axios.post('/pyapi/get_notes', {
-          treatments: null,
-          carbs: null,
-        }, options);
+        sgvData = sgvData.filter((item: { date: string }) => new Date(item.date) >= thirtyDaysAgo);
+        treatmentsData = treatmentsData.filter((item: { created_at: string }) => new Date(item.created_at) >= thirtyDaysAgo);
       }
 
       setProgressText('Generating report');
-
-      // Simulating progress for getting notes
       for (let i = 25; i <= 50; i++) {
         setProgress(i);
         await new Promise((resolve) => setTimeout(resolve, 50));
       }
-      try {
-        // Access the response data:
-        const notes = getNotesResponse.data;
-        console.log("Notes: " + notes.substring(0,100)); // Log the response data
 
-        // Simulating progress for getting notes
-        for (let i = 76; i <= 100; i++) {
-          setProgress(i);
-          await new Promise((resolve) => setTimeout(resolve, 50));
-        }
-        const get_assessment1_response = await axios.post('/pyapi/get_assessment', {
-          notes: notes,
-          template_num : 1
-        }, options);
+      const getNotesResponse = await fetchData('/pyapi/get_notes', {
+        method: 'POST',
+        data: {
+          treatments: sgvData ? JSON.stringify(sgvData) : undefined,
+          carbs: treatmentsData ? JSON.stringify(treatmentsData) : undefined,
+        },
+      });
 
-        const assessment1 = get_assessment1_response.data.response;
-        console.log("ASSESSMENT 1:" + assessment1.substring(0,100));
-        
-        const get_assessment2_response = await axios.post('/pyapi/get_assessment', {
-          notes: notes,
-          assessment1 : assessment1,
-          template_num : 2
-        }, options);
-        const assessment2 = get_assessment2_response.data.response;
-        console.log("ASSESSMENT 2:" + assessment2.substring(0,100));
+      const notes = getNotesResponse;
 
-        const get_assessment3_response = await axios.post('/pyapi/get_assessment', {
-          notes: notes,
-          assessment1 : assessment1,
-          assessment2 : assessment2,
-          template_num : 3
-        }, options);
-        const assessment3 = get_assessment3_response.data.response;
-        console.log("ASSESSMENT 3:" + assessment3.substring(0,100));
+      // Sequential API calls
+      setProgressText('Generating assessment 1');
+      setProgress(60);
+      const assessment1Response = await fetchData('/pyapi/get_assessment', {
+        method: 'POST',
+        data: { notes, template_num: 1 }
+      });
+      const assessment1 = assessment1Response.response;
 
-        // Call the onAssessmentComplete callback with the assessment data
-        if (onAssessmentComplete) {
-          onAssessmentComplete({
-            notes,
-            assessment1,
-            assessment2,
-            assessment3
-          });
-        }
+      setProgressText('Generating assessment 2');
+      setProgress(75);
+      const assessment2Response = await fetchData('/pyapi/get_assessment', {
+        method: 'POST',
+        data: { notes, assessment1, template_num: 2 }
+      });
+      const assessment2 = assessment2Response.response;
 
-      } catch (error) {
-        if (axios.isAxiosError(error)) {
-          // Handle Axios errors (network errors, server errors)
-          console.error('Axios Error:', error.message);
-          if (error.response) {
-            console.log(error.response.data);
-            console.log(error.response.status);
-            console.log(error.response.headers);
-          }
-        } else {
-          // Handle other types of errors
-          console.error('Unexpected Error:', error);
-        }
+      setProgressText('Generating dialog');
+      setProgress(90);
+      const dialogResponse = await fetchData('/pyapi/get_assessment', {
+        method: 'POST',
+        data: { notes, assessment1, assessment2, template_num: 3 }
+      });
+      const dialog = dialogResponse.response;
+
+      setProgress(100);
+
+      if (onAssessmentComplete) {
+        onAssessmentComplete({
+          notes,
+          assessment1,
+          assessment2,
+          dialog,
+        });
       }
+
     } catch (error) {
-      console.error('Error submitting form:', error);
-      // Handle error, e.g., show an error message to the user
+      console.error('Error:', error);
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
       setProgress(0);
@@ -207,7 +183,7 @@ const Nightscout: React.FC<ExtendedNightscoutProps> = ({ header, form, id, hasBa
   };
 
   return (
-    <WidgetWrapper id={id ? id : ''} hasBackground={hasBackground} containerClass="max-w-7xl mx-auto">
+    <WidgetWrapper id={id || ''} hasBackground={hasBackground} containerClass="max-w-7xl mx-auto">
       {header && <Headline header={header} titleClass="text-3xl sm:text-5xl" />}
       <div className="flex items-stretch justify-center">
         <form onSubmit={handleSubmit} className="card h-fit max-w-2xl mx-auto p-5 md:p-12">
@@ -215,6 +191,11 @@ const Nightscout: React.FC<ExtendedNightscoutProps> = ({ header, form, id, hasBa
             <div className="mb-4">
               <Progress value={progress} className="w-full" />
               <p className="text-center mt-2">{progressText}</p>
+            </div>
+          )}
+          {error && (
+            <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
             </div>
           )}
           <input
