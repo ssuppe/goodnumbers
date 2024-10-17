@@ -24,10 +24,17 @@ const Page = () => {
     setAssessmentData(data);
   };
 
+  const searchParams = new URLSearchParams(window.location.search);
+  const local = searchParams.get("local");
+
   return (
     <>
       <Suspense fallback={<div>Loading...</div>}>
-        <NightscoutWrapper {...nightscout} onAssessmentComplete={handleAssessmentComplete} />
+        <NightscoutWrapper
+          {...nightscout}
+          onAssessmentComplete={handleAssessmentComplete}
+          local={local}
+        />
       </Suspense>
       {assessmentData && (
         <div className="mt-8 max-w-4xl mx-auto">
