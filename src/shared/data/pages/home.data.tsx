@@ -631,6 +631,10 @@ export const contactHome: ContactProps = {
     },
   ],
   form: {
+    isLoading: false,
+    onSubmit: function () {
+      return undefined;
+    },
     title: 'Ready to Get Started?',
     inputs: [
       {
