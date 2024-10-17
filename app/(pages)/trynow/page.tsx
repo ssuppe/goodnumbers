@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
-import 'react-tabs/style/react-tabs.css';
+import React, { useState, Suspense } from "react";
+import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
+import "react-tabs/style/react-tabs.css";
 
-import NightscoutWrapper from '~/components/widgets/NightscoutWrapper';
-import { nightscout } from '~/shared/data/pages/trynow.data';
+import NightscoutWrapper from "~/components/widgets/NightscoutWrapper";
+import { nightscout } from "~/shared/data/pages/trynow.data";
 
 const Page = () => {
   const [assessmentData, setAssessmentData] = useState<{
@@ -26,7 +26,9 @@ const Page = () => {
 
   return (
     <>
-      <NightscoutWrapper {...nightscout} onAssessmentComplete={handleAssessmentComplete} />
+      <Suspense fallback={<div>Loading...</div>}>
+        <NightscoutWrapper {...nightscout} onAssessmentComplete={handleAssessmentComplete} />
+      </Suspense>
       {assessmentData && (
         <div className="mt-8 max-w-4xl mx-auto">
           <Tabs>
