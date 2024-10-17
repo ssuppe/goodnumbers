@@ -45,6 +45,10 @@ export const contact2Contact: ContactProps = {
     },
   ],
   form: {
+    isLoading: false,
+    onSubmit: function () {
+      return undefined;
+    },
     title: 'Ready to Get Started?',
     inputs: [
       {
