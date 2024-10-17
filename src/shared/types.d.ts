@@ -101,7 +101,7 @@ type FormProps = {
   btnPosition?: 'center' | 'right' | 'left';
   containerClass?: string;
   isLoading: boolean;
-  onSubmit;
+  onSubmit: function;
 };
 
 type Image = {
@@ -330,9 +330,10 @@ type LoadingSpinnerProps = Widget & {
 };
 
 type PodcastDialogProps = Widget & {
-  header?: Header;
-  id : string;
+  // header?: Header;
+  id: string;
   content?: string;
+  hasBackground?: boolean;
 }
 
 type ComparisonProps = Widget & {

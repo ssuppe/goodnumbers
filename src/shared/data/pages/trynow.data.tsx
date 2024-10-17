@@ -33,6 +33,10 @@ export const nightscout: NightscoutProps = {
   //   },
   // ],
   form: {
+    isLoading: false,
+    onSubmit: function () {
+      return undefined;
+    },
     title: 'Enter your Nightscout details here',
     inputs: [
       {

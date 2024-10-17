@@ -1,16 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import Headline from '../common/Headline';
-import { NightscoutProps } from '~/shared/types';
-import WidgetWrapper from '../common/WidgetWrapper';
 import { useSearchParams } from 'next/navigation';
 import Progress from '../ui/progress';
 import Cookies from 'js-cookie';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 
-interface ExtendedNightscoutProps extends NightscoutProps {
+interface NightscoutFormProps {
   onAssessmentComplete?: (data: {
     notes: string;
     assessment1: string;
@@ -19,7 +16,7 @@ interface ExtendedNightscoutProps extends NightscoutProps {
   }) => void;
 }
 
-const Nightscout: React.FC<ExtendedNightscoutProps> = ({ header, id, hasBackground = false, onAssessmentComplete }) => {
+const NightscoutForm: React.FC<NightscoutFormProps> = ({ onAssessmentComplete }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressText, setProgressText] = useState('');
@@ -54,7 +51,7 @@ const Nightscout: React.FC<ExtendedNightscoutProps> = ({ header, id, hasBackgrou
   axiosRetry(axiosInstance, {
     retries: 5,
     retryDelay: axiosRetry.exponentialDelay,
-    shouldResetTimeout : true,
+    shouldResetTimeout: true,
     retryCondition: (error) => {
       return axiosRetry.isNetworkOrIdempotentRequestError(error) || error.code === 'ECONNRESET';
     },
@@ -183,60 +180,55 @@ const Nightscout: React.FC<ExtendedNightscoutProps> = ({ header, id, hasBackgrou
   };
 
   return (
-    <WidgetWrapper id={id || ''} hasBackground={hasBackground} containerClass="max-w-7xl mx-auto">
-      {header && <Headline header={header} titleClass="text-3xl sm:text-5xl" />}
-      <div className="flex items-stretch justify-center">
-        <form onSubmit={handleSubmit} className="card h-fit max-w-2xl mx-auto p-5 md:p-12">
-          {isLoading && (
-            <div className="mb-4">
-              <Progress value={progress} className="w-full" />
-              <p className="text-center mt-2">{progressText}</p>
-            </div>
-          )}
-          {error && (
-            <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
-              {error}
-            </div>
-          )}
-          <input
-            type="text"
-            name="nightscout_url"
-            placeholder="Nightscout URL"
-            value={formData.nightscout_url}
-            onChange={handleInputChange}
-            className="w-full p-2 mb-4 border rounded"
-          />
-          <input
-            type="text"
-            name="nightscout_token"
-            placeholder="Nightscout Token"
-            value={formData.nightscout_token}
-            onChange={handleInputChange}
-            className="w-full p-2 mb-4 border rounded"
-          />
-          <label className="flex items-center mb-4">
-            <input
-              type="checkbox"
-              name="terms_accepted"
-              checked={formData.terms_accepted}
-              onChange={handleInputChange}
-              className="mr-2"
-            />
-            I accept the terms and conditions
-          </label>
-          <button
-            type="submit"
-            disabled={!isFormValid || isLoading}
-            className={`w-full p-2 text-white rounded ${
-              isFormValid && !isLoading ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300 cursor-not-allowed'
-            }`}
-          >
-            {isLoading ? 'Creating...' : 'Create'}
-          </button>
-        </form>
-      </div>
-    </WidgetWrapper>
+    <form onSubmit={handleSubmit} className="card h-fit max-w-2xl mx-auto p-5 md:p-12">
+      {isLoading && (
+        <div className="mb-4">
+          <Progress value={progress} className="w-full" />
+          <p className="text-center mt-2">{progressText}</p>
+        </div>
+      )}
+      {error && (
+        <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
+          {error}
+        </div>
+      )}
+      <input
+        type="text"
+        name="nightscout_url"
+        placeholder="Nightscout URL"
+        value={formData.nightscout_url}
+        onChange={handleInputChange}
+        className="w-full p-2 mb-4 border rounded"
+      />
+      <input
+        type="text"
+        name="nightscout_token"
+        placeholder="Nightscout Token"
+        value={formData.nightscout_token}
+        onChange={handleInputChange}
+        className="w-full p-2 mb-4 border rounded"
+      />
+      <label className="flex items-center mb-4">
+        <input
+          type="checkbox"
+          name="terms_accepted"
+          checked={formData.terms_accepted}
+          onChange={handleInputChange}
+          className="mr-2"
+        />
+        I accept the terms and conditions
+      </label>
+      <button
+        type="submit"
+        disabled={!isFormValid || isLoading}
+        className={`w-full p-2 text-white rounded ${
+          isFormValid && !isLoading ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300 cursor-not-allowed'
+        }`}
+      >
+        {isLoading ? 'Creating...' : 'Create'}
+      </button>
+    </form>
   );
 };
 
-export default Nightscout;
+export default NightscoutForm;
