@@ -18,6 +18,7 @@ from bgpodcast.utils import bgutils
 class Settings(BaseSettings):
     gemini_api_key: SecretStr
     pythonpath: str
+    fastapi_url: str
     class Config:
         env_file = ".env.development"
         env_file_encoding = "utf-8"
@@ -43,20 +44,17 @@ class NightscoutData(BaseModel):
     carbs: Optional[str] = None
 
 @app.post("/pyapi/get_notes")
-async def get_analysis(data: NightscoutData):
+async def get_notes(data: NightscoutData):
     """
     Create manual notes
     """
+    print("get_notes")
     podcast_dialog = ""
     # Process the data (replace with your actual logic)
     try :
-        # print(f"Treatments: {data.treatments}")
-        if data.treatments is None:
-            treatments = nsingest.load_entries_data("24Sept.30d", "24Sept.30d")
-            carbs = nsingest.load_carb_data("24Sept.30d", "24Sept.30d")
-        else:
-            treatments = nsingest.load_sgv_json(data.treatments)
-            carbs = nsingest.load_carb_json(data.carbs)
+        print("Reading treatments and carbs")
+        treatments = nsingest.load_sgv_json(data.treatments)
+        carbs = nsingest.load_carb_json(data.carbs)
         notes = None
         notes = bgprompt.generate_notes("Steve", "male", treatments, carbs)
         # Call LLM for first pass
@@ -163,3 +161,7 @@ async def get_assessment(data : Assessment):
         error_message = f"An unexpected error occurred: {str(e)}" 
         print(f"Unexpected Error: {error_message}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@app.get("/pyapi/test")
+async def test():
+    return JSONResponse({"response": "Working!"})
