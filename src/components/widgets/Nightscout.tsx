@@ -121,7 +121,9 @@ const NightscoutComponent = ({
       let treatmentsData  = null;
       // Fetch Nightscout data using client-side function
       if(!formData.demo_data) {
-        let { sgvData, treatmentsData } = await fetchNightscoutData(formData.nightscout_url, formData.nightscout_token);
+        const nightscout_data = await fetchNightscoutData(formData.nightscout_url, formData.nightscout_token);
+        sgvData = nightscout_data.sgvData;
+        treatmentsData = nightscout_data.treatmentsData;
       } 
       
       console.log("sgvData: " + sgvData);
