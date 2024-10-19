@@ -100,8 +100,8 @@ type FormProps = {
   btn: Button;
   btnPosition?: 'center' | 'right' | 'left';
   containerClass?: string;
-  isLoading: boolean;
-  onSubmit: function;
+  // isLoading: boolean;
+  // onSubmit: function;
 };
 
 type Image = {
@@ -360,7 +360,6 @@ type NightscoutProps = Widget & {
   header?: Header;
   content?: string;
   items?: Array<Item>;
-  form: FormProps;
 };
 
 type FooterProps = {
