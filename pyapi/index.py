@@ -3,20 +3,17 @@ Python APIs
 """
 import os
 import json
-import pandas as pd
-from typing import Optional
+import asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, SecretStr
 from pydantic_settings import BaseSettings
 import google.generativeai as genai
-from google.generativeai.types import RequestOptions
-# from google.api_core import retry
-from google.api_core import retry_async
+from tenacity import retry, wait_random_exponential
 from bgpodcast.data_ingestion import nightscout as nsingest
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils
-from bgpodcast.data_models import NightscoutData
+
 
 class Settings(BaseSettings):
     gemini_api_key: SecretStr
@@ -37,26 +34,21 @@ with open(os.path.join("app", "_prompts", "pass3.txt"), "r", encoding="utf-8") a
 settings = Settings()
 app = FastAPI()
 
-genai.configure(api_key=settings.gemini_api_key)
-
-
 class Data(BaseModel):
     treatments: list
     carbs: list
 
 @app.post("/pyapi/get_notes")
-async def get_notes(data_str: Data):
+async def get_notes(data: Data):
     """
     Create manual notes
     """
     print("get_notes")
     podcast_dialog = ""
     try:
-        data = data_str #json.loads(data_str)
-        nightscout_data = NightscoutData(treatments=pd.DataFrame(data.get('treatments',[])), carbs=pd.DataFrame(data.get('carbs',[])))
         print("Reading treatments and carbs")
-        treatments = nsingest.load_sgv_json(nightscout_data.treatments)
-        carbs = nsingest.load_carb_json(nightscout_data.carbs)
+        treatments = nsingest.load_sgv_dict(data.treatments)
+        carbs = nsingest.load_carb_dict(data.carbs)
         notes = None
         notes = bgprompt.generate_notes("Steve", "male", treatments, carbs)
         podcast_dialog = notes
@@ -75,12 +67,25 @@ class Assessment(BaseModel):
     assessment2 : str | None = None
     template_num : int | None = 1
 
+@retry(wait=wait_random_exponential(multiplier=1, max=120))
+async def async_generate(prompt, model):
+  print("generating")
+  response = await model.generate_content_async(
+      prompt,
+      stream=False
+  )
+  print("done")
+  return response
+
 @app.post("/pyapi/get_assessment")
 async def get_assessment(data : Assessment):
     """
     Get assessment
     """
     print("get_assessment started")
+    print(f"gemini_api_key: {settings.gemini_api_key}")
+    genai.configure(api_key=settings.gemini_api_key.get_secret_value())
+
     print(f"Notes {data.notes}")
     try:
         generation_config = {
@@ -104,28 +109,30 @@ async def get_assessment(data : Assessment):
         if data.template_num == 1:
             # print(f"Template1: {template1}")
             prompt = bgutils.interpolate(template1, notes=data.notes)
-            # print(f"Prompt1: {prompt}")
-            response = await model.generate_content_async(prompt, request_options=RequestOptions(
-                                        retry=retry_async.AsyncRetry(
-                                            initial=10,
-                                            multiplier=2,
-                                            maximum=60,
-                                            timeout=300
-                                        )
-                                       ))         
+            print(f"Prompt1: {prompt}")
+            response = await async_generate(prompt, model)
+            # response = await model.generate_content_async(prompt, request_options=RequestOptions(
+            #                             retry=retry_async.AsyncRetry(
+            #                                 initial=10,
+            #                                 multiplier=2,
+            #                                 maximum=60,
+            #                                 timeout=180
+            #                             )
+            #                            ))       
             response_text = response.text
             print(f"Response1: {response_text[0:100]}")
         elif data.template_num == 2:
             # print(f"Template2: {template2}")
             prompt = bgutils.interpolate(template2, notes=data.notes, assessment1=data.assessment1)
-            response = await model.generate_content_async(prompt, request_options=RequestOptions(
-                                        retry=retry_async.AsyncRetry(
-                                            initial=10,
-                                            multiplier=2,
-                                            maximum=60,
-                                            timeout=300
-                                        )
-                                       ))
+            # response = await model.generate_content_async(prompt, request_options=RequestOptions(
+            #                             retry=retry_async.AsyncRetry(
+            #                                 initial=10,
+            #                                 multiplier=2,
+            #                                 maximum=60,
+            #                                 timeout=300
+            #                             )
+            #                            ))
+            response = await async_generate(prompt, model)
             response_text = response.text
             print(f"Response2: {response_text[0:100]}")
         elif data.template_num == 3:
@@ -137,14 +144,15 @@ async def get_assessment(data : Assessment):
                 model_name="gemini-1.5-pro",
                 generation_config=generation_config,
             )
-            response = await model.generate_content_async(prompt, request_options=RequestOptions(
-                                        retry=retry_async.AsyncRetry(
-                                            initial=10, 
-                                            multiplier=2, 
-                                            maximum=60, 
-                                            timeout=300
-                                        )
-                                       ))
+            # response = await model.generate_content_async(prompt, request_options=RequestOptions(
+            #                             retry=retry_async.AsyncRetry(
+            #                                 initial=10,
+            #                                 multiplier=2,
+            #                                 maximum=60,
+            #                                 timeout=300
+            #                             )
+            #                            ))
+            response = await async_generate(prompt, model)
             response_text = response.text
             print(f"Response3: {response_text[0:100]}")
         else:
@@ -158,7 +166,7 @@ async def get_assessment(data : Assessment):
         raise HTTPException(status_code=400, detail=error_message) 
 
     except Exception as e:
-        error_message = f"An unexpected error occurred: {str(e)}" 
+        error_message = f"An unexpected error occurred: {str(e)}"
         print(f"Unexpected Error: {error_message}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 

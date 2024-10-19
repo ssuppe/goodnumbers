@@ -6,7 +6,7 @@
   "scripts": {
     "fastapi-dev": "pip3 install -r requirements.txt && python3 -m uvicorn pyapi.index:app --reload --port 8000",
     "next-dev": "next dev",
-    "dev": "npm run next-dev", 
+    "dev": "npm run next-dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
