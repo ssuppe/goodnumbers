@@ -3,16 +3,18 @@
 import React, { useState, Suspense } from "react";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import "react-tabs/style/react-tabs.css";
+import { useSearchParams } from 'next/navigation'
 
-import NightscoutWrapper from "~/components/widgets/NightscoutWrapper";
+
+import NightscoutWrapper from "~/components/widgets/Nightscout";
 import { nightscout } from "~/shared/data/pages/trynow.data";
 
 const Page = () => {
   const [assessmentData, setAssessmentData] = useState<{
-    notes: string;
-    assessment1: string;
-    assessment2: string;
-    dialog: string;
+    notes: string | null;
+    assessment1: string | null;
+    assessment2: string | null;
+    dialog: string | null;
   } | null>(null);
 
   const handleAssessmentComplete = (data: {
@@ -24,47 +26,22 @@ const Page = () => {
     setAssessmentData(data);
   };
 
-  const searchParams = new URLSearchParams(window.location.search);
+  const searchParams =  useSearchParams();
   const local = searchParams.get("local");
+console.log("Local? " + local);
+  const header = {
+    title: "Your Nightscout Analysis"
+  };
 
   return (
     <>
-      <Suspense fallback={<div>Loading...</div>}>
-        <NightscoutWrapper
-          {...nightscout}
-          onAssessmentComplete={handleAssessmentComplete}
-          local={local}
-        />
-      </Suspense>
-      {assessmentData && (
-        <div className="mt-8 max-w-4xl mx-auto">
-          <Tabs>
-            <TabList>
-              <Tab>Notes</Tab>
-              <Tab>Assessment 1</Tab>
-              <Tab>Assessment 2</Tab>
-              <Tab>Dialog</Tab>
-            </TabList>
-
-            <TabPanel>
-              <h2 className="text-xl font-bold mb-2">Notes</h2>
-              <pre className="whitespace-pre-wrap">{assessmentData.notes}</pre>
-            </TabPanel>
-            <TabPanel>
-              <h2 className="text-xl font-bold mb-2">Assessment 1</h2>
-              <pre className="whitespace-pre-wrap">{assessmentData.assessment1}</pre>
-            </TabPanel>
-            <TabPanel>
-              <h2 className="text-xl font-bold mb-2">Assessment 2</h2>
-              <pre className="whitespace-pre-wrap">{assessmentData.assessment2}</pre>
-            </TabPanel>
-            <TabPanel>
-              <h2 className="text-xl font-bold mb-2">Dialog</h2>
-              <pre className="whitespace-pre-wrap">{assessmentData.dialog}</pre>
-            </TabPanel>
-          </Tabs>
-        </div>
-      )}
+      <NightscoutWrapper
+        header={header}
+        id="nightscout-analysis"
+        hasBackground={true}
+        onAssessmentComplete={handleAssessmentComplete}
+        local={local}
+      />
     </>
   );
 };
