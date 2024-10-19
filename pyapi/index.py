@@ -2,6 +2,8 @@
 Python APIs
 """
 import os
+import json
+import pandas as pd
 from typing import Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
@@ -14,6 +16,7 @@ from google.api_core import retry_async
 from bgpodcast.data_ingestion import nightscout as nsingest
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils
+from bgpodcast.data_models import NightscoutData
 
 class Settings(BaseSettings):
     gemini_api_key: SecretStr
@@ -36,36 +39,33 @@ app = FastAPI()
 
 genai.configure(api_key=settings.gemini_api_key)
 
-class NightscoutData(BaseModel):
-    """
-    Nightscout
-    """
-    treatments: Optional[str] = None
-    carbs: Optional[str] = None
+
+class Data(BaseModel):
+    treatments: list
+    carbs: list
 
 @app.post("/pyapi/get_notes")
-async def get_notes(data: NightscoutData):
+async def get_notes(data_str: Data):
     """
     Create manual notes
     """
     print("get_notes")
     podcast_dialog = ""
-    # Process the data (replace with your actual logic)
-    try :
+    try:
+        data = data_str #json.loads(data_str)
+        nightscout_data = NightscoutData(treatments=pd.DataFrame(data.get('treatments',[])), carbs=pd.DataFrame(data.get('carbs',[])))
         print("Reading treatments and carbs")
-        treatments = nsingest.load_sgv_json(data.treatments)
-        carbs = nsingest.load_carb_json(data.carbs)
+        treatments = nsingest.load_sgv_json(nightscout_data.treatments)
+        carbs = nsingest.load_carb_json(nightscout_data.carbs)
         notes = None
         notes = bgprompt.generate_notes("Steve", "male", treatments, carbs)
-        # Call LLM for first pass
-        # assessment1 = bgprompt.call_llm(model="gemini-1.5-pro", prompt_filename="prompts/pass1.txt", notes=notes)
-        # assessment2 = bgprompt.call_llm(model="gemini-1.5-pro", prompt_filename="prompts/pass2.txt", notes=notes, assessment1=assessment1)
-        # podcast_dialog = bgprompt.call_llm(model="gemini-1.5-pro", prompt_filename="prompts/pass3.txt", notes=notes, assessment1=assessment1, assessment2=assessment2)
         podcast_dialog = notes
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON: {e}")
+        raise HTTPException(status_code=400, detail="Invalid JSON data")
     except Exception as e:
-        print(f"Error generate_podcast: {e.args}")
-        print(e)
-        raise e
+        print(f"Error generate_podcast: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
     return podcast_dialog
 

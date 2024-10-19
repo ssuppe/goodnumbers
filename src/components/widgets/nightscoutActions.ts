@@ -90,10 +90,7 @@ export async function generateAssessments(sgvData: any, treatmentsData: any, use
     const notes = await fetchWithErrorHandling(`${apiUrl}/pyapi/get_notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        treatments: JSON.stringify(sgvData),
-        carbs: JSON.stringify(treatmentsData),
-      }),
+      body: JSON.stringify({ treatments: sgvData, carbs: treatmentsData }),
     }, "Generating Notes");
 
     // Step 2: Generate Assessment 1
