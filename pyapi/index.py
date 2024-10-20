@@ -3,16 +3,17 @@ Python APIs
 """
 import os
 import json
-import asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, SecretStr
 from pydantic_settings import BaseSettings
 import google.generativeai as genai
+from compress_json import compress, decompress
 from tenacity import retry, wait_random_exponential
 from bgpodcast.data_ingestion import nightscout as nsingest
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils
+
 
 
 class Settings(BaseSettings):
@@ -40,6 +41,8 @@ class Data(BaseModel):
 
 @app.post("/pyapi/get_notes")
 async def get_notes(data: Data):
+    data.treatments = decompress(data.treatments)
+    data.carbs = decompress(data.carbs)
     """
     Create manual notes
     """
@@ -69,6 +72,9 @@ class Assessment(BaseModel):
 
 @retry(wait=wait_random_exponential(multiplier=1, max=120))
 async def async_generate(prompt, model):
+  """
+  Generate
+  """
   print("generating")
   response = await model.generate_content_async(
       prompt,
