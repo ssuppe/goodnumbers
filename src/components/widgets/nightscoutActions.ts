@@ -4,6 +4,8 @@
 import winston from 'winston';
 import fs from 'fs/promises';
 import path from 'path';
+import { compress, decompress, Compressed } from 'compress-json';
+
 
 
 // Configure Winston logger
@@ -23,6 +25,18 @@ const logger = winston.createLogger({
 interface AssessmentError extends Error {
   step?: string;
   details?: any;
+}
+
+async function getV3JWTToken(nightscout_url : string, token : string): Promise<string> {
+  // https://soopaloop.bbs.io/api/v2/authorization/request/REDACTED_NIGHTSCOUT_TOKEN_TEST
+  const response = await fetchWithErrorHandling(`${nightscout_url}/api/v2/authorization/request/${token}`, {
+    method: 'GET',
+    // headers: { 'Content-Type': 'application/json' },
+    // body: JSON.stringify({ treatments: sgvData, carbs: treatmentsData }),
+  }, "Getting Nightscout v3access token");
+  let res = await response.text();
+  let t = JSON.parse(res);
+  return t.token;
 }
 
 async function handleFetchError(response: Response): Promise<string> {
@@ -63,7 +77,8 @@ async function readLocalJson(filePath: string): Promise<any> {
   }
 }
 
-export async function generateAssessments(sgvData: any, treatmentsData: any, useLocalData: boolean) {
+export async function generateAssessments(csgvData: Compressed, ctreatmentsData: Compressed, useLocalData: boolean) {
+
   const apiUrl = process.env.FASTAPI_URL;
   if (!apiUrl) {
     throw new Error('FASTAPI_URL environment variable is not set');
@@ -71,8 +86,10 @@ export async function generateAssessments(sgvData: any, treatmentsData: any, use
 
   if (useLocalData) {
     try {
-      sgvData = await readLocalJson('/data/24Sept.30d/Nightscout.entries.24Sept.30d.json');
-      treatmentsData = await readLocalJson('/data/24Sept.30d/Nightscout.treatments.24Sept.30d.json');
+      let sgvData = await readLocalJson('/data/24Sept.30d/Nightscout.entries.24Sept.30d.json');
+      sgvData = compress(sgvData);
+      let treatmentsData = await readLocalJson('/data/24Sept.30d/Nightscout.treatments.24Sept.30d.json');
+      treatmentsData = compress(treatmentsData);
       logger.info("Local data loaded successfully");
     } catch (error) {
       logger.error("Failed to load local data:", { error });
@@ -80,17 +97,15 @@ export async function generateAssessments(sgvData: any, treatmentsData: any, use
     }
   }
 
-
-
   try {
     // Step 1: Generate Notes
     logger.info("Step 1");
-    logger.info("sgvData: " + (sgvData == null));
+    logger.info("sgvData: " + (csgvData == null));
     logger.info("Sending to " + `${apiUrl}/pyapi/get_notes`);
     const notes = await fetchWithErrorHandling(`${apiUrl}/pyapi/get_notes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ treatments: sgvData, carbs: treatmentsData }),
+      body: JSON.stringify({ treatments: csgvData, carbs: ctreatmentsData }),
     }, "Generating Notes");
 
     // Step 2: Generate Assessment 1
