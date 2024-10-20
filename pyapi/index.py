@@ -5,8 +5,8 @@ import os
 import json
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, SecretStr
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel
+# from pydantic_settings import BaseSettings
 import google.generativeai as genai
 from compress_json import decompress
 from tenacity import retry, wait_random_exponential
@@ -14,18 +14,18 @@ from bgpodcast.data_ingestion import nightscout as nsingest
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils
 
-class ProductionSettings(BaseSettings):
-    gemini_api_key: SecretStr
-    pythonpath: str
-    fastapi_url: str
+# class ProductionSettings(BaseSettings):
+#     gemini_api_key: SecretStr
+#     pythonpath: str
+#     fastapi_url: str
 
-class DevelopmentSettings(BaseSettings):
-    gemini_api_key: SecretStr
-    pythonpath: str
-    fastapi_url: str
-    class Config:
-        env_file = ".env.development" if os.environ.get('VERCEL_ENV') != 'production' else None
-        env_file_encoding = "utf-8"
+# class DevelopmentSettings(BaseSettings):
+#     gemini_api_key: SecretStr
+#     pythonpath: str
+#     fastapi_url: str
+#     class Config:
+#         env_file = ".env.development" if os.environ.get('VERCEL_ENV') != 'production' else None
+#         env_file_encoding = "utf-8"
 
 # Load templates from files
 with open(os.path.join("app", "_prompts", "pass1.txt"), "r", encoding="utf-8") as f:
@@ -36,10 +36,13 @@ with open(os.path.join("app", "_prompts", "pass3.txt"), "r", encoding="utf-8") a
     template3 = f.read()
 
 
-if os.environ.get('VERCEL_ENV') == 'production':
-    settings = ProductionSettings()
-else:
-    settings = DevelopmentSettings()
+# if os.environ.get('VERCEL_ENV') == 'production':
+#     settings = ProductionSettings()
+# else:
+#     settings = DevelopmentSettings()
+
+gemini_api_key = os.environ["GEMINI_API_KEY"]
+# fastapi_url = os.environ["FASTAPI_URL"]
 app = FastAPI()
 
 class Data(BaseModel):
@@ -79,16 +82,16 @@ class Assessment(BaseModel):
 
 @retry(wait=wait_random_exponential(multiplier=1, max=120))
 async def async_generate(prompt, model):
-  """
-  Generate
-  """
-  print("generating")
-  response = await model.generate_content_async(
-      prompt,
-      stream=False
-  )
-  print("done")
-  return response
+    """
+    Generate
+    """
+    print("generating")
+    response = await model.generate_content_async(
+        prompt,
+        stream=False
+    )
+    print("done")
+    return response
 
 @app.post("/pyapi/get_assessment")
 async def get_assessment(data : Assessment):
@@ -96,8 +99,8 @@ async def get_assessment(data : Assessment):
     Get assessment
     """
     print("get_assessment started")
-    print(f"gemini_api_key: {settings.gemini_api_key}")
-    genai.configure(api_key=settings.gemini_api_key.get_secret_value())
+    print(f"gemini_api_key: {gemini_api_key}")
+    genai.configure(api_key=gemini_api_key)
 
     print(f"Notes {data.notes}")
     try:
