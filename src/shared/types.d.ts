@@ -100,8 +100,8 @@ type FormProps = {
   btn: Button;
   btnPosition?: 'center' | 'right' | 'left';
   containerClass?: string;
-  // isLoading: boolean;
-  // onSubmit: function;
+  isLoading: boolean;
+  onSubmit: function;
 };
 
 type Image = {
