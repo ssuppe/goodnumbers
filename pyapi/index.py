@@ -51,11 +51,12 @@ class Data(BaseModel):
 
 @app.post("/pyapi/get_notes")
 async def get_notes(data: Data):
-    data.treatments = decompress(data.treatments)
-    data.carbs = decompress(data.carbs)
     """
     Create manual notes
     """
+    data.treatments = decompress(data.treatments)
+    data.carbs = decompress(data.carbs)
+    
     print("get_notes")
     podcast_dialog = ""
     try:
