@@ -616,9 +616,9 @@ export const contactAbout: ContactProps = {
   ],
   form: {
     isLoading: true,
-    onSubmit: function () {
-      return undefined;
-    },
+    // onSubmit: function () {
+    //   return undefined;
+    // },
     inputs: [
       {
         type: 'text',
