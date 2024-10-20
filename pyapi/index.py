@@ -6,7 +6,6 @@ import json
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-# from pydantic_settings import BaseSettings
 import google.generativeai as genai
 from compress_json import decompress
 from tenacity import retry, wait_random_exponential
