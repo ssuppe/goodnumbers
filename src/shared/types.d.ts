@@ -360,7 +360,7 @@ type NightscoutProps = Widget & {
   header?: Header;
   content?: string;
   items?: Array<Item>;
-  form: FormProps;
+  // form: FormProps;
 };
 
 type FooterProps = {
