@@ -1,5 +1,0 @@
-node_modules/next/dist/esm/server/lib/router-utils/setup-dev-bundler.js:            ".env.development.local",
-node_modules/next/dist/esm/server/lib/router-utils/setup-dev-bundler.js:            ".env.development",
-node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:            ".env.development.local",
-node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js:            ".env.development",
-pyapi/index.py:#         env_file = ".env.development" if os.environ.get('VERCEL_ENV') != 'production' else None
