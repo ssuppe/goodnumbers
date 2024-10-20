@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Contact from '~/components/widgets/Contact';
+// import Contact from '~/components/widgets/Contact';
 
 import FAQs from '~/components/widgets/FAQs';
 import Features from '~/components/widgets/Features';
@@ -11,7 +11,7 @@ import Steps from '~/components/widgets/Steps';
 import Team2 from '~/components/widgets/Team2';
 import Testimonials2 from '~/components/widgets/Testimonials2';
 import {
-  contactAbout,
+  // contactAbout,
   faqsAbout,
   featuresFourAbout,
   featuresFourAboutTwo,
@@ -41,7 +41,7 @@ const Page = () => {
       <Team2 {...teamAbout} />
       <Testimonials2 {...testimonials2About} />
       <FAQs {...faqsAbout} />
-      <Contact {...contactAbout} />
+    
     </>
   );
 };
