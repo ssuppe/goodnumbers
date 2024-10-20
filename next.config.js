@@ -3,15 +3,7 @@ module.exports = {
   swcMinify: true,
   poweredByHeader: false,
   compiler: { styledComponents: true },
-  rewrites: async () => {
-    return [
-      {
-        source: "/pyapi/:path*",
-        destination:
-          process.env.NODE_ENV === "development"
-            ? "http://127.0.0.1:8000/pyapi/:path*"
-            : "/pyapi/:path*",
-      }
-    ]
-  },
+  experimental: {
+    nftTracing: false
+  }
 };
