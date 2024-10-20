@@ -8,20 +8,23 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, SecretStr
 from pydantic_settings import BaseSettings
 import google.generativeai as genai
-from compress_json import compress, decompress
+from compress_json import decompress
 from tenacity import retry, wait_random_exponential
 from bgpodcast.data_ingestion import nightscout as nsingest
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils
 
+class ProductionSettings(BaseSettings):
+    gemini_api_key: SecretStr
+    pythonpath: str
+    fastapi_url: str
 
-
-class Settings(BaseSettings):
+class DevelopmentSettings(BaseSettings):
     gemini_api_key: SecretStr
     pythonpath: str
     fastapi_url: str
     class Config:
-        env_file = ".env.development"
+        env_file = ".env.development" if os.environ.get('VERCEL_ENV') != 'production' else None
         env_file_encoding = "utf-8"
 
 # Load templates from files
@@ -32,7 +35,11 @@ with open(os.path.join("app", "_prompts", "pass2.txt"), "r", encoding="utf-8") a
 with open(os.path.join("app", "_prompts", "pass3.txt"), "r", encoding="utf-8") as f:
     template3 = f.read()
 
-settings = Settings()
+
+if os.environ.get('VERCEL_ENV') == 'production':
+    settings = ProductionSettings()
+else:
+    settings = DevelopmentSettings()
 app = FastAPI()
 
 class Data(BaseModel):
