@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 
-import Contact2 from '~/components/widgets/Contact2';
+// import Contact2 from '~/components/widgets/Contact2';
 import Features2 from '~/components/widgets/Features2';
 import Hero from '~/components/widgets/Hero';
-import { heroContact, contact2Contact, features2Contact } from '~/shared/data/pages/contact.data';
+// import { heroContact, contact2Contact, features2Contact } from '~/shared/data/pages/contact.data';
 
 export const metadata: Metadata = {
   title: 'Contact us',
@@ -12,9 +12,9 @@ export const metadata: Metadata = {
 const Page = () => {
   return (
     <>
-      <Hero {...heroContact} />
-      <Contact2 {...contact2Contact} />
-      <Features2 {...features2Contact} />
+      {/* <Hero {...heroContact} /> */}
+      {/* <Contact2 {...contact2Contact} /> */}
+      {/* <Features2 {...features2Contact} /> */}
     </>
   );
 };
