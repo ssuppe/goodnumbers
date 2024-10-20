@@ -11,6 +11,7 @@ import Cookies from "js-cookie";
 import axios from "axios";
 import axiosRetry from "axios-retry";
 import { generateAssessments } from "./nightscoutActions";
+import { compress, decompress } from 'compress-json'
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: {
@@ -98,9 +99,27 @@ const NightscoutComponent = ({
         axiosInstance.get(treatmentsUrl),
       ]);
 
-      const sgvData = sgvResponse.data.filter((item: { date: string }) => new Date(item.date) >= thirtyDaysAgo);
-      const treatmentsData = treatmentsResponse.data.filter((item: { created_at: string }) => new Date(item.created_at) >= thirtyDaysAgo);
-
+      let sgvData = sgvResponse.data.filter((item: { date: string }) => new Date(item.date) >= thirtyDaysAgo);
+      sgvData = sgvData.map((item: { date: number; sgv: number; units: string; utcOffset: number; }) => ({
+        date: item.date,
+        sgv: item.sgv,
+        units: item.units,
+        utcOffset: item.utcOffset,
+      }));
+      // let treatmentsData = treatmentsResponse.data.filter((item: { created_at: string }) => new Date(item.created_at) >= thirtyDaysAgo);
+      let treatmentsData = treatmentsResponse.data.filter((item: { created_at: string; eventType: string; carbs:number }) => {
+        const createdAtDate = new Date(item.created_at);
+        return (
+          createdAtDate >= thirtyDaysAgo &&
+          // (item.eventType === "Correction Bolus" || item.eventType === "Carb Correction") &&
+          item.carbs !== null 
+        );
+      });
+      treatmentsData = treatmentsData.map((item: { date: number; carbs: number, utcOffset: number }) => ({
+        date: item.date,
+        carbs: item.carbs,
+        utcOffset: item.utcOffset,
+      }));
       return { sgvData, treatmentsData };
     } catch (error) {
       throw new Error("Failed to fetch Nightscout data");
@@ -126,12 +145,15 @@ const NightscoutComponent = ({
         treatmentsData = nightscout_data.treatmentsData;
       } 
       
-      console.log("sgvData: " + sgvData);
+      // console.log("sgvData: " + sgvData);
       setProgressText("Generating assessments");
       setProgress(50);
 
       // Generate assessments using Server Action
-      const data = await generateAssessments(sgvData, treatmentsData, formData.demo_data);
+      // Compress first to save network bandwidth/cost
+      let csgvData = compress(sgvData);
+      let ctreatmentsData = compress(treatmentsData);
+      const data = await generateAssessments(csgvData, ctreatmentsData, formData.demo_data);
 
       setAssessmentData(data);
 

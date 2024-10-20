@@ -24,6 +24,7 @@
     "@vercel/python": "^4.3.1",
     "axios": "^1.7.7",
     "axios-retry": "^4.5.0",
+    "compress-json": "^3.1.0",
     "concurrently": "^9.0.1",
     "cookie": "^1.0.0",
     "gray-matter": "^4.0.3",
