@@ -1,4 +1,3 @@
-'use client'
 import { StaticImageData } from 'next/image';
 import { ReactElement } from 'react';
 import type { TablerIcon } from "@tabler/icons-react"

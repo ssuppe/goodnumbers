@@ -12,10 +12,10 @@ import FAQs2 from '~/components/widgets/FAQs2';
 import Pricing from '~/components/widgets/Pricing';
 import Team from '~/components/widgets/Team';
 import CallToAction2 from '~/components/widgets/CallToAction2';
-import Contact from '~/components/widgets/Contact';
+// import Contact from '~/components/widgets/Contact';
 import {
   callToAction2Home,
-  contactHome,
+  // contactHome,
   contentHomeOne,
   contentHomeTwo,
   faqs2Home,
