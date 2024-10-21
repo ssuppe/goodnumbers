@@ -126,6 +126,8 @@ const NightscoutComponent = ({
     }
   };
 
+  
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     console.log("Submitted!");
@@ -145,7 +147,6 @@ const NightscoutComponent = ({
         treatmentsData = nightscout_data.treatmentsData;
       } 
       
-      // console.log("sgvData: " + sgvData);
       setProgressText("Generating assessments");
       setProgress(50);
 
@@ -154,7 +155,7 @@ const NightscoutComponent = ({
       let csgvData = compress(sgvData);
       let ctreatmentsData = compress(treatmentsData);
       const data = await generateAssessments(csgvData, ctreatmentsData, formData.demo_data);
-
+      setProgress(75);
       setAssessmentData(data);
 
       if (onAssessmentComplete) {
