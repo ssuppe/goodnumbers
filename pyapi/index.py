@@ -99,7 +99,7 @@ async def get_assessment(data : Assessment):
     Get assessment
     """
     print("get_assessment started")
-    print(f"gemini_api_key: {gemini_api_key}")
+    # print(f"gemini_api_key: {gemini_api_key}")
     genai.configure(api_key=gemini_api_key)
 
     print(f"Notes {data.notes}")
@@ -160,14 +160,7 @@ async def get_assessment(data : Assessment):
                 model_name="gemini-1.5-pro",
                 generation_config=generation_config,
             )
-            # response = await model.generate_content_async(prompt, request_options=RequestOptions(
-            #                             retry=retry_async.AsyncRetry(
-            #                                 initial=10,
-            #                                 multiplier=2,
-            #                                 maximum=60,
-            #                                 timeout=300
-            #                             )
-            #                            ))
+
             response = await async_generate(prompt, model)
             response_text = response.text
             print(f"Response3: {response_text[0:100]}")
