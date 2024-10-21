@@ -39,67 +39,7 @@ import cameraBackImg from '~/assets/images/camera-back.jpg';
 import gasImg from '~/assets/images/gas.jpg';
 
 // Hero data on Home page *******************
-export const heroHome: HeroProps = {
-  title: (
-    <>
-      Personalized podcast about your weekly diabetes numbers
-    </>
-  ),
-  subtitle: (
-    <>
-      <span className="hidden md:inline">
-        <span className="font-semibold underline decoration-primary-600 decoration-wavy decoration-1 underline-offset-2">
-          GoodNumbers
-        </span>{' '}
-        is an experimental weekly personalized podcast about your blood sugar levels. Analyzed with statistical algorithms,
-        it creates an AI-generated podcast you can listen to, discussing your highs, lows, and strategies
-        to address them.
-      </span>
-    </>
-  ),
-  callToAction: {
-    text: 'Create Podcast',
-    href: 'trynow',
-    icon: IconBrandApplePodcast,
-    targetBlank: false,
-  },
-  callToAction2: {
-    text: 'Learn more',
-    href: '/about',
-  },
-  // image: {
-  //   src: heroImg,
-  //   alt: 'Hero TailNext',
-  // },
-};
 
-// SocialProof data on Home page *******************
-export const socialProofHome: SocialProofProps = {
-  id: 'socialProof-on-home',
-  hasBackground: false,
-  images: [
-    {
-      link: 'https://nextjs.org/',
-      src: nextJsLogo,
-      alt: 'NextJs Logo',
-    },
-    {
-      link: 'https://react.dev/',
-      src: reactLogo,
-      alt: 'React Logo',
-    },
-    {
-      link: 'https://tailwindcss.com/',
-      src: tailwindCssLogo,
-      alt: 'Tailwind CSS Logo',
-    },
-    {
-      link: 'https://www.typescriptlang.org/',
-      src: typescriptLogo,
-      alt: 'Typescript Logo',
-    },
-  ],
-};
 
 // Features data on Home page *******************
 export const featuresHome: FeaturesProps = {
