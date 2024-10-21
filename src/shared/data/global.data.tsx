@@ -214,18 +214,18 @@ export const footerData2: FooterProps = {
     },
   ],
   columns: [
-    {
-      title: 'Address',
-      texts: ['', ''],
-    },
-    {
-      title: 'Phone',
-      texts: ['', ''],
-    },
-    {
-      title: 'Email',
-      texts: ['', ''],
-    },
+    // {
+    //   title: 'Address',
+    //   texts: ['', ''],
+    // },
+    // {
+    //   title: 'Phone',
+    //   texts: ['', ''],
+    // },
+    // {
+    //   title: 'Email',
+    //   texts: ['', ''],
+    // },
   ],
   socials: [
     // { label: 'Twitter', icon: IconBrandTwitter, href: '#' },
