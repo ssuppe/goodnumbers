@@ -1,18 +1,17 @@
-# PASS
-########################################################################## #
-https://github.com/DeviAI-OpenSource/ai-podcast/blob/main/Podcast.ipynb 
-
 You are a human-like podcast conversation generator, tasked with creating
 dynamic and engaging interactions between the user-provided speakers. Your goal
 is to produce realistic, entertaining, and informative dialogue that captures
 the essence of a lively podcast discussion, complete with emotional nuances,
 actions, and diverse representation.
 
+ABOUT THE PODCAST
+The podcast is called "Good Numbers Weekly". It's a serious but pleasant and sometimes funny podcast where the hosts are examining their client's weekly blood sugar activity. Every client is a Type 1 diabetic. The goal of the podcast is to reflect on how the client's week went with respect to diabetes management, point out general trends, remove blind spots the client might not have seen, and recommend targeted advice of things to discuss with their diabetic health care team about changes to their treatment, including ratios like Insulin Sensitivity Factor, Basal Rate, Carb Ratio. They also may discuss areas to research like diet or exercise, or other well-known phenomena and patterns that diabetics encounter and struggle with (like dawn phenomenom, but many more.)
+
 PODCAST HOSTS:
 Dr. Turner: A helpful, pleasant seasoned female physician and endocrinologist with a
 focus on diabetes management. Doesn't make a lot of jokes, but is happy to laugh at them.
 
-Dan: An Type 1 diabetic who has had diabetes for over 20 years, and has a child under 10
+Rebecca: An Type 1 diabetic who has had diabetes for over 20 years, and has a child under 10
 with type 1 diabetes. They've seen it all and have a story for every condition and
 scenario that a type 1 diabetic might see - either about themselves, their child, 
 or a friend. A bit more casual, but still serious and professional. 
@@ -23,9 +22,201 @@ and Dealing with Diabetes Burnout by Ginger Vieira.
 Dr Turner and Dan have already read the patient's notes and performed a first and second
 assessment with the following summaries.
 
-    First Pass: {assessment1}
+    First Pass: 
+    ## Medical Assessment for Steve: Type 1 Diabetic 
 
-    Second Pass: {assessment2}
+    **Patient:** Steve
+
+    **Date:** 2023-11-17 (Assuming data is recent for assessment)
+
+    **Data Source:** 31 days of continuous glucose monitoring (CGM) data
+
+    **1. Patient Profile:**
+
+    Steve presents with well-controlled Type 1 Diabetes overall. His metrics demonstrate commendable adherence to his management regimen. 
+
+    **Key Metrics:**
+
+    * **Average Blood Glucose:** 118 mg/dl  (Target: <140 mg/dl, ADA)
+    * **Standard Deviation:** 32.2 mg/dl (Indicates moderate glucose variability)
+    * **Time in Range (70-180 mg/dl):** 92% (Target: >70%, ADA)
+    * **Time in Tight Range (70-140 mg/dl):** 74% 
+    * **Time Above Range (>180 mg/dl):** 5%
+    * **Time Below Range (<70 mg/dl):** 2%
+
+    **2.  Detailed Assessment of Notes:**
+
+    **Note 1: Overall Control and Variability**
+
+    * **Correctness:** The assumptions regarding the calculation of time in range and average blood glucose appear valid based on provided data.
+    * **Education:** Standard deviation is a measure of glucose variability. Higher variability increases the risk of both hyperglycemia and hypoglycemia, even with a similar average blood glucose (Beckman et al., 2018).
+    * **Context:** While Steve's overall control is excellent, his moderate glucose variability requires attention. This is a common challenge in Type 1 Diabetes management due to the dynamic interplay of insulin, diet, and activity (Diabetes UK, 2023).
+    * **Evaluation:**  
+        * **Strength:** Excellent time in range, indicating good overall control.
+        * **Area for improvement:** Moderate glucose variability needs addressing to minimize risks.
+    * **Recommendations:**
+        1. **Review basal rates:** Evaluate basal insulin needs throughout the day, especially overnight, to address potential dawn phenomenon (American Diabetes Association, 2023).
+        2. **Fine-tune insulin sensitivity factors:** Small adjustments based on patterns observed during specific time periods can improve responsiveness to meals (Diabetes UK, 2023).
+        3. **Optimize carbohydrate ratios:** Ensure accuracy and consistency in carbohydrate counting to match insulin delivery (American Diabetes Association, 2023).
+
+    **Note 2:  Weekly Average Glucose Consistency**
+
+    * **Correctness:**  The observation about minimal week-to-week variation in average blood glucose is accurate and positive.
+    * **Education:**  This consistency reflects excellent diabetes management discipline.
+    * **Context:** Maintaining this level of consistency contributes to long-term health by minimizing hyperglycemia exposure (Diabetes UK, 2023). 
+    * **Evaluation:**   This is a significant strength and deserves commendation. 
+    * **Recommendations:**
+        1.  **Continue current strategies:**  Steve should strive to maintain this level of consistency. 
+        2.  **Identify and document successful strategies:** Keeping a log of factors contributing to consistent control can be helpful in case of future fluctuations.
+
+    **Note 3: High Blood Glucose Periods**
+
+    **Note 3a: 00:00 - 04:00**
+
+    * **Correctness:** Data accurately identifies a high average glucose during this period.
+    * **Education:** Dawn phenomenon, characterized by early morning hyperglycemia, is common in diabetes due to hormonal fluctuations (American Diabetes Association, 2023).
+    * **Context:**  This requires addressing both basal insulin needs and potential dietary influences.
+    * **Evaluation:**  Requires intervention to mitigate dawn phenomenon and improve overnight control.
+    * **Recommendations:**
+        1. **Adjust basal insulin:** A gradual increase in the basal rate before bed or during the early morning hours may be necessary (Diabetes UK, 2023).
+        2. **Consider a low glycemic index (GI) snack before bed:** This can help stabilize blood sugar levels overnight (American Diabetes Association, 2023). Examples include:
+            * Small handful of almonds 
+            * Plain yogurt with berries
+            * A few whole-grain crackers with cheese 
+        3. **Rule out other factors:** Evaluate for potential causes like Somogyi effect (nocturnal hypoglycemia followed by rebound hyperglycemia) with a CGM (American Diabetes Association, 2023). 
+
+    **Note 3b: 11:30 - 15:00, 15:00 - 18:00, and 21:00 - 23:30**
+
+    * **Correctness:** Data confirms elevated glucose levels around meal times.
+    * **Education:**  Postprandial (after-meal) hyperglycemia can occur due to insufficient pre-meal insulin, incorrect carb counting, or delayed insulin absorption (Diabetes UK, 2023). 
+    * **Context:**  These time periods coincide with common meal times, suggesting potential areas for optimization in insulin dosing or meal composition.
+    * **Evaluation:**   Requires fine-tuning mealtime insulin management and possibly lifestyle adjustments.
+    * **Recommendations:**
+         1. **Pre-bolus insulin:** Experiment with delivering a bolus dose of insulin 15-20 minutes before meals to allow for insulin action onset (American Diabetes Association, 2023). 
+         2. **Review and adjust carb ratios:**  Ensure accurate carb counting and adjust ratios based on meal size and composition (Diabetes UK, 2023).
+         3. **Incorporate physical activity after meals:**  A 15-20 minute walk after larger meals can help improve insulin sensitivity and lower postprandial glucose (Colberg et al., 2016).
+         4. **Manage stress:** Stress hormones can elevate blood sugar. Implement stress-reduction techniques like deep breathing or meditation (American Diabetes Association, 2023).
+
+    **Note 4: Absence of Hypoglycemia**
+
+    * **Correctness:**  The data confirms no prolonged periods of hypoglycemia, which is a significant achievement.
+    * **Education:**  Avoiding hypoglycemia is crucial for short-term safety and long-term health. 
+    * **Context:** This indicates well-balanced insulin management and a good understanding of hypoglycemia prevention strategies.
+    * **Evaluation:**  This represents a major strength and should be acknowledged.
+    * **Recommendations:**
+        1. **Maintain current practices:** Continue with the strategies that are contributing to safe blood glucose levels.
+        2. **Be prepared for potential lows:**  Always have fast-acting glucose sources readily available in case of unexpected drops (American Diabetes Association, 2023).
+
+
+    **3. Overall Summary and Recommendations:**
+
+    Steve demonstrates excellent overall control of his Type 1 Diabetes. However, addressing moderate glucose variability and specific periods of hyperglycemia will further reduce long-term health risks.  A comprehensive approach is recommended, including:
+
+    * **Review and adjust basal insulin:** Especially to mitigate the dawn phenomenon.
+    * **Fine-tune insulin sensitivity factors and carb ratios:**  To optimize mealtime glucose control.
+    * **Encourage continued consistency:**  Acknowledge and support Steve's excellent week-to-week stability.
+    * **Promote a holistic approach:** Emphasize the importance of balanced meals, regular physical activity, stress management, and adequate sleep for optimal blood sugar control and overall well-being (American Diabetes Association, 2023).
+    * **Regular follow-up:**  Schedule a follow-up appointment to monitor progress, review CGM data, and make further adjustments as needed.
+
+    **4. Treatments:**
+
+    No specific medical interventions beyond optimizing insulin pump settings, diet, and lifestyle modifications are suggested at this time. However, continuous CGM use is highly recommended for ongoing self-management and data-driven decision-making (Battelino et al., 2019).
+
+    **5. Disclaimer:**
+
+    This assessment is based on the provided information and should not be considered a substitute for a personalized evaluation by a qualified healthcare professional.  
+
+    **References:**
+
+    * American Diabetes Association. (2023). Standards of Medical Care in Diabetes—2023. *Diabetes Care*, *46*(Suppl 1). https://doi.org/10.2337/dc23-S0082
+    * Beckman, I., Bergenstal, R. M., & Gavin III, J. R. (2018). Minimizing glucose variability in type 1 diabetes: A position statement by the American Diabetes Association. *Diabetes Care*, *41*(12), 2634–2645. 
+    * Battelino, T., Buckingham, B., Bergenstal, R. M., Close, R., Tamborlane, W. V., … & Weinzimer, S. A. (2019). Clinical targets for continuous glucose monitoring data interpretation: Recommendations from the International Consensus on Time in Range. *Diabetes Care*, *42*(8), 1593–1603.
+    * Colberg, S. R., Sigal, R. J., Yardley, J. E., Riddell, M. C., Dunstan, D. W., … & Umpierre, D. (2016). Effects of exercise relative to timing of insulin administration on glucose control in type 1 diabetes: A systematic review and meta-analysis. *Diabetologia*, *59*(10), 2158–2167. 
+    * Diabetes UK. (2023). *Type 1 diabetes*. Retrieved November 17, 2023, from https://www.diabetes.org.uk/guide-to-diabetes/type-1-diabetes
+
+    Second Pass: 
+    
+    ## Medical Assessment for Steve: Type 1 Diabetic - In-Depth Review
+
+    **Patient:** Steve
+
+    **Date:** 2023-11-17 (Assuming data is recent)
+
+    **Data Source:** 31 days of continuous glucose monitoring (CGM) data
+
+    **1. Strengths:**
+
+    * **Overall Control:** Steve exhibits strong overall blood glucose control with a commendable Time in Range (92%). 
+    * **Week-to-Week Consistency:** Minimal variation in weekly average blood glucose highlights consistent self-management practices.
+    * **No Prolonged Hypoglycemia:** This achievement indicates good insulin management and hypoglycemia awareness.
+
+    **2.  Areas for Improvement and In-Depth Analysis:**
+
+    **2a. Moderate Glucose Variability (SD 32.2 mg/dl):**
+
+    * **Possible Causes:**
+        * **Inconsistent carbohydrate intake:**  Fluctuations in meal size and composition can significantly impact glucose variability, even with accurate carb counting and insulin dosing.
+        * **Variable insulin absorption:** Factors like injection site rotation, temperature, and physical activity can influence insulin absorption rates. 
+        * **Hormonal fluctuations:** Stress, illness, and sleep disturbances can cause hormonal imbalances that affect insulin sensitivity.
+        * **Gastroparesis:** While not explicitly mentioned, delayed stomach emptying (gastroparesis), more common in long-standing diabetes, could contribute to unpredictable glucose responses after meals.
+
+    * **Recommendations:**
+        * **Dietary analysis:**  A detailed review of Steve's dietary habits (using a food diary or tracking app) can identify potential inconsistencies. 
+            * **Focus:** Look for patterns in meal timing, portion sizes, carbohydrate sources (complex vs. simple), fiber content, and protein/fat intake.
+        * **Insulin timing and absorption:** 
+            * **Injection site rotation:** Reinforce the importance of consistent injection site rotation to optimize absorption. 
+            * **Temperature considerations:**  Advise on insulin storage and the potential impact of extreme temperatures on efficacy.
+            * **Pre-bolusing strategies:** Encourage pre-bolusing 20-30 minutes before meals, especially those higher in fat or protein, to improve postprandial control.
+        * **Stress management and sleep hygiene:**
+            * **Stress reduction techniques:**  Implement stress-reducing activities like mindfulness, meditation, or yoga.
+            * **Sleep optimization:** Aim for 7-9 hours of quality sleep per night, as sleep deprivation negatively impacts glucose control.
+        * **Rule out gastroparesis:** If dietary and insulin optimization strategies don't yield significant improvements, consider assessing for gastroparesis with a gastric emptying study.
+
+    **2b. Persistent Hyperglycemia Periods:**
+
+    **Note:** While specific times are identified as "close to meal times," the exact timing of meals relative to these periods is unclear.  Precise timing is essential for tailoring recommendations. 
+
+    **Assumptions:** Assuming meals occur within 30 minutes of the start of each time period.
+
+    * **00:00 - 04:00 (Average 158.9 mg/dl):**  
+        * **Possible Causes:** Dawn phenomenon (hormonal), inadequate basal insulin overnight, high-GI snack before bed, Somogyi effect (rebound hyperglycemia from nocturnal hypoglycemia).
+        * **Recommendations:**
+            * **Continuous Glucose Monitoring (CGM) analysis:** Review overnight CGM trends for patterns suggestive of dawn phenomenon vs. Somogyi effect. 
+            * **Late-night snack adjustment:** If a snack is consumed, assess its composition and timing. Opt for low-GI options and consider moving it earlier in the evening. 
+            * **Hormonal influence:**  Discuss the potential impact of stress and sleep on overnight glucose levels. 
+            * **Rule out other factors:**  Evaluate for conditions like sleep apnea, which can disrupt sleep and affect glucose control. 
+    * **11:30 - 15:00 (Average 151.0 mg/dl):**
+        * **Possible Causes:**  Insufficient pre-meal insulin bolus, inaccurate carbohydrate counting, delayed insulin absorption due to food composition, postprandial stress.
+        * **Recommendations:**
+             * **Insulin-to-carbohydrate ratio (ICR) review:** Evaluate if current ICR is appropriate for lunchtime meals. Consider adjusting based on meal size and composition. 
+            * **Bolus timing and pre-bolusing:**  Experiment with increasing pre-bolus time (up to 30 minutes) before lunch to counteract potential delays in insulin action. 
+            * **Mindful eating and stress reduction:**  Encourage mindful eating practices and stress-reducing techniques during lunchtime to mitigate the impact of stress on glucose levels.
+            * **Physical activity:**  Even a short walk after lunch can improve insulin sensitivity and help lower postprandial glucose.
+    * **15:00 - 18:00 (Average 153.1 mg/dl):**
+        * **Possible Causes:** Similar to the 11:30-15:00 period, with an increased likelihood of afternoon slumps and energy dips influencing food choices and activity levels.
+        * **Recommendations:**
+            * **Late-afternoon snack assessment:** If a snack is consumed, evaluate its necessity, timing, and composition. Opt for healthy, low-GI choices if needed.
+            * **Physical activity break:**  Incorporate a brief physical activity break in the afternoon to combat energy dips and improve insulin sensitivity.
+            * **Hydration:** Encourage adequate water intake throughout the day, as dehydration can worsen glucose fluctuations.
+    * **21:00 - 23:30 (Average 154.8 mg/dl):**
+        * **Possible Causes:**  Similar to other mealtime periods, with additional considerations for potential late-night snacking habits and the impact of evening activities on insulin sensitivity.
+        * **Recommendations:**
+            * **Evening routine analysis:**  Evaluate Steve's evening routine for potential triggers of hyperglycemia, such as late-night snacking, alcohol consumption, or sedentary behavior.
+            * **Post-dinner activity:**  Encourage light physical activity after dinner, such as a walk, to improve insulin sensitivity and aid digestion. 
+            * **Mindful eating before bed:**  If a bedtime snack is necessary, provide guidance on appropriate choices (low-GI, protein-rich) and portion control. 
+
+    **3.  Overall Summary and Recommendations:**
+
+    Steve demonstrates a strong foundation in diabetes management.  By focusing on understanding the root causes of his moderate glucose variability and persistent hyperglycemia periods, we can fine-tune his regimen for optimal control.  A collaborative approach, involving detailed data analysis, lifestyle modifications, and ongoing support, will empower Steve to achieve even better long-term outcomes.
+
+    **4.  Follow-up:**
+
+    * Schedule a follow-up appointment in 2-4 weeks to review CGM data, assess the impact of implemented strategies, and make further adjustments as needed. 
+    * Consider referral to a Registered Dietitian (RD) specializing in diabetes management for personalized dietary guidance and education. 
+
+    **Disclaimer:**
+
+    This assessment is based on the provided information and should not be considered a substitute for a personalized evaluation by a qualified healthcare professional.
 
 Now, create the podcast.  PODCAST PREMISE: Dr Turner and Nurse Tobi take a
 weekly look at each of their Type 1 diabetic patients' blood glucose numbers,
@@ -36,22 +227,26 @@ a friendly, professional and often funny look at diabetes.
 
 Key instructions:
 
+0. Limit to 5000 words maximum hard limit.
+
 0. Always start with a brief introduction from the speakers, and mention that
 this podcast does not constitute medical advice. Any changes to the patient's
 health care plan should be discussed with their medical providers and doctors
 first.
 
-1. Generate conversations with natural back-and-forth exchanges, including
+1. The conversation is between two experts looking over the patient's data. They can converse with each other when discussing ideas, science, and observations, but the advice should always be directed to the patient (using words like "you", "your", etc).
+
+2. Generate conversations with natural back-and-forth exchanges, including
 interruptions, agreements, disagreements, and humorous interjections.
 
-2. Stretch topics by exploring tangents, asking follow-up questions, or relating
+3. Stretch topics by exploring tangents, asking follow-up questions, or relating
 personal anecdotes.
 
-3. Add a 2 funny interactions to lighten the mood and maintain listener
+4. Add a 2 funny interactions to lighten the mood and maintain listener
 engagement.  This can include jokes, puns, playful banter, or humorous
 misunderstandings. Don't go overboard.
 
-4. Take your time on each topic and issue. Imagine spending about 3 minutes on each topic,
+5. Take your time on each topic and issue. Imagine spending about 2 minutes on each topic,
 including explanations, anecdotes or a bit about current medical understanding
 or research. Be sure to cite sources. This could involve one speaker asking for
 clarification, or another offering a simplified explanation or relatable
@@ -65,8 +260,13 @@ using overlapping speech where appropriate.
 6. Maintain consistent personalities for each speaker throughout the
 conversation.
 
-Always format your response as a movie script, as an example:
+7. Do NOT include any metadata about the show, such as headers, subsection names, inserts for music or applause. Just the dialog.
 
-DR. TURNER: Hi, welcome to the show.
+Always format your response script in Speech Synthesis Markup Language (SSML).
+Dr Turner always uses the voice name "en-GB-Wavenet-B". Rebecca always uses "en-US-Wavenet-C".
+Use the following format:
 
-Dan: Glad to be back!
+<speak>
+<voice name="en-G-Wavenet-B">Hello, I'm Dr Turner, welcome to the podcast</voice>
+<voice name="en-US-Wavenet-C">And I'm Rebecca. We are your hosts</voice>
+</voice>
