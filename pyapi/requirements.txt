@@ -1,0 +1,6 @@
+compress_json==1.1.1
+compress_json_python==3.0.0
+fastapi==0.115.3
+protobuf==5.28.3
+pydantic==2.9.2
+tenacity==9.0.0
