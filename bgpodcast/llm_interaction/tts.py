@@ -1,111 +1,64 @@
+import json
 import asyncio
 import time
-from typing import Optional
+
 import google.cloud.texttospeech as tts
 from google.api_core import client_options
 
+from pydantic import BaseModel
+import google.cloud.texttospeech as tts
+from google.api_core import client_options
 
-DEFAULT_LANGUAGE = "en-US"
-MALE_VOICE = "en-GB-Wavenet-B"
-FEMALE_VOICE = "en-US-Wavenet-C"
-STANDARD_API_BYTE_LIMIT = 5000  # Google's limit for standard API
-
-async def synthesize_text(
-    ssml_text: str, 
-    output_file_path: str, 
-    voice_name: str, 
-    language_code: str = DEFAULT_LANGUAGE,
-    polling_interval: int = 10,
-    timeout: int = 600
-) -> Optional[str]:
-    """
-    Synthesize text to speech, choosing between standard and long-form APIs
-    based on input length.
-    
-    Args:
-        ssml_text: The SSML text to synthesize
-        output_file_path: Path where the audio file should be saved
-        voice_name: Name of the voice to use
-        language_code: Language code for synthesis
-        polling_interval: How often to check operation status (seconds)
-        timeout: Maximum time to wait for operation (seconds)
-    """
-    client_opts = client_options.ClientOptions(api_endpoint='texttospeech.googleapis.com:443')
-    
-    # Check text length first to choose the appropriate API
-    text_bytes = len(ssml_text.encode('utf-8'))
-    use_long_form = text_bytes > STANDARD_API_BYTE_LIMIT
-    
-    try:
-        if not use_long_form:
-            # Use standard API for short texts
-            async with tts.TextToSpeechAsyncClient(client_options=client_opts) as tts_client:
-                response = await tts_client.synthesize_speech(
-                    input=tts.SynthesisInput(ssml=ssml_text),
-                    voice=tts.VoiceSelectionParams(language_code=language_code, name=voice_name),
-                    audio_config=tts.AudioConfig(audio_encoding=tts.AudioEncoding.MP3),
-                )
-                
-                with open(output_file_path, "wb") as f:
-                    f.write(response.audio_content)
-                    
-                return output_file_path
-                
-        else:
-            # Use long-form API for longer texts
-            print(f"Text length ({text_bytes} bytes) exceeds standard API limit, using long-form synthesis...")
-            
-            async with tts.TextToSpeechLongAudioSynthesizeAsyncClient(client_options=client_opts) as client:
-                # Start the long audio synthesis operation
-                operation = await client.synthesize_long_audio(
-                    request=tts.SynthesizeLongAudioRequest(
-                        input=tts.SynthesisInput(ssml=ssml_text),
-                        voice=tts.VoiceSelectionParams(
-                            language_code=language_code,
-                            name=voice_name
-                        ),
-                        audio_config=tts.AudioConfig(
-                            audio_encoding=tts.AudioEncoding.MP3
-                        ),
-                        output_config=tts.OutputConfig(
-                            output_path=output_file_path
-                        )
-                    )
-                )
-                
-                # Poll for completion
-                start_time = time.time()
-                while True:
-                    if time.time() - start_time > timeout:
-                        raise TimeoutError(f"Operation timed out after {timeout} seconds")
-                    
-                    if operation.done():
-                        if operation.exception():
-                            raise operation.exception()
-                        break
-                        
-                    await asyncio.sleep(polling_interval)
-                    print("Synthesis in progress...")
-                
-                return output_file_path
-                
-    except Exception as e:
-        print(f"Error in synthesis: {str(e)}")
-        raise
-
+import os
+import time
+import asyncio
+import time
+from fastapi import HTTPException
+from pydantic import BaseModel
 async def test():
-    try:
-        with open("test.ssml", "r", encoding="utf-8") as tf:
-            test_str = tf.read()
-            output_path = await synthesize_text(
-                test_str,
-                "/tmp/test.mp3", 
-                voice_name=MALE_VOICE, 
-                language_code=DEFAULT_LANGUAGE
-            )
-            print(f"Audio file created successfully at: {output_path}")
-    except Exception as e:
-        print(f"Failed to create audio: {str(e)}")
+
+    dialog = PodcastDialog()
+    dialog.dialog = """
+<speak>
+  Here are <say-as interpret-as="characters">SSML</say-as> samples.
+    <break time="1s"/>
+    I can pause <break time="3s"/>.
+    <break time="500ms"/>
+    I can speak in cardinals. Your number is <say-as interpret-as="cardinal">10</say-as>.
+    <break time="500ms"/>
+    Or I can speak in ordinals. You are <say-as interpret-as="ordinal">10</say-as> in line.
+    <break time="500ms"/>
+    Or I can even speak in digits. The digits for ten are <say-as interpret-as="characters">10</say-as>.
+    <break time="500ms"/>
+    I can also substitute phrases, like the <sub alias="World Wide Web Consortium">W3C</sub>.
+    <break time="500ms"/>
+    Finally, I can speak a paragraph with two sentences.
+    <p><s>This is sentence one.</s><s>This is sentence two.</s></p>
+</speak>"""
+
+    result = await gen_podcast(dialog)
+    print("Generated podcast, here's the first result:")
+    print(result)
+
+    # Check status periodically
+    start_time = time.time()
+    while time.time() - start_time < TIMEOUT:
+        status = await get_job_status(result['operation_id'])
+        print(f"\nCurrent status (after {int(time.time() - start_time)} seconds):")
+        print(json.dumps(status, indent=2))
+        
+        if status["status"] == "complete":
+            # print(status["result"])
+            break
+        elif status["status"] == ["error"]:
+            # print(status["error"])
+            break
+        else:
+            # print("Still processing...")
+            print(status)
+            
+        await asyncio.sleep(POLLING_INTERVAL)
+        
 
 if __name__ == "__main__":
     asyncio.run(test())
