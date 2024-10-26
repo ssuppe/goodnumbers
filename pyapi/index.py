@@ -7,24 +7,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import google.generativeai as genai
+import google.cloud.texttospeech as tts
+from google.api_core import client_options
 from compress_json import decompress
 from tenacity import retry, wait_random_exponential
 from bgpodcast.data_ingestion import nightscout as nsingest
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils
 
-# class ProductionSettings(BaseSettings):
-#     gemini_api_key: SecretStr
-#     pythonpath: str
-#     fastapi_url: str
-
-# class DevelopmentSettings(BaseSettings):
-#     gemini_api_key: SecretStr
-#     pythonpath: str
-#     fastapi_url: str
-#     class Config:
-#         env_file = ".env.development" if os.environ.get('VERCEL_ENV') != 'production' else None
-#         env_file_encoding = "utf-8"
 
 # Load templates from files
 with open(os.path.join("app", "_prompts", "pass1.txt"), "r", encoding="utf-8") as f:
@@ -35,13 +25,7 @@ with open(os.path.join("app", "_prompts", "pass3.txt"), "r", encoding="utf-8") a
     template3 = f.read()
 
 
-# if os.environ.get('VERCEL_ENV') == 'production':
-#     settings = ProductionSettings()
-# else:
-#     settings = DevelopmentSettings()
-
 gemini_api_key = os.environ["GEMINI_API_KEY"]
-# fastapi_url = os.environ["FASTAPI_URL"]
 app = FastAPI()
 
 class Data(BaseModel):
@@ -79,6 +63,7 @@ class Assessment(BaseModel):
     assessment1 : str | None = None
     assessment2 : str | None = None
     template_num : int | None = 1
+
 
 @retry(wait=wait_random_exponential(multiplier=1, max=120))
 async def async_generate(prompt, model):
@@ -178,6 +163,94 @@ async def get_assessment(data : Assessment):
         error_message = f"An unexpected error occurred: {str(e)}"
         print(f"Unexpected Error: {error_message}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+class PodcastDialog(BaseModel):
+    dialog : str | None = None
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import google.cloud.texttospeech as tts
+from google.api_core import client_options
+from google.cloud import storage
+import os
+import time
+import asyncio
+from datetime import datetime
+
+app = FastAPI()
+
+# Constants
+BUCKET_NAME = "your-bucket-name"  # Replace with your bucket name
+GCS_PATH = "audio-files"  # Folder in bucket to store audio files
+POLLING_INTERVAL = 10  # seconds
+TIMEOUT = 600  # 10 minutes
+
+class PodcastDialog(BaseModel):
+    dialog: str | None = None
+
+@app.post("/pyapi/gen_podcast")
+async def gen_podcast(dialog: PodcastDialog):
+    """
+    Generate long-form audio from SSML using Google Cloud Text-to-Speech.
+    
+    Args:
+        dialog: PodcastDialog object containing SSML markup
+    
+    Returns:
+        Dictionary containing operation ID and GCS path information
+    
+    Raises:
+        ValueError: If dialog is empty or invalid
+        HTTPException: For various Google API errors
+    """
+    if dialog is None or dialog.dialog is None or dialog.dialog == "":
+        raise ValueError(f"Invalid dialog: {dialog.dialog}")
+
+    try:
+        # Initialize Storage client
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(BUCKET_NAME)
+
+        # Generate unique file path
+        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        file_name = f"podcast_{timestamp}.mp3"
+        gcs_path = f"{GCS_PATH}/{file_name}"
+        output_gcs_uri = f"gs://{BUCKET_NAME}/{gcs_path}"
+
+        # Initialize Text-to-Speech client with specific endpoint
+        client_opts = client_options.ClientOptions(
+            api_endpoint='texttospeech.googleapis.com:443'
+        )
+
+        async with tts.TextToSpeechLongAudioSynthesizeAsyncClient(
+            client_options=client_opts
+        ) as client:
+            # Start the long audio synthesis operation
+            operation = await client.synthesize_long_audio(
+                request=tts.SynthesizeLongAudioRequest(
+                    input=tts.SynthesisInput(ssml=dialog.dialog),
+                    voice=tts.VoiceSelectionParams(
+                        language_code="en-US",
+                        name="en-G-Wavenet-B"  # Using your specific voice
+                    ),
+                    audio_config=tts.AudioConfig(
+                        audio_encoding=tts.AudioEncoding.MP3
+                    ),
+                    output_gcs_uri=output_gcs_uri
+                )
+            )
+
+            return {
+                "status": "processing",
+                "operation_id": operation.operation.name,
+                "gcs_path": gcs_path,
+                "bucket_name": BUCKET_NAME,
+                "message": "Audio generation started successfully"
+            }
+
+    except Exception as e:
+        print(f"Error in gen_podcast: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))    
 
 @app.get("/pyapi/test")
 async def test():
