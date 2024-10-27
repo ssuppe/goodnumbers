@@ -24,7 +24,7 @@ class JobCheckResponse(BaseModel):
     name : str | None = None
     done : bool
     metadata : dict | None = None
-    status : str
+    status : str | None = None
     message : dict | None = None
     error : dict | None = None
     result : dict | None = None
@@ -35,3 +35,4 @@ class PodcastGenerateResult(BaseModel):
     gcs_path : str
     bucket_name : str
     message: str | None = ""
+    
