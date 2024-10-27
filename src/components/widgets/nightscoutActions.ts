@@ -80,8 +80,12 @@ async function readLocalJson(filePath: string): Promise<any> {
 export async function generateAssessments(csgvData: Compressed, ctreatmentsData: Compressed, useLocalData: boolean) {
 
   const apiUrl = process.env.FASTAPI_URL;
-  if (!apiUrl) {
+  if (!apiUrl || apiUrl == "") {
+    logger.error('FASTAPI_URL environment variable is not set');
     throw new Error('FASTAPI_URL environment variable is not set');
+  }
+  else {
+    logger.info("FASTAPI_URL: " + apiUrl);
   }
 
   if (useLocalData) {
