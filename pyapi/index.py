@@ -32,6 +32,7 @@ GCS_PATH = "audio-files"  # Folder in bucket to store audio files
 POLLING_INTERVAL = 10  # seconds
 TIMEOUT = 600  # 10 minutes
 
+
 @app.post("/pyapi/get_notes")
 async def get_notes(data: objects.NightscoutData):
     """
@@ -54,7 +55,8 @@ async def get_notes(data: objects.NightscoutData):
         raise HTTPException(status_code=400, detail="Invalid JSON data") from e
     except Exception as e:
         print(f"Error generate_podcast: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error") from e
+        raise HTTPException(
+            status_code=500, detail="Internal Server Error") from e
 
     return podcast_dialog
 
@@ -72,13 +74,16 @@ async def async_generate(prompt, model):
     print("done")
     return response
 
+
 @app.post("/pyapi/gen_podcast")
 async def gen_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGenerateResult:
     return gen_podcast(dialog)
 
+
 @app.post("/pyapi/check_podcast")
 async def check_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGenerateResult:
     return get_job_status(dialog)
+
 
 @app.post("/pyapi/get_assessment")
 async def get_assessment(data: objects.Assessment):
@@ -160,10 +165,6 @@ async def get_assessment(data: objects.Assessment):
         print(f"Unexpected Error: {error_message}")
         raise HTTPException(
             status_code=500, detail="Internal Server Error") from ve
-
-
-
-
 
 
 @app.get("/pyapi/test")
