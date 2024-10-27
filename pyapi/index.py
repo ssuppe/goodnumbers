@@ -125,14 +125,6 @@ async def get_assessment(data: objects.Assessment):
             # print(f"Template2: {template2}")
             prompt = bgutils.interpolate(
                 template2, notes=data.notes, assessment1=data.assessment1)
-            # response = await model.generate_content_async(prompt, request_options=RequestOptions(
-            #                             retry=retry_async.AsyncRetry(
-            #                                 initial=10,
-            #                                 multiplier=2,
-            #                                 maximum=60,
-            #                                 timeout=300
-            #                             )
-            #                            ))
             response = await async_generate(prompt, model)
             response_text = response.text
             print(f"Response2: {response_text[0:100]}")

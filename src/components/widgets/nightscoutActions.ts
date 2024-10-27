@@ -136,6 +136,15 @@ export async function generateAssessments(csgvData: Compressed, ctreatmentsData:
     }, "Generating Dialog");
     const dialog = dialogData.response;
 
+    // Step 5: Start generation of audio
+     // Step 4: Generate Dialog
+     const dialogData = await fetchWithErrorHandling(`${apiUrl}/pyapi/gen_podcast`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes, assessment1, assessment2, template_num: 3 }),
+    }, "Generating Dialog");
+    const dialog = dialogData.response;
+
     return { notes, assessment1, assessment2, dialog };
   } catch (error) {
     const err = error as AssessmentError;

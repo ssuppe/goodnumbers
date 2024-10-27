@@ -6,7 +6,7 @@ from google.api_core import client_options
 from google.protobuf.json_format import MessageToDict
 from google.cloud import storage
 from fastapi import HTTPException
-from bgpodcast.utils.objects import JobCheck, JobCheckResponse, PodcastDialog, PodcastGenerateResult
+from bgpodcast.utils.objects import JobCheckResponse, PodcastDialog
 
 BUCKET_NAME = "goodnumbers"  # Replace with your bucket name
 GCS_PATH = "audio-files"  # Folder in bucket to store audio files
@@ -18,7 +18,7 @@ POLLING_INTERVAL = 10  # Check status every 10 seconds
 TIMEOUT_MINUTES = 10   # Total timeout in minutes
 TIMEOUT = TIMEOUT_MINUTES * SECONDS_PER_MINUTE  # Convert to seconds
 
-async def get_job_status(jobcheck: JobCheck) -> dict:
+async def get_job_status(operation_id: str) -> JobCheckResponse:
     """
     Check the status of a long-form audio synthesis operation with enhanced error reporting.
     
@@ -38,8 +38,8 @@ async def get_job_status(jobcheck: JobCheck) -> dict:
     # if not operation_id:
     #     raise ValueError("Invalid operation details provided")
 
-    operation_id = jobcheck.operation
-
+    # operation_id = jobcheck.operation
+    print(f"operation id: {operation_id}")
     try:
         # Initialize Text-to-Speech client with specific endpoint
         client_opts = client_options.ClientOptions(
@@ -56,65 +56,33 @@ async def get_job_status(jobcheck: JobCheck) -> dict:
 
              # Debug information
             print("\nDebug Information:")
-            print(f"Operation name: {operation.name}")
-            print(f"Operation done: {operation.done}")
-            print("Operation metadata:")
-            pprint(operation.metadata)
-            print("Operation error details:")
-            pprint(operation.error)
-            
-            if hasattr(operation.error, 'details'):
-                print("Error details:")
-                pprint(operation.error.details)
-            
-            if hasattr(operation.error, 'message'):
-                print("Error message:")
-                pprint(operation.error.message)
-                
-            if hasattr(operation, 'result'):
-                print("Operation result:")
-                pprint(operation.result())
+            print(type(operation))
+            pprint(operation) 
 
-           # Get operation details using public methods
-            status = JobCheckResponse()
+            # Get operation details using public methods
+            status = JobCheckResponse(done=True)
             status.name = operation.name
             status.done = operation.done
             status.metadata = MessageToDict(operation.metadata) if operation.metadata else None
-            # status_dict = {
-            #     "name": operation.name,
-            #     "done": operation.done,
-            #     "metadata": MessageToDict(operation.metadata) if operation.metadata else None,
-            # }
-            
-            if operation.done:
-
-                if operation.error and operation.error != {}:
-                    # status_dict.update({
-                    #     "status": "error",
-                    #     "error": MessageToDict(operation.error)
-                    # })
+            if operation.done is True:
+                print(f"operation done? {operation.done}")
+                if operation.response:
+                    print("success")
+                    status.status = "done"
+                    status.error = MessageToDict(operation.response)
+                elif operation.status == 'error' and operation.error != {}:
+                    print("error")
                     status.status = "error"
                     status.error = MessageToDict(operation.error)
-                elif operation.progressPercentage == 100.0:
-                    # status_dict.update({
-                    #     "status": "done",
-                    #     "result": MessageToDict(operation.result()) if operation.result() else None
-                    # })
-                    status.status = "done"
-                    status.result = MessageToDict(operation.result()) if operation.result() else None
                 else:
-                    # status_dict.update({
-                    #     "status": "unknown",
-                    #     "result": MessageToDict(operation.result()) if operation.result() else None
-                    # })
+                    print("else")
                     status.status = "unknown"
                     status.result = MessageToDict(operation.result()) if operation.result() else None
             else:
-                # status_dict["status"] = "processing"
                 status.status = "processing"
             
-            # print(json.dumps(status_dict, indent=2))
-            # return status_dict
+
+            print(f"returning {status}")
             return status
 
     except Exception as e:
@@ -194,50 +162,51 @@ async def gen_podcast(dialog: PodcastDialog) -> dict:
         print(f"Error in gen_podcast: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e)) from e
     
-# async def test():
+async def test():
+    dialog = PodcastDialog()
+    dialog.dialog = """
+<speak>
+  Here are <say-as interpret-as="characters">SSML</say-as> samples.
+    <break time="1s"/>
+    I can pause <break time="3s"/>.
+    <break time="500ms"/>
+    I can speak in cardinals. Your number is <say-as interpret-as="cardinal">10</say-as>.
+    <break time="500ms"/>
+    Or I can speak in ordinals. You are <say-as interpret-as="ordinal">10</say-as> in line.
+    <break time="500ms"/>
+    Or I can even speak in digits. The digits for ten are <say-as interpret-as="characters">10</say-as>.
+    <break time="500ms"/>
+    I can also substitute phrases, like the <sub alias="World Wide Web Consortium">W3C</sub>.
+    <break time="500ms"/>
+    Finally, I can speak a paragraph with two sentences.
+    <p><s>This is sentence one.</s><s>This is sentence two.</s></p>
+</speak>"""
 
-#     dialog = PodcastDialog()
-#     dialog.dialog = """
-# <speak>
-#   Here are <say-as interpret-as="characters">SSML</say-as> samples.
-#     <break time="1s"/>
-#     I can pause <break time="3s"/>.
-#     <break time="500ms"/>
-#     I can speak in cardinals. Your number is <say-as interpret-as="cardinal">10</say-as>.
-#     <break time="500ms"/>
-#     Or I can speak in ordinals. You are <say-as interpret-as="ordinal">10</say-as> in line.
-#     <break time="500ms"/>
-#     Or I can even speak in digits. The digits for ten are <say-as interpret-as="characters">10</say-as>.
-#     <break time="500ms"/>
-#     I can also substitute phrases, like the <sub alias="World Wide Web Consortium">W3C</sub>.
-#     <break time="500ms"/>
-#     Finally, I can speak a paragraph with two sentences.
-#     <p><s>This is sentence one.</s><s>This is sentence two.</s></p>
-# </speak>"""
+    result = await gen_podcast(dialog)
+    print("Generated podcast, here's the first result:")
+    print(result)
 
-#     result = await gen_podcast(dialog)
-#     print("Generated podcast, here's the first result:")
-#     print(result)
-
-#     # Check status periodically
-#     start_time = time.time()
-#     while time.time() - start_time < TIMEOUT:
-#         status = await get_job_status(result['operation_id'])
-#         print(f"\nCurrent status (after {int(time.time() - start_time)} seconds):")
-#         print(json.dumps(status, indent=2))
+    # Check status periodically
+    start_time = time.time()
+    while time.time() - start_time < TIMEOUT:
+        status = await get_job_status(result['operation_id'])
+        print(f"\nCurrent status (after {int(time.time() - start_time)} seconds):")
+        pprint(status)
         
-#         if status["status"] == "complete":
-#             # print(status["result"])
-#             break
-#         elif status["status"] == ["error"]:
-#             # print(status["error"])
-#             break
-#         else:
-#             # print("Still processing...")
-#             print(status)
+        if status.status == "done":
+            print("All done!")
             
-#         await asyncio.sleep(POLLING_INTERVAL)
+            # print(status["result"])
+            break
+        elif status.status == "error":
+            # print(status["error"])
+            break
+        else:
+            # print("Still processing...")
+            print(status)
+            
+        await asyncio.sleep(POLLING_INTERVAL)
         
 
-# if __name__ == "__main__":
-#     asyncio.run(test())
+if __name__ == "__main__":
+    asyncio.run(test())
