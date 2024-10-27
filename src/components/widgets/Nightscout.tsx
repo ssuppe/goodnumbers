@@ -19,6 +19,7 @@ interface NightscoutComponentProps extends NightscoutProps {
     assessment1: string;
     assessment2: string;
     dialog: string;
+    operation : string;
   }) => void;
   local?: string | null;
 }
