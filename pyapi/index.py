@@ -61,7 +61,7 @@ async def get_notes(data: objects.NightscoutData):
     return podcast_dialog
 
 
-@retry(wait=wait_random_exponential(multiplier=1, max=120))
+# @retry(wait=wait_random_exponential(multiplier=1, max=120))
 async def async_generate(prompt, model):
     """
     Generate
@@ -77,12 +77,12 @@ async def async_generate(prompt, model):
 
 @app.post("/pyapi/gen_podcast")
 async def gen_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGenerateResult:
-    return gen_podcast(dialog)
-
+    print("in gen_podcast_api")
+    return await gen_podcast(dialog)
 
 @app.post("/pyapi/check_podcast")
 async def check_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGenerateResult:
-    return get_job_status(dialog)
+    return await get_job_status(dialog)
 
 
 @app.post("/pyapi/get_assessment")
@@ -156,7 +156,7 @@ async def get_assessment(data: objects.Assessment):
         error_message = f"An unexpected error occurred: {str(e)}"
         print(f"Unexpected Error: {error_message}")
         raise HTTPException(
-            status_code=500, detail="Internal Server Error") from ve
+            status_code=500, detail="Internal Server Error") from e
 
 
 @app.get("/pyapi/test")

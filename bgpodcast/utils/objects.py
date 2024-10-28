@@ -15,6 +15,8 @@ class NightscoutData(BaseModel):
 
 class PodcastDialog(BaseModel):
     dialog: str | None = None
+    
+class PodcastAudioURL:
     audio_url: str | None = None
     
 class JobCheck(BaseModel):
