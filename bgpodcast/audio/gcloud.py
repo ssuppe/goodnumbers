@@ -6,7 +6,7 @@ from google.api_core import client_options
 from google.protobuf.json_format import MessageToDict
 from google.cloud import storage
 from fastapi import HTTPException
-from bgpodcast.utils.objects import JobCheckResponse, PodcastDialog
+from bgpodcast.utils.objects import JobCheckResponse, PodcastDialog, PodcastGenerateResult
 
 BUCKET_NAME = "goodnumbers"  # Replace with your bucket name
 GCS_PATH = "audio-files"  # Folder in bucket to store audio files
@@ -18,23 +18,24 @@ POLLING_INTERVAL = 10  # Check status every 10 seconds
 TIMEOUT_MINUTES = 10   # Total timeout in minutes
 TIMEOUT = TIMEOUT_MINUTES * SECONDS_PER_MINUTE  # Convert to seconds
 
+
 async def get_job_status(operation_id: str) -> JobCheckResponse:
     """
     Check the status of a long-form audio synthesis operation with enhanced error reporting.
-    
+
     Args:
         operation_details: Either operation ID string or dictionary containing operation details
-    
+
     Returns:
         Dictionary containing current status information and detailed error if present
-        
+
     Raises:
         HTTPException: For various Google API errors
         ValueError: If operation_details is invalid
     """
     # Handle both string (operation_id) and dictionary input
     # operation_id = operation_details if isinstance(operation_details, str) else operation_details.get('operation_id')
-    
+
     # if not operation_id:
     #     raise ValueError("Invalid operation details provided")
 
@@ -45,7 +46,7 @@ async def get_job_status(operation_id: str) -> JobCheckResponse:
         client_opts = client_options.ClientOptions(
             api_endpoint='texttospeech.googleapis.com:443'
         )
-        
+
         async with tts.TextToSpeechLongAudioSynthesizeAsyncClient(
             client_options=client_opts
         ) as client:
@@ -54,16 +55,17 @@ async def get_job_status(operation_id: str) -> JobCheckResponse:
                 operation_id
             )
 
-             # Debug information
+            # Debug information
             print("\nDebug Information:")
             print(type(operation))
-            pprint(operation) 
+            pprint(operation)
 
             # Get operation details using public methods
             status = JobCheckResponse(done=True)
             status.name = operation.name
             status.done = operation.done
-            status.metadata = MessageToDict(operation.metadata) if operation.metadata else None
+            status.metadata = MessageToDict(
+                operation.metadata) if operation.metadata else None
             if operation.done is True:
                 print(f"operation done? {operation.done}")
                 if operation.response:
@@ -77,10 +79,10 @@ async def get_job_status(operation_id: str) -> JobCheckResponse:
                 else:
                     print("else")
                     status.status = "unknown"
-                    status.result = MessageToDict(operation.result()) if operation.result() else None
+                    status.result = MessageToDict(
+                        operation.result()) if operation.result() else None
             else:
                 status.status = "processing"
-            
 
             print(f"returning {status}")
             return status
@@ -95,16 +97,17 @@ async def get_job_status(operation_id: str) -> JobCheckResponse:
             "stack_trace": stack_trace
         }) from e
 
+
 async def gen_podcast(dialog: PodcastDialog) -> dict:
     """
     Generate long-form audio from SSML using Google Cloud Text-to-Speech.
-    
+
     Args:
         dialog: PodcastDialog object containing SSML markup
-    
+
     Returns:
         Dictionary containing operation ID and GCS path information
-    
+
     Raises:
         ValueError: If dialog is empty or invalid
         HTTPException: For various Google API errors
@@ -150,18 +153,26 @@ async def gen_podcast(dialog: PodcastDialog) -> dict:
                 )
             )
 
-            return {
-                "status": "processing",
-                "operation_id": operation.operation.name,
-                "gcs_path": gcs_path,
-                "bucket_name": BUCKET_NAME,
-                "message": "Audio generation started successfully"
-            }
+            res = PodcastGenerateResult(status="processing",\
+                operation_id=operation.operation.name,\
+                gcs_path=gcs_path,\
+                bucket_name=BUCKET_NAME,\
+                message="Audio generation started successfully")
+            return res
+
+            # return {
+            #     "status": "processing",
+            #     "operation_id": operation.operation.name,
+            #     "gcs_path": gcs_path,
+            #     "bucket_name": BUCKET_NAME,
+            #     "message": "Audio generation started successfully"
+            # }
 
     except Exception as e:
         print(f"Error in gen_podcast: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e)) from e
-    
+
+
 async def test():
     dialog = PodcastDialog()
     dialog.dialog = """
@@ -190,12 +201,13 @@ async def test():
     start_time = time.time()
     while time.time() - start_time < TIMEOUT:
         status = await get_job_status(result['operation_id'])
-        print(f"\nCurrent status (after {int(time.time() - start_time)} seconds):")
+        print(f"\nCurrent status (after {
+              int(time.time() - start_time)} seconds):")
         pprint(status)
-        
+
         if status.status == "done":
             print("All done!")
-            
+
             # print(status["result"])
             break
         elif status.status == "error":
@@ -204,9 +216,9 @@ async def test():
         else:
             # print("Still processing...")
             print(status)
-            
+
         await asyncio.sleep(POLLING_INTERVAL)
-        
+
 
 if __name__ == "__main__":
     asyncio.run(test())

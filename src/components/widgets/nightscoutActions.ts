@@ -27,6 +27,14 @@ interface AssessmentError extends Error {
   details?: any;
 }
 
+export interface PodcastGenerateResult {
+  status: string;
+  operation_id: string;
+  gcs_path: string;
+  bucket_name: string;
+  message?: string; // Optional field using '?'
+}
+
 async function getV3JWTToken(nightscout_url : string, token : string): Promise<string> {
   // https://soopaloop.bbs.io/api/v2/authorization/request/autotune-ca4f6201c17a55b0
   const response = await fetchWithErrorHandling(`${nightscout_url}/api/v2/authorization/request/${token}`, {
@@ -137,15 +145,14 @@ export async function generateAssessments(csgvData: Compressed, ctreatmentsData:
     const dialog = dialogData.response;
 
     // Step 5: Start generation of audio
-     // Step 4: Generate Dialog
-     const dialogData = await fetchWithErrorHandling(`${apiUrl}/pyapi/gen_podcast`, {
+     const podcastData = await fetchWithErrorHandling(`${apiUrl}/pyapi/gen_podcast`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes, assessment1, assessment2, template_num: 3 }),
+      body: JSON.stringify({ dialog }),
     }, "Generating Dialog");
-    const dialog = dialogData.response;
+    const podcast_result : PodcastGenerateResult = podcastData;
 
-    return { notes, assessment1, assessment2, dialog };
+    return { notes, assessment1, assessment2, dialog, podcast_result };
   } catch (error) {
     const err = error as AssessmentError;
     logger.error("Failed to generate assessments:", { error: err });
