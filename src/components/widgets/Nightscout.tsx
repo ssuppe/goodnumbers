@@ -65,8 +65,8 @@ const NightscoutComponent = ({
   const storedAssessment1 = getCookieC<string>("assessment1");
   const storedAssessment2 = getCookieC<string>("assessment2");
   const storedDialog = getCookieC<string>("dialog");
-  const storedPodcastResult: PodcastGenerateResult | null = Cookies.get('podcast_result')
-    ? JSON.parse(Cookies.get('podcast_result')!)
+  const storedPodcastResult: PodcastGenerateResult | null = getCookieC<string>('podcast_result')
+    ? getCookieC('podcast_result')
     : null;
 
   const [formData, setFormData] = useState({
@@ -170,11 +170,11 @@ const NightscoutComponent = ({
       setProgress(75);
 
       // Move the cookie setting here, outside of the callback
-      if (data.notes) setCookieC("notes", data.notes);
-      if (data.assessment1) setCookieC("assessment1", data.assessment1);
-      if (data.assessment2) setCookieC("assessment2", data.assessment2);
-      if (data.dialog) setCookieC("dialog", data.dialog);
-      Cookies.set('podcast_result', JSON.stringify(data.podcast_result), { expires: 30 });
+      if (data.notes) await setCookieC("notes", data.notes);
+      if (data.assessment1) await setCookieC("assessment1", data.assessment1);
+      if (data.assessment2) await setCookieC("assessment2", data.assessment2);
+      if (data.dialog) await setCookieC("dialog", data.dialog);
+      if (data.podcast_result) await setCookieC('podcast_result', JSON.stringify(data.podcast_result), { expires: 30 });
 
       // Then call the callback if it exists
       if (onAssessmentComplete) {
@@ -277,7 +277,7 @@ const NightscoutComponent = ({
             </TabPanel>
             <TabPanel>
               <h2 className="text-xl font-bold mb-2">Dialog</h2>
-              <div>{assessmentData ? assessmentData.podcast_result.status : storedPodcastResult?.status}</div>
+              <div>{assessmentData ? assessmentData.podcast_result.message : storedPodcastResult?.message}</div>
               <pre className="whitespace-pre-wrap">{assessmentData ? assessmentData.dialog : storedDialog}</pre>
             </TabPanel>
           </Tabs>

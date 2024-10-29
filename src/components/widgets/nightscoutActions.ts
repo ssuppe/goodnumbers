@@ -85,7 +85,21 @@ async function readLocalJson(filePath: string): Promise<any> {
   }
 }
 
-export async function generateAssessments(csgvData: Compressed, ctreatmentsData: Compressed, useLocalData: boolean) {
+export async function generateAssessments(sgvData: Compressed, ctreatmentsData: Compressed, useLocalData: boolean) {
+
+  
+  const mockPodcastResult: PodcastGenerateResult = {
+    status: "completed",
+    operation_id: "op_" + Math.random().toString(36).substring(2, 15),
+    gcs_path: "podcasts/2024/04/test-podcast-123.mp3",
+    bucket_name: "my-podcast-bucket",
+    message: `Successfully generated podcast at ${new Date().toISOString()}`   // Optional field included
+  };
+  return {notes: "This is the notes",
+          assessment1: "This is the assessment1", 
+          assessment2: "This is assessment2",
+          dialog: "Hello I am a dialog",
+          podcast_result: mockPodcastResult};
 
   const apiUrl = process.env.FASTAPI_URL;
   if (!apiUrl || apiUrl == "") {
