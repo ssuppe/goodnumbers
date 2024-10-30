@@ -14,7 +14,7 @@ const base64ToUint8Array = (base64: string): Uint8Array => {
 /**
  * Converts Uint8Array to base64 string using native APIs
  */
-const uint8ArrayToBase64 = (array: Uint8Array): string => {
+const uint8ArrayToBase64 = (array: Uint8Array): Promise<string> => {
   // Create a blob from the array
   const blob = new Blob([array]);
   // Create a URL for the blob

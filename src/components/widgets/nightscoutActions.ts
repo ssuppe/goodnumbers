@@ -85,7 +85,7 @@ async function readLocalJson(filePath: string): Promise<any> {
   }
 }
 
-export async function generateAssessments(sgvData: Compressed, ctreatmentsData: Compressed, useLocalData: boolean) {
+export async function generateAssessments(csgvData: Compressed, ctreatmentsData: Compressed, useLocalData: boolean) {
 
   
   const mockPodcastResult: PodcastGenerateResult = {
@@ -113,7 +113,7 @@ export async function generateAssessments(sgvData: Compressed, ctreatmentsData: 
   if (useLocalData) {
     try {
       let sgvData = await readLocalJson('/data/24Sept.30d/Nightscout.entries.24Sept.30d.json');
-      sgvData = compress(sgvData);
+      csgvData = compress(sgvData);
       let treatmentsData = await readLocalJson('/data/24Sept.30d/Nightscout.treatments.24Sept.30d.json');
       treatmentsData = compress(treatmentsData);
       logger.info("Local data loaded successfully");
