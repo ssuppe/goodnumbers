@@ -1,8 +1,5 @@
 from pydantic import BaseModel
 
-def foo():
-    return "foo"
-
 class Assessment(BaseModel):
     notes: str | None = None
     assessment1: str | None = None

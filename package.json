@@ -30,6 +30,7 @@
     "cookie": "^1.0.0",
     "gray-matter": "^4.0.3",
     "js-cookie": "^3.0.5",
+    "lucide-react": "^0.454.0",
     "markdown-it": "^14.1.0",
     "next": "^14.2.6",
     "next-themes": "^0.3.0",
