@@ -16,6 +16,7 @@ import axiosRetry from 'axios-retry';
 import { generateAssessments, PodcastGenerateResult } from './nightscoutActions';
 import { compress, decompress } from 'compress-json';
 import { setCookieC, getCookieC } from '~/utils/cookies';
+import DebugInterfaceViewer from './DebugInterfaceViewer';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: {
@@ -284,6 +285,9 @@ const NightscoutComponent = ({
             <TabPanel>
               <h2 className="text-xl font-bold mb-2">Dialog</h2>
               <div>{assessmentData ? assessmentData.podcast_result.message : storedPodcastResult?.message}</div>
+              <div className="p-4">
+                <DebugInterfaceViewer data={assessmentData ? assessmentData.podcast_result : storedPodcastResult} />
+              </div>
               <div>
               {
                 (
