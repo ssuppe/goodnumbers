@@ -8,6 +8,8 @@ import WidgetWrapper from '../common/WidgetWrapper';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Progress from '../ui/progress';
 import Cookies from 'js-cookie';
+import PodcastPlayer from './PodcastPlayer';
+
 
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
@@ -149,6 +151,9 @@ const NightscoutComponent = ({
     setIsLoading(true);
     setProgress(0);
 
+    setProgressText('Collecting Nightscout data...');
+    setProgress(25);
+
     try {
       let sgvData = null;
       let treatmentsData = null;
@@ -159,15 +164,16 @@ const NightscoutComponent = ({
         treatmentsData = nightscout_data.treatmentsData;
       }
 
-      setProgressText('Generating assessments');
-      setProgress(50);
 
+
+      setProgressText('Generating podcast (this could take several minutes)...');
+      setProgress(50);
       // Generate assessments using Server Action
       // Compress first to save network bandwidth/cost
       let csgvData = compress(sgvData);
       let ctreatmentsData = compress(treatmentsData);
       const data = await generateAssessments(csgvData, ctreatmentsData, formData.demo_data);
-      setProgress(75);
+      setProgress(100);
 
       // Move the cookie setting here, outside of the callback
       if (data.notes) await setCookieC("notes", data.notes);
@@ -278,6 +284,17 @@ const NightscoutComponent = ({
             <TabPanel>
               <h2 className="text-xl font-bold mb-2">Dialog</h2>
               <div>{assessmentData ? assessmentData.podcast_result.message : storedPodcastResult?.message}</div>
+              <div>
+              {
+                (
+                  <PodcastPlayer
+                    podcastResult={assessmentData ? assessmentData.podcast_result : storedPodcastResult? storedPodcastResult : undefined}
+                    checkOperationUrl="/api/get_operation"
+                    className="mt-4"
+                  />
+                )
+              }
+              </div>
               <pre className="whitespace-pre-wrap">{assessmentData ? assessmentData.dialog : storedDialog}</pre>
             </TabPanel>
           </Tabs>

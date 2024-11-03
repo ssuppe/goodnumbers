@@ -25,20 +25,24 @@
     "@vercel/python": "^4.3.1",
     "axios": "^1.7.7",
     "axios-retry": "^4.5.0",
+    "class-variance-authority": "^0.7.0",
     "compress-json": "^3.1.0",
     "concurrently": "^9.0.1",
     "cookie": "^1.0.0",
+    "eslint": "^9.13.0",
+    "glob": "^11.0.0",
     "gray-matter": "^4.0.3",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.454.0",
     "markdown-it": "^14.1.0",
-    "next": "^14.2.6",
+    "next": "^14.2.16",
     "next-themes": "^0.3.0",
     "pako": "^2.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
     "react-tabs": "^6.0.2",
+    "rimraf": "^6.0.1",
     "sharp": "^0.33.5",
     "tailwind-merge": "^2.5.2",
     "winston": "^3.15.0"
@@ -62,8 +66,6 @@
     "@types/react": "18.3.4",
     "@types/react-dom": "18.3.0",
     "autoprefixer": "^10.4.20",
-    "eslint": "8.56.0",
-    "eslint-config-next": "^14.2.6",
     "eslint-plugin-storybook": "^0.8.0",
     "next-sitemap": "^4.2.3",
     "postcss": "^8.4.41",
@@ -72,6 +74,12 @@
     "storybook": "^7.6.10",
     "tailwindcss": "^3.4.10",
     "typescript": "5.6.3"
+  },
+  "overrides": {
+    "@typescript-eslint/utils": "^8.11.0",
+    "eslint-plugin-storybook": "^0.8.0",
+    "@typescript-eslint/eslint-plugin": "^8.11.0",
+    "@typescript-eslint/parser": "^8.11.0"
   },
   "engines": {
     "node": ">=18.17.0"
