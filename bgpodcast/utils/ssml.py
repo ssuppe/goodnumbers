@@ -119,17 +119,17 @@ class SSMLCheck:
         reason (Optional[str]): Reason for failure if invalid, None if valid
         processedSSML (Optional[str]): The processed SSML with escapes and closed tags
     """
-    isCorrect: bool
-    reason: Optional[str] = None
-    processedSSML: Optional[str] = None
+    is_correct: bool
+    error_reason: Optional[str] = None
+    processed_ssml: Optional[str] = None
 
     def __str__(self) -> str:
-        if self.isCorrect:
-            return f"SSML validation passed\nProcessed SSML: {self.processedSSML}"
-        return f"SSML validation failed: {self.reason}"
+        if self.is_correct:
+            return f"SSML validation passed\nProcessed SSML: {self.processed_ssml}"
+        return f"SSML validation failed: {self.error_reason}"
 
     def __repr__(self) -> str:
-        return f"SSMLCheck(isCorrect={self.isCorrect}, reason={repr(self.reason)}, processedSSML={repr(self.processedSSML)})"
+        return f"SSMLCheck(is_correct={self.is_correct}, reason={repr(self.error_reason)}, processed_ssml={repr(self.processed_ssml)})"
 
 def check_google_tts_ssml_format(ssml_string: str, escape: bool = True) -> SSMLCheck:
     """
@@ -194,7 +194,7 @@ def check_google_tts_ssml_format(ssml_string: str, escape: bool = True) -> SSMLC
 
         # Get the processed SSML with all modifications
         processed_ssml = etree.tostring(root, encoding='unicode')  # pylint: disable=c-extension-no-member
-        return SSMLCheck(True, processedSSML=processed_ssml)
+        return SSMLCheck(True, processed_ssml=processed_ssml)
         
     except etree.XMLSyntaxError as e:  # pylint: disable=c-extension-no-member
         return SSMLCheck(False, f"Invalid SSML: {str(e)}")
