@@ -1,5 +1,7 @@
 from datetime import datetime
 from pprint import pprint
+import asyncio
+import time
 import traceback
 import google.cloud.texttospeech as tts
 from google.api_core import client_options
@@ -98,7 +100,7 @@ async def get_job_status(operation_id: str) -> JobCheckResponse:
         }) from e
 
 
-async def gen_podcast(dialog: PodcastDialog) -> dict:
+async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
     """
     Generate long-form audio from SSML using Google Cloud Text-to-Speech.
 
@@ -141,7 +143,7 @@ async def gen_podcast(dialog: PodcastDialog) -> dict:
                     input=tts.SynthesisInput(ssml=dialog.dialog),
                     voice=tts.VoiceSelectionParams(
                         language_code="en-US",
-                        name="en-US-Standard-D"
+                        name="en-GB-Wavenet-B"
                     ),
                     audio_config=tts.AudioConfig(
                         audio_encoding=tts.AudioEncoding.LINEAR16,
