@@ -5,8 +5,8 @@ class Assessment(BaseModel):
     assessment1: str | None = None
     assessment2: str | None = None
     template_num: int | None = 1
-    debug: bool = False
-    write_local : bool = True
+    debug: bool = True
+    write_local : bool = False
 
 class NightscoutData(BaseModel):
     treatments: list
