@@ -1,6 +1,5 @@
 import datetime
 import pandas as pd
-import asyncio
 
 def get_gemini_key():
     api_key = open("/Users/ssuppe/tmp/google_gemini_key.txt", "r", encoding="utf-8").read().strip()
@@ -99,6 +98,6 @@ def write_file(to : str="./tmp", contents: str = "") -> None:
     with open(to, "w", encoding="utf-8") as f:
         f.write(contents)
 
-async def read_file(fr : str="./tmp") -> str:
+def read_file(fr : str="./tmp") -> str:
     with open(fr, "r", encoding="utf-8") as f:
         return f.read()

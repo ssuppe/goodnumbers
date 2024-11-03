@@ -119,8 +119,11 @@ async def get_assessment(data: objects.Assessment):
             print("Generating template 1")
             prompt = bgutils.interpolate(template1, notes=data.notes)
             print(f"Prompt1: {prompt}")
-            response = bgutils.read_file(fr=os.path.join("_tmp", "pass1_output.txt")) if data.debug else await async_generate(prompt, model)
-            response_text = response.text
+            if data.debug:
+                response_text = bgutils.read_file(fr=os.path.join("_tmp", "pass1_output.txt")) 
+            else:
+                response = async_generate(prompt, model)
+                response_text = response.text
             if data.write_local:
                 bgutils.write_file(to=os.path.join("_tmp", "pass1_output.txt"), contents=response_text)
             print(f"Response1: {response_text[0:100]}")
@@ -129,8 +132,11 @@ async def get_assessment(data: objects.Assessment):
             print("Generating template 2")
             prompt = bgutils.interpolate(
                 template2, notes=data.notes, assessment1=data.assessment1)
-            response = bgutils.read_file(fr=os.path.join("_tmp", "pass2_output.txt")) if data.debug else await async_generate(prompt, model)
-            response_text = response.text
+            if data.debug:
+                response_text = bgutils.read_file(fr=os.path.join("_tmp", "pass2_output.txt")) 
+            else:
+                response = async_generate(prompt, model)
+                response_text = response.text
             if data.write_local:
                 bgutils.write_file(to=os.path.join("_tmp", "pass2_output.txt"), contents=response_text)
             print(f"Response2: {response_text[0:100]}")
@@ -149,8 +155,11 @@ async def get_assessment(data: objects.Assessment):
             no_ssml_tries = 0
             while not is_valid_ssml and no_ssml_tries < 3:
                 print("Generating SSML")
-                response =  bgutils.read_file(fr=os.path.join("_tmp", "pass3_output.txt")) if data.debug else await async_generate(prompt, model)
-                response_text = response.text
+                if data.debug:
+                    response_text = bgutils.read_file(fr=os.path.join("_tmp", "pass3_output.txt")) 
+                else:
+                    response = async_generate(prompt, model)
+                    response_text = response.text
                 ssml_check  = ssml.check_google_tts_ssml_format(response_text)
                 is_valid_ssml = ssml_check.is_correct
                 print(f"Is valid SSML? {ssml_check.is_correct}")
