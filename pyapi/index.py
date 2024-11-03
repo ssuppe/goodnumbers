@@ -3,6 +3,7 @@ Python APIs
 """
 import os
 import json
+import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 import google.generativeai as genai
@@ -93,7 +94,7 @@ async def get_assessment(data: objects.Assessment):
     # print(f"gemini_api_key: {gemini_api_key}")
     genai.configure(api_key=gemini_api_key)
 
-    print(f"Notes {data.notes}")
+    print(f"Notes: {data.notes[0:100]}")
     try:
         generation_config = {
             "temperature": 1.0,
@@ -112,24 +113,30 @@ async def get_assessment(data: objects.Assessment):
             raise ValueError("Missing 'template_num' in request body")
 
         response_text = ""
+        ssml_check : ssml.SSMLCheck = None
 
         if data.template_num == 1:
-            # print(f"Template1: {template1}")
+            print("Generating template 1")
             prompt = bgutils.interpolate(template1, notes=data.notes)
             print(f"Prompt1: {prompt}")
-            response = await async_generate(prompt, model)
+            response = bgutils.read_file(fr=os.path.join("_tmp", "pass1_output.txt")) if data.debug else await async_generate(prompt, model)
             response_text = response.text
+            if data.write_local:
+                bgutils.write_file(to=os.path.join("_tmp", "pass1_output.txt"), contents=response_text)
             print(f"Response1: {response_text[0:100]}")
+            return JSONResponse({"valid": True, "response": response_text})
         elif data.template_num == 2:
-            # print(f"Template2: {template2}")
+            print("Generating template 2")
             prompt = bgutils.interpolate(
                 template2, notes=data.notes, assessment1=data.assessment1)
-            response = await async_generate(prompt, model)
+            response = bgutils.read_file(fr=os.path.join("_tmp", "pass2_output.txt")) if data.debug else await async_generate(prompt, model)
             response_text = response.text
+            if data.write_local:
+                bgutils.write_file(to=os.path.join("_tmp", "pass2_output.txt"), contents=response_text)
             print(f"Response2: {response_text[0:100]}")
+            return JSONResponse({"valid": True, "response": response_text})
         elif data.template_num == 3:
-            # Generate podcast dialog
-            # print(f"Template3: {template3}")
+            print("Generating template 3")
             prompt = bgutils.interpolate(
                 template3, notes=data.notes, assessment1=data.assessment1, assessment2=data.assessment2)
             generation_config["temperature"] = 1.5
@@ -139,21 +146,27 @@ async def get_assessment(data: objects.Assessment):
                 generation_config=generation_config,
             )
             is_valid_ssml = False
-            ssml_check : ssml.SSMLCheck = None
-            while not is_valid_ssml:
+            no_ssml_tries = 0
+            while not is_valid_ssml and no_ssml_tries < 3:
                 print("Generating SSML")
-                response = await async_generate(prompt, model)
+                response =  bgutils.read_file(fr=os.path.join("_tmp", "pass3_output.txt")) if data.debug else await async_generate(prompt, model)
                 response_text = response.text
                 ssml_check  = ssml.check_google_tts_ssml_format(response_text)
-                print(f"Is valid SSML? {ssml_check.isCorrect}")
+                is_valid_ssml = ssml_check.is_correct
+                print(f"Is valid SSML? {ssml_check.is_correct}")
                 if not is_valid_ssml:
-                    print(response_text)
+                    print(f"{no_ssml_tries}/3: Invalid SSML that couldn't be fixed: {response_text}")
+                    if data.write_local:
+                        bgutils.write_file(to=os.path.join("_tmp", "pass3_output.txt"), contents=response_text)
+                    no_ssml_tries += 1
                 else:
-                    print(f"Response3: {ssml_check.processedSSML[0:100]}")
+                    if data.write_local:
+                        bgutils.write_file(to=os.path.join("_tmp", "pass3_output.txt"), contents=ssml_check.processed_ssml)
+                    return JSONResponse({'valid' : True, 'response': ssml_check.processed_ssml})
         else:
             raise ValueError(f"Invalid template number: {data.template_num}")
 
-        return JSONResponse({"response": ssml_check.processedSSML})
+        return JSONResponse({"valid": False, "ssml": response_text})
 
     except ValueError as ve:
         error_message = str(ve)
@@ -163,6 +176,7 @@ async def get_assessment(data: objects.Assessment):
     except Exception as e:
         error_message = f"An unexpected error occurred: {str(e)}"
         print(f"Unexpected Error: {error_message}")
+        print(traceback.format_exc())
         raise HTTPException(
             status_code=500, detail="Internal Server Error") from e
 
