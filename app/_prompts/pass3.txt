@@ -91,6 +91,6 @@ Dr Turner always uses the voice name "en-GB-Wavenet-B". Rebecca always uses "en-
 Use the following format:
 
 <speak>
-<voice name="en-G-Wavenet-B">Hello, I'm Dr Turner, welcome to the podcast</voice>
+<voice name="en-GB-Wavenet-B">Hello, I'm Dr Turner, welcome to the podcast</voice>
 <voice name="en-US-Wavenet-C">And I'm Rebecca. We are your hosts</voice>
 </voice>
