@@ -7,10 +7,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 import google.generativeai as genai
 from compress_json import decompress
-from tenacity import retry, wait_random_exponential
 from bgpodcast.data_ingestion import nightscout as nsingest
 from bgpodcast.prompt_generation import bgprompt
-from bgpodcast.utils import bgutils
+from bgpodcast.utils import bgutils, ssml
 from bgpodcast.utils import objects
 from bgpodcast.audio.gcloud import gen_podcast, get_job_status
 
@@ -129,6 +128,7 @@ async def get_assessment(data: objects.Assessment):
             response_text = response.text
             print(f"Response2: {response_text[0:100]}")
         elif data.template_num == 3:
+            # Generate podcast dialog
             # print(f"Template3: {template3}")
             prompt = bgutils.interpolate(
                 template3, notes=data.notes, assessment1=data.assessment1, assessment2=data.assessment2)
@@ -138,14 +138,22 @@ async def get_assessment(data: objects.Assessment):
                 model_name="gemini-1.5-pro",
                 generation_config=generation_config,
             )
-
-            response = await async_generate(prompt, model)
-            response_text = response.text
-            print(f"Response3: {response_text[0:100]}")
+            is_valid_ssml = False
+            ssml_check : ssml.SSMLCheck = None
+            while not is_valid_ssml:
+                print("Generating SSML")
+                response = await async_generate(prompt, model)
+                response_text = response.text
+                ssml_check  = ssml.check_google_tts_ssml_format(response_text)
+                print(f"Is valid SSML? {ssml_check.isCorrect}")
+                if not is_valid_ssml:
+                    print(response_text)
+                else:
+                    print(f"Response3: {ssml_check.processedSSML[0:100]}")
         else:
             raise ValueError(f"Invalid template number: {data.template_num}")
 
-        return JSONResponse({"response": response_text})
+        return JSONResponse({"response": ssml_check.processedSSML})
 
     except ValueError as ve:
         error_message = str(ve)
