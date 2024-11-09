@@ -1,7 +1,6 @@
-// Nightscout.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Headline from '../common/Headline';
 import { NightscoutProps } from '~/shared/types';
 import WidgetWrapper from '../common/WidgetWrapper';
@@ -9,7 +8,6 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Progress from '../ui/progress';
 import Cookies from 'js-cookie';
 import PodcastPlayer from './PodcastPlayer';
-
 
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
@@ -61,13 +59,19 @@ const NightscoutComponent = ({
   const [progress, setProgress] = useState(0);
   const [progressText, setProgressText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [podcastStatus, setPodcastStatus] = useState<string | null>(null);
+  const [shouldCheckStatus, setShouldCheckStatus] = useState(false);
+
+  // Add state for last generated timestamp
+  const storedTimestamp = getCookieC<string>('lastGeneratedTime');
+  const [lastGeneratedTime, setLastGeneratedTime] = useState<string | null>(storedTimestamp);
 
   const storedUrl = Cookies.get('url');
   const storedToken = Cookies.get('token');
-  const storedNotes = getCookieC<string>("notes");
-  const storedAssessment1 = getCookieC<string>("assessment1");
-  const storedAssessment2 = getCookieC<string>("assessment2");
-  const storedDialog = getCookieC<string>("dialog");
+  const storedNotes = getCookieC<string>('notes');
+  const storedAssessment1 = getCookieC<string>('assessment1');
+  const storedAssessment2 = getCookieC<string>('assessment2');
+  const storedDialog = getCookieC<string>('dialog');
   const storedPodcastResult: PodcastGenerateResult | null = getCookieC<string>('podcast_result')
     ? getCookieC('podcast_result')
     : null;
@@ -83,6 +87,43 @@ const NightscoutComponent = ({
     storedDialog: storedDialog,
     storedPodcastResult: storedPodcastResult,
   });
+
+  // Effect for polling podcast status
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    const checkPodcastStatus = async () => {
+      const activePodcastResult = assessmentData?.podcast_result || storedPodcastResult;
+      if (activePodcastResult && activePodcastResult.operation_id) {
+        try {
+          const response = await axios.post('/pyapi/check_podcast', {
+            operation: activePodcastResult.operation_id,
+          });
+          const newStatus = response.data.status;
+          setPodcastStatus(newStatus);
+
+          // If we get a success or error status, stop checking and update flag
+          if (newStatus === 'success' || newStatus === 'error') {
+            setShouldCheckStatus(false);
+          }
+        } catch (error) {
+          console.error('Error checking podcast status:', error);
+          setShouldCheckStatus(false);
+        }
+      }
+    }; // Only start polling if shouldCheckStatus is true
+    if (shouldCheckStatus) {
+      checkPodcastStatus(); // Initial check
+      intervalId = setInterval(checkPodcastStatus, 30000); // Check every 30 seconds
+    }
+
+    // Cleanup function
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [shouldCheckStatus, assessmentData?.podcast_result, storedPodcastResult]);
 
   const isFormValid = formData.nightscout_url && formData.nightscout_token && formData.terms_accepted;
 
@@ -121,15 +162,10 @@ const NightscoutComponent = ({
         units: item.units,
         utcOffset: item.utcOffset,
       }));
-      // let treatmentsData = treatmentsResponse.data.filter((item: { created_at: string }) => new Date(item.created_at) >= thirtyDaysAgo);
       let treatmentsData = treatmentsResponse.data.filter(
         (item: { created_at: string; eventType: string; carbs: number }) => {
           const createdAtDate = new Date(item.created_at);
-          return (
-            createdAtDate >= thirtyDaysAgo &&
-            // (item.eventType === "Correction Bolus" || item.eventType === "Carb Correction") &&
-            item.carbs !== null
-          );
+          return createdAtDate >= thirtyDaysAgo && item.carbs !== null;
         },
       );
       treatmentsData = treatmentsData.map((item: { date: number; carbs: number; utcOffset: number }) => ({
@@ -165,8 +201,6 @@ const NightscoutComponent = ({
         treatmentsData = nightscout_data.treatmentsData;
       }
 
-
-
       setProgressText('Generating podcast (this could take several minutes)...');
       setProgress(50);
       // Generate assessments using Server Action
@@ -176,16 +210,34 @@ const NightscoutComponent = ({
       const data = await generateAssessments(csgvData, ctreatmentsData, formData.demo_data);
       setProgress(100);
 
+      // Store the current timestamp
+      const now = new Date();
+      const formattedTimestamp = now
+        .toLocaleString('en-GB', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        })
+        .replace(/\//g, '-');
+
+      await setCookieC('lastGeneratedTime', formattedTimestamp);
+      setLastGeneratedTime(formattedTimestamp);
+
       // Move the cookie setting here, outside of the callback
-      if (data.notes) await setCookieC("notes", data.notes);
-      if (data.assessment1) await setCookieC("assessment1", data.assessment1);
-      if (data.assessment2) await setCookieC("assessment2", data.assessment2);
-      if (data.dialog) await setCookieC("dialog", data.dialog);
+      if (data.notes) await setCookieC('notes', data.notes);
+      if (data.assessment1) await setCookieC('assessment1', data.assessment1);
+      if (data.assessment2) await setCookieC('assessment2', data.assessment2);
+      if (data.dialog) await setCookieC('dialog', data.dialog);
       if (data.podcast_result) await setCookieC('podcast_result', JSON.stringify(data.podcast_result), { expires: 30 });
 
       // Then call the callback if it exists
       if (onAssessmentComplete) {
         onAssessmentComplete(data);
+        // Only start checking status after assessment is complete
+        setShouldCheckStatus(true);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -258,6 +310,9 @@ const NightscoutComponent = ({
       </div>
       {(assessmentData || storedNotes) && (
         <div className="mt-8 max-w-4xl mx-auto">
+          {lastGeneratedTime && (
+            <div className="mb-4 text-gray-600 text-center">Last results generated on {lastGeneratedTime}</div>
+          )}
           <Tabs>
             <TabList>
               <Tab>Notes</Tab>
@@ -284,20 +339,37 @@ const NightscoutComponent = ({
             </TabPanel>
             <TabPanel>
               <h2 className="text-xl font-bold mb-2">Dialog</h2>
+              {podcastStatus && (
+                <h2
+                  className={`text-xl font-bold mb-4 ${
+                    podcastStatus === 'success'
+                      ? 'text-green-600'
+                      : podcastStatus === 'error'
+                        ? 'text-red-600'
+                        : 'text-black'
+                  }`}
+                >
+                  {podcastStatus.charAt(0).toUpperCase() + podcastStatus.slice(1)}
+                </h2>
+              )}
               <div>{assessmentData ? assessmentData.podcast_result.message : storedPodcastResult?.message}</div>
               <div className="p-4">
                 <DebugInterfaceViewer data={assessmentData ? assessmentData.podcast_result : storedPodcastResult} />
               </div>
               <div>
-              {
-                (
+                {
                   <PodcastPlayer
-                    podcastResult={assessmentData ? assessmentData.podcast_result : storedPodcastResult? storedPodcastResult : undefined}
+                    podcastResult={
+                      assessmentData
+                        ? assessmentData.podcast_result
+                        : storedPodcastResult
+                          ? storedPodcastResult
+                          : undefined
+                    }
                     checkOperationUrl="/api/get_operation"
                     className="mt-4"
                   />
-                )
-              }
+                }
               </div>
               <pre className="whitespace-pre-wrap">{assessmentData ? assessmentData.dialog : storedDialog}</pre>
             </TabPanel>
