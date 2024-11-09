@@ -142,7 +142,7 @@ async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
                     parent="projects/gemini-437920/locations/global",
                     input=tts.SynthesisInput(ssml=dialog.dialog),
                     voice=tts.VoiceSelectionParams(
-                        language_code="en-US",
+                        language_code="en-GB",
                         name="en-GB-Wavenet-B"
                     ),
                     audio_config=tts.AudioConfig(

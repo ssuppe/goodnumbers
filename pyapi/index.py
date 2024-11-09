@@ -81,8 +81,9 @@ async def gen_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGener
     return await gen_podcast(dialog)
 
 @app.post("/pyapi/check_podcast")
-async def check_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGenerateResult:
-    return await get_job_status(dialog)
+async def check_podcast_api(operation_id: objects.JobCheck) -> objects.PodcastGenerateResult:
+    status = await get_job_status(operation_id.operation)
+    return status
 
 
 @app.post("/pyapi/get_assessment")
