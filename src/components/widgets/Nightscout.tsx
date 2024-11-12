@@ -7,7 +7,7 @@ import WidgetWrapper from '../common/WidgetWrapper';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Progress from '../ui/progress';
 import Cookies from 'js-cookie';
-import PodcastPlayer from './PodcastPlayer';
+// import PodcastPlayer from './PodcastPlayer';
 
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
@@ -233,12 +233,16 @@ const NightscoutComponent = ({
       if (data.dialog) await setCookieC('dialog', data.dialog);
       if (data.podcast_result) await setCookieC('podcast_result', JSON.stringify(data.podcast_result), { expires: 30 });
 
-      // Then call the callback if it exists
-      if (onAssessmentComplete) {
-        onAssessmentComplete(data);
-        // Only start checking status after assessment is complete
-        setShouldCheckStatus(true);
-      }
+      // Set the assessment data first
+    setAssessmentData(data);
+    
+    // Start checking status regardless of onAssessmentComplete
+    setShouldCheckStatus(true);
+
+    // Call the callback if it exists
+    if (onAssessmentComplete) {
+      onAssessmentComplete(data);
+    }
     } catch (error) {
       console.error('Error:', error);
       setError(error instanceof Error ? error.message : 'An unexpected error occurred');
@@ -358,17 +362,17 @@ const NightscoutComponent = ({
               </div>
               <div>
                 {
-                  <PodcastPlayer
-                    podcastResult={
-                      assessmentData
-                        ? assessmentData.podcast_result
-                        : storedPodcastResult
-                          ? storedPodcastResult
-                          : undefined
-                    }
-                    checkOperationUrl="/api/get_operation"
-                    className="mt-4"
-                  />
+                  // <PodcastPlayer
+                  //   podcastResult={
+                  //     assessmentData
+                  //       ? assessmentData.podcast_result
+                  //       : storedPodcastResult
+                  //         ? storedPodcastResult
+                  //         : undefined
+                  //   }
+                  //   checkOperationUrl="/api/get_operation"
+                  //   className="mt-4"
+                  // />
                 }
               </div>
               <pre className="whitespace-pre-wrap">{assessmentData ? assessmentData.dialog : storedDialog}</pre>
