@@ -31,9 +31,13 @@ class JobCheckResponse(BaseModel):
     result : dict | None = None
 
 class PodcastGenerateResult(BaseModel):
-    status: str
+    status: str  # "processing", "done", "error"
     operation_id: str
-    gcs_path : str
-    bucket_name : str
-    message: str | None = ""
+    url: str | None = None  # Signed URL when ready
+    error: str | None = None
+    gcs_path: str | None = None  # Keep internal GCS info
+    bucket_name: str | None = None
+
+class RefreshURLRequest(BaseModel):
+    gcs_path: str
     

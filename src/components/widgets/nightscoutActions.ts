@@ -27,12 +27,11 @@ interface AssessmentError extends Error {
   details?: any;
 }
 
-export interface PodcastGenerateResult {
+interface PodcastGenerateResult {
   status: string;
-  operation_id: string;
-  gcs_path: string;
-  bucket_name: string;
-  message?: string; // Optional field using '?'
+  operation_id?: string;
+  url?: string;
+  error?: string;
 }
 
 async function getV3JWTToken(nightscout_url : string, token : string): Promise<string> {
