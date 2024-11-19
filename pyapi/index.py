@@ -3,10 +3,12 @@ Python APIs
 """
 import os
 import json
+import datetime
 import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 import google.generativeai as genai
+from google.cloud import storage
 from compress_json import decompress
 from bgpodcast.data_ingestion import nightscout as nsingest
 from bgpodcast.prompt_generation import bgprompt
@@ -77,13 +79,72 @@ async def async_generate(prompt, model):
 
 @app.post("/pyapi/gen_podcast")
 async def gen_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGenerateResult:
-    print("in gen_podcast_api")
-    return await gen_podcast(dialog)
+    try:
+        # Your existing podcast generation logic
+        result = await gen_podcast(dialog)
+        
+        return objects.PodcastGenerateResult(
+            status="processing",
+            operation_id=result.operation_id,
+            gcs_path=result.gcs_path,
+            bucket_name=result.bucket_name
+        )
+    except Exception as e:
+        return objects.PodcastGenerateResult(
+            status="error",
+            operation_id="",
+            error=str(e)
+        )
 
 @app.post("/pyapi/check_podcast")
-async def check_podcast_api(operation_id: objects.JobCheck) -> objects.JobCheckResponse:
-    status = await get_job_status(operation_id.operation)
-    return status
+async def check_podcast_api(operation_id: objects.JobCheck) -> objects.PodcastGenerateResult:
+    try:
+        status = await get_job_status(operation_id.operation)
+        
+        if status.done and not status.error:
+            # Generate signed URL when podcast is ready
+            storage_client = storage.Client()
+            bucket = storage_client.bucket(BUCKET_NAME)
+            blob = bucket.blob(status.gcs_path)  # Assuming this is stored in status.metadata
+            
+            url = blob.generate_signed_url(
+                version="v4",
+                expiration=datetime.timedelta(hours=1),
+                method="GET",
+                response_type="audio/mpeg",
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Cache-Control": "public, max-age=3600"
+                }
+            )
+            
+            return objects.PodcastGenerateResult(
+                status="done",
+                operation_id=operation_id.operation,
+                url=url,
+                gcs_path=status.gcs_path,
+                bucket_name=BUCKET_NAME
+            )
+        elif status.error:
+            return objects.PodcastGenerateResult(
+                status="error",
+                operation_id=operation_id.operation,
+                error=str(status.error)
+            )
+        else:
+            return objects.PodcastGenerateResult(
+                status="processing",
+                operation_id=operation_id.operation,
+                gcs_path=status.gcs_path,
+                bucket_name=BUCKET_NAME
+            )
+            
+    except Exception as e:
+        return objects.PodcastGenerateResult(
+            status="error",
+            operation_id=operation_id.operation,
+            error=str(e)
+        )
 
 
 @app.post("/pyapi/get_assessment")
@@ -194,3 +255,48 @@ async def get_assessment(data: objects.Assessment):
 @app.get("/pyapi/test")
 async def test():
     return JSONResponse({"response": "Working!"})
+
+@app.post("/generate_podcast_url")
+async def generate_podcast_url(file_path: str):
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket('your-bucket-name')
+        blob = bucket.blob(file_path)
+
+        # Generate signed URL that expires in 1 hour
+        url = blob.generate_signed_url(
+            version="v4",
+            expiration=datetime.timedelta(hours=1),
+            method="GET",
+            response_type="audio/mpeg",
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Cache-Control": "public, max-age=3600"
+            }
+        )
+        
+        return {"url": url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+    
+@app.post("/pyapi/refresh_audio_url")
+async def refresh_audio_url(request: objects.RefreshURLRequest) -> dict:
+    try:
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(BUCKET_NAME)
+        blob = bucket.blob(request.gcs_path)
+        
+        url = blob.generate_signed_url(
+            version="v4",
+            expiration=datetime.timedelta(hours=1),
+            method="GET",
+            response_type="audio/mpeg",
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Cache-Control": "public, max-age=3600"
+            }
+        )
+        
+        return {"url": url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e

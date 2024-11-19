@@ -1,0 +1,8 @@
+{
+  "bindings": [
+    {
+      "members": ["allUsers"],
+      "role": "roles/storage.objectViewer"
+    }
+  ]
+}

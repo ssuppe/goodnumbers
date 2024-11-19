@@ -7,7 +7,8 @@ import WidgetWrapper from '../common/WidgetWrapper';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Progress from '../ui/progress';
 import Cookies from 'js-cookie';
-// import PodcastPlayer from './PodcastPlayer';
+import AudioPlayer from 'react-h5-audio-player';
+import 'react-h5-audio-player/lib/styles.css';
 
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
@@ -76,6 +77,15 @@ const NightscoutComponent = ({
     ? getCookieC('podcast_result')
     : null;
 
+  // Add this near your other useEffect hooks
+  useEffect(() => {
+    // Check stored podcast result on component mount
+    if (storedPodcastResult && storedPodcastResult.status === 'processing') {
+      console.log('Found processing podcast, resuming status checks');
+      setShouldCheckStatus(true);
+    }
+  }, []); // Empty dependency array means this runs once on mount
+
   const [formData, setFormData] = useState({
     nightscout_url: storedUrl || '',
     nightscout_token: storedToken || '',
@@ -87,6 +97,22 @@ const NightscoutComponent = ({
     storedDialog: storedDialog,
     storedPodcastResult: storedPodcastResult,
   });
+
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  // Add this function to refresh the URL
+  const refreshAudioUrl = async () => {
+    if (assessmentData?.podcast_result?.operation_id) {
+      try {
+        const response = await axios.post('/pyapi/refresh_audio_url', {
+          operation_id: assessmentData.podcast_result.operation_id,
+        });
+        setAudioUrl(response.data.url);
+      } catch (error) {
+        console.error('Error refreshing audio URL:', error);
+      }
+    }
+  };
 
   // Effect for polling podcast status
   useEffect(() => {
@@ -103,8 +129,13 @@ const NightscoutComponent = ({
           setPodcastStatus(newStatus);
 
           // If we get a success or error status, stop checking and update flag
-          if (newStatus === 'success' || newStatus === 'error') {
+          if (newStatus === 'done') {
+            console.log('podcast generation successful');
+            activePodcastResult.status = 'done';
             setShouldCheckStatus(false);
+          } else if (newStatus === 'error') {
+            console.log('podcast generation: error');
+            console.log(newStatus);
           }
         } catch (error) {
           console.error('Error checking podcast status:', error);
@@ -234,15 +265,15 @@ const NightscoutComponent = ({
       if (data.podcast_result) await setCookieC('podcast_result', JSON.stringify(data.podcast_result), { expires: 30 });
 
       // Set the assessment data first
-    setAssessmentData(data);
-    
-    // Start checking status regardless of onAssessmentComplete
-    setShouldCheckStatus(true);
+      setAssessmentData(data);
 
-    // Call the callback if it exists
-    if (onAssessmentComplete) {
-      onAssessmentComplete(data);
-    }
+      // Start checking status regardless of onAssessmentComplete
+      setShouldCheckStatus(true);
+
+      // Call the callback if it exists
+      if (onAssessmentComplete) {
+        onAssessmentComplete(data);
+      }
     } catch (error) {
       console.error('Error:', error);
       setError(error instanceof Error ? error.message : 'An unexpected error occurred');
@@ -324,7 +355,6 @@ const NightscoutComponent = ({
               <Tab>Assessment 2</Tab>
               <Tab>Dialog</Tab>
             </TabList>
-
             <TabPanel>
               <h2 className="text-xl font-bold mb-2">Notes</h2>
               <pre className="whitespace-pre-wrap">{assessmentData ? assessmentData.notes : storedNotes}</pre>
@@ -346,7 +376,7 @@ const NightscoutComponent = ({
               {podcastStatus && (
                 <h2
                   className={`text-xl font-bold mb-4 ${
-                    podcastStatus === 'success'
+                    podcastStatus === 'done'
                       ? 'text-green-600'
                       : podcastStatus === 'error'
                         ? 'text-red-600'
@@ -356,24 +386,23 @@ const NightscoutComponent = ({
                   {podcastStatus.charAt(0).toUpperCase() + podcastStatus.slice(1)}
                 </h2>
               )}
-              <div>{assessmentData ? assessmentData.podcast_result.message : storedPodcastResult?.message}</div>
+
+              {/* Add the audio player when podcast is ready */}
+              {podcastStatus === 'done' && assessmentData?.podcast_result?.url && (
+                <div className="mb-6">
+                  <AudioPlayer
+                    src={assessmentData.podcast_result.url}
+                    autoPlayAfterSrcChange={false}
+                    showJumpControls={true}
+                    customProgressBarSection={['progress', 'time', 'duration']}
+                    customControlsSection={['mainControls', 'volume']}
+                    onError={refreshAudioUrl} // Will try to refresh URL if playback fails
+                  />
+                </div>
+              )}
+
               <div className="p-4">
                 <DebugInterfaceViewer data={assessmentData ? assessmentData.podcast_result : storedPodcastResult} />
-              </div>
-              <div>
-                {
-                  // <PodcastPlayer
-                  //   podcastResult={
-                  //     assessmentData
-                  //       ? assessmentData.podcast_result
-                  //       : storedPodcastResult
-                  //         ? storedPodcastResult
-                  //         : undefined
-                  //   }
-                  //   checkOperationUrl="/api/get_operation"
-                  //   className="mt-4"
-                  // />
-                }
               </div>
               <pre className="whitespace-pre-wrap">{assessmentData ? assessmentData.dialog : storedDialog}</pre>
             </TabPanel>
