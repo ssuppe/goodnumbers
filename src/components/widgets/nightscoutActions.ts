@@ -1,20 +1,16 @@
-"use server";
+'use server';
 
 // import { fetch } from 'next/server';
 import winston from 'winston';
 import fs from 'fs/promises';
 import path from 'path';
 import { compress, decompress, Compressed } from 'compress-json';
-
-
+import { AssessmentData, PodcastGenerateResult } from '~/types/nightscout';
 
 // Configure Winston logger
 const logger = winston.createLogger({
   level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
+  format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
   transports: [
     new winston.transports.Console(),
     new winston.transports.File({ filename: 'error.log', level: 'error' }),
@@ -25,27 +21,6 @@ const logger = winston.createLogger({
 interface AssessmentError extends Error {
   step?: string;
   details?: any;
-}
-
-export interface PodcastGenerateResult {
-  status: string;
-  operation_id?: string;
-  url?: string;
-  error?: string;
-  gcs_path?: string;
-  bucket_name?: string;
-}
-
-async function getV3JWTToken(nightscout_url : string, token : string): Promise<string> {
-  // https://soopaloop.bbs.io/api/v2/authorization/request/REDACTED_NIGHTSCOUT_TOKEN_TEST
-  const response = await fetchWithErrorHandling(`${nightscout_url}/api/v2/authorization/request/${token}`, {
-    method: 'GET',
-    // headers: { 'Content-Type': 'application/json' },
-    // body: JSON.stringify({ treatments: sgvData, carbs: treatmentsData }),
-  }, "Getting Nightscout v3access token");
-  let res = await response.text();
-  let t = JSON.parse(res);
-  return t.token;
 }
 
 async function handleFetchError(response: Response): Promise<string> {
@@ -74,7 +49,6 @@ async function fetchWithErrorHandling(url: string, options: RequestInit, step: s
   }
 }
 
-
 async function readLocalJson(filePath: string): Promise<any> {
   try {
     const fullPath = path.join(process.cwd(), filePath);
@@ -86,29 +60,17 @@ async function readLocalJson(filePath: string): Promise<any> {
   }
 }
 
-export async function generateAssessments(csgvData: Compressed, ctreatmentsData: Compressed, useLocalData: boolean) {
-
-  
-  // const mockPodcastResult: PodcastGenerateResult = {
-  //   status: "completed",
-  //   operation_id: "op_" + Math.random().toString(36).substring(2, 15),
-  //   gcs_path: "podcasts/2024/04/test-podcast-123.mp3",
-  //   bucket_name: "my-podcast-bucket",
-  //   message: `Successfully generated podcast at ${new Date().toISOString()}`   // Optional field included
-  // };
-  // return {notes: "This is the notes",
-  //         assessment1: "This is the assessment1", 
-  //         assessment2: "This is assessment2",
-  //         dialog: "Hello I am a dialog",
-  //         podcast_result: mockPodcastResult};
-
+export async function generateAssessments(
+  csgvData: Compressed,
+  ctreatmentsData: Compressed,
+  useLocalData: boolean,
+): Promise<AssessmentData> {
   const apiUrl = process.env.FASTAPI_URL;
-  if (!apiUrl || apiUrl == "") {
+  if (!apiUrl || apiUrl == '') {
     logger.error('FASTAPI_URL environment variable is not set');
     throw new Error('FASTAPI_URL environment variable is not set');
-  }
-  else {
-    logger.info("FASTAPI_URL: " + apiUrl);
+  } else {
+    logger.info('FASTAPI_URL: ' + apiUrl);
   }
 
   if (useLocalData) {
@@ -117,60 +79,93 @@ export async function generateAssessments(csgvData: Compressed, ctreatmentsData:
       csgvData = compress(sgvData);
       let treatmentsData = await readLocalJson('/data/24Sept.30d/Nightscout.treatments.24Sept.30d.json');
       treatmentsData = compress(treatmentsData);
-      logger.info("Local data loaded successfully");
+      logger.info('Local data loaded successfully');
     } catch (error) {
-      logger.error("Failed to load local data:", { error });
+      logger.error('Failed to load local data:', { error });
       throw new Error(`Failed to load local data: ${(error as Error).message}`);
     }
   }
 
   try {
+    // Store the current timestamp
+    const now = new Date();
+    const timestamp = now
+      .toLocaleString('en-GB', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })
+      .replace(/\//g, '-');
+
     // Step 1: Generate Notes
-    logger.info("Step 1");
-    logger.info("sgvData: " + (csgvData == null));
-    logger.info("Sending to " + `${apiUrl}/pyapi/get_notes`);
-    const notes = await fetchWithErrorHandling(`${apiUrl}/pyapi/get_notes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ treatments: csgvData, carbs: ctreatmentsData }),
-    }, "Generating Notes");
+    logger.info('Step 1');
+    logger.info('sgvData: ' + (csgvData == null));
+    logger.info('Sending to ' + `${apiUrl}/pyapi/get_notes`);
+    const notes = await fetchWithErrorHandling(
+      `${apiUrl}/pyapi/get_notes`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ treatments: csgvData, carbs: ctreatmentsData }),
+      },
+      'Generating Notes',
+    );
 
     // Step 2: Generate Assessment 1
-    const assessment1Data = await fetchWithErrorHandling(`${apiUrl}/pyapi/get_assessment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes, template_num: 1 }),
-    }, "Generating Assessment 1");
+    const assessment1Data = await fetchWithErrorHandling(
+      `${apiUrl}/pyapi/get_assessment`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes, template_num: 1 }),
+      },
+      'Generating Assessment 1',
+    );
     const assessment1 = assessment1Data.response;
 
     // Step 3: Generate Assessment 2
-    const assessment2Data = await fetchWithErrorHandling(`${apiUrl}/pyapi/get_assessment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes, assessment1, template_num: 2 }),
-    }, "Generating Assessment 2");
+    const assessment2Data = await fetchWithErrorHandling(
+      `${apiUrl}/pyapi/get_assessment`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes, assessment1, template_num: 2 }),
+      },
+      'Generating Assessment 2',
+    );
     const assessment2 = assessment2Data.response;
 
     // Step 4: Generate Dialog
-    const dialogData = await fetchWithErrorHandling(`${apiUrl}/pyapi/get_assessment`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes, assessment1, assessment2, template_num: 3 }),
-    }, "Generating Dialog");
+    const dialogData = await fetchWithErrorHandling(
+      `${apiUrl}/pyapi/get_assessment`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes, assessment1, assessment2, template_num: 3 }),
+      },
+      'Generating Dialog',
+    );
     const dialog = dialogData.response;
 
     // Step 5: Start generation of audio
-     const podcastData = await fetchWithErrorHandling(`${apiUrl}/pyapi/gen_podcast`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dialog }),
-    }, "Generating Dialog");
-    const podcast_result : PodcastGenerateResult = podcastData;
+    const podcastData = await fetchWithErrorHandling(
+      `${apiUrl}/pyapi/gen_podcast`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dialog }),
+      },
+      'Generating Dialog',
+    );
+    const podcastResult: PodcastGenerateResult = podcastData;
 
-    return { notes, assessment1, assessment2, dialog, podcast_result };
+    return { notes, assessment1, assessment2, dialog, podcastResult, timestamp };
   } catch (error) {
     const err = error as AssessmentError;
-    logger.error("Failed to generate assessments:", { error: err });
+    logger.error('Failed to generate assessments:', { error: err });
     throw new Error(`Failed to generate assessments: ${err.step || 'Unknown step'} - ${err.message}`);
   }
 }
