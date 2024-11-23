@@ -73,8 +73,8 @@ async def get_job_status(operation_id: str) -> JobCheckResponse:
                 if operation.response:
                     print("success")
                     status.status = "done"
-                    status.error = MessageToDict(operation.response)
-                elif operation.status == 'error' and operation.error != {}:
+                    status.error = None
+                elif operation.status == 'error':
                     print("error")
                     status.status = "error"
                     status.error = MessageToDict(operation.error)

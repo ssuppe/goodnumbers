@@ -18,9 +18,6 @@ class PodcastDialog(BaseModel):
 class PodcastAudioURL:
     audio_url: str | None = None
     
-class JobCheck(BaseModel):
-    operation: str
-    
 class JobCheckResponse(BaseModel):
     name : str | None = None
     done : bool

@@ -97,15 +97,15 @@ async def gen_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGener
         )
 
 @app.post("/pyapi/check_podcast")
-async def check_podcast_api(operation_id: objects.JobCheck) -> objects.PodcastGenerateResult:
+async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> objects.PodcastGenerateResult:
     try:
-        status = await get_job_status(operation_id.operation)
+        status = await get_job_status(podcast_result.operation_id)
         
         if status.done and not status.error:
             # Generate signed URL when podcast is ready
             storage_client = storage.Client()
             bucket = storage_client.bucket(BUCKET_NAME)
-            blob = bucket.blob(status.gcs_path)  # Assuming this is stored in status.metadata
+            blob = bucket.blob(podcast_result.gcs_path)  
             
             url = blob.generate_signed_url(
                 version="v4",
@@ -118,31 +118,23 @@ async def check_podcast_api(operation_id: objects.JobCheck) -> objects.PodcastGe
                 }
             )
             
-            return objects.PodcastGenerateResult(
-                status="done",
-                operation_id=operation_id.operation,
-                url=url,
-                gcs_path=status.gcs_path,
-                bucket_name=BUCKET_NAME
-            )
-        elif status.error:
-            return objects.PodcastGenerateResult(
-                status="error",
-                operation_id=operation_id.operation,
-                error=str(status.error)
-            )
+            podcast_result.status = "done"
+            podcast_result.url = url
+
+            return podcast_result
+        if status.error:
+            podcast_result.status = "error"
+            podcast_result.error = str(status.error)
+            return podcast_result
+            
         else:
-            return objects.PodcastGenerateResult(
-                status="processing",
-                operation_id=operation_id.operation,
-                gcs_path=status.gcs_path,
-                bucket_name=BUCKET_NAME
-            )
+            podcast_result.status = "processing"
+            podcast_result.error = str(status.error)
             
     except Exception as e:
         return objects.PodcastGenerateResult(
             status="error",
-            operation_id=operation_id.operation,
+            operation_id=podcast_result.operation_id,
             error=str(e)
         )
 
