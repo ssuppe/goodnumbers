@@ -1,46 +1,34 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Headline from '../common/Headline';
 import { NightscoutProps } from '~/shared/types';
 import WidgetWrapper from '../common/WidgetWrapper';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Progress from '../ui/progress';
 import Cookies from 'js-cookie';
-import AudioPlayer from 'react-h5-audio-player';
-import 'react-h5-audio-player/lib/styles.css';
 
-import axios from 'axios';
-import axiosRetry from 'axios-retry';
 import { generateAssessments, PodcastGenerateResult } from './nightscoutActions';
-import { compress, decompress } from 'compress-json';
+import { compress } from 'compress-json';
 import { setCookieC, getCookieC } from '~/utils/cookies';
 import DebugInterfaceViewer from './DebugInterfaceViewer';
+import { createApiClient } from '~/lib/api/axios';
+
+interface AssessmentData {
+  notes: string;
+  assessment1: string;
+  assessment2: string;
+  dialog: string;
+  podcast_result: PodcastGenerateResult;
+}
 
 interface NightscoutComponentProps extends NightscoutProps {
-  onAssessmentComplete?: (data: {
-    notes: string;
-    assessment1: string;
-    assessment2: string;
-    dialog: string;
-    podcast_result: PodcastGenerateResult;
-  }) => void;
+  onAssessmentComplete?: (data: AssessmentData) => void;
   local?: string | null;
 }
 
-// Create an axios instance with retry configuration
-const axiosInstance = axios.create({
-  timeout: 300000, // 5 minutes
-});
-
-axiosRetry(axiosInstance, {
-  retries: 5,
-  retryDelay: axiosRetry.exponentialDelay,
-  shouldResetTimeout: true,
-  retryCondition: (error) => {
-    return axiosRetry.isNetworkOrIdempotentRequestError(error) || error.code === 'ECONNRESET';
-  },
-});
+let axiosInstance = createApiClient();
 
 const NightscoutComponent = ({
   header,
@@ -62,13 +50,13 @@ const NightscoutComponent = ({
   const [error, setError] = useState<string | null>(null);
   const [podcastStatus, setPodcastStatus] = useState<string | null>(null);
   const [shouldCheckStatus, setShouldCheckStatus] = useState(false);
-   // Create a separate state for podcast result that will be passed to DebugInterfaceViewer
-   
+  const [isClient, setIsClient] = useState(false);
 
   // Add state for last generated timestamp
   const storedTimestamp = getCookieC<string>('lastGeneratedTime');
   const [lastGeneratedTime, setLastGeneratedTime] = useState<string | null>(storedTimestamp);
 
+  // Get stored values
   const storedUrl = Cookies.get('url');
   const storedToken = Cookies.get('token');
   const storedNotes = getCookieC<string>('notes');
@@ -79,30 +67,15 @@ const NightscoutComponent = ({
     ? getCookieC('podcast_result')
     : null;
 
-    const [debugPodcastResult, setDebugPodcastResult] = useState<PodcastGenerateResult | null>(
-      storedPodcastResult
-    );
-
-   // Effect to update debugPodcastResult when assessmentData changes
-   useEffect(() => {
-    if (assessmentData?.podcast_result) {
-      setDebugPodcastResult(assessmentData.podcast_result);
+  // Initialize debugPodcastResult with proper error handling
+  const [debugPodcastResult, setDebugPodcastResult] = useState<PodcastGenerateResult | null>(() => {
+    try {
+      return storedPodcastResult ? storedPodcastResult : null;
+    } catch (e) {
+      console.error('Error parsing stored podcast result:', e);
+      return null;
     }
-  }, [assessmentData]);
-
-  // Effect to update debugPodcastResult when storedPodcastResult changes
-  useEffect(() => {
-    setDebugPodcastResult(storedPodcastResult);
-  }, [storedPodcastResult]);
-
-  // Add this near your other useEffect hooks
-  useEffect(() => {
-    // Check stored podcast result on component mount
-    if (storedPodcastResult && storedPodcastResult.status === 'processing') {
-      console.log('Found processing podcast, resuming status checks');
-      setShouldCheckStatus(true);
-    }
-  }, []); // Empty dependency array means this runs once on mount
+  });
 
   const [formData, setFormData] = useState({
     nightscout_url: storedUrl || '',
@@ -116,71 +89,81 @@ const NightscoutComponent = ({
     storedPodcastResult: storedPodcastResult,
   });
 
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  useEffect(() => {
+    return () => {
+      setShouldCheckStatus(false);
+      setDebugPodcastResult(null);
+      setPodcastStatus(null);
+    };
+  }, []);
 
-  // Add this function to refresh the URL
-  const refreshAudioUrl = async () => {
-    if (assessmentData?.podcast_result?.operation_id) {
-      try {
-        const response = await axios.post('/pyapi/refresh_audio_url', {
-          operation_id: assessmentData.podcast_result.operation_id,
-        });
-        setAudioUrl(response.data.url);
-      } catch (error) {
-        console.error('Error refreshing audio URL:', error);
-      }
+  // Combined effect for podcast result updates
+  useEffect(() => {
+    const newPodcastResult = assessmentData?.podcast_result || storedPodcastResult;
+    if (newPodcastResult && JSON.stringify(newPodcastResult) !== JSON.stringify(debugPodcastResult)) {
+      setDebugPodcastResult(newPodcastResult);
     }
-  };
+  }, [assessmentData, storedPodcastResult, debugPodcastResult]);
 
-// Effect for polling podcast status with updated state management
-useEffect(() => {
-  let intervalId: NodeJS.Timeout;
+  // Effect to check stored podcast result on mount
+  useEffect(() => {
+    if (storedPodcastResult && storedPodcastResult.status === 'processing') {
+      console.log('Found processing podcast, resuming status checks');
+      setShouldCheckStatus(true);
+    }
+  }, []); // Empty dependency array means this runs once on mount
 
-  const checkPodcastStatus = async () => {
+
+  // Effect for polling podcast status
+  useEffect(() => {
+    let intervalId;
     const activePodcastResult = assessmentData?.podcast_result || storedPodcastResult;
-    if (activePodcastResult && activePodcastResult.operation_id) {
-      try {
-        const response = await axios.post('/pyapi/check_podcast', activePodcastResult);
-        const newStatus = response.data.status;
-        setPodcastStatus(newStatus);
-
-        // Update the debugPodcastResult with the new status
-        setDebugPodcastResult(prev => {
-          if (prev) {
-            return { ...prev, status: newStatus };
-          }
-          return null;
-        });
-
-        if (newStatus === 'done') {
-          console.log('podcast generation successful');
-          setShouldCheckStatus(false);
+    
+    const checkPodcastStatus = async () => {
+      if (activePodcastResult && activePodcastResult.operation_id) {
+        try {
+          const response = await axiosInstance.post('/pyapi/check_podcast', activePodcastResult);
+          const newStatus = response.data.status;
           
-          // Update stored cookie with new status
-          const updatedResult = { ...activePodcastResult, status: 'done' };
-          await setCookieC('podcast_result', JSON.stringify(updatedResult));
-        } else if (newStatus === 'error') {
-          console.log('podcast generation: error');
+          setPodcastStatus(prevStatus => {
+            if (prevStatus !== newStatus) {
+              return newStatus;
+            }
+            return prevStatus;
+          });
+  
+          setDebugPodcastResult(prev => {
+            if (prev && prev.status !== newStatus) {
+              return { ...prev, status: newStatus };
+            }
+            return prev;
+          });
+  
+          if (newStatus === 'done' || newStatus === 'error') {
+            setShouldCheckStatus(false);
+          }
+        } catch (error) {
+          console.error('Error checking podcast status:', error);
           setShouldCheckStatus(false);
         }
-      } catch (error) {
-        console.error('Error checking podcast status:', error);
-        setShouldCheckStatus(false);
       }
+    };
+  
+    if (shouldCheckStatus && activePodcastResult) {
+      checkPodcastStatus();
+      intervalId = setInterval(checkPodcastStatus, 30000);
     }
-  };
+  
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [shouldCheckStatus]);  // Remove assessmentData and storedPodcastResult from dependencies
 
-  if (shouldCheckStatus) {
-    checkPodcastStatus();
-    intervalId = setInterval(checkPodcastStatus, 30000);
-  }
-
-  return () => {
-    if (intervalId) {
-      clearInterval(intervalId);
-    }
-  };
-}, [shouldCheckStatus, assessmentData?.podcast_result, storedPodcastResult]);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const isFormValid = formData.nightscout_url && formData.nightscout_token && formData.terms_accepted;
 
@@ -251,7 +234,6 @@ useEffect(() => {
     try {
       let sgvData = null;
       let treatmentsData = null;
-      // Fetch Nightscout data using client-side function
       if (!formData.demo_data) {
         const nightscout_data = await fetchNightscoutData(formData.nightscout_url, formData.nightscout_token);
         sgvData = nightscout_data.sgvData;
@@ -260,8 +242,7 @@ useEffect(() => {
 
       setProgressText('Generating podcast (this could take several minutes)...');
       setProgress(50);
-      // Generate assessments using Server Action
-      // Compress first to save network bandwidth/cost
+      
       let csgvData = compress(sgvData);
       let ctreatmentsData = compress(treatmentsData);
       const data = await generateAssessments(csgvData, ctreatmentsData, formData.demo_data);
@@ -283,20 +264,15 @@ useEffect(() => {
       await setCookieC('lastGeneratedTime', formattedTimestamp);
       setLastGeneratedTime(formattedTimestamp);
 
-      // Move the cookie setting here, outside of the callback
       if (data.notes) await setCookieC('notes', data.notes);
       if (data.assessment1) await setCookieC('assessment1', data.assessment1);
       if (data.assessment2) await setCookieC('assessment2', data.assessment2);
       if (data.dialog) await setCookieC('dialog', data.dialog);
       if (data.podcast_result) await setCookieC('podcast_result', JSON.stringify(data.podcast_result), { expires: 30 });
 
-      // Set the assessment data first
       setAssessmentData(data);
-
-      // Start checking status regardless of onAssessmentComplete
       setShouldCheckStatus(true);
 
-      // Call the callback if it exists
       if (onAssessmentComplete) {
         onAssessmentComplete(data);
       }
@@ -308,6 +284,20 @@ useEffect(() => {
       setProgress(0);
       setProgressText('');
     }
+  };
+
+
+
+
+  const renderDebugViewer = () => {
+    const viewerData = assessmentData?.podcast_result || debugPodcastResult;
+    if (!viewerData) return null;
+    
+    return (
+      <div className="p-4">
+        <DebugInterfaceViewer data={viewerData} />
+      </div>
+    );
   };
 
   return (
@@ -369,7 +359,7 @@ useEffect(() => {
           </button>
         </form>
       </div>
-      {(assessmentData || storedNotes) && (
+      {(assessmentData || storedNotes) && isClient &&(
         <div className="mt-8 max-w-4xl mx-auto">
           {lastGeneratedTime && (
             <div className="mb-4 text-gray-600 text-center">Last results generated on {lastGeneratedTime}</div>
@@ -400,37 +390,24 @@ useEffect(() => {
             <TabPanel>
               <h2 className="text-xl font-bold mb-2">Dialog</h2>
               {podcastStatus && (
-                <h2
-                  className={`text-xl font-bold mb-4 ${
-                    podcastStatus === 'done'
-                      ? 'text-green-600'
-                      : podcastStatus === 'error'
-                        ? 'text-red-600'
-                        : 'text-black'
-                  }`}
-                >
-                  {podcastStatus.charAt(0).toUpperCase() + podcastStatus.slice(1)}
-                </h2>
-              )}
+          <h2
+            className={`text-xl font-bold mb-4 ${
+              podcastStatus === 'done'
+                ? 'text-green-600'
+                : podcastStatus === 'error'
+                  ? 'text-red-600'
+                  : 'text-black'
+            }`}
+          >
+            {podcastStatus.charAt(0).toUpperCase() + podcastStatus.slice(1)}
+          </h2>
+        )}
 
-              {/* Add the audio player when podcast is ready */}
-              {podcastStatus === 'done' && assessmentData?.podcast_result?.url && (
-                <div className="mb-6">
-                  <AudioPlayer
-                    src={assessmentData.podcast_result.url}
-                    autoPlayAfterSrcChange={false}
-                    showJumpControls={true}
-                    customProgressBarSection={['progress', 'time', 'duration']}
-                    customControlsSection={['mainControls', 'volume']}
-                    onError={refreshAudioUrl} // Will try to refresh URL if playback fails
-                  />
-                </div>
-              )}
-
-              <div className="p-4">
-                <DebugInterfaceViewer data={assessmentData ? assessmentData.podcast_result : debugPodcastResult} />
-              </div>
-              <pre className="whitespace-pre-wrap">{assessmentData ? assessmentData.dialog : storedDialog}</pre>
+        {renderDebugViewer()}
+        
+        <pre className="whitespace-pre-wrap">
+          {assessmentData ? assessmentData.dialog : storedDialog}
+        </pre>
             </TabPanel>
           </Tabs>
         </div>
