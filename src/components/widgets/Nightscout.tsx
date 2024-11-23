@@ -62,6 +62,8 @@ const NightscoutComponent = ({
   const [error, setError] = useState<string | null>(null);
   const [podcastStatus, setPodcastStatus] = useState<string | null>(null);
   const [shouldCheckStatus, setShouldCheckStatus] = useState(false);
+   // Create a separate state for podcast result that will be passed to DebugInterfaceViewer
+   
 
   // Add state for last generated timestamp
   const storedTimestamp = getCookieC<string>('lastGeneratedTime');
@@ -76,6 +78,22 @@ const NightscoutComponent = ({
   const storedPodcastResult: PodcastGenerateResult | null = getCookieC<string>('podcast_result')
     ? getCookieC('podcast_result')
     : null;
+
+    const [debugPodcastResult, setDebugPodcastResult] = useState<PodcastGenerateResult | null>(
+      storedPodcastResult
+    );
+
+   // Effect to update debugPodcastResult when assessmentData changes
+   useEffect(() => {
+    if (assessmentData?.podcast_result) {
+      setDebugPodcastResult(assessmentData.podcast_result);
+    }
+  }, [assessmentData]);
+
+  // Effect to update debugPodcastResult when storedPodcastResult changes
+  useEffect(() => {
+    setDebugPodcastResult(storedPodcastResult);
+  }, [storedPodcastResult]);
 
   // Add this near your other useEffect hooks
   useEffect(() => {
@@ -114,47 +132,55 @@ const NightscoutComponent = ({
     }
   };
 
-  // Effect for polling podcast status
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+// Effect for polling podcast status with updated state management
+useEffect(() => {
+  let intervalId: NodeJS.Timeout;
 
-    const checkPodcastStatus = async () => {
-      const activePodcastResult = assessmentData?.podcast_result || storedPodcastResult;
-      if (activePodcastResult && activePodcastResult.operation_id) {
-        try {
-          const response = await axios.post('/pyapi/check_podcast', {
-            operation: activePodcastResult.operation_id,
-          });
-          const newStatus = response.data.status;
-          setPodcastStatus(newStatus);
+  const checkPodcastStatus = async () => {
+    const activePodcastResult = assessmentData?.podcast_result || storedPodcastResult;
+    if (activePodcastResult && activePodcastResult.operation_id) {
+      try {
+        const response = await axios.post('/pyapi/check_podcast', activePodcastResult);
+        const newStatus = response.data.status;
+        setPodcastStatus(newStatus);
 
-          // If we get a success or error status, stop checking and update flag
-          if (newStatus === 'done') {
-            console.log('podcast generation successful');
-            activePodcastResult.status = 'done';
-            setShouldCheckStatus(false);
-          } else if (newStatus === 'error') {
-            console.log('podcast generation: error');
-            console.log(newStatus);
+        // Update the debugPodcastResult with the new status
+        setDebugPodcastResult(prev => {
+          if (prev) {
+            return { ...prev, status: newStatus };
           }
-        } catch (error) {
-          console.error('Error checking podcast status:', error);
+          return null;
+        });
+
+        if (newStatus === 'done') {
+          console.log('podcast generation successful');
+          setShouldCheckStatus(false);
+          
+          // Update stored cookie with new status
+          const updatedResult = { ...activePodcastResult, status: 'done' };
+          await setCookieC('podcast_result', JSON.stringify(updatedResult));
+        } else if (newStatus === 'error') {
+          console.log('podcast generation: error');
           setShouldCheckStatus(false);
         }
+      } catch (error) {
+        console.error('Error checking podcast status:', error);
+        setShouldCheckStatus(false);
       }
-    }; // Only start polling if shouldCheckStatus is true
-    if (shouldCheckStatus) {
-      checkPodcastStatus(); // Initial check
-      intervalId = setInterval(checkPodcastStatus, 30000); // Check every 30 seconds
     }
+  };
 
-    // Cleanup function
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [shouldCheckStatus, assessmentData?.podcast_result, storedPodcastResult]);
+  if (shouldCheckStatus) {
+    checkPodcastStatus();
+    intervalId = setInterval(checkPodcastStatus, 30000);
+  }
+
+  return () => {
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
+  };
+}, [shouldCheckStatus, assessmentData?.podcast_result, storedPodcastResult]);
 
   const isFormValid = formData.nightscout_url && formData.nightscout_token && formData.terms_accepted;
 
@@ -402,7 +428,7 @@ const NightscoutComponent = ({
               )}
 
               <div className="p-4">
-                <DebugInterfaceViewer data={assessmentData ? assessmentData.podcast_result : storedPodcastResult} />
+                <DebugInterfaceViewer data={assessmentData ? assessmentData.podcast_result : debugPodcastResult} />
               </div>
               <pre className="whitespace-pre-wrap">{assessmentData ? assessmentData.dialog : storedDialog}</pre>
             </TabPanel>
