@@ -9,19 +9,14 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Progress from '../ui/progress';
 import Cookies from 'js-cookie';
 
-import { generateAssessments, PodcastGenerateResult } from './nightscoutActions';
+import { generateAssessments } from './nightscoutActions';
 import { compress } from 'compress-json';
 import { setCookieC, getCookieC } from '~/utils/cookies';
 import DebugInterfaceViewer from './DebugInterfaceViewer';
 import { createApiClient } from '~/lib/api/axios';
-
-interface AssessmentData {
-  notes: string;
-  assessment1: string;
-  assessment2: string;
-  dialog: string;
-  podcast_result: PodcastGenerateResult;
-}
+import { useAssessmentState } from '~/hooks/useAssessmentState';
+import { useLoadingState } from '~/hooks/useLoadingState';
+import { AssessmentData, PodcastGenerateResult } from '~/types/nightscout';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
@@ -36,134 +31,64 @@ const NightscoutComponent = ({
   hasBackground = false,
   onAssessmentComplete,
 }: NightscoutComponentProps): JSX.Element => {
-  const [assessmentData, setAssessmentData] = useState<{
-    notes: string;
-    assessment1: string;
-    assessment2: string;
-    dialog: string;
-    podcast_result: PodcastGenerateResult;
-  } | null>(null);
+  const initialStoredData = {
+    notes: getCookieC<string>('notes'),
+    assessment1: getCookieC<string>('assessment1'),
+    assessment2: getCookieC<string>('assessment2'),
+    dialog: getCookieC<string>('dialog'),
+    podcastResult: getCookieC<PodcastGenerateResult>('podcast_result'),
+    timestamp: getCookieC<string>('timestamp'),
+  };
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [progressText, setProgressText] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [podcastStatus, setPodcastStatus] = useState<string | null>(null);
-  const [shouldCheckStatus, setShouldCheckStatus] = useState(false);
-  const [isClient, setIsClient] = useState(false);
+  const { assessmentData, updateAssessmentData, podcastStatus, setPodcastStatus, getCurrentPodcastResult } =
+    useAssessmentState(initialStoredData);
 
-  // Add state for last generated timestamp
-  const storedTimestamp = getCookieC<string>('lastGeneratedTime');
-  const [lastGeneratedTime, setLastGeneratedTime] = useState<string | null>(storedTimestamp);
+  const { isLoading, progress, progressText, error, startLoading, updateProgress, stopLoading, setLoadingError } =
+    useLoadingState();
 
-  // Get stored values
-  const storedUrl = Cookies.get('url');
-  const storedToken = Cookies.get('token');
-  const storedNotes = getCookieC<string>('notes');
-  const storedAssessment1 = getCookieC<string>('assessment1');
-  const storedAssessment2 = getCookieC<string>('assessment2');
-  const storedDialog = getCookieC<string>('dialog');
-  const storedPodcastResult: PodcastGenerateResult | null = getCookieC<string>('podcast_result')
-    ? getCookieC('podcast_result')
-    : null;
-
-  // Initialize debugPodcastResult with proper error handling
-  const [debugPodcastResult, setDebugPodcastResult] = useState<PodcastGenerateResult | null>(() => {
-    try {
-      return storedPodcastResult ? storedPodcastResult : null;
-    } catch (e) {
-      console.error('Error parsing stored podcast result:', e);
-      return null;
-    }
-  });
-
+  // Simplified form data
   const [formData, setFormData] = useState({
-    nightscout_url: storedUrl || '',
-    nightscout_token: storedToken || '',
+    nightscout_url: Cookies.get('url') || '',
+    nightscout_token: Cookies.get('token') || '',
     terms_accepted: false,
     demo_data: false,
-    storedNotes: storedNotes,
-    storedAssessment1: storedAssessment1,
-    storedAssessment2: storedAssessment2,
-    storedDialog: storedDialog,
-    storedPodcastResult: storedPodcastResult,
   });
-
-  useEffect(() => {
-    return () => {
-      setShouldCheckStatus(false);
-      setDebugPodcastResult(null);
-      setPodcastStatus(null);
-    };
-  }, []);
-
-  // Combined effect for podcast result updates
-  useEffect(() => {
-    const newPodcastResult = assessmentData?.podcast_result || storedPodcastResult;
-    if (newPodcastResult && JSON.stringify(newPodcastResult) !== JSON.stringify(debugPodcastResult)) {
-      setDebugPodcastResult(newPodcastResult);
-    }
-  }, [assessmentData, storedPodcastResult, debugPodcastResult]);
-
-  // Effect to check stored podcast result on mount
-  useEffect(() => {
-    if (storedPodcastResult && storedPodcastResult.status === 'processing') {
-      console.log('Found processing podcast, resuming status checks');
-      setShouldCheckStatus(true);
-    }
-  }, []); // Empty dependency array means this runs once on mount
-
 
   // Effect for polling podcast status
   useEffect(() => {
-    let intervalId;
-    const activePodcastResult = assessmentData?.podcast_result || storedPodcastResult;
-    
+    let intervalId: NodeJS.Timeout | null = null;
+
     const checkPodcastStatus = async () => {
-      if (activePodcastResult && activePodcastResult.operation_id) {
+      const currentPodcastResult = getCurrentPodcastResult();
+
+      if (currentPodcastResult?.operation_id) {
         try {
-          const response = await axiosInstance.post('/pyapi/check_podcast', activePodcastResult);
+          const response = await axiosInstance.post('/pyapi/check_podcast', currentPodcastResult);
           const newStatus = response.data.status;
-          
-          setPodcastStatus(prevStatus => {
-            if (prevStatus !== newStatus) {
-              return newStatus;
-            }
-            return prevStatus;
-          });
-  
-          setDebugPodcastResult(prev => {
-            if (prev && prev.status !== newStatus) {
-              return { ...prev, status: newStatus };
-            }
-            return prev;
-          });
-  
+
+          setPodcastStatus(newStatus);
+
           if (newStatus === 'done' || newStatus === 'error') {
-            setShouldCheckStatus(false);
+            if (intervalId) clearInterval(intervalId);
           }
         } catch (error) {
           console.error('Error checking podcast status:', error);
-          setShouldCheckStatus(false);
+          if (intervalId) clearInterval(intervalId);
         }
       }
     };
-  
-    if (shouldCheckStatus && activePodcastResult) {
+
+    // Only start polling if we have a processing podcast
+    const currentPodcastResult = getCurrentPodcastResult();
+    if (currentPodcastResult?.status === 'processing') {
       checkPodcastStatus();
       intervalId = setInterval(checkPodcastStatus, 30000);
     }
-  
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [shouldCheckStatus]);  // Remove assessmentData and storedPodcastResult from dependencies
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [getCurrentPodcastResult]);
 
   const isFormValid = formData.nightscout_url && formData.nightscout_token && formData.terms_accepted;
 
@@ -219,80 +144,97 @@ const NightscoutComponent = ({
     }
   };
 
+  // Simplified handleSubmit
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log('Submitted!');
-    setError(null);
-    Cookies.set('url', formData.nightscout_url, { expires: 30 });
-    Cookies.set('token', formData.nightscout_token, { expires: 30 });
-    setIsLoading(true);
-    setProgress(0);
-
-    setProgressText('Collecting Nightscout data...');
-    setProgress(25);
+    startLoading('Collecting Nightscout data...');
 
     try {
-      let sgvData = null;
-      let treatmentsData = null;
+      // Save form data to cookies
+      Cookies.set('url', formData.nightscout_url, { expires: 30 });
+      Cookies.set('token', formData.nightscout_token, { expires: 30 });
+
+      // Get Nightscout data
+      let nightscoutData = null;
       if (!formData.demo_data) {
-        const nightscout_data = await fetchNightscoutData(formData.nightscout_url, formData.nightscout_token);
-        sgvData = nightscout_data.sgvData;
-        treatmentsData = nightscout_data.treatmentsData;
+        updateProgress(25, 'Collecting Nightscout data...');
+        nightscoutData = await fetchNightscoutData(formData.nightscout_url, formData.nightscout_token);
       }
 
-      setProgressText('Generating podcast (this could take several minutes)...');
-      setProgress(50);
-      
-      let csgvData = compress(sgvData);
-      let ctreatmentsData = compress(treatmentsData);
-      const data = await generateAssessments(csgvData, ctreatmentsData, formData.demo_data);
-      setProgress(100);
+      // Generate assessments
+      updateProgress(50, 'Generating podcast...');
+      if (nightscoutData != null) {
+        const compressedData = {
+          sgvData: compress(nightscoutData.sgvData),
+          treatmentsData: compress(nightscoutData.treatmentsData),
+        };
 
-      // Store the current timestamp
-      const now = new Date();
-      const formattedTimestamp = now
-        .toLocaleString('en-GB', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-        })
-        .replace(/\//g, '-');
+        const data = await generateAssessments(
+          compressedData.sgvData,
+          compressedData.treatmentsData,
+          formData.demo_data,
+        );
 
-      await setCookieC('lastGeneratedTime', formattedTimestamp);
-      setLastGeneratedTime(formattedTimestamp);
+        // Update all assessment data at once
+        await updateAssessmentData(data);
 
-      if (data.notes) await setCookieC('notes', data.notes);
-      if (data.assessment1) await setCookieC('assessment1', data.assessment1);
-      if (data.assessment2) await setCookieC('assessment2', data.assessment2);
-      if (data.dialog) await setCookieC('dialog', data.dialog);
-      if (data.podcast_result) await setCookieC('podcast_result', JSON.stringify(data.podcast_result), { expires: 30 });
-
-      setAssessmentData(data);
-      setShouldCheckStatus(true);
-
-      if (onAssessmentComplete) {
-        onAssessmentComplete(data);
+        if (onAssessmentComplete) {
+          onAssessmentComplete(data);
+        }
       }
     } catch (error) {
-      console.error('Error:', error);
-      setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      setLoadingError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
-      setIsLoading(false);
-      setProgress(0);
-      setProgressText('');
+      stopLoading();
     }
   };
 
+  // Simplified render method for assessments
+  const renderAssessmentContent = () => {
+    const currentData = assessmentData || initialStoredData;
 
-
+    return (
+      <Tabs>
+        <TabList>
+          <Tab>Notes</Tab>
+          <Tab>Assessment 1</Tab>
+          <Tab>Assessment 2</Tab>
+          <Tab>Dialog</Tab>
+        </TabList>
+        <TabPanel>
+          <h2 className="text-xl font-bold mb-2">Notes</h2>
+          <pre className="whitespace-pre-wrap">{currentData.notes}</pre>
+        </TabPanel>
+        <TabPanel>
+          <h2 className="text-xl font-bold mb-2">Assessment 1</h2>
+          <pre className="whitespace-pre-wrap">{currentData.assessment1}</pre>
+        </TabPanel>
+        <TabPanel>
+          <h2 className="text-xl font-bold mb-2">Assessment 2</h2>
+          <pre className="whitespace-pre-wrap">{currentData.assessment2}</pre>
+        </TabPanel>
+        <TabPanel>
+          <h2 className="text-xl font-bold mb-2">Dialog</h2>
+          {podcastStatus && (
+            <h2
+              className={`text-xl font-bold mb-4 ${
+                podcastStatus === 'done' ? 'text-green-600' : podcastStatus === 'error' ? 'text-red-600' : 'text-black'
+              }`}
+            >
+              {podcastStatus.charAt(0).toUpperCase() + podcastStatus.slice(1)}
+            </h2>
+          )}
+          {currentData.podcastResult && <DebugInterfaceViewer data={currentData.podcastResult} />}
+          <pre className="whitespace-pre-wrap">{currentData.dialog}</pre>
+        </TabPanel>
+      </Tabs>
+    );
+  };
 
   const renderDebugViewer = () => {
-    const viewerData = assessmentData?.podcast_result || debugPodcastResult;
+    const viewerData = assessmentData?.podcastResult || debugPodcastResult;
     if (!viewerData) return null;
-    
+
     return (
       <div className="p-4">
         <DebugInterfaceViewer data={viewerData} />
@@ -359,57 +301,12 @@ const NightscoutComponent = ({
           </button>
         </form>
       </div>
-      {(assessmentData || storedNotes) && isClient &&(
+      {(assessmentData || initialStoredData.notes) && (
         <div className="mt-8 max-w-4xl mx-auto">
-          {lastGeneratedTime && (
-            <div className="mb-4 text-gray-600 text-center">Last results generated on {lastGeneratedTime}</div>
+          {assessmentData?.timestamp && (
+            <div className="mb-4 text-gray-600 text-center">Last results generated on {assessmentData?.timestamp}</div>
           )}
-          <Tabs>
-            <TabList>
-              <Tab>Notes</Tab>
-              <Tab>Assessment 1</Tab>
-              <Tab>Assessment 2</Tab>
-              <Tab>Dialog</Tab>
-            </TabList>
-            <TabPanel>
-              <h2 className="text-xl font-bold mb-2">Notes</h2>
-              <pre className="whitespace-pre-wrap">{assessmentData ? assessmentData.notes : storedNotes}</pre>
-            </TabPanel>
-            <TabPanel>
-              <h2 className="text-xl font-bold mb-2">Assessment 1</h2>
-              <pre className="whitespace-pre-wrap">
-                {assessmentData ? assessmentData.assessment1 : storedAssessment1}
-              </pre>
-            </TabPanel>
-            <TabPanel>
-              <h2 className="text-xl font-bold mb-2">Assessment 2</h2>
-              <pre className="whitespace-pre-wrap">
-                {assessmentData ? assessmentData.assessment2 : storedAssessment2}
-              </pre>
-            </TabPanel>
-            <TabPanel>
-              <h2 className="text-xl font-bold mb-2">Dialog</h2>
-              {podcastStatus && (
-          <h2
-            className={`text-xl font-bold mb-4 ${
-              podcastStatus === 'done'
-                ? 'text-green-600'
-                : podcastStatus === 'error'
-                  ? 'text-red-600'
-                  : 'text-black'
-            }`}
-          >
-            {podcastStatus.charAt(0).toUpperCase() + podcastStatus.slice(1)}
-          </h2>
-        )}
-
-        {renderDebugViewer()}
-        
-        <pre className="whitespace-pre-wrap">
-          {assessmentData ? assessmentData.dialog : storedDialog}
-        </pre>
-            </TabPanel>
-          </Tabs>
+          {renderAssessmentContent()}
         </div>
       )}
     </WidgetWrapper>
