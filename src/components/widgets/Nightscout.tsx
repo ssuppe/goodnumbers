@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Headline from '../common/Headline';
 import { NightscoutProps } from '~/shared/types';
@@ -46,6 +46,12 @@ const NightscoutComponent = ({
   const { isLoading, progress, progressText, error, startLoading, updateProgress, stopLoading, setLoadingError } =
     useLoadingState();
 
+  const [isClient, setIsClient] = useState(false);
+  // Add useEffect to set isClient
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Simplified form data
   const [formData, setFormData] = useState({
     nightscout_url: Cookies.get('url') || '',
@@ -55,40 +61,74 @@ const NightscoutComponent = ({
   });
 
   // Effect for polling podcast status
+  // Effect for polling podcast status
+  const updatePodcastResult = useCallback(
+    async (podcastResult: PodcastGenerateResult | null) => {
+      try {
+        const response = await axiosInstance.post('/pyapi/check_podcast', podcastResult);
+        const updatedPodcastResult: PodcastGenerateResult = response.data;
+
+        // Update the podcast status
+        setPodcastStatus(updatedPodcastResult.status);
+
+        // Update the entire podcast result in cookies and state
+        if (assessmentData) {
+          const updatedAssessmentData = {
+            ...assessmentData,
+            podcast_result: updatedPodcastResult,
+          };
+          await updateAssessmentData(updatedAssessmentData);
+        } else if (initialStoredData.notes) {
+          const updatedAssessmentData: AssessmentData = {
+            notes: initialStoredData.notes || '',
+            assessment1: initialStoredData.assessment1 || '',
+            assessment2: initialStoredData.assessment2 || '',
+            dialog: initialStoredData.dialog || '',
+            podcastResult: updatedPodcastResult,
+            timestamp: initialStoredData.timestamp,
+          };
+          await updateAssessmentData(updatedAssessmentData);
+        }
+
+        return updatedPodcastResult.status;
+      } catch (error) {
+        console.error('Error checking podcast status:', error);
+        return 'error';
+      }
+    },
+    [assessmentData, initialStoredData, updateAssessmentData],
+  );
+
+  // Simplified useEffect with fewer dependencies
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
+    let isActive = true; // For cleanup
 
-    const checkPodcastStatus = async () => {
+    const pollStatus = async () => {
       const currentPodcastResult = getCurrentPodcastResult();
+      const newStatus = await updatePodcastResult(currentPodcastResult);
 
-      if (currentPodcastResult?.operation_id) {
-        try {
-          const response = await axiosInstance.post('/pyapi/check_podcast', currentPodcastResult);
-          const newStatus = response.data.status;
-
-          setPodcastStatus(newStatus);
-
-          if (newStatus === 'done' || newStatus === 'error') {
-            if (intervalId) clearInterval(intervalId);
-          }
-        } catch (error) {
-          console.error('Error checking podcast status:', error);
-          if (intervalId) clearInterval(intervalId);
+      if (newStatus === 'done' || newStatus === 'error') {
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
         }
       }
     };
 
-    // Only start polling if we have a processing podcast
     const currentPodcastResult = getCurrentPodcastResult();
     if (currentPodcastResult?.status === 'processing') {
-      checkPodcastStatus();
-      intervalId = setInterval(checkPodcastStatus, 30000);
+      pollStatus(); // Initial check
+      intervalId = setInterval(pollStatus, 30000);
     }
 
     return () => {
-      if (intervalId) clearInterval(intervalId);
+      isActive = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
-  }, [getCurrentPodcastResult]);
+  }, [getCurrentPodcastResult, updatePodcastResult]); // Minimal dependencies
 
   const isFormValid = formData.nightscout_url && formData.nightscout_token && formData.terms_accepted;
 
@@ -301,7 +341,7 @@ const NightscoutComponent = ({
           </button>
         </form>
       </div>
-      {(assessmentData || initialStoredData.notes) && (
+      {isClient && (assessmentData || initialStoredData.notes) && (
         <div className="mt-8 max-w-4xl mx-auto">
           {assessmentData?.timestamp && (
             <div className="mb-4 text-gray-600 text-center">Last results generated on {assessmentData?.timestamp}</div>

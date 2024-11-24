@@ -159,6 +159,7 @@ async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
                 operation_id=operation.operation.name,\
                 gcs_path=gcs_path,\
                 bucket_name=BUCKET_NAME,\
+                url="https://storage.googleapis.com/goodnumbers/"+gcs_path,
                 message="Audio generation started successfully")
             return res
 
