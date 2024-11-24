@@ -29,7 +29,7 @@ with open(os.path.join("app", "_prompts", "pass3.txt"), "r", encoding="utf-8") a
 
 gemini_api_key = os.environ["GEMINI_API_KEY"]
 # Constants
-BUCKET_NAME = "your-bucket-name"  # Replace with your bucket name
+BUCKET_NAME = "goodnumbers"  # Replace with your bucket name
 GCS_PATH = "audio-files"  # Folder in bucket to store audio files
 POLLING_INTERVAL = 10  # seconds
 TIMEOUT = 600  # 10 minutes
@@ -83,12 +83,7 @@ async def gen_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGener
         # Your existing podcast generation logic
         result = await gen_podcast(dialog)
         
-        return objects.PodcastGenerateResult(
-            status="processing",
-            operation_id=result.operation_id,
-            gcs_path=result.gcs_path,
-            bucket_name=result.bucket_name
-        )
+        return result
     except Exception as e:
         return objects.PodcastGenerateResult(
             status="error",
@@ -102,24 +97,24 @@ async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> ob
         status = await get_job_status(podcast_result.operation_id)
         
         if status.done and not status.error:
-            # Generate signed URL when podcast is ready
-            storage_client = storage.Client()
-            bucket = storage_client.bucket(BUCKET_NAME)
-            blob = bucket.blob(podcast_result.gcs_path)  
+            # # Generate signed URL when podcast is ready
+            # storage_client = storage.Client()
+            # bucket = storage_client.bucket(BUCKET_NAME)
+            # blob = bucket.blob(podcast_result.gcs_path)  
             
-            url = blob.generate_signed_url(
-                version="v4",
-                expiration=datetime.timedelta(hours=1),
-                method="GET",
-                response_type="audio/mpeg",
-                headers={
-                    "Access-Control-Allow-Origin": "*",
-                    "Cache-Control": "public, max-age=3600"
-                }
-            )
+            # url = blob.generate_signed_url(
+            #     version="v4",
+            #     expiration=datetime.timedelta(hours=1),
+            #     method="GET",
+            #     response_type="audio/mpeg",
+            #     headers={
+            #         "Access-Control-Allow-Origin": "*",
+            #         "Cache-Control": "public, max-age=3600"
+            #     }
+            # )
             
             podcast_result.status = "done"
-            podcast_result.url = url
+            # podcast_result.url = url
 
             return podcast_result
         if status.error:
@@ -252,7 +247,7 @@ async def test():
 async def generate_podcast_url(file_path: str):
     try:
         storage_client = storage.Client()
-        bucket = storage_client.bucket('your-bucket-name')
+        bucket = storage_client.bucket('goodnumbers')
         blob = bucket.blob(file_path)
 
         # Generate signed URL that expires in 1 hour
@@ -261,10 +256,7 @@ async def generate_podcast_url(file_path: str):
             expiration=datetime.timedelta(hours=1),
             method="GET",
             response_type="audio/mpeg",
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Cache-Control": "public, max-age=3600"
-            }
+            headers=None
         )
         
         return {"url": url}
