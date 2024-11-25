@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import dynamic from 'next/dynamic';
 import Headline from '../common/Headline';
 import { NightscoutProps } from '~/shared/types';
 import WidgetWrapper from '../common/WidgetWrapper';
@@ -11,12 +10,12 @@ import Cookies from 'js-cookie';
 
 import { generateAssessments } from './nightscoutActions';
 import { compress } from 'compress-json';
-import { setCookieC, getCookieC } from '~/utils/cookies';
 import DebugInterfaceViewer from './DebugInterfaceViewer';
 import { createApiClient } from '~/lib/api/axios';
 import { useAssessmentState } from '~/hooks/useAssessmentState';
 import { useLoadingState } from '~/hooks/useLoadingState';
 import { AssessmentData, PodcastGenerateResult } from '~/types/nightscout';
+import winston from 'winston';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
@@ -31,17 +30,7 @@ const NightscoutComponent = ({
   hasBackground = false,
   onAssessmentComplete,
 }: NightscoutComponentProps): JSX.Element => {
-  const initialStoredData = {
-    notes: getCookieC<string>('notes'),
-    assessment1: getCookieC<string>('assessment1'),
-    assessment2: getCookieC<string>('assessment2'),
-    dialog: getCookieC<string>('dialog'),
-    podcastResult: getCookieC<PodcastGenerateResult>('podcast_result'),
-    timestamp: getCookieC<string>('timestamp'),
-  };
-
-  const { assessmentData, updateAssessmentData, podcastStatus, setPodcastStatus, getCurrentPodcastResult } =
-    useAssessmentState(initialStoredData);
+  const { assessmentData, error: cookieError, updateAssessmentData, getCurrentPodcastResult } = useAssessmentState();
 
   const { isLoading, progress, progressText, error, startLoading, updateProgress, stopLoading, setLoadingError } =
     useLoadingState();
@@ -61,74 +50,122 @@ const NightscoutComponent = ({
   });
 
   // Effect for polling podcast status
-  // Effect for polling podcast status
   const updatePodcastResult = useCallback(
     async (podcastResult: PodcastGenerateResult | null) => {
       try {
-        const response = await axiosInstance.post('/pyapi/check_podcast', podcastResult);
-        const updatedPodcastResult: PodcastGenerateResult = response.data;
-
-        // Update the podcast status
-        setPodcastStatus(updatedPodcastResult.status);
+        // const response = await axiosInstance.post('/pyapi/check_podcast', podcastResult);
+        // const updatedPodcastResult: PodcastGenerateResult = response.data;
 
         // Update the entire podcast result in cookies and state
         if (assessmentData) {
           const updatedAssessmentData = {
             ...assessmentData,
-            podcast_result: updatedPodcastResult,
-          };
-          await updateAssessmentData(updatedAssessmentData);
-        } else if (initialStoredData.notes) {
-          const updatedAssessmentData: AssessmentData = {
-            notes: initialStoredData.notes || '',
-            assessment1: initialStoredData.assessment1 || '',
-            assessment2: initialStoredData.assessment2 || '',
-            dialog: initialStoredData.dialog || '',
-            podcastResult: updatedPodcastResult,
-            timestamp: initialStoredData.timestamp,
+            podcastResult: podcastResult,
           };
           await updateAssessmentData(updatedAssessmentData);
         }
 
-        return updatedPodcastResult.status;
+        return podcastResult?.status;
       } catch (error) {
         console.error('Error checking podcast status:', error);
         return 'error';
       }
     },
-    [assessmentData, initialStoredData, updateAssessmentData],
+    [assessmentData, updateAssessmentData],
   );
 
-  // Simplified useEffect with fewer dependencies
   useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-    let isActive = true; // For cleanup
-
-    const pollStatus = async () => {
-      const currentPodcastResult = getCurrentPodcastResult();
-      const newStatus = await updatePodcastResult(currentPodcastResult);
-
-      if (newStatus === 'done' || newStatus === 'error') {
-        if (intervalId) {
-          clearInterval(intervalId);
-          intervalId = null;
-        }
-      }
-    };
-
-    const currentPodcastResult = getCurrentPodcastResult();
-    if (currentPodcastResult?.status === 'processing') {
-      pollStatus(); // Initial check
-      intervalId = setInterval(pollStatus, 30000);
+    // Only set up polling if status is processing
+    const currentResult = getCurrentPodcastResult();
+    if (currentResult?.status !== 'processing') {
+      return;
     }
 
-    return () => {
-      isActive = false;
-      if (intervalId) {
+    // Poll immediately
+    checkStatus();
+    // Then every 30 seconds
+    const intervalId = setInterval(checkStatus, 30000);
+
+    async function checkStatus() {
+      try {
+        let currentPodcastResult : PodcastGenerateResult = getCurrentPodcastResult();
+        console.error(currentPodcastResult);
+        const response = await axiosInstance.post('/pyapi/check_podcast', currentPodcastResult);
+        await updatePodcastResult(response.data);
+
+        // If done or error, clear the interval
+        if (response.data.status === 'done' || response.data.status === 'error') {
+          clearInterval(intervalId);
+        }
+      } catch (error) {
+        console.error('Error checking podcast status:', error);
         clearInterval(intervalId);
       }
-    };
-  }, [getCurrentPodcastResult, updatePodcastResult]); // Minimal dependencies
+    }
+
+    // Cleanup on unmount
+    return () => {if(intervalId) {clearInterval(intervalId);}};
+  }, [updatePodcastResult]);
+
+  // Simplified handleSubmit
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    startLoading('Collecting Nightscout data...');
+
+    try {
+      // Save form data to cookies
+      Cookies.set('url', formData.nightscout_url, { expires: 30 });
+      Cookies.set('token', formData.nightscout_token, { expires: 30 });
+
+      updateProgress(25, 'Collecting Nightscout data...');
+
+      // Get Nightscout data
+      const nightscoutData = await fetchNightscoutData(formData.nightscout_url, formData.nightscout_token);
+
+      // Generate assessments
+      updateProgress(50, 'Generating podcast...');
+
+      const compressedData = {
+        sgvData: compress(nightscoutData.sgvData),
+        treatmentsData: compress(nightscoutData.treatmentsData),
+      };
+
+      const data = await generateAssessments(
+        compressedData?.sgvData,
+        compressedData?.treatmentsData || null,
+        formData.demo_data,
+      );
+
+      // Add timestamp to data
+      const now = new Date();
+      const formattedTimestamp = now
+        .toLocaleString('en-GB', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        })
+        .replace(/\//g, '-');
+
+      const dataWithTimestamp = {
+        ...data,
+        timestamp: formattedTimestamp,
+      };
+
+      // Update all assessment data at once
+      await updateAssessmentData(dataWithTimestamp);
+
+      if (onAssessmentComplete) {
+        onAssessmentComplete(dataWithTimestamp);
+      }
+    } catch (error) {
+      setLoadingError(error instanceof Error ? error.message : 'An unexpected error occurred');
+    } finally {
+      stopLoading();
+    }
+  };
 
   const isFormValid = formData.nightscout_url && formData.nightscout_token && formData.terms_accepted;
 
@@ -139,7 +176,6 @@ const NightscoutComponent = ({
       [name]: type === 'checkbox' ? checked : value,
     }));
   };
-
   const fetchNightscoutData = async (nightscout_url: string, nightscout_token: string) => {
     const today = new Date();
     const thirtyDaysAgo = new Date(today.setDate(today.getDate() - 30));
@@ -184,57 +220,10 @@ const NightscoutComponent = ({
     }
   };
 
-  // Simplified handleSubmit
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    startLoading('Collecting Nightscout data...');
-
-    try {
-      // Save form data to cookies
-      Cookies.set('url', formData.nightscout_url, { expires: 30 });
-      Cookies.set('token', formData.nightscout_token, { expires: 30 });
-
-      // Get Nightscout data
-      let nightscoutData = null;
-      if (!formData.demo_data) {
-        updateProgress(25, 'Collecting Nightscout data...');
-        nightscoutData = await fetchNightscoutData(formData.nightscout_url, formData.nightscout_token);
-      }
-
-      // Generate assessments
-      updateProgress(50, 'Generating podcast...');
-      if (nightscoutData != null) {
-        const compressedData = {
-          sgvData: compress(nightscoutData.sgvData),
-          treatmentsData: compress(nightscoutData.treatmentsData),
-        };
-
-        const data = await generateAssessments(
-          compressedData.sgvData,
-          compressedData.treatmentsData,
-          formData.demo_data,
-        );
-
-        // Update all assessment data at once
-        await updateAssessmentData(data);
-
-        if (onAssessmentComplete) {
-          onAssessmentComplete(data);
-        }
-      }
-    } catch (error) {
-      setLoadingError(error instanceof Error ? error.message : 'An unexpected error occurred');
-    } finally {
-      stopLoading();
-    }
-  };
-
   // Simplified render method for assessments
   const renderAssessmentContent = () => {
-    const currentData = assessmentData || initialStoredData;
-
     return (
-      <Tabs>
+      <Tabs defaultIndex={3}>
         <TabList>
           <Tab>Notes</Tab>
           <Tab>Assessment 1</Tab>
@@ -243,36 +232,43 @@ const NightscoutComponent = ({
         </TabList>
         <TabPanel>
           <h2 className="text-xl font-bold mb-2">Notes</h2>
-          <pre className="whitespace-pre-wrap">{currentData.notes}</pre>
+          <pre className="whitespace-pre-wrap">{assessmentData?.notes}</pre>
         </TabPanel>
         <TabPanel>
           <h2 className="text-xl font-bold mb-2">Assessment 1</h2>
-          <pre className="whitespace-pre-wrap">{currentData.assessment1}</pre>
+          <pre className="whitespace-pre-wrap">{assessmentData?.assessment1}</pre>
         </TabPanel>
         <TabPanel>
           <h2 className="text-xl font-bold mb-2">Assessment 2</h2>
-          <pre className="whitespace-pre-wrap">{currentData.assessment2}</pre>
+          <pre className="whitespace-pre-wrap">{assessmentData?.assessment2}</pre>
         </TabPanel>
         <TabPanel>
           <h2 className="text-xl font-bold mb-2">Dialog</h2>
-          {podcastStatus && (
+          {assessmentData?.podcastResult?.status && (
             <h2
               className={`text-xl font-bold mb-4 ${
-                podcastStatus === 'done' ? 'text-green-600' : podcastStatus === 'error' ? 'text-red-600' : 'text-black'
+                assessmentData?.podcastResult?.status === 'done'
+                  ? 'text-green-600'
+                  : assessmentData?.podcastResult?.status === 'error'
+                    ? 'text-red-600'
+                    : 'text-black'
               }`}
             >
-              {podcastStatus.charAt(0).toUpperCase() + podcastStatus.slice(1)}
+              {assessmentData?.podcastResult?.status.charAt(0).toUpperCase() +
+                assessmentData?.podcastResult.status.slice(1)}
             </h2>
           )}
-          {currentData.podcastResult && <DebugInterfaceViewer data={currentData.podcastResult} />}
-          <pre className="whitespace-pre-wrap">{currentData.dialog}</pre>
+          {assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
+            <DebugInterfaceViewer data={assessmentData.podcastResult} />
+          )}
+          <pre className="whitespace-pre-wrap">{assessmentData?.dialog}</pre>
         </TabPanel>
       </Tabs>
     );
   };
 
   const renderDebugViewer = () => {
-    const viewerData = assessmentData?.podcastResult || debugPodcastResult;
+    const viewerData = assessmentData?.podcastResult;
     if (!viewerData) return null;
 
     return (
@@ -285,6 +281,13 @@ const NightscoutComponent = ({
   return (
     <WidgetWrapper id={id || ''} hasBackground={hasBackground} containerClass="max-w-7xl mx-auto">
       {header && <Headline header={header} titleClass="text-3xl sm:text-5xl" />}
+
+      {cookieError && (
+        <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
+          Error loading saved data: {cookieError}
+        </div>
+      )}
+
       <div className="flex items-stretch justify-center">
         <form onSubmit={handleSubmit} className="card h-fit max-w-2xl mx-auto p-5 md:p-12">
           {isLoading && (
@@ -341,10 +344,10 @@ const NightscoutComponent = ({
           </button>
         </form>
       </div>
-      {isClient && (assessmentData || initialStoredData.notes) && (
+      {isClient && assessmentData && (
         <div className="mt-8 max-w-4xl mx-auto">
-          {assessmentData?.timestamp && (
-            <div className="mb-4 text-gray-600 text-center">Last results generated on {assessmentData?.timestamp}</div>
+          {assessmentData.timestamp && (
+            <div className="mb-4 text-gray-600 text-center">Last results generated on {assessmentData.timestamp}</div>
           )}
           {renderAssessmentContent()}
         </div>

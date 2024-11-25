@@ -16,7 +16,7 @@ from bgpodcast.utils import bgutils, ssml
 from bgpodcast.utils import objects
 from bgpodcast.audio.gcloud import gen_podcast, get_job_status
 
-app = FastAPI()
+app = FastAPI(debug=True)
 
 # Load templates from files
 with open(os.path.join("app", "_prompts", "pass1.txt"), "r", encoding="utf-8") as f:
@@ -117,14 +117,15 @@ async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> ob
             # podcast_result.url = url
 
             return podcast_result
-        if status.error:
+        elif status.error:
             podcast_result.status = "error"
             podcast_result.error = str(status.error)
             return podcast_result
             
         else:
             podcast_result.status = "processing"
-            podcast_result.error = str(status.error)
+            return podcast_result
+            # podcast_result.error = str(status.error)
             
     except Exception as e:
         return objects.PodcastGenerateResult(
