@@ -15,6 +15,8 @@ import { createApiClient } from '~/lib/api/axios';
 import { useAssessmentState } from '~/hooks/useAssessmentState';
 import { useLoadingState } from '~/hooks/useLoadingState';
 import { AssessmentData, PodcastGenerateResult } from '~/types/nightscout';
+import AudioPlayer from 'react-h5-audio-player';
+import 'react-h5-audio-player/lib/styles.css';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
@@ -168,6 +170,8 @@ const NightscoutComponent = ({
 
   const isFormValid = formData.nightscout_url && formData.nightscout_token && formData.terms_accepted;
 
+
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -219,6 +223,15 @@ const NightscoutComponent = ({
     }
   };
 
+  const Player = () => (
+    <AudioPlayer
+      autoPlay
+      src={getCurrentPodcastResult()?.url}
+      onPlay={e => console.log("onPlay")}
+      // other props here
+    />
+  );
+
   // Simplified render method for assessments
   const renderAssessmentContent = () => {
     return (
@@ -257,6 +270,8 @@ const NightscoutComponent = ({
                 assessmentData?.podcastResult.status.slice(1)}
             </h2>
           )}
+          {assessmentData?.podcastResult?.status === 'done' &&
+            Player()}
           {assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
             <DebugInterfaceViewer data={assessmentData.podcastResult} />
           )}
@@ -321,16 +336,6 @@ const NightscoutComponent = ({
               className="mr-2"
             />
             I accept the terms and conditions
-          </label>
-          <label className="flex items-center mb-4">
-            <input
-              type="checkbox"
-              name="demo_data"
-              checked={formData.demo_data}
-              onChange={handleInputChange}
-              className="mr-2"
-            />
-            Use demo data
           </label>
           <button
             type="submit"
