@@ -163,14 +163,6 @@ async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
                 message="Audio generation started successfully")
             return res
 
-            # return {
-            #     "status": "processing",
-            #     "operation_id": operation.operation.name,
-            #     "gcs_path": gcs_path,
-            #     "bucket_name": BUCKET_NAME,
-            #     "message": "Audio generation started successfully"
-            # }
-
     except Exception as e:
         print(f"Error in gen_podcast: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e)) from e
