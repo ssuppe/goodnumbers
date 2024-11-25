@@ -1,4 +1,4 @@
-Steve has provided 31 days of blood glucose data.
+Steve has provided 30 days of blood glucose data.
 They are male. 
 Patient's latest results:
 The average blood glucose for was 126 mg/dl, with a standard deviation of 40.3 mg/dlThis means that 95% of the time, Steve's blood glucose was between 46 and 207Time in range was 88% mg/dlTime in tight range was 64% mg/dlTime spent high (above 180 was 9%Time spent low (below 70 was 3%Here is the week by week breakdown The average blood glucose for week of November 18 was 126 mg/dl.The average blood glucose for week of November 11 was 132 mg/dl.The average blood glucose for week of November 04 was 128 mg/dl.The average blood glucose for week of October 28 was 122 mg/dl.Weekly average blood glucose didn't exceed an 18 mg/dl difference compared to the month, which means that overall, week over week, Steve held near their monthly average. This is great work and should be celebrated.There are some portions of the day that could use improvement. 
