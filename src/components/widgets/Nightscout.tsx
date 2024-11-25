@@ -17,6 +17,7 @@ import { useLoadingState } from '~/hooks/useLoadingState';
 import { AssessmentData, PodcastGenerateResult } from '~/types/nightscout';
 import AudioPlayer from 'react-h5-audio-player';
 import 'react-h5-audio-player/lib/styles.css';
+import LazyAudioPlayer from './LazyAudioPlayer';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
@@ -223,15 +224,7 @@ const NightscoutComponent = ({
     }
   };
 
-  const Player = () => (
-    <AudioPlayer
-      autoPlay
-      src={getCurrentPodcastResult()?.url}
-      onPlay={e => console.log("onPlay")}
-      // other props here
-    />
-  );
-
+ 
   // Simplified render method for assessments
   const renderAssessmentContent = () => {
     return (
@@ -270,8 +263,9 @@ const NightscoutComponent = ({
                 assessmentData?.podcastResult.status.slice(1)}
             </h2>
           )}
-          {assessmentData?.podcastResult?.status === 'done' &&
-            Player()}
+          {assessmentData?.podcastResult?.status === 'done' &&  getCurrentPodcastResult()?.url &&
+            (<LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
+            )}
           {assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
             <DebugInterfaceViewer data={assessmentData.podcastResult} />
           )}

@@ -1,7 +1,7 @@
 export interface PodcastGenerateResult {
   status: string;
   operation_id?: string;
-  url?: string;
+  url: string;
   error?: string;
   gcs_path?: string;
   bucket_name?: string;
