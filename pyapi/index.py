@@ -16,7 +16,7 @@ from bgpodcast.utils import bgutils, ssml
 from bgpodcast.utils import objects
 from bgpodcast.audio.gcloud import gen_podcast, get_job_status
 
-app = FastAPI(debug=True)
+app = FastAPI()
 
 # Load templates from files
 with open(os.path.join("app", "_prompts", "pass1.txt"), "r", encoding="utf-8") as f:
@@ -63,7 +63,6 @@ async def get_notes(data: objects.NightscoutData):
     return podcast_dialog
 
 
-# @retry(wait=wait_random_exponential(multiplier=1, max=120))
 async def async_generate(prompt, model):
     """
     Generate
@@ -172,7 +171,7 @@ async def get_assessment(data: objects.Assessment):
             if data.debug:
                 response_text = bgutils.read_file(fr=os.path.join("_tmp", "pass1_output.txt")) 
             else:
-                response = async_generate(prompt, model)
+                response = await async_generate(prompt, model)
                 response_text = response.text
             if data.write_local:
                 bgutils.write_file(to=os.path.join("_tmp", "pass1_output.txt"), contents=response_text)
@@ -185,7 +184,7 @@ async def get_assessment(data: objects.Assessment):
             if data.debug:
                 response_text = bgutils.read_file(fr=os.path.join("_tmp", "pass2_output.txt")) 
             else:
-                response = async_generate(prompt, model)
+                response = await async_generate(prompt, model)
                 response_text = response.text
             if data.write_local:
                 bgutils.write_file(to=os.path.join("_tmp", "pass2_output.txt"), contents=response_text)
@@ -208,7 +207,7 @@ async def get_assessment(data: objects.Assessment):
                 if data.debug:
                     response_text = bgutils.read_file(fr=os.path.join("_tmp", "pass3_output.txt")) 
                 else:
-                    response = async_generate(prompt, model)
+                    response = await async_generate(prompt, model)
                     response_text = response.text
                 ssml_check  = ssml.check_google_tts_ssml_format(response_text)
                 is_valid_ssml = ssml_check.is_correct
