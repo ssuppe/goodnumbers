@@ -15,7 +15,6 @@ import { createApiClient } from '~/lib/api/axios';
 import { useAssessmentState } from '~/hooks/useAssessmentState';
 import { useLoadingState } from '~/hooks/useLoadingState';
 import { AssessmentData, PodcastGenerateResult } from '~/types/nightscout';
-import winston from 'winston';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
@@ -88,7 +87,7 @@ const NightscoutComponent = ({
 
     async function checkStatus() {
       try {
-        let currentPodcastResult : PodcastGenerateResult = getCurrentPodcastResult();
+        let currentPodcastResult  = getCurrentPodcastResult();
         console.error(currentPodcastResult);
         const response = await axiosInstance.post('/pyapi/check_podcast', currentPodcastResult);
         await updatePodcastResult(response.data);
