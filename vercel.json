@@ -1,15 +1,21 @@
 {
     "version": 2,
-    "builds": [
-      {
-        "src": "api/index.py",
-        "use": "@vercel/python"
+    "functions": {
+      "api/index.py": {
+        "runtime": "python3.10",
+        "includeFiles": ["api/**/*", "app/**/*", "_tmp/**/*"], 
+        "maxDuration": 900 
       }
-    ],
+    },
     "routes": [
       {
         "src": "/api/py/(.*)",
         "dest": "api/index.py"
+      },
+      {
+        "src": "/(.*)",
+        "dest": "/.next/serverless/pages/$1"
       }
+  
     ]
   }
