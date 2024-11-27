@@ -18,14 +18,14 @@ const meta = {
 } satisfies Meta<typeof Component>;
 
 export default meta;
-// type Story = StoryObj<typeof meta>;
+type Story = StoryObj<typeof meta>;
 
 // // More on writing stories with args: https://storybook.js.org/docs/writing-stories/args
-// export const Base: Story = {
-//   args: {
-//     ...mockData,
-//   },
-// };
+export const Base: Story = {
+  args: {
+    
+  },
+};
 
 // export const Mobile: Story = {
 //   args: {
