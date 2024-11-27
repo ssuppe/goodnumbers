@@ -20,7 +20,7 @@
     "@google/generative-ai": "^0.21.0",
     "@radix-ui/colors": "^3.0.0",
     "@radix-ui/react-progress": "^1.1.0",
-    "@tabler/icons-react": "^3.12.0",
+    "@tabler/icons-react": "^3.127.0",
     "@types/pako": "^2.0.3",
     "@vercel/python": "^4.3.1",
     "axios": "^1.7.7",
@@ -84,6 +84,6 @@
     "@typescript-eslint/parser": "^8.11.0"
   },
   "engines": {
-    "node": ">=18.17.0"
+    "node": "^18.17.0"
   }
 }
