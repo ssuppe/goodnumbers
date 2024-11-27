@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   title: SITE.title,
 };
 
-export const heroHome = {
+const heroHome = {
   title: (
     <>
       Personalized podcast about your weekly diabetes numbers
