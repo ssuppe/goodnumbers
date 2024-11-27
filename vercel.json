@@ -2,9 +2,9 @@
     "version": 2,
     "functions": {
       "api/index.py": {
-        "runtime": "python3.10",
-        "includeFiles": ["api/**/*", "app/**/*", "_tmp/**/*"], 
-        "maxDuration": 900 
+        "runtime": "@vercel/python@3.12",
+        "includeFiles": "api/**/*", 
+        "maxDuration": 60
       }
     },
     "routes": [
