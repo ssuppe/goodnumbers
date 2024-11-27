@@ -27,6 +27,10 @@ with open(os.path.join("app", "_prompts", "pass3.txt"), "r", encoding="utf-8") a
     template3 = f.read()
 
 
+@app.get("/api/py/hello")
+def hello_fast_api():
+    return {"message": "Hello from FastAPI"}
+
 gemini_api_key = os.environ["GEMINI_API_KEY"]
 # Constants
 BUCKET_NAME = "goodnumbers"  # Replace with your bucket name
@@ -35,7 +39,7 @@ POLLING_INTERVAL = 10  # seconds
 TIMEOUT = 600  # 10 minutes
 
 
-@app.post("/pyapi/get_notes")
+@app.post("/api/py/get_notes")
 async def get_notes(data: objects.NightscoutData):
     """
     Create manual notes
@@ -76,7 +80,7 @@ async def async_generate(prompt, model):
     return response
 
 
-@app.post("/pyapi/gen_podcast")
+@app.post("/api/py/gen_podcast")
 async def gen_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGenerateResult:
     try:
         # Your existing podcast generation logic
@@ -90,7 +94,7 @@ async def gen_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGener
             error=str(e)
         )
 
-@app.post("/pyapi/check_podcast")
+@app.post("/api/py/check_podcast")
 async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> objects.PodcastGenerateResult:
     try:
         status = await get_job_status(podcast_result.operation_id)
@@ -134,7 +138,7 @@ async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> ob
         )
 
 
-@app.post("/pyapi/get_assessment")
+@app.post("/api/py/get_assessment")
 async def get_assessment(data: objects.Assessment):
     """
     Get assessment
@@ -239,31 +243,31 @@ async def get_assessment(data: objects.Assessment):
             status_code=500, detail="Internal Server Error") from e
 
 
-@app.get("/pyapi/test")
+@app.get("/api/py/test")
 async def test():
     return JSONResponse({"response": "Working!"})
 
-@app.post("/generate_podcast_url")
-async def generate_podcast_url(file_path: str):
-    try:
-        storage_client = storage.Client()
-        bucket = storage_client.bucket('goodnumbers')
-        blob = bucket.blob(file_path)
+# @app.post("/generate_podcast_url")
+# async def generate_podcast_url(file_path: str):
+#     try:
+#         storage_client = storage.Client()
+#         bucket = storage_client.bucket('goodnumbers')
+#         blob = bucket.blob(file_path)
 
-        # Generate signed URL that expires in 1 hour
-        url = blob.generate_signed_url(
-            version="v4",
-            expiration=datetime.timedelta(hours=1),
-            method="GET",
-            response_type="audio/mpeg",
-            headers=None
-        )
+#         # Generate signed URL that expires in 1 hour
+#         url = blob.generate_signed_url(
+#             version="v4",
+#             expiration=datetime.timedelta(hours=1),
+#             method="GET",
+#             response_type="audio/mpeg",
+#             headers=None
+#         )
         
-        return {"url": url}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+#         return {"url": url}
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e)) from e
     
-@app.post("/pyapi/refresh_audio_url")
+@app.post("/api/py/refresh_audio_url")
 async def refresh_audio_url(request: objects.RefreshURLRequest) -> dict:
     try:
         storage_client = storage.Client()

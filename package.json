@@ -4,7 +4,7 @@
   "version": "1.0.0-beta.4",
   "private": true,
   "scripts": {
-    "fastapi-dev": "pip3 install -r requirements.txt && python3 -m uvicorn pyapi.index:app --reload --port 8000",
+    "fastapi-dev": "pip3 install -r requirements.txt && python3 -m uvicorn api.index:app --reload --port 8000",
     "next-dev": "next dev",
     "dev": "npm run next-dev",
     "build": "next build",

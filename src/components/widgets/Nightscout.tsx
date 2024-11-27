@@ -55,7 +55,7 @@ const NightscoutComponent = ({
   const updatePodcastResult = useCallback(
     async (podcastResult: PodcastGenerateResult | null) => {
       try {
-        // const response = await axiosInstance.post('/pyapi/check_podcast', podcastResult);
+        // const response = await axiosInstance.post('/api/py/check_podcast', podcastResult);
         // const updatedPodcastResult: PodcastGenerateResult = response.data;
 
         // Update the entire podcast result in cookies and state
@@ -92,7 +92,7 @@ const NightscoutComponent = ({
       try {
         let currentPodcastResult  = getCurrentPodcastResult();
         console.error(currentPodcastResult);
-        const response = await axiosInstance.post('/pyapi/check_podcast', currentPodcastResult);
+        const response = await axiosInstance.post('/api/py/check_podcast', currentPodcastResult);
         await updatePodcastResult(response.data);
 
         // If done or error, clear the interval
