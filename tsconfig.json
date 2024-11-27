@@ -26,6 +26,6 @@
       }
     ]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/(blog)/blog/page.tsx", "app/(blog)/[slug]/page.jsx", "src/components/ui/progress/index.tsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/components/ui/progress/index.tsx"],
   "exclude": ["node_modules"]
 }
