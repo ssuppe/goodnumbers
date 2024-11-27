@@ -1,5 +1,5 @@
 import React from 'react';
-import { PodcastGenerateResult } from './nightscoutActions';
+import { PodcastGenerateResult } from '~/types/nightscout';
 
 type PrimitiveType = string | number | boolean | null | undefined;
 type GenericObject = Record<string, PrimitiveType>;
