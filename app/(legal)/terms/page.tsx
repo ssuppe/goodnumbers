@@ -9,8 +9,10 @@ export const metadata: Metadata = {
 };
 
 const Page = () => {
-  const filePath = path.join(process.cwd(), 'src/content/terms/terms.md');
-  const fileContent = fs.readFileSync(filePath, 'utf8');
+  // const filePath = path.join(process.cwd(), 'src/content/terms/terms.md');
+  // const fileContent = fs.readFileSync(filePath, 'utf8');
+
+  const fileContent = "TODO: No legal content yet";
 
   return (
     <div

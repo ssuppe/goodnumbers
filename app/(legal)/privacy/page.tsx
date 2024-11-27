@@ -9,8 +9,10 @@ export const metadata: Metadata = {
 };
 
 const Page = () => {
-  const filePath = path.join(process.cwd(), 'src/content/privacy/privacy.md');
-  const fileContent = fs.readFileSync(filePath, 'utf8');
+  // const filePath = path.join(process.cwd(), 'src/content/privacy/privacy.md');
+  // const fileContent = fs.readFileSync(filePath, 'utf8');
+
+  const fileContent = "TODO: No privacy content yet.";
 
   return (
     <div

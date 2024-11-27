@@ -103,9 +103,9 @@ export async function generateAssessments(
     // Step 1: Generate Notes
     logger.info('Step 1');
     logger.info('sgvData: ' + (csgvData == null));
-    logger.info('Sending to ' + `${apiUrl}/pyapi/get_notes`);
+    logger.info('Sending to ' + `${apiUrl}/api/py/get_notes`);
     const notes = await fetchWithErrorHandling(
-      `${apiUrl}/pyapi/get_notes`,
+      `${apiUrl}/api/py/get_notes`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -116,7 +116,7 @@ export async function generateAssessments(
 
     // Step 2: Generate Assessment 1
     const assessment1Data = await fetchWithErrorHandling(
-      `${apiUrl}/pyapi/get_assessment`,
+      `${apiUrl}/api/py/get_assessment`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -128,7 +128,7 @@ export async function generateAssessments(
 
     // Step 3: Generate Assessment 2
     const assessment2Data = await fetchWithErrorHandling(
-      `${apiUrl}/pyapi/get_assessment`,
+      `${apiUrl}/api/py/get_assessment`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -140,7 +140,7 @@ export async function generateAssessments(
 
     // Step 4: Generate Dialog
     const dialogData = await fetchWithErrorHandling(
-      `${apiUrl}/pyapi/get_assessment`,
+      `${apiUrl}/api/py/get_assessment`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -152,7 +152,7 @@ export async function generateAssessments(
 
     // Step 5: Start generation of audio
     const podcastData = await fetchWithErrorHandling(
-      `${apiUrl}/pyapi/gen_podcast`,
+      `${apiUrl}/api/py/gen_podcast`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
