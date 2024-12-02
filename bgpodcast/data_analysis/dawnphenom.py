@@ -4,28 +4,32 @@ import numpy as np
 from scipy.stats import linregress
 from scipy import integrate
 
+# Clinical thresholds based on research
+SIGNIFICANT_RISE = 20  # mg/dL
+SIGNIFICANT_RATE = 10  # mg/dL per hour
+HIGH_CV_THRESHOLD = 36  # % - Standard clinical threshold
+
 def prepare_data(entries, days_to_analyze=7):
-    # Convert entries to DataFrame
     df = pd.DataFrame(entries)
     
-    # Convert timestamps to datetime
-    df['datetime'] = pd.to_datetime(df['date'], unit='ms')
+    # Apply UTC offset
+    df['adjusted_date'] = df.apply(lambda row: row['date'] + (row['utcOffset'] * 60 * 60 * 1000), axis=1)
+    df['datetime'] = pd.to_datetime(df['adjusted_date'], unit='ms')
     
     # Filter to last 7 days
     latest_date = df['datetime'].max()
     start_date = latest_date - timedelta(days=days_to_analyze)
     df = df[df['datetime'] >= start_date]
     
-    # Create hour of day column
-    df['hour'] = df['datetime'].dt.hour + df['datetime'].dt.minute/60
+    # Create decimal hour (rounded to nearest quarter hour)
+    df['hour'] = df['datetime'].dt.hour + (df['datetime'].dt.minute/60)
+    df['hour'] = (df['hour'] * 4).round() / 4  # Round to nearest 0.25
     
-    # Filter for 4 AM to 9 AM
+    # Filter 4 AM to 9 AM
     df = df[(df['hour'] >= 4) & (df['hour'] < 9)]
     
-    # Sort by datetime
+    # Sort and add date
     df = df.sort_values('datetime')
-    
-    # Add date column for grouping by day
     df['date'] = df['datetime'].dt.date
     
     return df
@@ -112,12 +116,31 @@ def analyze_individual_days(df):
     
     return pd.DataFrame(daily_stats)
 
+def analyze_composite_day(df):
+    """Create and analyze composite day pattern"""
+    # Group by hour and calculate mean glucose
+    composite = df.groupby('hour')['sgv'].agg(['mean', 'std']).reset_index()
+    
+    # Calculate key metrics for composite day
+    start_glucose = composite.iloc[0]['mean']
+    peak_glucose = composite['mean'].max()
+    total_rise = peak_glucose - start_glucose
+    
+    # Calculate rate of change using linear regression
+    slope, _, r_value, _, _ = linregress(composite['hour'], composite['mean'])
+    
+    composite_stats = {
+        'start_glucose': start_glucose,
+        'peak_glucose': peak_glucose,
+        'total_rise': total_rise,
+        'rate_of_change': slope,
+        'r_squared': r_value**2
+    }
+    
+    return composite, composite_stats
+
 def assess_dawn_phenomenon(daily_stats, composite_stats):
     """Enhanced assessment of dawn phenomenon presence and severity"""
-    # Clinical thresholds based on research
-    SIGNIFICANT_RISE = 20  # mg/dL
-    SIGNIFICANT_RATE = 10  # mg/dL per hour
-    HIGH_CV_THRESHOLD = 36  # % - Standard clinical threshold
     
     # Analyze composite pattern
     composite_has_dawn = (composite_stats['total_rise'] >= SIGNIFICANT_RISE and 
@@ -172,29 +195,87 @@ def generate_clinical_report(assessment, daily_stats):
             'average_total_rise': assessment['average_rise'],
             'average_rate_of_change': assessment['average_rate']
         },
-        'recommendations': []
+        'recommendations': ""
     }
+
+
+    recommendations = ""
+    # Add plain language report on dawn phenomenom
+    if assessment['composite_has_dawn']: 
+        recommendations += "When looking at the average of all days in the past week, we do see patterns of dawn phenomenon."
+        recommendations += "Dawn phenomenon is when your blood sugar rises more than it should in the early hours of the morning, typically between 4 and 9am."
+        recommendations += "This is often due to a change in hormones as you start to wake up - hormones like cortisol and growth hormone. These signal to the "
+        recommendations += "liver to produce more glucose to provide energy to your body. This is natural and part of waking up, but for diabetics, often means "
+        recommendations += "they need to provide a higher basal rate to compensate."
+
+        if assessment["severity"]["is_severe"]:
+            recommendations += f"""We are seeing quite a severe rise in blood sugars during this time - raising more than {SIGNIFICANT_RISE} mg/dl
+                                    at more than {SIGNIFICANT_RATE} mg/dl per hour."""
+            
+            recommendations += f"""A deeper look:
+                                            * Average morning glucose at this time is {report['metrics']['average_morning_glucose']}. {assessment["percent_days_with_dawn"]} days showed dawn phenomena.
+                                            * Average coefficient of variation {report['metrics']['average_cv']}%. The widely accepted goal for type 1 diabetics
+                                            is to be below 36%."""
+            
+            if assessment['severity']['variability_concern']:
+                recommendations += "High glucose variability detected. Consider basal rate adjustment."
+        
+
+            
+        recommendations += f"""* Time in range in the morning is {report['metrics']['average_time_in_range']}. Your sleep time is when you should 
+                                        be aim to get the highest time in range, since you are not moving, not worrying about food, exercise or stress. Aim to be
+                                        as close to 100% as possible."""
+        if report["metrics"]["average_time_in_range"] < .80:
+            recommendations += """Your average time in range is less than 80% this week, so you could definitely improve."""
+        elif report["metrics"]["average_time_in_range"] > .90:
+            recommendations += """Your average time in range is greater than 90% this week, this is very good!"""
+        else:
+            recommendations += """Your average time in range was between 80% and 90% this week, which is good, but there is always room for improvement!"""
+            
     
-    # Add clinical recommendations based on metrics
-    if assessment['severity']['variability_concern']:
-        report['recommendations'].append(
-            "High glucose variability detected. Consider basal rate adjustment."
-        )
+        if assessment['mean_metrics']['mean_first_hour_rate'] > 15:
+            recommendations += "Significant early morning rise detected. Consider adjusting basal rates between 3-4 AM."
+        
+        recommendations += """As always, remember when making basal adjustments, your insulin takes time to reach its full strength and 
+                            impact on your blood glucose. For fast-acting insulins like Humalog, Novalog and Novarapid, full strength takes 1.5
+                            to 2 hours. This means you need to adjust your basal about that much time before you are seeing the effect. So, for example,
+                            if you are seeing a high rise between 3-4am, you likely need to change your basal arate around 1 or 2am. Other insulines, like Lyumjev,
+                            work much more quickly, and will have different calculations. Make sure to educate yourself on how your insulin works, and be sure to talk to your healthcare professional before making any changes."""
+    else:
+        recommendations += "There is no sign of dawn phenomenon, which means your blood sugar levels are staying within range and not rising before you wake up"
+        recommendations += "This is great! Let's look a bit deeper to see how you're doing and see if there is any more room for improvement"
+            
+        recommendations += f"""A deeper look:
+                                    * Average morning glucose at this time is {report['metrics']['average_morning_glucose']}. {assessment["percent_days_with_dawn"]} days showed dawn phenomena.
+                                    * Average coefficient of variation {report['metrics']['average_cv']}%. The widely accepted goal for type 1 diabetics
+                                    is to be below 36%."""
+            
+        if assessment['severity']['variability_concern']:
+            recommendations += "High glucose variability detected. Consider basal rate adjustment."
+            
+        recommendations += f"""* Time in range in the morning is {report['metrics']['average_time_in_range']}. Your sleep time is when you should 
+                                        be aim to get the highest time in range, since you are not moving, not worrying about food, exercise or stress. Aim to be
+                                        as close to 100% as possible."""
+        if report["metrics"]["average_time_in_range"] < .80:
+            recommendations += """Your average time in range is less than 80% this week, so you could definitely improve."""
+        elif report["metrics"]["average_time_in_range"] > .90:
+            recommendations += """Your average time in range is greater than 90% this week, this is very good!"""
+        else:
+            recommendations += """Your average time in range was between 80% and 90% this week, which is good, but there is always room for improvement!"""
     
-    if assessment['severity']['tir_concern']:
-        report['recommendations'].append(
-            "Time in range below target. Review overnight basal rates and consider adjustment."
-        )
-    
-    if assessment['mean_metrics']['mean_first_hour_rate'] > 15:
-        report['recommendations'].append(
-            "Significant early morning rise detected. Consider adjusting basal rates between 3-4 AM."
-        )
-    
+        if assessment['mean_metrics']['mean_first_hour_rate'] > 15:
+            recommendations += "Significant early morning rise detected. Consider adjusting basal rates between 3-4 AM."
+        
+        recommendations += """As always, remember when making basal adjustments, your insulin takes time to reach its full strength and 
+                            impact on your blood glucose. For fast-acting insulins like Humalog, Novalog and Novarapid, full strength takes 1.5
+                            to 2 hours. This means you need to adjust your basal about that much time before you are seeing the effect. So, for example,
+                            if you are seeing a high rise between 3-4am, you likely need to change your basal arate around 1 or 2am. Other insulines, like Lyumjev,
+                            work much more quickly, and will have different calculations. Make sure to educate yourself on how your insulin works, and be sure to talk to your healthcare professional before making any changes."""
+
+    report["recommendations"] = recommendations
     return report
 
-# Update main function to include new analyses
-def main(entries):
+def test(entries):
     df = prepare_data(entries)
     daily_stats = analyze_individual_days(df)
     composite_df, composite_stats = analyze_composite_day(df)
@@ -207,3 +288,12 @@ def main(entries):
         'assessment': assessment,
         'clinical_report': clinical_report,
     }
+
+
+if __name__ == "__main__":
+    from bgpodcast.data_ingestion.nightscout import read_entries_file
+    en = read_entries_file("/home/ssuppe/studioprojects/goodnumbers/data/30Sept.30d/Nightscout.entries.30Sept.30d.json")
+    results = test(en)
+
+    from pprint import pprint
+    pprint(results)
