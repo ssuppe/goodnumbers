@@ -1,6 +1,30 @@
 """File for loading data. Right now this only includes importing from known local files"""
+import json
+
 import pandas as pd
 from bgpodcast.utils import bgutils
+
+
+def read_entries_file(fpath : str) -> list:
+    """ 
+    Return a list of dicts in the same format as the next.js/fastapi app
+    [{'date': 1733147724000, 'sgv': 90, 'units': 'mg/dl', 'utcOffset': -480},...]
+
+    Args:
+        fpath (str): path to file to read
+
+    Returns:
+        list: in same format as webapp
+    """
+    with open(fpath, "r", encoding="utf-8") as f:
+        e = f.read()
+        e = json.loads(e)
+        entries = []
+        for entry in e:
+            entries.append({"date" : int(entry["date"]["$numberLong"]), "utcOffset" : int(entry["utcOffset"]), "sgv" : int(entry["sgv"])})
+        return entries
+    
+    return []
 
 def load_sgv_dict(d : dict) -> pd.DataFrame:
     """
