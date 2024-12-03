@@ -44,15 +44,15 @@ async def get_notes(data: objects.NightscoutData):
     """
     Create manual notes
     """
-    data.treatments = decompress(data.treatments)
-    data.carbs = decompress(data.carbs)
+    treatments = decompress(data.treatments)
+    carbs = decompress(data.carbs)
 
     print("get_notes")
     podcast_dialog = ""
     try:
         print("Reading treatments and carbs")
-        treatments = nsingest.load_sgv_dict(data.treatments)
-        carbs = nsingest.load_carb_dict(data.carbs)
+        # treatments = nsingest.load_sgv_dict(data.treatments)
+        # carbs = nsingest.load_carb_dict(data.carbs)
         notes = None
         notes = bgprompt.generate_notes("Steve", "male", treatments, carbs)
         podcast_dialog = notes

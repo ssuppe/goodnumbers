@@ -9,7 +9,7 @@ SIGNIFICANT_RISE = 20  # mg/dL
 SIGNIFICANT_RATE = 10  # mg/dL per hour
 HIGH_CV_THRESHOLD = 36  # % - Standard clinical threshold
 
-def prepare_data(entries, days_to_analyze=7):
+def _prepare_data(entries, days_to_analyze=7):
     df = pd.DataFrame(entries)
     
     # Apply UTC offset
@@ -34,7 +34,7 @@ def prepare_data(entries, days_to_analyze=7):
     
     return df
 
-def calculate_metrics(glucose_values, times):
+def _calculate_metrics(glucose_values, times):
     """Calculate standard clinical diabetes metrics"""
     # Time in Range calculations
     in_range = np.logical_and(glucose_values >= 70, glucose_values <= 180)
@@ -63,7 +63,7 @@ def calculate_metrics(glucose_values, times):
         'max': np.max(glucose_values)
     }
 
-def analyze_individual_days(df):
+def _analyze_individual_days(df):
     """Analyze dawn phenomenon for each individual day with enhanced metrics"""
     daily_stats = []
     
@@ -82,7 +82,7 @@ def analyze_individual_days(df):
         slope, _, r_value, _, _ = linregress(x, y)
         
         # Calculate clinical metrics
-        clinical_metrics = calculate_metrics(
+        clinical_metrics = _calculate_metrics(
             day_data['sgv'].values,
             x.values
         )
@@ -116,7 +116,7 @@ def analyze_individual_days(df):
     
     return pd.DataFrame(daily_stats)
 
-def analyze_composite_day(df):
+def _analyze_composite_day(df):
     """Create and analyze composite day pattern"""
     # Group by hour and calculate mean glucose
     composite = df.groupby('hour')['sgv'].agg(['mean', 'std']).reset_index()
@@ -139,7 +139,7 @@ def analyze_composite_day(df):
     
     return composite, composite_stats
 
-def assess_dawn_phenomenon(daily_stats, composite_stats):
+def _assess_dawn_phenomenon(daily_stats, composite_stats):
     """Enhanced assessment of dawn phenomenon presence and severity"""
     
     # Analyze composite pattern
@@ -180,7 +180,7 @@ def assess_dawn_phenomenon(daily_stats, composite_stats):
         'severity': severity_assessment
     }
 
-def generate_clinical_report(assessment, daily_stats):
+def _generate_clinical_report(assessment, daily_stats):
     """Generate a clinically relevant summary report"""
     report = {
         'summary': {
@@ -275,12 +275,12 @@ def generate_clinical_report(assessment, daily_stats):
     report["recommendations"] = recommendations
     return report
 
-def test(entries):
-    df = prepare_data(entries)
-    daily_stats = analyze_individual_days(df)
-    composite_df, composite_stats = analyze_composite_day(df)
-    assessment = assess_dawn_phenomenon(daily_stats, composite_stats)
-    clinical_report = generate_clinical_report(assessment, daily_stats)
+def get_clinical_report(entries) -> dict:
+    df = _prepare_data(entries)
+    daily_stats = _analyze_individual_days(df)
+    composite_df, composite_stats = _analyze_composite_day(df)
+    assessment = _assess_dawn_phenomenon(daily_stats, composite_stats)
+    clinical_report = _generate_clinical_report(assessment, daily_stats)
 
     return {
         'daily_stats': daily_stats.to_dict('records'),
@@ -293,7 +293,7 @@ def test(entries):
 if __name__ == "__main__":
     from bgpodcast.data_ingestion.nightscout import read_entries_file
     en = read_entries_file("/home/ssuppe/studioprojects/goodnumbers/data/30Sept.30d/Nightscout.entries.30Sept.30d.json")
-    results = test(en)
+    results = get_clinical_report(en)
 
     from pprint import pprint
     pprint(results)

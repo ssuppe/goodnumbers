@@ -129,12 +129,12 @@ const NightscoutComponent = ({
 
       const compressedData = {
         sgvData: compress(nightscoutData.sgvData),
-        treatmentsData: compress(nightscoutData.treatmentsData),
+        carbsData: compress(nightscoutData.carbsData),
       };
 
       const data = await generateAssessments(
         compressedData?.sgvData,
-        compressedData?.treatmentsData || null,
+        compressedData?.carbsData || null,
         formData.demo_data,
       );
 
@@ -182,8 +182,8 @@ const NightscoutComponent = ({
   };
   const fetchNightscoutData = async (nightscout_url: string, nightscout_token: string) => {
     const today = new Date();
-    const thirtyDaysAgo = new Date(today.setDate(today.getDate() - 30));
-    const thirtyDaysAgoStr = thirtyDaysAgo
+    const daysAgo = new Date(today.setDate(today.getDate() - 9));
+    const daysAgoStr = daysAgo
       .toLocaleDateString('en-US', {
         year: 'numeric',
         month: '2-digit',
@@ -191,8 +191,8 @@ const NightscoutComponent = ({
       })
       .replace(/\//g, '-');
 
-    const sgvUrl = `${nightscout_url}/api/v1/entries/sgv.json?token=${nightscout_token}&find[date][$gte]=${thirtyDaysAgoStr}&count=10000`;
-    const treatmentsUrl = `${nightscout_url}/api/v1/treatments.json?token=${nightscout_token}&find[created_at][$gte]=${thirtyDaysAgoStr}&count=20000`;
+    const sgvUrl = `${nightscout_url}/api/v1/entries/sgv.json?token=${nightscout_token}&find[date][$gte]=${daysAgoStr}&count=10000`;
+    const treatmentsUrl = `${nightscout_url}/api/v1/treatments.json?token=${nightscout_token}&find[created_at][$gte]=${daysAgoStr}&count=20000`;
 
     try {
       const [sgvResponse, treatmentsResponse] = await Promise.all([
@@ -200,25 +200,25 @@ const NightscoutComponent = ({
         axiosInstance.get(treatmentsUrl),
       ]);
 
-      let sgvData = sgvResponse.data.filter((item: { date: string }) => new Date(item.date) >= thirtyDaysAgo);
-      sgvData = sgvData.map((item: { date: number; sgv: number; units: string; utcOffset: number }) => ({
+      let entriesData = sgvResponse.data.filter((item: { date: string }) => new Date(item.date) >= daysAgo);
+      entriesData = entriesData.map((item: { date: number; sgv: number; units: string; utcOffset: number }) => ({
         date: item.date,
         sgv: item.sgv,
         units: item.units,
         utcOffset: item.utcOffset,
       }));
-      let treatmentsData = treatmentsResponse.data.filter(
+      let carbsData = treatmentsResponse.data.filter(
         (item: { created_at: string; eventType: string; carbs: number }) => {
           const createdAtDate = new Date(item.created_at);
-          return createdAtDate >= thirtyDaysAgo && item.carbs !== null;
+          return createdAtDate >= daysAgo && item.carbs !== null;
         },
       );
-      treatmentsData = treatmentsData.map((item: { date: number; carbs: number; utcOffset: number }) => ({
+      carbsData = carbsData.map((item: { date: number; carbs: number; utcOffset: number }) => ({
         date: item.date,
         carbs: item.carbs,
         utcOffset: item.utcOffset,
       }));
-      return { sgvData, treatmentsData };
+      return { sgvData: entriesData, carbsData: carbsData };
     } catch (error) {
       throw new Error('Failed to fetch Nightscout data');
     }

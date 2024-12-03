@@ -55,15 +55,15 @@ def get_weeks(df, date_col):
     unique_weeks = df[date_col].dt.to_period('W').unique()
     return [week for week in unique_weeks]
 
-def get_sgv_stats(mdf : pd.DataFrame):
+def get_sgv_stats(df : pd.DataFrame):
     # print(mdf)
-    monthly_mean = mdf['sgv'].mean()
-    monthly_stddev = mdf['sgv'].std()
-    monthly_pct_low = len(mdf[mdf.sgv < 70]) / len(mdf)
-    monthly_pct_high = len(mdf[(mdf.sgv > 180)]) / len(mdf)
-    monthly_tir = len(mdf[(mdf.sgv >= 70) & (mdf.sgv < 180)]) / len(mdf)
-    monthly_ttir = len(mdf[(mdf.sgv >= 70) & (mdf.sgv < 140)]) / len(mdf)
-    return monthly_mean, monthly_stddev, monthly_pct_low, monthly_pct_high, monthly_tir, monthly_ttir
+    mean = df['sgv'].mean()
+    stddev = df['sgv'].std()
+    pct_low = len(df[df.sgv < 70]) / len(df)
+    pct_high = len(df[(df.sgv > 180)]) / len(df)
+    tir = len(df[(df.sgv >= 70) & (df.sgv < 180)]) / len(df)
+    ttir = len(df[(df.sgv >= 70) & (df.sgv < 140)]) / len(df)
+    return mean, stddev, pct_low, pct_high, tir, ttir
 
 def is_near_meal_time(start_time, meal_times):
   """
