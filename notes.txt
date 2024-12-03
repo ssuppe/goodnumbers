@@ -1,6 +1,20 @@
-Steve has provided 31 days of blood glucose data.
-They are male. 
+Patient is male. 
 Patient's latest results:
-The average blood glucose for was 130 mg/dl, with a standard deviation of 44.2 mg/dlThis means that 95% of the time, Steve's blood glucose was between 41 and 218Time in range was 85% mg/dlTime in tight range was 63% mg/dlTime spent high (above 180 was 12%Time spent low (below 70 was 3%Here is the week by week breakdown The average blood glucose for week of November 25 was 134 mg/dl.The average blood glucose for week of November 18 was 126 mg/dl.The average blood glucose for week of November 11 was 132 mg/dl.The average blood glucose for week of November 04 was 128 mg/dl.Weekly average blood glucose didn't exceed an 18 mg/dl difference compared to the month, which means that overall, week over week, Steve held near their monthly average. This is great work and should be celebrated.There are some portions of the day that could use improvement. 
-                We break down the day into 3 to 4 hour segments and look for times Steve consistently runs high, and we found
-                5 periods that could use some tweaking.The time period from 00:00 to 04:00 runs high on average, at 166.20000000000002 mg/dl.00:00 is close to one of Steve's most common meal times.'Note: Since 00:00 is in the morning, talk about dawn phenomenon, and tips for a low glycemic index breakfast.The time period from 08:00 to 11:30 runs high on average, at 152.8 mg/dl.08:00 is close to one of Steve's most common meal times.'Note: Since 08:00 is in the morning, talk about dawn phenomenon, and tips for a low glycemic index breakfast.The time period from 15:00 to 18:00 runs high on average, at 168.10000000000002 mg/dl.15:00 is close to one of Steve's most common meal times.'Note: Since 15:00 is in the daytime, talk about low glycemic lunch options, how work stress can impact high blood sugars, and ideas for lowering blood glucose, such as going for a walk.The time period from 18:00 to 21:00 runs high on average, at 163.40000000000003 mg/dl.18:00 is close to one of Steve's most common meal times.'Note: Since 18:00 is in the evening, talk about low glycemic dinner options, how work and home stress can impact high blood sugars, and ideas for lowering blood glucose, such as going for a walk.The time period from 21:00 to 23:30 runs high on average, at 188.60000000000002 mg/dl.21:00 is close to one of Steve's most common meal times.'Note: Give general advice on checking basal and insulin sensitivity.Steve doesn't have any time periods where he is running low. Well done! This is quite an accomplishment!
+Here are the general stats for this week:
+The average blood glucose for was 132 mg/dl, with a standard deviation of 50.7 mg/dl
+This means that 95% of the time, blood glucose was between 31 and 234.
+Time in range was 82% mg/dl.
+Time in tight range was 68% mg/dl.
+Time spent high (above 180) was 16%.
+Time spent low (below 70) was 1%.
+
+There is no sign of dawn phenomenon, which means your blood sugar levels are staying within range and not rising before you wake upThis is great! Let's look a bit deeper to see how you're doing and see if there is any more room for improvementA deeper look:
+                                    * Average morning glucose at this time is 113.07142857142857. 28.57142857142857 days showed dawn phenomena.
+                                    * Average coefficient of variation 18.155076641285117%. The widely accepted goal for type 1 diabetics
+                                    is to be below 36%.* Time in range in the morning is 96.42857142857142. Your sleep time is when you should 
+                                        be aim to get the highest time in range, since you are not moving, not worrying about food, exercise or stress. Aim to be
+                                        as close to 100% as possible.Your average time in range is greater than 90% this week, this is very good!As always, remember when making basal adjustments, your insulin takes time to reach its full strength and 
+                            impact on your blood glucose. For fast-acting insulins like Humalog, Novalog and Novarapid, full strength takes 1.5
+                            to 2 hours. This means you need to adjust your basal about that much time before you are seeing the effect. So, for example,
+                            if you are seeing a high rise between 3-4am, you likely need to change your basal arate around 1 or 2am. Other insulines, like Lyumjev,
+                            work much more quickly, and will have different calculations. Make sure to educate yourself on how your insulin works, and be sure to talk to your healthcare professional before making any changes.

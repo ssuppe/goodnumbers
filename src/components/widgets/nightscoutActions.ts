@@ -62,7 +62,7 @@ async function readLocalJson(filePath: string): Promise<any> {
 
 export async function generateAssessments(
   csgvData: Compressed,
-  ctreatmentsData: Compressed,
+  ccarbsData: Compressed,
   useLocalData: boolean,
 ): Promise<AssessmentData> {
   const apiUrl = process.env.FASTAPI_URL;
@@ -109,7 +109,7 @@ export async function generateAssessments(
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ treatments: csgvData, carbs: ctreatmentsData }),
+        body: JSON.stringify({ treatments: csgvData, carbs: ccarbsData }),
       },
       'Generating Notes',
     );
