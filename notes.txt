@@ -1,20 +1,36 @@
 Patient is male. 
 Patient's latest results:
 Here are the general stats for this week:
-The average blood glucose for was 135 mg/dl, with a standard deviation of 53.1 mg/dl
-This means that 95% of the time, blood glucose was between 29 and 241.
-Time in range was 81% mg/dl.
-Time in tight range was 65% mg/dl.
-Time spent high (above 180) was 17%.
+Report from 2024-11-28 to 2024-12-05The average blood glucose for was 145 mg/dl, with a standard deviation of 52.5 mg/dl
+This means that 95% of the time, blood glucose was between 40 and 250.
+Time in range was 74% mg/dl.
+Time in tight range was 56% mg/dl.
+Time spent high (above 180) was 24%.
 Time spent low (below 70) was 2%.
 
-There is no sign of dawn phenomenon, which means your blood sugar levels are staying within range and not rising before you wake upThis is great! Let's look a bit deeper to see how you're doing and see if there is any more room for improvementA deeper look:
-                                    * Average morning glucose at this time is 115.75333333333333. 20.0 days showed dawn phenomena.
-                                    * Average coefficient of variation 16.570497922435884%. The widely accepted goal for type 1 diabetics
-                                    is to be below 36%.* Time in range in the morning is 96.33333333333334. Your sleep time is when you should 
-                                        be aim to get the highest time in range, since you are not moving, not worrying about food, exercise or stress. Aim to be
-                                        as close to 100% as possible.Your average time in range is greater than 90% this week, this is very good!As always, remember when making basal adjustments, your insulin takes time to reach its full strength and 
-                            impact on your blood glucose. For fast-acting insulins like Humalog, Novalog and Novarapid, full strength takes 1.5
-                            to 2 hours. This means you need to adjust your basal about that much time before you are seeing the effect. So, for example,
-                            if you are seeing a high rise between 3-4am, you likely need to change your basal arate around 1 or 2am. Other insulines, like Lyumjev,
-                            work much more quickly, and will have different calculations. Make sure to educate yourself on how your insulin works, and be sure to talk to your healthcare professional before making any changes.
+
+
+
+
+
+
+There is no sign of dawn phenomenon, which means your blood 
+sugar levels are staying within range and not rising before you wake up
+This is great! Let's look a bit deeper to see how you're 
+doing and see if there is any more room for improvement
+A deeper look:
+* Average morning glucose at this time is 126.96190476190476. 
+0.0 days showed dawn phenomena.
+* Average coefficient of variation 19.226995098972026%. The widely accepted goal for type 1 diabetics
+is to be below 36%.
+* Time in range in the morning is 89.2857142857143. Your sleep time is when you should 
+be aim to get the highest time in range, since you are not moving, not worrying about food, exercise or stress. Aim to be
+as close to 100% as possible.
+Your average time in range is greater than 90% this week, this is very good!
+As always, remember when making basal adjustments, your insulin takes time to reach its full strength and 
+impact on your blood glucose. For fast-acting insulins like Humalog, Novalog and Novarapid, full strength takes 1.5
+to 2 hours. This means you need to adjust your basal about that much time before you are seeing the effect. So, for example,
+if you are seeing a high rise between 3-4am, you likely need to change your basal arate around 1 or 2am. Other insulines, like Lyumjev,
+work much more quickly, and will have different calculations. Make sure to educate yourself on how your
+insulin works, and be sure to talk to your healthcare professional before making any changes.
+
