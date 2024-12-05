@@ -90,7 +90,7 @@ const NightscoutComponent = ({
 
     async function checkStatus() {
       try {
-        let currentPodcastResult  = getCurrentPodcastResult();
+        let currentPodcastResult = getCurrentPodcastResult();
         console.error(currentPodcastResult);
         const response = await axiosInstance.post('/api/check_podcast', currentPodcastResult);
         await updatePodcastResult(response.data);
@@ -106,7 +106,11 @@ const NightscoutComponent = ({
     }
 
     // Cleanup on unmount
-    return () => {if(intervalId) {clearInterval(intervalId);}};
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, [updatePodcastResult]);
 
   // Simplified handleSubmit
@@ -171,8 +175,6 @@ const NightscoutComponent = ({
 
   const isFormValid = formData.nightscout_url && formData.nightscout_token && formData.terms_accepted;
 
-
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -192,26 +194,23 @@ const NightscoutComponent = ({
     // treatments API only supports created_at
     const treatmentsUrl = `${nightscout_url}/api/v1/treatments.json?token=${nightscout_token}&find[created_at][$gte]=${daysAgoTimestamp}&count=10000`;
 
-
     try {
       const [sgvResponse, treatmentsResponse] = await Promise.all([
         axiosInstance.get(entriesUrl),
         axiosInstance.get(treatmentsUrl),
       ]);
 
-      let entriesData = sgvResponse.data.filter((item: { date: string }) => new Date(item.date) >= daysAgo);
+      let entriesData = sgvResponse.data.filter((item: { date: number }) => item.date >= daysAgoTimestamp);
       entriesData = entriesData.map((item: { date: number; sgv: number; units: string; utcOffset: number }) => ({
         date: item.date,
         sgv: item.sgv,
         units: item.units,
         utcOffset: item.utcOffset,
       }));
-      let carbsData = treatmentsResponse.data.filter(
-        (item: { created_at: string; eventType: string; carbs: number }) => {
-          const createdAtDate = new Date(item.created_at);
-          return createdAtDate >= daysAgo && item.carbs !== null;
-        },
-      );
+      let carbsData = treatmentsResponse.data.filter((item: { date: number; eventType: string; carbs: number }) => {
+        // const createdAtDate = new Date(item.created_at);
+        return item.date >= daysAgoTimestamp && item.carbs !== null;
+      });
       carbsData = carbsData.map((item: { date: number; carbs: number; utcOffset: number }) => ({
         date: item.date,
         carbs: item.carbs,
@@ -223,7 +222,6 @@ const NightscoutComponent = ({
     }
   };
 
- 
   // Simplified render method for assessments
   const renderAssessmentContent = () => {
     return (
@@ -262,9 +260,9 @@ const NightscoutComponent = ({
                 assessmentData?.podcastResult.status.slice(1)}
             </h2>
           )}
-          {assessmentData?.podcastResult?.status === 'done' &&  getCurrentPodcastResult()?.url &&
-            (<LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
-            )}
+          {assessmentData?.podcastResult?.status === 'done' && getCurrentPodcastResult()?.url && (
+            <LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
+          )}
           {assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
             <DebugInterfaceViewer data={assessmentData.podcastResult} />
           )}

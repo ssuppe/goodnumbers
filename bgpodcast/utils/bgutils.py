@@ -1,6 +1,18 @@
 import datetime
 import pandas as pd
 
+def add_comment(comment, note):
+    note = "\n" + note + comment + "\n"
+    lines = note.split('\n')
+    # Remove leading spaces from each line using lstrip()
+    trimmed_lines = [line.lstrip() for line in lines]
+
+    # Join the lines back into a string
+    result_string = '\n'.join(trimmed_lines)
+
+    return result_string
+
+
 def get_gemini_key():
     api_key = open("/Users/ssuppe/tmp/google_gemini_key.txt", "r", encoding="utf-8").read().strip()
     return api_key
@@ -57,13 +69,15 @@ def get_weeks(df, date_col):
 
 def get_sgv_stats(df : pd.DataFrame):
     # print(mdf)
+    start_date = df['date'].min()
+    end_date = df['date'].max()
     mean = df['sgv'].mean()
     stddev = df['sgv'].std()
     pct_low = len(df[df.sgv < 70]) / len(df)
     pct_high = len(df[(df.sgv > 180)]) / len(df)
     tir = len(df[(df.sgv >= 70) & (df.sgv < 180)]) / len(df)
     ttir = len(df[(df.sgv >= 70) & (df.sgv < 140)]) / len(df)
-    return mean, stddev, pct_low, pct_high, tir, ttir
+    return start_date, end_date, mean, stddev, pct_low, pct_high, tir, ttir
 
 def is_near_meal_time(start_time, meal_times):
   """
