@@ -183,20 +183,19 @@ const NightscoutComponent = ({
   const fetchNightscoutData = async (nightscout_url: string, nightscout_token: string) => {
     const today = new Date();
     const daysAgo = new Date(today.setDate(today.getDate() - 9));
-    const daysAgoStr = daysAgo
-      .toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      })
-      .replace(/\//g, '-');
+    const daysAgoTimestamp = daysAgo.getTime();
 
-    const sgvUrl = `${nightscout_url}/api/v1/entries/sgv.json?token=${nightscout_token}&find[date][$gte]=${daysAgoStr}&count=10000`;
-    const treatmentsUrl = `${nightscout_url}/api/v1/treatments.json?token=${nightscout_token}&find[created_at][$gte]=${daysAgoStr}&count=20000`;
+    // const entriesUrl = `${nightscout_url}/api/v1/entries/sgv.json?token=${nightscout_token}&find[created_at][$gte]=${daysAgoStr}&count=20000`;
+    const entriesUrl = `${nightscout_url}/api/v1/entries/sgv.json?token=${nightscout_token}&find[date][$gte]=${daysAgoTimestamp}&count=20000`;
+
+    // const treatmentsUrl = `${nightscout_url}/api/v1/treatments.json?token=${nightscout_token}&find[created_at][$gte]=${daysAgoTimestamp}&count=20000`;
+    // treatments API only supports created_at
+    const treatmentsUrl = `${nightscout_url}/api/v1/treatments.json?token=${nightscout_token}&find[created_at][$gte]=${daysAgoTimestamp}&count=10000`;
+
 
     try {
       const [sgvResponse, treatmentsResponse] = await Promise.all([
-        axiosInstance.get(sgvUrl),
+        axiosInstance.get(entriesUrl),
         axiosInstance.get(treatmentsUrl),
       ]);
 

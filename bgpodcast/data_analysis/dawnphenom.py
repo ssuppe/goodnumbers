@@ -13,7 +13,7 @@ def _prepare_data(entries, days_to_analyze=7):
     df = pd.DataFrame(entries)
     
     # Apply UTC offset
-    df['adjusted_date'] = df.apply(lambda row: row['date'] + (row['utcOffset'] * 60 * 60 * 1000), axis=1)
+    df['adjusted_date'] = df.apply(lambda row: row['date'] + (row['utcOffset'] * 60 * 1000), axis=1)
     df['datetime'] = pd.to_datetime(df['adjusted_date'], unit='ms')
     
     # Filter to last 7 days
@@ -292,7 +292,7 @@ def get_clinical_report(entries) -> dict:
 
 if __name__ == "__main__":
     from bgpodcast.data_ingestion.nightscout import read_entries_file
-    en = read_entries_file("/home/ssuppe/studioprojects/goodnumbers/data/30Sept.30d/Nightscout.entries.30Sept.30d.json")
+    en = read_entries_file("/home/ssuppe/studioprojects/goodnumbers/data/5Dec/entries.json")
     results = get_clinical_report(en)
 
     from pprint import pprint
