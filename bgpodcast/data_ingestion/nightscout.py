@@ -21,7 +21,12 @@ def read_entries_file(fpath : str) -> list:
         e = json.loads(e)
         entries = []
         for entry in e:
-            entries.append({"date" : int(entry["date"]["$numberLong"]), "utcOffset" : int(entry["utcOffset"]), "sgv" : int(entry["sgv"])})
+            try:
+                entries.append({"date" : int(entry["date"]), "utcOffset" : int(entry["utcOffset"]), "sgv" : int(entry["sgv"])})
+            except Exception as e:
+                print(f"Error in line: {entry}")
+                raise(e)
+        
         return entries
     
     return []
