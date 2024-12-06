@@ -1,11 +1,11 @@
 Patient is male. 
 Patient's latest results:
 Here are the general stats for this week:
-Report from 2024-11-28 to 2024-12-05The average blood glucose for was 145 mg/dl, with a standard deviation of 52.5 mg/dl
-This means that 95% of the time, blood glucose was between 40 and 250.
-Time in range was 74% mg/dl.
-Time in tight range was 56% mg/dl.
-Time spent high (above 180) was 24%.
+Report from 2024-11-28 to 2024-12-05The average blood glucose for was 146 mg/dl, with a standard deviation of 53.1 mg/dl
+This means that 95% of the time, blood glucose was between 40 and 252.
+Time in range was 73% mg/dl.
+Time in tight range was 55% mg/dl.
+Time spent high (above 180) was 25%.
 Time spent low (below 70) was 2%.
 
 

@@ -4,6 +4,45 @@ import json
 import pandas as pd
 from bgpodcast.utils import bgutils
 
+def read_treatments_file(fpath : str) -> list:
+    """ 
+    Return a list of dicts in the same format as the next.js/fastapi app
+
+    Args:
+        fpath (str): path to file to read
+
+                (item: { date: number; carbs?: number; utcOffset: number; insulin?: number; eventType: string }) => ({
+
+    Returns:
+        list: in same format as webapp
+    """
+    with open(fpath, "r", encoding="utf-8") as f:
+        e = f.read()
+        e = json.loads(e)
+        treatments = []
+        for entry in e:
+            try:
+
+                date = int(entry["date"])
+                utcOffset = int(entry["utcOffset"])
+                carbs = entry["carbs"]
+                if carbs is not None:
+                    carbs = int(carbs)
+                
+                insulin = entry["insulin"]
+                if insulin is not None:
+                    insulin = int(insulin)
+
+                eventType = entry["eventType"]
+
+                treatments.append({"date" : date, "utcOffset" : utcOffset, "carbs" : carbs, "insulin" : insulin, "eventType" : eventType})
+            except Exception as e:
+                print(f"Error in line: {entry}")
+                raise(e)
+        
+        return treatments
+    
+    return []
 
 def read_entries_file(fpath : str) -> list:
     """ 

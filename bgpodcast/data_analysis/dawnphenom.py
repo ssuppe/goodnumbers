@@ -275,6 +275,10 @@ def _generate_clinical_report(assessment, daily_stats):
 
 def get_clinical_report(entries) -> dict:
     df = prepare_data(entries)
+
+    # Filter to just the dawn hours
+    df = df[(df.hour >= 4) & (df.hour < 9)]
+
     daily_stats = _analyze_individual_days(df)
     composite_df, composite_stats = _analyze_composite_day(df)
     assessment = _assess_dawn_phenomenon(daily_stats, composite_stats)

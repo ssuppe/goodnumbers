@@ -5,12 +5,12 @@ import os
 import json
 import datetime
 import traceback
+import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 import google.generativeai as genai
 from google.cloud import storage
 from compress_json import decompress
-from bgpodcast.data_ingestion import nightscout as nsingest
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils, ssml
 from bgpodcast.utils import objects
@@ -44,8 +44,10 @@ async def get_notes(data: objects.NightscoutData):
     """
     Create manual notes
     """
+    entries = decompress(data.entries)
+    entries = pd.DataFrame.from_dict(entries)
     treatments = decompress(data.treatments)
-    carbs = decompress(data.carbs)
+    treatments = pd.DataFrame.from_dict(treatments)
 
     print("get_notes")
     podcast_dialog = ""
@@ -54,13 +56,15 @@ async def get_notes(data: objects.NightscoutData):
         # treatments = nsingest.load_sgv_dict(data.treatments)
         # carbs = nsingest.load_carb_dict(data.carbs)
         notes = None
-        notes = bgprompt.generate_notes("Steve", "male", treatments, carbs)
+        notes = bgprompt.generate_notes(entries, treatments)
         podcast_dialog = notes
     except json.JSONDecodeError as e:
         print(f"Error decoding JSON: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON data") from e
     except Exception as e:
         print(f"Error generate_podcast: {e}")
+        error_message = traceback.format_exc()
+        print(error_message)
         raise HTTPException(
             status_code=500, detail="Internal Server Error") from e
 
