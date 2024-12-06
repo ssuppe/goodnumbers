@@ -5,12 +5,13 @@ class Assessment(BaseModel):
     assessment1: str | None = None
     assessment2: str | None = None
     template_num: int | None = 1
-    debug: bool = False
+    debug: bool = True
+    offline : bool = True
     write_local : bool = True
 
 class NightscoutData(BaseModel):
+    entries: list
     treatments: list
-    carbs: list
 
 class PodcastDialog(BaseModel):
     dialog: str | None = None

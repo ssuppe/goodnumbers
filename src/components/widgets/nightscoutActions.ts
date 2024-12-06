@@ -109,7 +109,7 @@ export async function generateAssessments(
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ treatments: csgvData, carbs: ccarbsData }),
+        body: JSON.stringify({ entries: csgvData, treatments: ccarbsData }),
       },
       'Generating Notes',
     );
@@ -169,4 +169,3 @@ export async function generateAssessments(
     throw new Error(`Failed to generate assessments: ${err.step || 'Unknown step'} - ${err.message}`);
   }
 }
-

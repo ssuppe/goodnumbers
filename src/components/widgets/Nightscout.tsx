@@ -132,13 +132,13 @@ const NightscoutComponent = ({
       updateProgress(50, 'Generating podcast...');
 
       const compressedData = {
-        sgvData: compress(nightscoutData.sgvData),
-        carbsData: compress(nightscoutData.carbsData),
+        entries: compress(nightscoutData.entries),
+        treatments: compress(nightscoutData.treatments),
       };
 
       const data = await generateAssessments(
-        compressedData?.sgvData,
-        compressedData?.carbsData || null,
+        compressedData?.entries,
+        compressedData?.treatments || null,
         formData.demo_data,
       );
 
@@ -195,28 +195,33 @@ const NightscoutComponent = ({
     const treatmentsUrl = `${nightscout_url}/api/v1/treatments.json?token=${nightscout_token}&find[created_at][$gte]=${daysAgoTimestamp}&count=10000`;
 
     try {
-      const [sgvResponse, treatmentsResponse] = await Promise.all([
+      const [entriesResponse, treatmentsResponse] = await Promise.all([
         axiosInstance.get(entriesUrl),
         axiosInstance.get(treatmentsUrl),
       ]);
 
-      let entriesData = sgvResponse.data.filter((item: { date: number }) => item.date >= daysAgoTimestamp);
+      let entriesData = entriesResponse.data.filter((item: { date: number }) => item.date >= daysAgoTimestamp);
       entriesData = entriesData.map((item: { date: number; sgv: number; units: string; utcOffset: number }) => ({
         date: item.date,
         sgv: item.sgv,
         units: item.units,
         utcOffset: item.utcOffset,
       }));
-      let carbsData = treatmentsResponse.data.filter((item: { date: number; eventType: string; carbs: number }) => {
-        // const createdAtDate = new Date(item.created_at);
-        return item.date >= daysAgoTimestamp && item.carbs !== null;
-      });
-      carbsData = carbsData.map((item: { date: number; carbs: number; utcOffset: number }) => ({
-        date: item.date,
-        carbs: item.carbs,
-        utcOffset: item.utcOffset,
-      }));
-      return { sgvData: entriesData, carbsData: carbsData };
+      let treatmentsData = treatmentsResponse.data.filter(
+        (item: { date: number; eventType: string; carbs?: number; insulin?: number }) => {
+          return item.date >= daysAgoTimestamp && (item.carbs !== null || item.insulin !== null);
+        },
+      );
+      treatmentsData = treatmentsData.map(
+        (item: { date: number; carbs?: number; utcOffset: number; insulin?: number; eventType: string }) => ({
+          date: item.date,
+          carbs: item.carbs,
+          insulin: item.insulin,
+          utcOffset: item.utcOffset,
+          eventType: item.eventType,
+        }),
+      );
+      return { entries: entriesData, treatments: treatmentsData };
     } catch (error) {
       throw new Error('Failed to fetch Nightscout data');
     }
