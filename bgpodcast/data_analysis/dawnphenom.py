@@ -1,10 +1,9 @@
-from datetime import timedelta
 import pandas as pd
 import numpy as np
 from scipy.stats import linregress
 from scipy import integrate
+from bgpodcast.data_analysis.dfutils import prepare_data
 from bgpodcast.utils.bgutils import add_comment
-from dfutils import prepare_data
 
 
 # Clinical thresholds based on research

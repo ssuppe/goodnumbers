@@ -1,8 +1,5 @@
-from dfutils import prepare_data
+from bgpodcast.data_analysis.dfutils import prepare_data
 from bgpodcast.utils import bgutils
-
-
-
 
 def weekly_stats(entries) -> str:
     notes = ""
