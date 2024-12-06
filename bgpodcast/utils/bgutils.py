@@ -79,29 +79,6 @@ def get_sgv_stats(df : pd.DataFrame):
     ttir = len(df[(df.sgv >= 70) & (df.sgv < 140)]) / len(df)
     return start_date, end_date, mean, stddev, pct_low, pct_high, tir, ttir
 
-def is_near_meal_time(start_time, meal_times):
-  """
-  This function takes in a start time and a list of meal times and returns True if the start time 
-  is within one hour of any of the meal times.
-
-  Args:
-    start_time: A string representing a time in the format "%H:%M".
-    meal_times: A list of strings representing meal times in the format "%H:%M".
-
-  Returns:
-    A boolean value indicating whether the start time is within one hour of any of the meal times.
-  """
-
-  # Convert the start time and meal times to datetime objects.
-  start_time = pd.to_datetime(start_time, format="%H:%M")
-  meal_times = pd.to_datetime(meal_times, format="%H:%M")
-
-  # Create a boolean mask indicating whether the start time is within one hour of any of the meal times.
-  mask = (start_time >= meal_times - pd.Timedelta(hours=1)) & (start_time <= meal_times + pd.Timedelta(hours=2))
-
-  # Return the boolean mask.
-  return mask.any()
-
 def interpolate(prompt="", **kwargs):
     for key, value in kwargs.items():
         prompt = prompt.replace(f"{{{key}}}", value)
