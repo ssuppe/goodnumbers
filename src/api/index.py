@@ -11,11 +11,11 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware 
 import google.generativeai as genai
 from google.cloud import storage
-from compress_json import load
+from compress_json import decompress
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils, ssml
 from bgpodcast.utils import objects
-from bgpodcast.audio.gcloud import get_job_status
+from bgpodcast.audio.gcloud import gen_podcast, get_job_status
 
 app = FastAPI()
 
@@ -53,9 +53,9 @@ async def get_notes(data: objects.NightscoutData):
     """
     Create manual notes
     """
-    entries = load(data.entries)
+    entries = decompress(data.entries)
     entries = pd.DataFrame.from_dict(entries)
-    treatments = load(data.treatments)
+    treatments = decompress(data.treatments)
     treatments = pd.DataFrame.from_dict(treatments)
 
     print("get_notes")
@@ -153,6 +153,7 @@ async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> ob
 
 @app.post("/api/get_assessment")
 async def get_assessment(data: objects.Assessment):
+    print(f"cwd: {os.getcwd()}")
     """
     Get assessment
     """
@@ -186,12 +187,12 @@ async def get_assessment(data: objects.Assessment):
             prompt = bgutils.interpolate(template1, notes=data.notes)
             print(f"Prompt1: {prompt}")
             if data.debug:
-                response_text = bgutils.read_file(fr=os.path.join("_tmp", "pass1_output.txt")) 
+                response_text = bgutils.read_file(fr=os.path.join("..", "_tmp", "pass1_output.txt")) 
             else:
                 response = await async_generate(prompt, model)
                 response_text = response.text
             if data.write_local:
-                bgutils.write_file(to=os.path.join("_tmp", "pass1_output.txt"), contents=response_text)
+                bgutils.write_file(to=os.path.join("..", "_tmp", "pass1_output.txt"), contents=response_text)
             print(f"Response1: {response_text[0:100]}")
             return JSONResponse({"valid": True, "response": response_text})
         elif data.template_num == 2:
@@ -199,12 +200,12 @@ async def get_assessment(data: objects.Assessment):
             prompt = bgutils.interpolate(
                 template2, notes=data.notes, assessment1=data.assessment1)
             if data.debug:
-                response_text = bgutils.read_file(fr=os.path.join("_tmp", "pass2_output.txt")) 
+                response_text = bgutils.read_file(fr=os.path.join("..", "_tmp", "pass2_output.txt")) 
             else:
                 response = await async_generate(prompt, model)
                 response_text = response.text
             if data.write_local:
-                bgutils.write_file(to=os.path.join("_tmp", "pass2_output.txt"), contents=response_text)
+                bgutils.write_file(to=os.path.join("..", "_tmp", "pass2_output.txt"), contents=response_text)
             print(f"Response2: {response_text[0:100]}")
             return JSONResponse({"valid": True, "response": response_text})
         elif data.template_num == 3:
@@ -222,7 +223,7 @@ async def get_assessment(data: objects.Assessment):
             while not is_valid_ssml and no_ssml_tries < 3:
                 print("Generating SSML")
                 if data.debug:
-                    response_text = bgutils.read_file(fr=os.path.join("_tmp", "pass3_output.txt")) 
+                    response_text = bgutils.read_file(fr=os.path.join("..", "_tmp", "pass3_output.txt")) 
                 else:
                     response = await async_generate(prompt, model)
                     response_text = response.text
@@ -232,11 +233,11 @@ async def get_assessment(data: objects.Assessment):
                 if not is_valid_ssml:
                     print(f"{no_ssml_tries}/3: Invalid SSML that couldn't be fixed: {response_text}")
                     if data.write_local:
-                        bgutils.write_file(to=os.path.join("_tmp", "pass3_output.txt"), contents=response_text)
+                        bgutils.write_file(to=os.path.join("..", "_tmp", "pass3_output.txt"), contents=response_text)
                     no_ssml_tries += 1
                 else:
                     if data.write_local:
-                        bgutils.write_file(to=os.path.join("_tmp", "pass3_output.txt"), contents=ssml_check.processed_ssml)
+                        bgutils.write_file(to=os.path.join("..", "_tmp", "pass3_output.txt"), contents=ssml_check.processed_ssml)
                     return JSONResponse({'valid' : True, 'response': ssml_check.processed_ssml})
         else:
             raise ValueError(f"Invalid template number: {data.template_num}")
