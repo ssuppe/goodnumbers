@@ -5,7 +5,7 @@ import os
 import json
 import datetime
 import traceback
-import pandas as pd
+import mypandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 import google.generativeai as genai

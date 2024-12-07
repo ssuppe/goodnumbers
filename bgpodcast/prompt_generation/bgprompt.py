@@ -1,7 +1,7 @@
 """
 bgprompt
 """
-import pandas as pd
+import mypandas as pd
 import numpy as np
 
 from bgpodcast.data_analysis import dawnphenom, high_periods, weekly_analysis

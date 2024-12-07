@@ -1,4 +1,4 @@
-import pandas as pd
+import mypandas as pd
 
 
 class NightscoutData:

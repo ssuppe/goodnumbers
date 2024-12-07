@@ -1,4 +1,4 @@
-import pandas as pd
+import mypandas as pd
 import numpy as np
 from scipy.stats import linregress
 from scipy import integrate
