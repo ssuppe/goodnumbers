@@ -8,22 +8,31 @@ import traceback
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware 
 import google.generativeai as genai
 from google.cloud import storage
-from compress_json import decompress
+from compress_json import load
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils, ssml
 from bgpodcast.utils import objects
-from bgpodcast.audio.gcloud import gen_podcast, get_job_status
+from bgpodcast.audio.gcloud import get_job_status
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Add your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Load templates from files
-with open(os.path.join("app", "_prompts", "pass1.txt"), "r", encoding="utf-8") as f:
+with open(os.path.join("..", "_prompts", "pass1.txt"), "r", encoding="utf-8") as f:
     template1 = f.read()
-with open(os.path.join("app", "_prompts", "pass2.txt"), "r", encoding="utf-8") as f:
+with open(os.path.join("..", "_prompts", "pass2.txt"), "r", encoding="utf-8") as f:
     template2 = f.read()
-with open(os.path.join("app", "_prompts", "pass3.txt"), "r", encoding="utf-8") as f:
+with open(os.path.join("..", "_prompts", "pass3.txt"), "r", encoding="utf-8") as f:
     template3 = f.read()
 
 
@@ -44,9 +53,9 @@ async def get_notes(data: objects.NightscoutData):
     """
     Create manual notes
     """
-    entries = decompress(data.entries)
+    entries = load(data.entries)
     entries = pd.DataFrame.from_dict(entries)
-    treatments = decompress(data.treatments)
+    treatments = load(data.treatments)
     treatments = pd.DataFrame.from_dict(treatments)
 
     print("get_notes")
