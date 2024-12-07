@@ -13,8 +13,5 @@ module.exports = {
             : "/api/:path*", // Important: Point to the Vercel function route in production
       },
     ];
-  },
-  experimental: {
-    serverActions: true,
   }
 };
