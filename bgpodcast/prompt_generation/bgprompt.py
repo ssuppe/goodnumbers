@@ -28,8 +28,8 @@ def generate_notes(entries : pd.DataFrame, treatments : pd.DataFrame) -> str:
 
     ######################################################
     # Analyze high periods
-    high_period_analysis = high_periods.high_period_report(entries, treatments)
-    notes = add_comment(high_period_analysis, notes)
+    # high_period_analysis = high_periods.high_period_report(entries, treatments)
+    # notes = add_comment(high_period_analysis, notes)
 
     # low_periods = nsanalyze.find_low_periods(entries)
     # if len(low_periods) > 0:
