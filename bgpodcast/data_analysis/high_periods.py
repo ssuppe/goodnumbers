@@ -1,5 +1,5 @@
 from datetime import timedelta
-import pandas as pd
+import mypandas as pd
 from bgpodcast.data_analysis.dfutils import find_high_periods, prepare_data
 from bgpodcast.data_ingestion.nightscout import read_treatments_file
 from bgpodcast.utils.bgutils import add_comment, get_number_of_days

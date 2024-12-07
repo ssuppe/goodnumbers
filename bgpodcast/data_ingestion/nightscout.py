@@ -1,7 +1,7 @@
 """File for loading data. Right now this only includes importing from known local files"""
 import json
 
-import pandas as pd
+import mypandas as pd
 from bgpodcast.utils import bgutils
 
 def read_treatments_file(fpath : str) -> list:

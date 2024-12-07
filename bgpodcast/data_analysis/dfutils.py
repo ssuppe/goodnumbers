@@ -1,6 +1,6 @@
 from datetime import timedelta
 import ruptures as rpt
-import pandas as pd
+import mypandas as pd
 
 def prepare_data(data, days_to_analyze=7) -> pd.DataFrame:
     df = pd.DataFrame(data)
