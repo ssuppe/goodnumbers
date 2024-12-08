@@ -6,6 +6,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { compress, decompress, Compressed } from 'compress-json';
 import { AssessmentData, PodcastGenerateResult } from '~/types/nightscout';
+import { config } from '~/utils/env';
 
 // Configure Winston logger
 const logger = winston.createLogger({
@@ -65,12 +66,12 @@ export async function generateAssessments(
   ccarbsData: Compressed,
   useLocalData: boolean,
 ): Promise<AssessmentData> {
-  const apiUrl = process.env.FASTAPI_URL;
+  const apiUrl = config.backendUrl;
   if (!apiUrl || apiUrl == '') {
-    logger.error('FASTAPI_URL environment variable is not set');
-    throw new Error('FASTAPI_URL environment variable is not set');
+    logger.error('NEXT_PUBLIC_BACKEND_URL environment variable is not set');
+    throw new Error('NEXT_PUBLIC_BACKEND_URL environment variable is not set');
   } else {
-    logger.info('FASTAPI_URL: ' + apiUrl);
+    logger.info('NEXT_PUBLIC_BACKEND_URL: ' + apiUrl);
   }
 
   if (useLocalData) {

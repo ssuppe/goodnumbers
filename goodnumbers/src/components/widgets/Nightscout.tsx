@@ -18,6 +18,7 @@ import { AssessmentData, PodcastGenerateResult } from '~/types/nightscout';
 import AudioPlayer from 'react-h5-audio-player';
 import 'react-h5-audio-player/lib/styles.css';
 import LazyAudioPlayer from './LazyAudioPlayer';
+import { config } from 'src/utils/env';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
@@ -92,7 +93,7 @@ const NightscoutComponent = ({
       try {
         let currentPodcastResult = getCurrentPodcastResult();
         console.error(currentPodcastResult);
-        const response = await axiosInstance.post('/api/check_podcast', currentPodcastResult);
+        const response = await axiosInstance.post(config.backendUrl + '/api/check_podcast', currentPodcastResult);
         await updatePodcastResult(response.data);
 
         // If done or error, clear the interval
