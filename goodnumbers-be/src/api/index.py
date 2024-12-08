@@ -116,22 +116,6 @@ async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> ob
         status = await get_job_status(podcast_result.operation_id)
 
         if status.done and not status.error:
-            # # Generate signed URL when podcast is ready
-            # storage_client = storage.Client()
-            # bucket = storage_client.bucket(BUCKET_NAME)
-            # blob = bucket.blob(podcast_result.gcs_path)
-
-            # url = blob.generate_signed_url(
-            #     version="v4",
-            #     expiration=datetime.timedelta(hours=1),
-            #     method="GET",
-            #     response_type="audio/mpeg",
-            #     headers={
-            #         "Access-Control-Allow-Origin": "*",
-            #         "Cache-Control": "public, max-age=3600"
-            #     }
-            # )
-
             podcast_result.status = "done"
             # podcast_result.url = url
 
