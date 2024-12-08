@@ -105,12 +105,21 @@ deploy-frontend env:
     fi
     
     echo "Deploying frontend with {{env}}.frontend environment..."
+
+    # Load environment variables into current shell
+    set -a
+    source "{{env-dir}}/env.{{env}}.frontend"
+    set +a
     
     cd {{frontend-dir}} && \
+    # Create .env file in frontend directory from our env file
+    cp "{{env-dir}}/env.{{env}}.frontend" .env.production && \
     vercel pull --yes --environment=production --token=$VERCEL_TOKEN && \
-    vercel env pull .env.production --token=$VERCEL_TOKEN && \
     vercel build --prod --token=$VERCEL_TOKEN && \
     vercel deploy --prod --token=$VERCEL_TOKEN
+
+    # Clean up
+    rm -f .env.production
 
 # Add a command to test Vercel configuration
 check-vercel:

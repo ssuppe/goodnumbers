@@ -30,7 +30,7 @@
     "concurrently": "^9.0.1",
     "cookie": "^1.0.0",
     "eslint": "^8.57.1",
-    "eslint-config-next": "^15.0.3",
+    "eslint-config-next": "^15.0.4",
     "glob": "^11.0.0",
     "gray-matter": "^4.0.3",
     "js-cookie": "^3.0.5",
