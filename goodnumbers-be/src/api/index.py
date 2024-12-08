@@ -256,49 +256,6 @@ async def get_assessment(data: objects.Assessment):
 async def test():
     return JSONResponse({"response": "Working!"})
 
-# @app.post("/generate_podcast_url")
-# async def generate_podcast_url(file_path: str):
-#     try:
-#         storage_client = storage.Client()
-#         bucket = storage_client.bucket('goodnumbers')
-#         blob = bucket.blob(file_path)
-
-#         # Generate signed URL that expires in 1 hour
-#         url = blob.generate_signed_url(
-#             version="v4",
-#             expiration=datetime.timedelta(hours=1),
-#             method="GET",
-#             response_type="audio/mpeg",
-#             headers=None
-#         )
-
-#         return {"url": url}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e)) from e
-
-
-@app.post("/api/refresh_audio_url")
-async def refresh_audio_url(request: objects.RefreshURLRequest) -> dict:
-    try:
-        storage_client = storage.Client()
-        bucket = storage_client.bucket(BUCKET_NAME)
-        blob = bucket.blob(request.gcs_path)
-
-        url = blob.generate_signed_url(
-            version="v4",
-            expiration=datetime.timedelta(hours=1),
-            method="GET",
-            response_type="audio/mpeg",
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Cache-Control": "public, max-age=3600"
-            }
-        )
-
-        return {"url": url}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
-
 vellox = Vellox(app=app, lifespan="off")
 
 
