@@ -1,0 +1,30 @@
+{
+  "folders": [
+    {
+      "path": "./goodnumbers",
+      "name": "Next.js Frontend"
+    },
+    {
+      "path": "./goodnumbers-be",
+      "name": "FastAPI Backend"
+    }
+  ],
+  "settings": {
+    // Workspace-specific settings go here
+    "editor.formatOnSave": true,
+    // You can override settings per-language
+    "[python]": {
+      "editor.defaultFormatter": "ms-python.autopep8"
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode"
+    ]
+  }
+}
