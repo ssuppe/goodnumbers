@@ -25,7 +25,8 @@ deploy-backend env:
     
     echo "Deploying backend with {{env}}.backend environment..."
     
-    # Load environment variables
+    # Load environment variables - do not use as this is a YAML file
+    # for Google Cloud
     # set -a
     # source {{env-dir}}/env.{{env}}.backend
     # set +a
@@ -70,3 +71,50 @@ show-env env:
     echo "Environment variables for {{env}}:"
     # Show variables but hide values
     grep -v '^#' {{env-dir}}/env.{{env}} | cut -d '=' -f1
+
+
+#############################################
+# Vercel
+
+# Add this helper recipe to verify Vercel setup
+_verify-vercel:
+    #!/usr/bin/env bash
+    if [ -z "$VERCEL_TOKEN" ]; then
+        echo "Error: VERCEL_TOKEN is not set"
+        echo "Please create a token at https://vercel.com/account/tokens"
+        echo "Then add it to your environment: export VERCEL_TOKEN='your-token'"
+        exit 1
+    fi
+    
+    # Verify token works by checking authentication
+    if ! vercel whoami --token=$VERCEL_TOKEN > /dev/null 2>&1; then
+        echo "Error: Invalid VERCEL_TOKEN"
+        echo "Please check your token at https://vercel.com/account/tokens"
+        exit 1
+    fi
+
+deploy-frontend env:
+    #!/usr/bin/env bash
+    # First run verification
+    just _verify-vercel
+    
+    # Verify environment file exists
+    if [ ! -f "{{env-dir}}/env.{{env}}.frontend" ]; then
+        echo "Error: Environment file {{env-dir}}/env.{{env}}.frontend not found"
+        exit 1
+    fi
+    
+    echo "Deploying frontend with {{env}}.frontend environment..."
+    
+    cd {{frontend-dir}} && \
+    vercel pull --yes --environment=production --token=$VERCEL_TOKEN && \
+    vercel env pull .env.production --token=$VERCEL_TOKEN && \
+    vercel build --prod --token=$VERCEL_TOKEN && \
+    vercel deploy --prod --token=$VERCEL_TOKEN
+
+# Add a command to test Vercel configuration
+check-vercel:
+    #!/usr/bin/env bash
+    echo "Checking Vercel configuration..."
+    just _verify-vercel
+    echo "Vercel configuration is valid ✅"
