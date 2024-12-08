@@ -1,5 +1,5 @@
 {
-  "extends": ["next/core-web-vitals", "plugin:storybook/recommended", "next/babel"],
+  "extends": ["eslint:recommended"],
   "parserOptions": {
     "ecmaVersion": "latest",
     "sourceType": "module"
