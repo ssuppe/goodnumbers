@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:mobile="http://www.google.com/schemas/sitemap-mobile/1.0" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
-<url><loc>undefinedundefined/terms</loc><lastmod>2024-12-08T18:14:39.009Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>undefinedundefined/services</loc><lastmod>2024-12-08T18:14:39.009Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>undefinedundefined/about</loc><lastmod>2024-12-08T18:14:39.009Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>undefinedundefined</loc><lastmod>2024-12-08T18:14:39.009Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>undefinedundefined/faqs</loc><lastmod>2024-12-08T18:14:39.009Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>undefinedundefined/pricing</loc><lastmod>2024-12-08T18:14:39.009Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>undefinedundefined/privacy</loc><lastmod>2024-12-08T18:14:39.009Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>undefinedundefined/trynow</loc><lastmod>2024-12-08T18:14:39.009Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
-<url><loc>undefinedundefined/contact</loc><lastmod>2024-12-08T18:14:39.009Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>undefinedundefined/privacy</loc><lastmod>2024-12-08T18:28:32.558Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>undefinedundefined/terms</loc><lastmod>2024-12-08T18:28:32.558Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>undefinedundefined/services</loc><lastmod>2024-12-08T18:28:32.558Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>undefinedundefined/faqs</loc><lastmod>2024-12-08T18:28:32.558Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>undefinedundefined</loc><lastmod>2024-12-08T18:28:32.558Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>undefinedundefined/about</loc><lastmod>2024-12-08T18:28:32.558Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>undefinedundefined/pricing</loc><lastmod>2024-12-08T18:28:32.558Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>undefinedundefined/contact</loc><lastmod>2024-12-08T18:28:32.558Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+<url><loc>undefinedundefined/trynow</loc><lastmod>2024-12-08T18:28:32.558Z</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
 </urlset>
