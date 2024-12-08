@@ -93,9 +93,34 @@ _verify-vercel:
         exit 1
     fi
 
+# Read .env file and push all variables to Vercel production environment
+push-env filename env:
+    #!/usr/bin/env bash
+    #set -euo pipefail
+    
+    cd {{frontend-dir}}
+
+    while IFS='=' read -r key value || [ -n "$key" ]; do
+        # Skip empty lines and comments
+        [[ -z "$key" || "$key" == \#* ]] && continue
+        
+        # Trim whitespace from key and value
+        key=$(echo "$key" | xargs)
+        value=$(echo "$value" | xargs)
+        
+        # Remove any surrounding quotes from the value
+        value=$(echo "$value" | sed -e 's/^["\x27]//' -e 's/["\x27]$//')
+        
+        echo "Adding $key to Vercel..."
+        echo "$value" | vercel env add "$key" {{env}} --token=$VERCEL_TOKEN
+    done < {{filename}}
+    
+    echo "✅ Environment variables have been pushed to Vercel {{env}}"
+
 deploy-frontend env:
     #!/usr/bin/env bash
     # First run verification
+    set -euo pipefail # -e means exit on any error, -u means error on undefined variables
     just _verify-vercel
     
     # Verify environment file exists
@@ -111,16 +136,18 @@ deploy-frontend env:
     source "{{env-dir}}/env.{{env}}.frontend"
     set +a
     
+    #just push-env {{env-dir}}/env.{{env}}.frontend {{env}}
+
     cd {{frontend-dir}} && \
     # Create .env file in frontend directory from our env file
-    cp "{{env-dir}}/env.{{env}}.frontend" .env.production && \
-    vercel env push .env.production production --yes --token=$VERCEL_TOKEN && \
+    # cp "{{env-dir}}/env.{{env}}.frontend" .env.production && \
+    #vercel env push .env.production production --yes --token=$VERCEL_TOKEN && \
     #vercel pull --yes --environment=production --token=$VERCEL_TOKEN && \
     vercel build --prod --token=$VERCEL_TOKEN && \
     vercel deploy --prod --token=$VERCEL_TOKEN
 
     # Clean up
-    rm -f .env.production
+    #rm -f .env.production
 
 # Add a command to test Vercel configuration
 check-vercel:
