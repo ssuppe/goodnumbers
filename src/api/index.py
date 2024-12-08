@@ -16,6 +16,7 @@ from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils, ssml
 from bgpodcast.utils import objects
 from bgpodcast.audio.gcloud import gen_podcast, get_job_status
+from vellox import Vellox
 
 app = FastAPI()
 
@@ -302,3 +303,8 @@ async def refresh_audio_url(request: objects.RefreshURLRequest) -> dict:
         return {"url": url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
+    
+vellox = Vellox(app=app, lifespan="off")
+
+def handler(request):
+    return vellox(request)

@@ -43,7 +43,7 @@ def generate_notes(entries : pd.DataFrame, treatments : pd.DataFrame) -> str:
     # else:
     #     notes += f"Steve doesn't have any time periods where he is running low. Well done! This is quite an accomplishment!"
         
-    with open("notes.txt", "w", encoding="utf-8") as f:    
+    with open("../../_tmp/notes.txt", "w", encoding="utf-8") as f:    
         f.write(notes)
 
     return notes
