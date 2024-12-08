@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: undefinedundefined
+
+# Sitemaps
+Sitemap: undefinedundefined/sitemap.xml
