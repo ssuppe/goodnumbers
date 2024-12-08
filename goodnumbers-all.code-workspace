@@ -7,6 +7,12 @@
     {
       "path": "./goodnumbers-be",
       "name": "FastAPI Backend"
+    },
+    {
+      "path": "."
+    },
+    {
+      "path": "../../envs"
     }
   ],
   "settings": {
@@ -21,10 +27,6 @@
     }
   },
   "extensions": {
-    "recommendations": [
-      "ms-python.python",
-      "dbaeumer.vscode-eslint",
-      "esbenp.prettier-vscode"
-    ]
+    "recommendations": ["ms-python.python", "dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
   }
 }
