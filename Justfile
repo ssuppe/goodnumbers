@@ -37,7 +37,7 @@ deploy-backend env:
         --runtime=python312 \
         --region={{gcp-region}} \
         --source=. \
-        --entry-point=main \
+        --entry-point=handler \
         --trigger-http \
         --allow-unauthenticated \
         --env-vars-file={{env-dir}}/env.{{env}}.backend
