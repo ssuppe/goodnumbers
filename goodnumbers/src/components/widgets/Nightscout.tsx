@@ -10,7 +10,7 @@ import Cookies from 'js-cookie';
 
 import { generateAssessments } from './nightscoutActions';
 import { compress } from 'compress-json';
-import DebugInterfaceViewer from './DebugInterfaceViewer';
+import DebllugInterfaceViewer from './DebugInterfaceViewer';
 import { createApiClient } from '~/lib/api/axios';
 import { useAssessmentState } from '~/hooks/useAssessmentState';
 import { useLoadingState } from '~/hooks/useLoadingState';
