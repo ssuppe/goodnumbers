@@ -114,7 +114,8 @@ deploy-frontend env:
     cd {{frontend-dir}} && \
     # Create .env file in frontend directory from our env file
     cp "{{env-dir}}/env.{{env}}.frontend" .env.production && \
-    vercel pull --yes --environment=production --token=$VERCEL_TOKEN && \
+    vercel env push .env.production production --yes --token=$VERCEL_TOKEN && \
+    #vercel pull --yes --environment=production --token=$VERCEL_TOKEN && \
     vercel build --prod --token=$VERCEL_TOKEN && \
     vercel deploy --prod --token=$VERCEL_TOKEN
 
