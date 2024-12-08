@@ -29,11 +29,11 @@ app.add_middleware(
 )
 
 # Load templates from files
-with open(os.path.join("..", "..", "_prompts", "pass1.txt"), "r", encoding="utf-8") as f:
+with open(os.path.join("_prompts", "pass1.txt"), "r", encoding="utf-8") as f:
     template1 = f.read()
-with open(os.path.join("..", "..", "_prompts", "pass2.txt"), "r", encoding="utf-8") as f:
+with open(os.path.join("_prompts", "pass2.txt"), "r", encoding="utf-8") as f:
     template2 = f.read()
-with open(os.path.join("..", "..", "_prompts", "pass3.txt"), "r", encoding="utf-8") as f:
+with open(os.path.join("_prompts", "pass3.txt"), "r", encoding="utf-8") as f:
     template3 = f.read()
 
 
