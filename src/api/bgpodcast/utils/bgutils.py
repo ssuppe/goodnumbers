@@ -1,5 +1,9 @@
 import datetime
 import pandas as pd
+from os import environ
+
+def is_dev_environment() -> bool:
+    return environ.get("ENV") == "development"
 
 def add_comment(comment, note):
     note = "\n" + note + comment + "\n"

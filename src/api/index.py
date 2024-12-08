@@ -8,7 +8,7 @@ import traceback
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware 
+from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
 from google.cloud import storage
 from compress_json import decompress
@@ -29,17 +29,18 @@ app.add_middleware(
 )
 
 # Load templates from files
-with open(os.path.join("..", "_prompts", "pass1.txt"), "r", encoding="utf-8") as f:
+with open(os.path.join("..", "..", "_prompts", "pass1.txt"), "r", encoding="utf-8") as f:
     template1 = f.read()
-with open(os.path.join("..", "_prompts", "pass2.txt"), "r", encoding="utf-8") as f:
+with open(os.path.join("..", "..", "_prompts", "pass2.txt"), "r", encoding="utf-8") as f:
     template2 = f.read()
-with open(os.path.join("..", "_prompts", "pass3.txt"), "r", encoding="utf-8") as f:
+with open(os.path.join("..", "..", "_prompts", "pass3.txt"), "r", encoding="utf-8") as f:
     template3 = f.read()
 
 
 @app.get("/api/hello")
 def hello_fast_api():
     return {"message": "Hello from FastAPI"}
+
 
 gemini_api_key = os.environ["GEMINI_API_KEY"]
 # Constants
@@ -99,7 +100,7 @@ async def gen_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGener
     try:
         # Your existing podcast generation logic
         result = await gen_podcast(dialog)
-        
+
         return result
     except Exception as e:
         return objects.PodcastGenerateResult(
@@ -108,17 +109,18 @@ async def gen_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGener
             error=str(e)
         )
 
+
 @app.post("/api/check_podcast")
 async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> objects.PodcastGenerateResult:
     try:
         status = await get_job_status(podcast_result.operation_id)
-        
+
         if status.done and not status.error:
             # # Generate signed URL when podcast is ready
             # storage_client = storage.Client()
             # bucket = storage_client.bucket(BUCKET_NAME)
-            # blob = bucket.blob(podcast_result.gcs_path)  
-            
+            # blob = bucket.blob(podcast_result.gcs_path)
+
             # url = blob.generate_signed_url(
             #     version="v4",
             #     expiration=datetime.timedelta(hours=1),
@@ -129,7 +131,7 @@ async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> ob
             #         "Cache-Control": "public, max-age=3600"
             #     }
             # )
-            
+
             podcast_result.status = "done"
             # podcast_result.url = url
 
@@ -138,12 +140,12 @@ async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> ob
             podcast_result.status = "error"
             podcast_result.error = str(status.error)
             return podcast_result
-            
+
         else:
             podcast_result.status = "processing"
             return podcast_result
             # podcast_result.error = str(status.error)
-            
+
     except Exception as e:
         return objects.PodcastGenerateResult(
             status="error",
@@ -181,32 +183,36 @@ async def get_assessment(data: objects.Assessment):
             raise ValueError("Missing 'template_num' in request body")
 
         response_text = ""
-        ssml_check : ssml.SSMLCheck = None
+        ssml_check: ssml.SSMLCheck = None
 
         if data.template_num == 1:
             print("Generating template 1")
             prompt = bgutils.interpolate(template1, notes=data.notes)
             print(f"Prompt1: {prompt}")
-            if data.debug:
-                response_text = bgutils.read_file(fr=os.path.join("..", "_tmp", "pass1_output.txt")) 
+            if data.debug and bgutils.is_dev_environment():
+                response_text = bgutils.read_file(
+                    fr=os.path.join("..", "..", "_tmp", "pass1_output.txt"))
             else:
                 response = await async_generate(prompt, model)
                 response_text = response.text
-            if data.write_local:
-                bgutils.write_file(to=os.path.join("..", "_tmp", "pass1_output.txt"), contents=response_text)
+            if data.write_local and bgutils.is_dev_environment():
+                bgutils.write_file(to=os.path.join(
+                    "..", "..", "_tmp", "pass1_output.txt"), contents=response_text)
             print(f"Response1: {response_text[0:100]}")
             return JSONResponse({"valid": True, "response": response_text})
         elif data.template_num == 2:
             print("Generating template 2")
             prompt = bgutils.interpolate(
                 template2, notes=data.notes, assessment1=data.assessment1)
-            if data.debug:
-                response_text = bgutils.read_file(fr=os.path.join("..", "_tmp", "pass2_output.txt")) 
+            if data.debug and bgutils.is_dev_environment():
+                response_text = bgutils.read_file(
+                    fr=os.path.join("..", "..", "_tmp", "pass2_output.txt"))
             else:
                 response = await async_generate(prompt, model)
                 response_text = response.text
-            if data.write_local:
-                bgutils.write_file(to=os.path.join("..", "_tmp", "pass2_output.txt"), contents=response_text)
+            if data.write_local and bgutils.is_dev_environment():
+                bgutils.write_file(to=os.path.join(
+                    "..", "..", "_tmp", "pass2_output.txt"), contents=response_text)
             print(f"Response2: {response_text[0:100]}")
             return JSONResponse({"valid": True, "response": response_text})
         elif data.template_num == 3:
@@ -223,23 +229,27 @@ async def get_assessment(data: objects.Assessment):
             no_ssml_tries = 0
             while not is_valid_ssml and no_ssml_tries < 3:
                 print("Generating SSML")
-                if data.debug:
-                    response_text = bgutils.read_file(fr=os.path.join("..", "_tmp", "pass3_output.txt")) 
+                if data.debug and bgutils.is_dev_environment():
+                    response_text = bgutils.read_file(
+                        fr=os.path.join("..", "..", "_tmp", "pass3_output.txt"))
                 else:
                     response = await async_generate(prompt, model)
                     response_text = response.text
-                ssml_check  = ssml.check_google_tts_ssml_format(response_text)
+                ssml_check = ssml.check_google_tts_ssml_format(response_text)
                 is_valid_ssml = ssml_check.is_correct
                 print(f"Is valid SSML? {ssml_check.is_correct}")
                 if not is_valid_ssml:
-                    print(f"{no_ssml_tries}/3: Invalid SSML that couldn't be fixed: {response_text}")
-                    if data.write_local:
-                        bgutils.write_file(to=os.path.join("..", "_tmp", "pass3_output.txt"), contents=response_text)
+                    print(
+                        f"{no_ssml_tries}/3: Invalid SSML that couldn't be fixed: {response_text}")
+                    if data.write_local and bgutils.is_dev_environment():
+                        bgutils.write_file(to=os.path.join(
+                            "..", "..", "_tmp", "pass3_output.txt"), contents=response_text)
                     no_ssml_tries += 1
                 else:
-                    if data.write_local:
-                        bgutils.write_file(to=os.path.join("..", "_tmp", "pass3_output.txt"), contents=ssml_check.processed_ssml)
-                    return JSONResponse({'valid' : True, 'response': ssml_check.processed_ssml})
+                    if data.write_local and bgutils.is_dev_environment():
+                        bgutils.write_file(to=os.path.join(
+                            "..", "..", "_tmp", "pass3_output.txt"), contents=ssml_check.processed_ssml)
+                    return JSONResponse({'valid': True, 'response': ssml_check.processed_ssml})
         else:
             raise ValueError(f"Invalid template number: {data.template_num}")
 
@@ -277,18 +287,19 @@ async def test():
 #             response_type="audio/mpeg",
 #             headers=None
 #         )
-        
+
 #         return {"url": url}
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e)) from e
-    
+
+
 @app.post("/api/refresh_audio_url")
 async def refresh_audio_url(request: objects.RefreshURLRequest) -> dict:
     try:
         storage_client = storage.Client()
         bucket = storage_client.bucket(BUCKET_NAME)
         blob = bucket.blob(request.gcs_path)
-        
+
         url = blob.generate_signed_url(
             version="v4",
             expiration=datetime.timedelta(hours=1),
@@ -299,12 +310,13 @@ async def refresh_audio_url(request: objects.RefreshURLRequest) -> dict:
                 "Cache-Control": "public, max-age=3600"
             }
         )
-        
+
         return {"url": url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
-    
+
 vellox = Vellox(app=app, lifespan="off")
+
 
 def handler(request):
     return vellox(request)

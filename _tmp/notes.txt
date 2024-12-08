@@ -1,10 +1,10 @@
 Patient's latest results:
 Here are the general stats for this week:
-Report from 2024-11-30 00:00:00 to 2024-12-07 00:00:00The average blood glucose for was 149 mg/dl, with a standard deviation of 51.0 mg/dl
-This means that 95% of the time, blood glucose was between 47 and 251.
-Time in range was 72% mg/dl.
-Time in tight range was 53% mg/dl.
-Time spent high (above 180) was 26%.
+Report from 2024-12-01 00:00:00 to 2024-12-08 00:00:00The average blood glucose for was 144 mg/dl, with a standard deviation of 49.5 mg/dl
+This means that 95% of the time, blood glucose was between 45 and 243.
+Time in range was 76% mg/dl.
+Time in tight range was 59% mg/dl.
+Time spent high (above 180) was 23%.
 Time spent low (below 70) was 1%.
 
 
@@ -18,11 +18,11 @@ sugar levels are staying within range and not rising before you wake up
 This is great! Let's look a bit deeper to see how you're 
 doing and see if there is any more room for improvement
 A deeper look:
-* Average morning glucose at this time is 128.89285714285714. 
+* Average morning glucose at this time is 128.76666666666668. 
 14.285714285714285 days showed dawn phenomena.
-* Average coefficient of variation 19.997256128433275%. The widely accepted goal for type 1 diabetics
+* Average coefficient of variation 16.2658686364001%. The widely accepted goal for type 1 diabetics
 is to be below 36%.
-* Time in range in the morning is 89.28571428571429. Your sleep time is when you should 
+* Time in range in the morning is 91.9047619047619. Your sleep time is when you should 
 be aim to get the highest time in range, since you are not moving, not worrying about food, exercise or stress. Aim to be
 as close to 100% as possible.
 Your average time in range is greater than 90% this week, this is very good!

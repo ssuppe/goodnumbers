@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 
 from bgpodcast.data_analysis import dawnphenom, high_periods, weekly_analysis
-from bgpodcast.utils.bgutils import add_comment, get_number_of_days
+from bgpodcast.utils.bgutils import add_comment, get_number_of_days, is_dev_environment
 
 def generate_notes(entries : pd.DataFrame, treatments : pd.DataFrame) -> str:
 
@@ -42,8 +42,8 @@ def generate_notes(entries : pd.DataFrame, treatments : pd.DataFrame) -> str:
     #         notes += f"The time period from {lp.start_time} to {lp.end_time} runs low on average, at {lp.sgv} mg/dl."
     # else:
     #     notes += f"Steve doesn't have any time periods where he is running low. Well done! This is quite an accomplishment!"
-        
-    with open("../../_tmp/notes.txt", "w", encoding="utf-8") as f:    
-        f.write(notes)
+    if is_dev_environment():
+        with open("../../_tmp/notes.txt", "w", encoding="utf-8") as f:    
+            f.write(notes)
 
     return notes
