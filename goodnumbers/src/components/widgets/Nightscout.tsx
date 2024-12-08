@@ -10,7 +10,6 @@ import Cookies from 'js-cookie';
 
 import { generateAssessments } from './nightscoutActions';
 import { compress } from 'compress-json';
-import DebllugInterfaceViewer from './DebugInterfaceViewer';
 import { createApiClient } from '~/lib/api/axios';
 import { useAssessmentState } from '~/hooks/useAssessmentState';
 import { useLoadingState } from '~/hooks/useLoadingState';
@@ -19,6 +18,7 @@ import AudioPlayer from 'react-h5-audio-player';
 import 'react-h5-audio-player/lib/styles.css';
 import LazyAudioPlayer from './LazyAudioPlayer';
 import { config } from 'src/utils/env';
+import DebugInterfaceViewer from './DebugInterfaceViewer';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
