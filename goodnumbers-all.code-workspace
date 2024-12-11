@@ -12,7 +12,7 @@
       "path": "."
     },
     {
-      "path": "../../envs"
+      "path": "../envs"
     }
   ],
   "settings": {
