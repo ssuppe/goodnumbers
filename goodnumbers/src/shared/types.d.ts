@@ -1,6 +1,6 @@
 import { StaticImageData } from 'next/image';
 import { ReactElement } from 'react';
-import type { TablerIcon } from "@tabler/icons-react"
+import type { TablerIcon } from '@tabler/icons-react';
 
 type Widget = {
   id?: string;
@@ -119,20 +119,6 @@ type Item = {
   callToAction?: CallToActionType;
 };
 
-type ItemGrid = {
-  id?: string;
-  items?: Array<Item>;
-  columns?: number;
-  defaultColumns?: number;
-  defaultIcon?: Icon;
-  containerClass?: string;
-  panelClass?: string;
-  iconClass?: string;
-  titleClass?: string;
-  descriptionClass?: string;
-  actionClass?: string;
-};
-
 type Timeline = {
   id?: string;
   items?: Array<Item>;
@@ -155,26 +141,6 @@ type Team = {
   nameClass?: string;
   occupationClass?: string;
   itemsClass?: string;
-};
-
-type Testimonial = {
-  testimonial?: string;
-  startSlice?: number;
-  endSlice?: number;
-  isTestimonialUp?: boolean;
-  hasDividerLine?: boolean;
-  name?: string;
-  job?: string;
-  image?: Image;
-  href?: string;
-  containerClass?: string;
-  panelClass?: string;
-  imageClass?: string;
-  dataClass?: string;
-  nameJobClass?: string;
-  nameClass?: string;
-  jobClass?: string;
-  testimonialClass?: string;
 };
 
 type Link = {
@@ -245,21 +211,6 @@ type HeroProps = {
   image?: Image;
 };
 
-type FAQsProps = Widget & {
-  header?: Header;
-  items?: Array<Item>;
-  columns?: number;
-  tabs?: Array<Tab>;
-  callToAction?: CallToActionType;
-};
-
-type CollapseProps = {
-  items: Array<Item>;
-  classCollapseItem?: string;
-  iconUp?: ReactElement;
-  iconDown?: ReactElement;
-};
-
 type CallToActionProps = Widget & {
   title: string;
   subtitle: string;
@@ -309,16 +260,6 @@ type AnnouncementProps = {
   callToAction2?: CallToActionType;
 };
 
-type TestimonialsProps = Widget & {
-  header?: Header;
-  testimonials: Array<Testimonial>;
-  isTestimonialUp?: boolean;
-  hasDividerLine?: boolean;
-  startSlice?: number;
-  endSlice?: number;
-  callToAction?: CallToActionType;
-};
-
 type PricingProps = Widget & {
   header?: Header;
   prices: Array<Price>;
@@ -334,7 +275,7 @@ type PodcastDialogProps = Widget & {
   id: string;
   content?: string;
   hasBackground?: boolean;
-}
+};
 
 type ComparisonProps = Widget & {
   header?: Header;

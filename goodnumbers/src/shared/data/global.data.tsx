@@ -36,21 +36,20 @@ export const headerData: HeaderProps = {
     //       label: 'Pricing',
     //       href: '/pricing',
     //     },
-        
     //   ],
     // },
-    {
-      label: 'About',
-      href: '/about',
-    },
+    // {
+    //   label: 'About',
+    //   href: '/about',
+    // },
     // {
     //   label: 'Blog',
     //   href: '/blog',
     // },
-    {
-      label: 'Contact',
-      href: '/contact',
-    },
+    // {
+    //   label: 'Contact',
+    //   href: '/contact',
+    // },
   ],
   // actions: [
   //   {
@@ -194,9 +193,7 @@ export const footerData: FooterProps = {
   footNote: (
     <div className="mr-4 rtl:mr-0 rtl:ml-4 text-sm">
       <span className="float-left rtl:float-right mr-1.5 rtl:mr-0 rtl:ml-1.5 h-5 w-5 rounded-sm bg-[url(https://onwidget.com/favicon/favicon-32x32.png)] bg-cover md:-mt-0.5 md:h-6 md:w-6"></span>
-      <span>
-        
-      </span>
+      <span></span>
     </div>
   ),
 };
@@ -237,11 +234,7 @@ export const footerData2: FooterProps = {
   footNote: (
     <div className="mr-4 rtl:mr-0 rtl:ml-4 text-sm">
       <span className="float-left rtl:float-right mr-1.5 rtl:mr-0 rtl:ml-1.5 h-5 w-5 rounded-sm bg-[url(https://onwidget.com/favicon/favicon-32x32.png)] bg-cover md:-mt-0.5 md:h-6 md:w-6"></span>
-      <span>
-        Made by{' '}
-        
-        · All rights reserved.
-      </span>
+      <span>Made by · All rights reserved.</span>
     </div>
   ),
 };
