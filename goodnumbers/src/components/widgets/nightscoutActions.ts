@@ -35,13 +35,23 @@ async function handleFetchError(response: Response): Promise<string> {
 }
 
 async function fetchWithErrorHandling(url: string, options: RequestInit, step: string): Promise<any> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes in milliseconds
+
   try {
-    const response = await fetch(url, options);
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
       throw new Error(await handleFetchError(response));
     }
     return await response.json();
   } catch (error) {
+    clearTimeout(timeoutId);
     const err = error as AssessmentError;
     err.step = step;
     err.details = error instanceof Error ? error.message : String(error);

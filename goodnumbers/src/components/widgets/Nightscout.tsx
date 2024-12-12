@@ -14,7 +14,6 @@ import { createApiClient } from '~/lib/api/axios';
 import { useAssessmentState } from '~/hooks/useAssessmentState';
 import { useLoadingState } from '~/hooks/useLoadingState';
 import { AssessmentData, PodcastGenerateResult } from '~/types/nightscout';
-import AudioPlayer from 'react-h5-audio-player';
 import 'react-h5-audio-player/lib/styles.css';
 import LazyAudioPlayer from './LazyAudioPlayer';
 import { config } from 'src/utils/env';
@@ -42,6 +41,10 @@ const NightscoutComponent = ({
   // Add useEffect to set isClient
   useEffect(() => {
     setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    console.log('Backend URL:', config.backendUrl);
   }, []);
 
   // Simplified form data
