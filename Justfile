@@ -41,7 +41,10 @@ deploy-backend env:
         --entry-point=handler \
         --trigger-http \
         --allow-unauthenticated \
-        --env-vars-file={{env-dir}}/env.{{env}}.backend
+        --env-vars-file={{env-dir}}/env.{{env}}.backend \
+        --memory=512M \
+        --service-account=google-text-to-speech-api@gemini-437920.iam.gserviceaccount.com \
+        --timeout=300
 
 # Quick development deploy (shorthand)
 # dev:
