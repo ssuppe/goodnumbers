@@ -86,7 +86,7 @@ conversation.
 7. Do NOT include any metadata about the show, such as headers, subsection names, inserts for music or applause. Just the dialog.
 
 Always format your response script in syntactically correct Speech Synthesis Markup Language (SSML)
-as supported by Google Text to Speech API.
+as supported by Google Text to Speech API. NEVER use the <par> tag.
 Dr Turner always uses the voice name "en-GB-Wavenet-B". Rebecca always uses "en-US-Wavenet-C".
 Use the following format:
 
