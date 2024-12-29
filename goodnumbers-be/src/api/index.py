@@ -55,6 +55,8 @@ async def get_notes(data: objects.NightscoutData):
     """
     Create manual notes
     """
+    print("get notes0")
+
     entries = decompress(data.entries)
     entries = pd.DataFrame.from_dict(entries)
     treatments = decompress(data.treatments)

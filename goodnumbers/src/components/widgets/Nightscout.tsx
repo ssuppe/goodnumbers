@@ -88,11 +88,19 @@ const NightscoutComponent = ({
       try {
         let currentPodcastResult = getCurrentPodcastResult();
         console.error(currentPodcastResult);
-        if (currentPodcastResult == null || currentPodcastResult.status == 'processing') {
+        if (
+          currentPodcastResult == null ||
+          currentPodcastResult.status === 'done' ||
+          currentPodcastResult.status === 'error'
+        ) {
+          clearInterval(intervalId);
+          return;
+        }
+        if (currentPodcastResult.status == 'processing') {
           const response = await axiosInstance.post(config.backendUrl + '/api/check_podcast', currentPodcastResult);
           await updatePodcastResult(response.data);
 
-          // If done or error, clear the interval
+          // // If done or error, clear the interval
           if (response.data.status === 'done' || response.data.status === 'error') {
             clearInterval(intervalId);
           }
