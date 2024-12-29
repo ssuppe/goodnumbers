@@ -100,11 +100,12 @@ def get_sgv_stats(df: pd.DataFrame):
     end_date = df['date'].max()
     mean = df['sgv'].mean()
     stddev = df['sgv'].std()
+    cv = stddev / mean
     pct_low = len(df[df.sgv < 70]) / len(df)
     pct_high = len(df[(df.sgv > 180)]) / len(df)
     tir = len(df[(df.sgv >= 70) & (df.sgv < 180)]) / len(df)
     ttir = len(df[(df.sgv >= 70) & (df.sgv < 140)]) / len(df)
-    return start_date, end_date, mean, stddev, pct_low, pct_high, tir, ttir
+    return start_date, end_date, mean, stddev, cv, pct_low, pct_high, tir, ttir
 
 
 def interpolate(prompt="", **kwargs):
