@@ -162,7 +162,7 @@ export async function generateAssessments(
     const dialog = dialogData.response;
 
     // Step 5: Start generation of audio
-    const podcastData = await fetchWithErrorHandling(
+    const podcastResult: PodcastGenerateResult = await fetchWithErrorHandling(
       `${apiUrl}/api/gen_podcast`,
       {
         method: 'POST',
@@ -171,7 +171,6 @@ export async function generateAssessments(
       },
       'Generating Dialog',
     );
-    const podcastResult: PodcastGenerateResult = podcastData;
 
     return { notes, assessment1, assessment2, dialog, podcastResult, timestamp };
   } catch (error) {
