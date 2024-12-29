@@ -1,30 +1,72 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Headline from '../common/Headline';
 import { NightscoutProps } from '~/shared/types';
 import WidgetWrapper from '../common/WidgetWrapper';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Progress from '../ui/progress';
 import Cookies from 'js-cookie';
-
-import { generateAssessments } from './nightscoutActions';
 import { compress } from 'compress-json';
 import { createApiClient } from '~/lib/api/axios';
 import { useAssessmentState } from '~/hooks/useAssessmentState';
 import { useLoadingState } from '~/hooks/useLoadingState';
-import { AssessmentData, PodcastGenerateResult } from '~/types/nightscout';
+import { AssessmentData } from '~/types/nightscout';
 import 'react-h5-audio-player/lib/styles.css';
 import LazyAudioPlayer from './LazyAudioPlayer';
 import { config } from 'src/utils/env';
 import DebugInterfaceViewer from './DebugInterfaceViewer';
+import ReactMarkdown from 'react-markdown';
+import prettier from 'prettier/standalone';
+import parserXml from '@prettier/plugin-xml';
+import { generateAssessments } from './nightscoutActions';
+import { setCookieCSync } from '~/utils/cookies';
+import ssmlToMarkdown from '~/utils/ssml';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
   local?: string | null;
 }
 
-let axiosInstance = createApiClient();
+const axiosInstance = createApiClient();
+
+// Separate data fetching logic into a plain function
+const fetchNightscoutData = (nightscout_url: string, nightscout_token: string) => {
+  const today = new Date();
+  const daysAgo = new Date(today.setDate(today.getDate() - 9));
+  const daysAgoTimestamp = daysAgo.getTime();
+
+  const entriesUrl = `${nightscout_url}/api/v1/entries/sgv.json?token=${nightscout_token}&find[date][$gte]=${daysAgoTimestamp}&count=20000`;
+  const treatmentsUrl = `${nightscout_url}/api/v1/treatments.json?token=${nightscout_token}&find[created_at][$gte]=${daysAgoTimestamp}&count=10000`;
+
+  return Promise.all([axiosInstance.get(entriesUrl), axiosInstance.get(treatmentsUrl)]).then(
+    ([entriesResponse, treatmentsResponse]) => {
+      let entriesData = entriesResponse.data
+        .filter((item: { date: number }) => item.date >= daysAgoTimestamp)
+        .map((item: { date: number; sgv: number; units: string; utcOffset: number }) => ({
+          date: item.date,
+          sgv: item.sgv,
+          units: item.units,
+          utcOffset: item.utcOffset,
+        }));
+
+      let treatmentsData = treatmentsResponse.data
+        .filter(
+          (item: { date: number; eventType: string; carbs?: number; insulin?: number }) =>
+            item.date >= daysAgoTimestamp && (item.carbs !== null || item.insulin !== null),
+        )
+        .map((item: { date: number; carbs?: number; utcOffset: number; insulin?: number; eventType: string }) => ({
+          date: item.date,
+          carbs: item.carbs,
+          insulin: item.insulin,
+          utcOffset: item.utcOffset,
+          eventType: item.eventType,
+        }));
+
+      return { entries: entriesData, treatments: treatmentsData };
+    },
+  );
+};
 
 const NightscoutComponent = ({
   header,
@@ -32,160 +74,78 @@ const NightscoutComponent = ({
   hasBackground = false,
   onAssessmentComplete,
 }: NightscoutComponentProps): JSX.Element => {
-  const { assessmentData, error: cookieError, updateAssessmentData, getCurrentPodcastResult } = useAssessmentState();
+  console.log('NightscoutComponent rendering'); // Add this
 
+  // State management
+  const { assessmentData, error: cookieError, updateAssessmentData, getCurrentPodcastResult } = useAssessmentState();
   const { isLoading, progress, progressText, error, startLoading, updateProgress, stopLoading, setLoadingError } =
     useLoadingState();
-
   const [isClient, setIsClient] = useState(false);
-  // Add useEffect to set isClient
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const [formattedSSML, setFormattedSSML] = useState('');
 
-  useEffect(() => {
-    console.log('Backend URL:', config.backendUrl);
-  }, []);
-
-  // Simplified form data
+  // Form state
   const [formData, setFormData] = useState({
-    nightscout_url: Cookies.get('url') || '',
-    nightscout_token: Cookies.get('token') || '',
+    nightscout_url: '',
+    nightscout_token: '',
     terms_accepted: false,
     demo_data: false,
   });
 
-  // Effect for polling podcast status
-  const updatePodcastResult = useCallback(
-    async (podcastResult: PodcastGenerateResult | null) => {
-      try {
-        // Update the entire podcast result in cookies and state
-        if (assessmentData) {
-          const updatedAssessmentData = {
-            ...assessmentData,
-            podcastResult: podcastResult,
-          };
-          await updateAssessmentData(updatedAssessmentData);
-        }
-
-        return podcastResult?.status;
-      } catch (error) {
-        console.error('Error checking podcast status:', error);
-        return 'error';
-      }
-    },
-    [assessmentData, updateAssessmentData],
-  );
-
+  // Load saved data on mount
   useEffect(() => {
-    // Only set up polling if status is processing
+    console.log('Load saved data on mount'); // Add this
+
+    setIsClient(true);
+    setFormData((prev) => ({
+      ...prev,
+      nightscout_url: Cookies.get('url') || '',
+      nightscout_token: Cookies.get('token') || '',
+    }));
+  }, []);
+
+  // Poll for podcast status
+  useEffect(() => {
+    console.log('Podcast polling effect running'); // Add this
+
     const currentResult = getCurrentPodcastResult();
-    if (currentResult?.status !== 'processing') {
-      return;
-    }
+    console.log('Current podcast result:', currentResult); // Add this
 
-    async function checkStatus() {
-      try {
-        let currentPodcastResult = getCurrentPodcastResult();
-        console.error(currentPodcastResult);
-        if (
-          currentPodcastResult == null ||
-          currentPodcastResult.status === 'done' ||
-          currentPodcastResult.status === 'error'
-        ) {
-          clearInterval(intervalId);
-          return;
-        }
-        if (currentPodcastResult.status == 'processing') {
-          const response = await axiosInstance.post(config.backendUrl + '/api/check_podcast', currentPodcastResult);
-          await updatePodcastResult(response.data);
+    if (currentResult?.status !== 'processing') return;
 
-          // // If done or error, clear the interval
+    const intervalId = setInterval(() => {
+      const podcastResult = getCurrentPodcastResult();
+
+      if (!podcastResult || podcastResult.status !== 'processing') {
+        clearInterval(intervalId);
+        return;
+      }
+
+      // Use .then() instead of async/await
+      axiosInstance
+        .post(config.backendUrl + '/api/check_podcast', podcastResult)
+        .then((response) => {
+          if (assessmentData) {
+            const updatedData = {
+              ...assessmentData,
+              podcastResult: response.data,
+            };
+            updateAssessmentData(updatedData);
+          }
+
           if (response.data.status === 'done' || response.data.status === 'error') {
             clearInterval(intervalId);
           }
-        }
-      } catch (error) {
-        console.error('Error checking podcast status:', error);
-        clearInterval(intervalId);
-      }
-    }
-
-    // Poll immediately
-    // checkStatus();
-    // Then every 30 seconds
-    const intervalId = setInterval(checkStatus, 30000);
-
-    // Cleanup on unmount
-    // return () => {
-    //   if (intervalId) {
-    //     clearInterval(intervalId);
-    //   }
-    // };
-  }, [updateAssessmentData]);
-
-  // Simplified handleSubmit
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    startLoading('Collecting Nightscout data...');
-
-    try {
-      // Save form data to cookies
-      Cookies.set('url', formData.nightscout_url, { expires: 30 });
-      Cookies.set('token', formData.nightscout_token, { expires: 30 });
-
-      updateProgress(25, 'Collecting Nightscout data...');
-
-      // Get Nightscout data
-      const nightscoutData = await fetchNightscoutData(formData.nightscout_url, formData.nightscout_token);
-
-      // Generate assessments
-      updateProgress(50, 'Generating podcast...');
-
-      const compressedData = {
-        entries: compress(nightscoutData.entries),
-        treatments: compress(nightscoutData.treatments),
-      };
-
-      const data = await generateAssessments(
-        compressedData?.entries,
-        compressedData?.treatments || null,
-        formData.demo_data,
-      );
-
-      // Add timestamp to data
-      const now = new Date();
-      const formattedTimestamp = now
-        .toLocaleString('en-GB', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
         })
-        .replace(/\//g, '-');
+        .catch((error) => {
+          console.error('Error checking podcast status:', error);
+          clearInterval(intervalId);
+        });
+    }, 30000);
 
-      const dataWithTimestamp = {
-        ...data,
-        timestamp: formattedTimestamp,
-      };
+    return () => clearInterval(intervalId);
+  }, [assessmentData, getCurrentPodcastResult, updateAssessmentData]);
 
-      // Update all assessment data at once
-      await updateAssessmentData(dataWithTimestamp);
-
-      if (onAssessmentComplete) {
-        onAssessmentComplete(dataWithTimestamp);
-      }
-    } catch (error) {
-      setLoadingError(error instanceof Error ? error.message : 'An unexpected error occurred');
-    } finally {
-      stopLoading();
-    }
-  };
-
-  const isFormValid = formData.nightscout_url && formData.nightscout_token && formData.terms_accepted;
-
+  // Form handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -193,53 +153,90 @@ const NightscoutComponent = ({
       [name]: type === 'checkbox' ? checked : value,
     }));
   };
-  const fetchNightscoutData = async (nightscout_url: string, nightscout_token: string) => {
-    const today = new Date();
-    const daysAgo = new Date(today.setDate(today.getDate() - 9));
-    const daysAgoTimestamp = daysAgo.getTime();
 
-    // const entriesUrl = `${nightscout_url}/api/v1/entries/sgv.json?token=${nightscout_token}&find[created_at][$gte]=${daysAgoStr}&count=20000`;
-    const entriesUrl = `${nightscout_url}/api/v1/entries/sgv.json?token=${nightscout_token}&find[date][$gte]=${daysAgoTimestamp}&count=20000`;
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    console.log('Form submission started'); // Add this
 
-    // const treatmentsUrl = `${nightscout_url}/api/v1/treatments.json?token=${nightscout_token}&find[created_at][$gte]=${daysAgoTimestamp}&count=20000`;
-    // treatments API only supports created_at
-    const treatmentsUrl = `${nightscout_url}/api/v1/treatments.json?token=${nightscout_token}&find[created_at][$gte]=${daysAgoTimestamp}&count=10000`;
+    e.preventDefault();
+    startLoading('Collecting Nightscout data...');
 
-    try {
-      const [entriesResponse, treatmentsResponse] = await Promise.all([
-        axiosInstance.get(entriesUrl),
-        axiosInstance.get(treatmentsUrl),
-      ]);
+    // First handle the Nightscout data fetch
+    fetchNightscoutData(formData.nightscout_url, formData.nightscout_token)
+      .then((nightscoutData) => {
+        updateProgress(25, 'Collecting Nightscout data...');
 
-      let entriesData = entriesResponse.data.filter((item: { date: number }) => item.date >= daysAgoTimestamp);
-      entriesData = entriesData.map((item: { date: number; sgv: number; units: string; utcOffset: number }) => ({
-        date: item.date,
-        sgv: item.sgv,
-        units: item.units,
-        utcOffset: item.utcOffset,
-      }));
-      let treatmentsData = treatmentsResponse.data.filter(
-        (item: { date: number; eventType: string; carbs?: number; insulin?: number }) => {
-          return item.date >= daysAgoTimestamp && (item.carbs !== null || item.insulin !== null);
-        },
-      );
-      treatmentsData = treatmentsData.map(
-        (item: { date: number; carbs?: number; utcOffset: number; insulin?: number; eventType: string }) => ({
-          date: item.date,
-          carbs: item.carbs,
-          insulin: item.insulin,
-          utcOffset: item.utcOffset,
-          eventType: item.eventType,
-        }),
-      );
-      return { entries: entriesData, treatments: treatmentsData };
-    } catch (error) {
-      throw new Error('Failed to fetch Nightscout data');
-    }
+        const compressedData = {
+          entries: compress(nightscoutData.entries),
+          treatments: compress(nightscoutData.treatments),
+        };
+
+        updateProgress(50, 'Generating assessments...');
+
+        // Server action call wrapped in regular Promise
+        return generateAssessments(compressedData?.entries, compressedData?.treatments || null, formData.demo_data);
+      })
+      .then((data) => {
+        const now = new Date();
+        const formattedTimestamp = now
+          .toLocaleString('en-GB', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          })
+          .replace(/\//g, '-');
+
+        const dataWithTimestamp = {
+          ...data,
+          timestamp: formattedTimestamp,
+        };
+
+        // Use the sync version for setting assessment data
+        updateAssessmentData(dataWithTimestamp);
+        Object.entries(dataWithTimestamp).forEach(([key, value]) => {
+          setCookieCSync(key, value, { expires: 30 });
+        });
+
+        if (onAssessmentComplete) {
+          onAssessmentComplete(dataWithTimestamp);
+        }
+      })
+      .catch((error) => {
+        setLoadingError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      })
+      .finally(() => {
+        stopLoading();
+      });
   };
+
+  const isFormValid = formData.nightscout_url && formData.nightscout_token && formData.terms_accepted;
+
+  // Handle formatting in useEffect
+  useEffect(() => {
+    try {
+      prettier
+        .format(assessmentData?.dialog || '', {
+          parser: 'xml',
+          plugins: [parserXml],
+          xmlWhitespaceSensitivity: 'ignore',
+        })
+        .then((formatted) => {
+          setFormattedSSML(formatted);
+        })
+        .catch((e) => {
+          setFormattedSSML(assessmentData?.dialog || '');
+        });
+    } catch (e) {
+      setFormattedSSML(assessmentData?.dialog || '');
+    }
+  }, [assessmentData?.dialog]);
 
   // Simplified render method for assessments
   const renderAssessmentContent = () => {
+    console.log('SSML' + formattedSSML); // Add this
+
     return (
       <Tabs defaultIndex={3}>
         <TabList>
@@ -250,15 +247,21 @@ const NightscoutComponent = ({
         </TabList>
         <TabPanel>
           <h2 className="text-xl font-bold mb-2">Notes</h2>
-          <pre className="whitespace-pre-wrap">{assessmentData?.notes}</pre>
+          <div className="prose max-w-none">
+            <ReactMarkdown>{assessmentData?.notes || ''}</ReactMarkdown>
+          </div>
         </TabPanel>
         <TabPanel>
           <h2 className="text-xl font-bold mb-2">Assessment 1</h2>
-          <pre className="whitespace-pre-wrap">{assessmentData?.assessment1}</pre>
+          <div className="prose max-w-none">
+            <ReactMarkdown>{assessmentData?.assessment1 || ''}</ReactMarkdown>
+          </div>
         </TabPanel>
         <TabPanel>
           <h2 className="text-xl font-bold mb-2">Assessment 2</h2>
-          <pre className="whitespace-pre-wrap">{assessmentData?.assessment2}</pre>
+          <div className="prose max-w-none">
+            <ReactMarkdown>{assessmentData?.assessment2 || ''}</ReactMarkdown>
+          </div>
         </TabPanel>
         <TabPanel>
           <h2 className="text-xl font-bold mb-2">Dialog</h2>
@@ -282,7 +285,10 @@ const NightscoutComponent = ({
           {assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
             <DebugInterfaceViewer data={assessmentData.podcastResult} />
           )}
-          <pre className="whitespace-pre-wrap">{assessmentData?.dialog}</pre>
+          <div className="prose max-w-none">
+            <ReactMarkdown>{ssmlToMarkdown(assessmentData?.dialog || '')}</ReactMarkdown>
+          </div>
+          {/* <pre className="whitespace-pre-wrap">{ssmlToMarkdown(assessmentData?.dialog || '')}</pre> */}
         </TabPanel>
       </Tabs>
     );
