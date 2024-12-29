@@ -4,10 +4,14 @@ import { PodcastGenerateResult } from '~/types/nightscout';
 type PrimitiveType = string | number | boolean | null | undefined;
 type GenericObject = Record<string, PrimitiveType>;
 
-const DebugInterfaceViewer = <T extends Record<string, PrimitiveType>>({ data }: { data: PodcastGenerateResult | T | null | undefined }) => {
+const DebugInterfaceViewer = <T extends Record<string, PrimitiveType>>({
+  data,
+}: {
+  data: PodcastGenerateResult | T | null | undefined;
+}) => {
   if (!data) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-slate-50 p-6 w-full max-w-xl">
+      <div className="rounded-lg border border-gray-200 bg-slate-50 p-6 w-full max-w-2xl">
         <div className="font-mono text-slate-700">No data available</div>
       </div>
     );
@@ -22,7 +26,7 @@ const DebugInterfaceViewer = <T extends Record<string, PrimitiveType>>({ data }:
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-slate-50 p-6 w-full max-w-xl">
+    <div className="rounded-lg border border-gray-200 bg-slate-50 p-6 w-full max-w-4xl">
       <div className="space-y-2 font-mono">
         {Object.entries(data).map(([key, value]) => (
           <div key={key} className="flex">
