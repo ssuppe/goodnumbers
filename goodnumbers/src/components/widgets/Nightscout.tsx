@@ -334,7 +334,7 @@ const NightscoutComponent = ({
               onChange={handleInputChange}
               className="mr-2"
             />
-            I accept the terms and conditions
+            I understand this is experimental and does not constitute medical advice, and is entirely my responsibility
           </label>
           <button
             type="submit"
