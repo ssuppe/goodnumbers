@@ -175,13 +175,13 @@ async def get_assessment(data: objects.Assessment):
             print("Generating template 1")
             prompt = bgutils.interpolate(template1, notes=data.notes)
             print(f"Prompt1: {prompt}")
-            if data.debug and bgutils.is_dev_environment():
+            if bgutils.is_debug() and bgutils.is_dev_environment():
                 response_text = bgutils.read_file(
                     fr=os.path.join("..", "..", "_tmp", "pass1_output.txt"))
             else:
                 response = await async_generate(prompt, model)
                 response_text = response.text
-            if data.write_local and bgutils.is_dev_environment():
+            if bgutils.is_write_local() and bgutils.is_dev_environment():
                 bgutils.write_file(to=os.path.join(
                     "..", "..", "_tmp", "pass1_output.txt"), contents=response_text)
             print(f"Response1: {response_text[0:100]}")
@@ -190,13 +190,13 @@ async def get_assessment(data: objects.Assessment):
             print("Generating template 2")
             prompt = bgutils.interpolate(
                 template2, notes=data.notes, assessment1=data.assessment1)
-            if data.debug and bgutils.is_dev_environment():
+            if bgutils.is_debug() and bgutils.is_dev_environment():
                 response_text = bgutils.read_file(
                     fr=os.path.join("..", "..", "_tmp", "pass2_output.txt"))
             else:
                 response = await async_generate(prompt, model)
                 response_text = response.text
-            if data.write_local and bgutils.is_dev_environment():
+            if bgutils.is_write_local() and bgutils.is_dev_environment():
                 bgutils.write_file(to=os.path.join(
                     "..", "..", "_tmp", "pass2_output.txt"), contents=response_text)
             print(f"Response2: {response_text[0:100]}")
@@ -215,7 +215,7 @@ async def get_assessment(data: objects.Assessment):
             no_ssml_tries = 0
             while not is_valid_ssml and no_ssml_tries < 3:
                 print("Generating SSML")
-                if data.debug and bgutils.is_dev_environment():
+                if bgutils.is_debug() and bgutils.is_dev_environment():
                     response_text = bgutils.read_file(
                         fr=os.path.join("..", "..", "_tmp", "pass3_output.txt"))
                 else:
@@ -227,12 +227,12 @@ async def get_assessment(data: objects.Assessment):
                 if not is_valid_ssml:
                     print(
                         f"{no_ssml_tries}/3: Invalid SSML that couldn't be fixed: {response_text}")
-                    if data.write_local and bgutils.is_dev_environment():
+                    if bgutils.is_write_local() and bgutils.is_dev_environment():
                         bgutils.write_file(to=os.path.join(
                             "..", "..", "_tmp", "pass3_output.txt"), contents=response_text)
                     no_ssml_tries += 1
                 else:
-                    if data.write_local and bgutils.is_dev_environment():
+                    if bgutils.is_write_local() and bgutils.is_dev_environment():
                         bgutils.write_file(to=os.path.join(
                             "..", "..", "_tmp", "pass3_output.txt"), contents=ssml_check.processed_ssml)
                     return JSONResponse({'valid': True, 'response': ssml_check.processed_ssml})
