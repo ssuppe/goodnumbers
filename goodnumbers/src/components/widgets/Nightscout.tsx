@@ -298,11 +298,7 @@ const NightscoutComponent = ({
     const viewerData = assessmentData?.podcastResult;
     if (!viewerData) return null;
 
-    return (
-      <div className="p-4">
-        <DebugInterfaceViewer data={viewerData} />
-      </div>
-    );
+    return <DebugInterfaceViewer data={viewerData} />;
   };
 
   return (
