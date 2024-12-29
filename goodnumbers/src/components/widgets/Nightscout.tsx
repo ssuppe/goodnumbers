@@ -59,9 +59,6 @@ const NightscoutComponent = ({
   const updatePodcastResult = useCallback(
     async (podcastResult: PodcastGenerateResult | null) => {
       try {
-        // const response = await axiosInstance.post('/api/check_podcast', podcastResult);
-        // const updatedPodcastResult: PodcastGenerateResult = response.data;
-
         // Update the entire podcast result in cookies and state
         if (assessmentData) {
           const updatedAssessmentData = {
@@ -87,21 +84,18 @@ const NightscoutComponent = ({
       return;
     }
 
-    // Poll immediately
-    checkStatus();
-    // Then every 30 seconds
-    const intervalId = setInterval(checkStatus, 30000);
-
     async function checkStatus() {
       try {
         let currentPodcastResult = getCurrentPodcastResult();
         console.error(currentPodcastResult);
-        const response = await axiosInstance.post(config.backendUrl + '/api/check_podcast', currentPodcastResult);
-        await updatePodcastResult(response.data);
+        if (currentPodcastResult == null || currentPodcastResult.status == 'processing') {
+          const response = await axiosInstance.post(config.backendUrl + '/api/check_podcast', currentPodcastResult);
+          await updatePodcastResult(response.data);
 
-        // If done or error, clear the interval
-        if (response.data.status === 'done' || response.data.status === 'error') {
-          clearInterval(intervalId);
+          // If done or error, clear the interval
+          if (response.data.status === 'done' || response.data.status === 'error') {
+            clearInterval(intervalId);
+          }
         }
       } catch (error) {
         console.error('Error checking podcast status:', error);
@@ -109,13 +103,18 @@ const NightscoutComponent = ({
       }
     }
 
+    // Poll immediately
+    // checkStatus();
+    // Then every 30 seconds
+    const intervalId = setInterval(checkStatus, 30000);
+
     // Cleanup on unmount
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [updatePodcastResult]);
+    // return () => {
+    //   if (intervalId) {
+    //     clearInterval(intervalId);
+    //   }
+    // };
+  }, [updateAssessmentData]);
 
   // Simplified handleSubmit
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
