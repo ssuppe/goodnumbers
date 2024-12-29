@@ -247,19 +247,19 @@ const NightscoutComponent = ({
         </TabList>
         <TabPanel>
           <h2 className="text-xl font-bold mb-2">Notes</h2>
-          <div className="prose max-w-none">
+          <div className="prose dark:prose-invert max-w-none">
             <ReactMarkdown>{assessmentData?.notes || ''}</ReactMarkdown>
           </div>
         </TabPanel>
         <TabPanel>
           <h2 className="text-xl font-bold mb-2">Assessment 1</h2>
-          <div className="prose max-w-none">
+          <div className="prose dark:prose-invert max-w-none">
             <ReactMarkdown>{assessmentData?.assessment1 || ''}</ReactMarkdown>
           </div>
         </TabPanel>
         <TabPanel>
           <h2 className="text-xl font-bold mb-2">Assessment 2</h2>
-          <div className="prose max-w-none">
+          <div className="prose dark:prose-invert max-w-none">
             <ReactMarkdown>{assessmentData?.assessment2 || ''}</ReactMarkdown>
           </div>
         </TabPanel>
@@ -285,7 +285,7 @@ const NightscoutComponent = ({
           {assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
             <DebugInterfaceViewer data={assessmentData.podcastResult} />
           )}
-          <div className="prose max-w-none">
+          <div className="prose dark:prose-invert max-w-none">
             <ReactMarkdown>{ssmlToMarkdown(assessmentData?.dialog || '')}</ReactMarkdown>
           </div>
           {/* <pre className="whitespace-pre-wrap">{ssmlToMarkdown(assessmentData?.dialog || '')}</pre> */}
