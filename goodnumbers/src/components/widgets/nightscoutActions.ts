@@ -74,7 +74,7 @@ async function readLocalJson(filePath: string): Promise<any> {
 export async function generateAssessments(
   csgvData: Compressed,
   ccarbsData: Compressed,
-  useLocalData: boolean,
+  id: string,
 ): Promise<AssessmentData> {
   const apiUrl = config.backendUrl;
   if (!apiUrl || apiUrl == '') {
@@ -82,19 +82,6 @@ export async function generateAssessments(
     throw new Error('NEXT_PUBLIC_BACKEND_URL environment variable is not set');
   } else {
     logger.info('NEXT_PUBLIC_BACKEND_URL: ' + apiUrl);
-  }
-
-  if (useLocalData) {
-    try {
-      let sgvData = await readLocalJson('/data/24Sept.30d/Nightscout.entries.24Sept.30d.json');
-      csgvData = compress(sgvData);
-      let treatmentsData = await readLocalJson('/data/24Sept.30d/Nightscout.treatments.24Sept.30d.json');
-      treatmentsData = compress(treatmentsData);
-      logger.info('Local data loaded successfully');
-    } catch (error) {
-      logger.error('Failed to load local data:', { error });
-      throw new Error(`Failed to load local data: ${(error as Error).message}`);
-    }
   }
 
   try {
@@ -167,7 +154,7 @@ export async function generateAssessments(
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dialog }),
+        body: JSON.stringify({ dialog, id }),
       },
       'Generating Dialog',
     );

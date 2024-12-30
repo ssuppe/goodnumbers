@@ -116,6 +116,7 @@ async def gen_podcast_api(dialog: objects.PodcastDialog) -> objects.PodcastGener
 async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> objects.PodcastGenerateResult:
     try:
         status = await get_job_status(podcast_result.operation_id)
+        print(f"raw status: {status}")
 
         if status.done and not status.error:
             podcast_result.status = "done"
