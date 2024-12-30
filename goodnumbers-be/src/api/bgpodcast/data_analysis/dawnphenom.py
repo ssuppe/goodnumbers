@@ -222,11 +222,11 @@ def _generate_clinical_report(assessment, daily_stats):
             are not moving, not worrying about food, exercise or stress. Aim to be as close to 100%
               possible.\n"""
 
-    print(f"report[metrics][average_time_in_range]: {
-          report['metrics']['average_time_in_range']}")
+    # print(f"report[metrics][average_time_in_range]: {
+    #   report['metrics']['average_time_in_range']}")
     if report["metrics"]["average_time_in_range"] < 80:
         recommendations += """  * Your average time in range is less than 80%
-            this week, so you could definitely improve.\n""",
+            this week, so you could definitely improve.\n"""
     elif report["metrics"]["average_time_in_range"] > 90:
         recommendations += """  * Your average time in range is greater than 90% this week, this is
             very good!\n"""

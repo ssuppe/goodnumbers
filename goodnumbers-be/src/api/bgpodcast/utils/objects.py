@@ -15,6 +15,7 @@ class NightscoutData(BaseModel):
 
 class PodcastDialog(BaseModel):
     dialog: str | None = None
+    id: str
 
 
 class PodcastAudioURL:

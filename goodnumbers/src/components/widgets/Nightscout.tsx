@@ -28,6 +28,17 @@ interface NightscoutComponentProps extends NightscoutProps {
   local?: string | null;
 }
 
+function createHash(url: string, token: string): Promise<string> {
+  const textEncoder = new TextEncoder();
+  const combined = `${url}:${token}`;
+  const data = textEncoder.encode(combined);
+
+  return crypto.subtle.digest('SHA-256', data).then((hashBuffer) => {
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  });
+}
+
 const axiosInstance = createApiClient();
 
 // Separate data fetching logic into a plain function
@@ -170,8 +181,13 @@ const NightscoutComponent = ({
           treatments: compress(nightscoutData.treatments),
         };
 
+        // Create ID for serverside saving, podcast management, etc
+
         // Server action call wrapped in regular Promise
-        return generateAssessments(compressedData?.entries, compressedData?.treatments || null, formData.demo_data);
+        // return generateAssessments(compressedData?.entries, compressedData?.treatments || null, formData.demo_data);
+        return createHash(formData.nightscout_url, formData.nightscout_token).then((hash) => {
+          return generateAssessments(compressedData?.entries, compressedData?.treatments || null, hash);
+        });
       })
       .then((data) => {
         const now = new Date();

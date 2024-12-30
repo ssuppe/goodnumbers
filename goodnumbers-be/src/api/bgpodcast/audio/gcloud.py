@@ -125,7 +125,7 @@ async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
         # Generate unique file path
         timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
         file_name = f"podcast_{timestamp}.mp3"
-        gcs_path = f"{GCS_PATH}/{file_name}"
+        gcs_path = f"{GCS_PATH}/{dialog.id}/{file_name}"
         output_gcs_uri = f"gs://{BUCKET_NAME}/{gcs_path}"
 
         # Initialize Text-to-Speech client with specific endpoint
