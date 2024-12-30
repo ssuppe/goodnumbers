@@ -161,16 +161,14 @@ const NightscoutComponent = ({
     startLoading('Collecting Nightscout data...');
 
     // First handle the Nightscout data fetch
+    updateProgress(25, 'Collecting Nightscout data...');
     fetchNightscoutData(formData.nightscout_url, formData.nightscout_token)
       .then((nightscoutData) => {
-        updateProgress(25, 'Collecting Nightscout data...');
-
+        updateProgress(50, 'Generating assessments...');
         const compressedData = {
           entries: compress(nightscoutData.entries),
           treatments: compress(nightscoutData.treatments),
         };
-
-        updateProgress(50, 'Generating assessments...');
 
         // Server action call wrapped in regular Promise
         return generateAssessments(compressedData?.entries, compressedData?.treatments || null, formData.demo_data);
