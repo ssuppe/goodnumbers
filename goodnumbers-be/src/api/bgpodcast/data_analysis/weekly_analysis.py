@@ -3,15 +3,14 @@ from bgpodcast.utils import bgutils
 
 
 def weekly_stats(entries) -> str:
-    notes = "## This week's general statistics:\n"
-
+    notes = ""
     entries = prepare_data(entries, days_to_analyze=7)
     start_date, end_date, mean, stddev, cv, pct_low, pct_high, tir, ttir = bgutils.get_sgv_stats(
         entries)
 
     notes += f"  * This week was from {start_date} to {end_date}\n"
     notes += f"""  * This week was the patient's average blood glucose was {
-        mean:.0f} mg/dl, with a coefficient of variation of {cv:.1f}%\n"""
+        mean:.0f} mg/dl, with a coefficient of variation of {cv:.1%}\n"""
 
     if mean > 154:
         notes += """    * Their mean is higher than the recommended target of 126 - 154, which means there
@@ -22,7 +21,7 @@ def weekly_stats(entries) -> str:
         notes += """    * Their mean is below the target range of 126-154, which is very good, so long as their
         time below 70 is less than 4% (less than 1 hour per day)"""
 
-    notes += f"""    * Practically speaking, they've spent 95% of their week between {
+    notes += f"""  Practically speaking, they've spent 95% of their week between {
         (mean - stddev*2):.0f} and {(mean + stddev*2):.0f}.\n"""
     notes += f"  * Time in range (70-180) was {tir:.0%} mg/dl.\n"
     notes += f"  * Time spent high (above 180) was {pct_high:.0%}."
@@ -44,6 +43,6 @@ def weekly_stats(entries) -> str:
         of hypoglycemia awareness, which can be dangerous.\n"""
 
     notes += f"""  * Finally, time in tight range (70-140) was
-        {ttir:.0%}%. Time in tight range is closer to what a non-diabetic's glucose levels are.\n"""
+        {ttir:.0%}. Time in tight range is closer to what a non-diabetic's glucose levels are.\n"""
 
     return notes

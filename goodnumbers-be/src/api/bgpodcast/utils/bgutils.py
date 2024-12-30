@@ -22,16 +22,16 @@ def is_offline() -> bool:
     return offline
 
 
-def add_comment(comment, note):
-    note = "\n" + note + comment + "\n"
-    lines = note.split('\n')
-    # Remove leading spaces from each line using lstrip()
-    trimmed_lines = [line.lstrip() for line in lines]
+# def add_comment(comment, note):
+#     note = "\n" + note + comment + "\n"
+#     lines = note.split('\n')
+#     # Remove leading spaces from each line using lstrip()
+#     trimmed_lines = [line.lstrip() for line in lines]
 
-    # Join the lines back into a string
-    result_string = '\n'.join(trimmed_lines)
+#     # Join the lines back into a string
+#     result_string = '\n'.join(trimmed_lines)
 
-    return result_string
+#     return result_string
 
 
 def get_gemini_key():
