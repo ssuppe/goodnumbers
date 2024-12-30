@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 
 from bgpodcast.data_analysis import dawnphenom, high_periods, weekly_analysis
-from bgpodcast.utils.bgutils import add_comment, get_number_of_days, is_dev_environment
+from bgpodcast.utils.bgutils import is_dev_environment
 
 
 def generate_notes(entries: pd.DataFrame, treatments: pd.DataFrame) -> str:
@@ -13,13 +13,17 @@ def generate_notes(entries: pd.DataFrame, treatments: pd.DataFrame) -> str:
     notes = ""
 
     notes += "# Patient's latest results:\n"
+
     ######################################################
     # Weekly stats
+    notes += "## This week's general statistics:\n"
+
     weekly_stats = weekly_analysis.weekly_stats(entries)
     notes += weekly_stats + "\n"
 
     ######################################################
-    # Check for dawn phenomenon
+    # Check for dawn phenomenons
+    notes += "## Dawn phenomenom report\n"
     dawn_report = dawnphenom.get_clinical_report(entries)
     notes += dawn_report["clinical_report"]["recommendations"] + "\n"
 
