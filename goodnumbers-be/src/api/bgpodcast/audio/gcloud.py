@@ -3,12 +3,13 @@ from pprint import pprint
 import asyncio
 import time
 import traceback
+import re
 import google.cloud.texttospeech as tts
 from google.api_core import client_options
 from google.protobuf.json_format import MessageToDict
 from google.cloud import storage
 from fastapi import HTTPException
-from bgpodcast.utils.objects import JobCheckResponse, PodcastDialog, PodcastGenerateResult
+from bgpodcast.utils.objects import Assessment, JobCheckResponse, PodcastGenerateResult
 
 BUCKET_NAME = "goodnumbers"  # Replace with your bucket name
 GCS_PATH = "audio-files"  # Folder in bucket to store audio files
@@ -100,7 +101,18 @@ async def get_job_status(operation_id: str) -> JobCheckResponse:
         }) from e
 
 
-async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
+def parse_podcast_text(text):
+    # Extract each section using regex
+    title = re.search(r'TITLE: (.*?)(?=\nDESCRIPTION:|$)',
+                      text).group(1).strip()
+    description = re.search(
+        r'DESCRIPTION: (.*?)(?=\nPODCAST:|$)', text).group(1).strip()
+    podcast = re.search(r'PODCAST: (.*?)$', text, re.DOTALL).group(1).strip()
+
+    return title, description, podcast
+
+
+async def gen_podcast(podcast: Assessment) -> PodcastGenerateResult:
     """
     Generate long-form audio from SSML using Google Cloud Text-to-Speech.
 
@@ -114,10 +126,15 @@ async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
         ValueError: If dialog is empty or invalid
         HTTPException: For various Google API errors
     """
-    if dialog is None or dialog.dialog is None or dialog.dialog == "":
-        raise ValueError(f"Invalid dialog: {dialog.dialog}")
+    if podcast is None or podcast.podcast_info is None:
+        raise ValueError(f"Invalid dialog: {podcast.dialog}")
 
     try:
+
+        title = podcast.podcast_info['TITLE']
+        description = podcast.podcast_info['DESCRIPTION']
+        podcast_dialog = podcast.podcast_info['PODCAST']
+
         # Initialize Storage client
         storage_client = storage.Client()
         bucket = storage_client.bucket(BUCKET_NAME)
@@ -125,7 +142,7 @@ async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
         # Generate unique file path
         timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
         file_name = f"podcast_{timestamp}.mp3"
-        gcs_path = f"{GCS_PATH}/{dialog.id}/{file_name}"
+        gcs_path = f"{GCS_PATH}/{podcast.id}/{file_name}"
         output_gcs_uri = f"gs://{BUCKET_NAME}/{gcs_path}"
 
         # Initialize Text-to-Speech client with specific endpoint
@@ -140,7 +157,7 @@ async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
             operation = await client.synthesize_long_audio(
                 request=tts.SynthesizeLongAudioRequest(
                     parent="projects/gemini-437920/locations/global",
-                    input=tts.SynthesisInput(ssml=dialog.dialog),
+                    input=tts.SynthesisInput(ssml=podcast_dialog),
                     voice=tts.VoiceSelectionParams(
                         language_code="en-GB",
                         name="en-GB-Wavenet-B"
@@ -160,7 +177,8 @@ async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
                                         gcs_path=gcs_path,
                                         bucket_name=BUCKET_NAME,
                                         url="https://storage.googleapis.com/goodnumbers/"+gcs_path,
-                                        message="Audio generation started successfully")
+                                        message="Audio generation started successfully", title=title,
+                                        description=description)
             return res
 
     except Exception as e:

@@ -13,7 +13,7 @@ export const useAssessmentState = () => {
         notes: getCookieC<string>('notes'),
         assessment1: getCookieC<string>('assessment1'),
         assessment2: getCookieC<string>('assessment2'),
-        dialog: getCookieC<string>('dialog'),
+        ssml_dialog: getCookieC<string>('dialog'),
         podcastResult: getCookieC<PodcastGenerateResult>('podcastResult'),
         timestamp: getCookieC<string>('timestamp'),
       };
@@ -39,7 +39,7 @@ export const useAssessmentState = () => {
       setCookieCSync('notes', newData.notes, { expires: 30 });
       setCookieCSync('assessment1', newData.assessment1, { expires: 30 });
       setCookieCSync('assessment2', newData.assessment2, { expires: 30 });
-      setCookieCSync('dialog', newData.dialog, { expires: 30 });
+      setCookieCSync('dialog', newData.ssml_dialog, { expires: 30 });
       setCookieCSync('podcastResult', newData.podcastResult, { expires: 30 });
       setCookieCSync('timestamp', newData.timestamp, { expires: 30 });
     } catch (err) {

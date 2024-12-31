@@ -10,13 +10,14 @@ from typing import Optional
 import re
 from lxml import etree
 
+
 def fix_unclosed_tags(ssml_string: str) -> str:
     """
     Fixes unclosed tags in SSML, particularly the <laughs> tag.
-    
+
     Args:
         ssml_string (str): The SSML markup string to process
-        
+
     Returns:
         str: The processed SSML with fixed tag closure
     """
@@ -24,7 +25,7 @@ def fix_unclosed_tags(ssml_string: str) -> str:
     tag_stack = []
     # Regular expression to find all tags (opening and closing)
     pattern = r'</?[^>]+>'
-    
+
     # Split the string into parts keeping the delimiters
     parts = []
     last_end = 0
@@ -69,51 +70,50 @@ def fix_unclosed_tags(ssml_string: str) -> str:
 
     return ''.join(result_parts)
 
+
 def escape_ssml_text(ssml_string: str) -> str:
     """
     Escapes special characters in SSML text content while preserving tags.
-    
+
     Args:
         ssml_string (str): The SSML markup string to process
-        
+
     Returns:
         str: The processed SSML with special characters escaped in text nodes only
     """
     # First fix any unclosed tags
     ssml_string = fix_unclosed_tags(ssml_string)
-    
+
     # Now proceed with normal escaping
     pattern = r'(<[^>]*>)'
     parts = re.split(pattern, ssml_string)
-    
+
     # Process each part - if it's not a tag, escape special characters
     for i in range(len(parts)):
         if not parts[i].startswith('<') or not parts[i].endswith('>'):
             parts[i] = (parts[i]
-                       .replace('&', '&amp;')
-                       .replace('<', '&lt;')
-                       .replace('>', '&gt;'))
-    
+                        .replace('&', '&amp;')
+                        .replace('<', '&lt;')
+                        .replace('>', '&gt;'))
+
     # Rejoin the string
     escaped_string = ''.join(parts)
-    
+
     # Now parse and format properly
     try:
-        root = etree.fromstring(escaped_string.encode('utf-8'))  # pylint: disable=c-extension-no-member
+        root = etree.fromstring(escaped_string.encode(
+            'utf-8'))  # pylint: disable=c-extension-no-member
         return etree.tostring(root, encoding='unicode')  # pylint: disable=c-extension-no-member
     except etree.XMLSyntaxError as e:  # pylint: disable=c-extension-no-member
         print(f"Warning: Could not parse XML after escaping: {e}")
         return escaped_string
-    
-from dataclasses import dataclass
-from typing import Optional
-from lxml import etree
+
 
 @dataclass
 class SSMLCheck:
     """
     Result of SSML validation check.
-    
+
     Attributes:
         isCorrect (bool): Whether the SSML is valid
         reason (Optional[str]): Reason for failure if invalid, None if valid
@@ -131,28 +131,30 @@ class SSMLCheck:
     def __repr__(self) -> str:
         return f"SSMLCheck(is_correct={self.is_correct}, reason={repr(self.error_reason)}, processed_ssml={repr(self.processed_ssml)})"
 
+
 def check_google_tts_ssml_format(ssml_string: str, escape: bool = True) -> SSMLCheck:
     """
     Checks if the SSML string meets Google TTS requirements.
-    
+
     Args:
         ssml_string (str): The SSML markup string to check
         escape (bool): Whether to escape special characters first
-        
+
     Returns:
         SSMLCheck: Object containing validation result, optional failure reason, and processed SSML
     """
     if escape:
         ssml_string = escape_ssml_text(ssml_string)
-    
+
     try:
-        root = etree.fromstring(ssml_string.encode('utf-8'), etree.XMLParser(resolve_entities=False))  # pylint: disable=c-extension-no-member
-        
+        root = etree.fromstring(ssml_string.encode(
+            'utf-8'), etree.XMLParser(resolve_entities=False))  # pylint: disable=c-extension-no-member
+
         for element in root.iter():
             if element.tag == "break":
                 if "time" not in element.attrib:
                     return SSMLCheck(False, "Invalid SSML: <break> tag is missing 'time' attribute.")
-                
+
                 time_value = element.get("time", "")
                 # Find the last occurrence of either 'ms' or 's'
                 if time_value.endswith('ms'):
@@ -163,7 +165,7 @@ def check_google_tts_ssml_format(ssml_string: str, escape: bool = True) -> SSMLC
                     unit = 's'
                 else:
                     return SSMLCheck(False, f"Invalid SSML: <break> tag time value '{time_value}' must end with 'ms' or 's'")
-                
+
                 try:
                     # Convert the number part to float
                     float(number)
@@ -171,7 +173,7 @@ def check_google_tts_ssml_format(ssml_string: str, escape: bool = True) -> SSMLC
                         return SSMLCheck(False, f"Invalid SSML: <break> tag has invalid time unit '{unit}'")
                 except ValueError:
                     return SSMLCheck(False, f"Invalid SSML: <break> tag has invalid time number '{number}'")
-                    
+
             elif element.tag == "say-as":
                 if "interpret-as" not in element.attrib:
                     # Set default interpret-as attribute to "verbatim"
@@ -187,17 +189,19 @@ def check_google_tts_ssml_format(ssml_string: str, escape: bool = True) -> SSMLC
             # elif element.tag == "emphasis":
             #     if "level" not in element.attrib:
             #         return SSMLCheck(False, "Invalid SSML: <emphasis> tag is missing 'level' attribute.")
-                
+
             #     level_value = element.get("level", "")
             #     if level_value not in ["strong", "moderate", "reduced", "none"]:
             #         return SSMLCheck(False, f"Invalid SSML: <emphasis> tag has invalid level value '{level_value}'")
 
         # Get the processed SSML with all modifications
-        processed_ssml = etree.tostring(root, encoding='unicode')  # pylint: disable=c-extension-no-member
+        processed_ssml = etree.tostring(
+            root, encoding='unicode')  # pylint: disable=c-extension-no-member
         return SSMLCheck(True, processed_ssml=processed_ssml)
-        
+
     except etree.XMLSyntaxError as e:  # pylint: disable=c-extension-no-member
         return SSMLCheck(False, f"Invalid SSML: {str(e)}")
+
 
 if __name__ == "__main__":
     import sys
