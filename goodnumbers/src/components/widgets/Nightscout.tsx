@@ -231,7 +231,7 @@ const NightscoutComponent = ({
   useEffect(() => {
     try {
       prettier
-        .format(assessmentData?.dialog || '', {
+        .format(assessmentData?.ssml_dialog || '', {
           parser: 'xml',
           plugins: [parserXml],
           xmlWhitespaceSensitivity: 'ignore',
@@ -240,12 +240,12 @@ const NightscoutComponent = ({
           setFormattedSSML(formatted);
         })
         .catch((e) => {
-          setFormattedSSML(assessmentData?.dialog || '');
+          setFormattedSSML(assessmentData?.ssml_dialog || '');
         });
     } catch (e) {
-      setFormattedSSML(assessmentData?.dialog || '');
+      setFormattedSSML(assessmentData?.ssml_dialog || '');
     }
-  }, [assessmentData?.dialog]);
+  }, [assessmentData?.ssml_dialog]);
 
   // Simplified render method for assessments
   const renderAssessmentContent = () => {
@@ -300,7 +300,7 @@ const NightscoutComponent = ({
             <DebugInterfaceViewer data={assessmentData.podcastResult} />
           )}
           <div className="prose dark:prose-invert max-w-none">
-            <ReactMarkdown>{ssmlToMarkdown(assessmentData?.dialog || '')}</ReactMarkdown>
+            <ReactMarkdown>{ssmlToMarkdown(assessmentData?.ssml_dialog || '')}</ReactMarkdown>
           </div>
           {/* <pre className="whitespace-pre-wrap">{ssmlToMarkdown(assessmentData?.dialog || '')}</pre> */}
         </TabPanel>
@@ -367,7 +367,7 @@ const NightscoutComponent = ({
               isFormValid && !isLoading ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300 cursor-not-allowed'
             }`}
           >
-            {isLoading ? 'Creating...' : 'Create'}
+            {isLoading ? 'Creating podcast...' : 'Create podcast'}
           </button>
         </form>
       </div>

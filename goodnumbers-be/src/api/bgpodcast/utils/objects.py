@@ -2,20 +2,20 @@ from pydantic import BaseModel
 
 
 class Assessment(BaseModel):
+    valid: bool
     notes: str | None = None
     assessment1: str | None = None
     assessment2: str | None = None
     template_num: int | None = 1
+    id: str
+    title: str | None = None
+    description: str | None = None
+    ssml_dialog: str | None = None
 
 
 class NightscoutData(BaseModel):
     entries: list
     treatments: list
-
-
-class PodcastDialog(BaseModel):
-    dialog: str | None = None
-    id: str
 
 
 class PodcastAudioURL:
@@ -39,6 +39,8 @@ class PodcastGenerateResult(BaseModel):
     error: str | None = None
     gcs_path: str | None = None  # Keep internal GCS info
     bucket_name: str | None = None
+    title: str | None = None
+    description: str | None = None
 
 
 class RefreshURLRequest(BaseModel):

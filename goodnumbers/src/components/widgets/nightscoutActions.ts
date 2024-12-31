@@ -118,7 +118,7 @@ export async function generateAssessments(
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes, template_num: 1 }),
+        body: JSON.stringify({ valid: true, notes: notes, template_num: 1, id: id }),
       },
       'Generating Assessment 1',
     );
@@ -130,23 +130,22 @@ export async function generateAssessments(
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes, assessment1, template_num: 2 }),
+        body: JSON.stringify({ valid: true, notes: notes, assessment1: assessment1, template_num: 2, id: id }),
       },
       'Generating Assessment 2',
     );
     const assessment2 = assessment2Data.response;
 
     // Step 4: Generate Dialog
-    const dialogData = await fetchWithErrorHandling(
-      `${apiUrl}/api/get_assessment`,
+    const podcast_info = await fetchWithErrorHandling(
+      `${apiUrl}/api/gen_podcast_text`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes, assessment1, assessment2, template_num: 3 }),
+        body: JSON.stringify({ valid: true, notes: notes, assessment1: assessment1, assessment2: assessment2, id: id }),
       },
       'Generating Dialog',
     );
-    const dialog = dialogData.response;
 
     // Step 5: Start generation of audio
     const podcastResult: PodcastGenerateResult = await fetchWithErrorHandling(
@@ -154,12 +153,22 @@ export async function generateAssessments(
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dialog, id }),
+        body: JSON.stringify({ data: podcast_info }),
       },
       'Generating Dialog',
     );
 
-    return { notes, assessment1, assessment2, dialog, podcastResult, timestamp };
+    return {
+      notes: notes,
+      assessment1: assessment1,
+      assessment2: assessment2,
+      title: podcast_info['title'],
+      description: podcast_info['description'],
+      ssml_dialog: podcast_info['ssml_dialog'],
+      podcastResult: podcastResult,
+      timestamp: timestamp,
+      id: id,
+    };
   } catch (error) {
     const err = error as AssessmentError;
     logger.error('Failed to generate assessments:', { error: err });
