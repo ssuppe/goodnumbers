@@ -4,7 +4,7 @@ Python APIs
 import os
 import json
 import uuid
-import datetime
+from datetime import datetime, timezone
 import traceback
 import pandas as pd
 from fastapi import FastAPI, HTTPException
@@ -46,7 +46,7 @@ def hello_fast_api():
 
 gemini_api_key = os.environ["GEMINI_API_KEY"]
 # Constants
-BUCKET_NAME = "goodnumbers"  # Replace with your bucket name
+BUCKET_NAME = "goodnumbersmain"  # Replace with your bucket name
 GCS_PATH = "audio-files"  # Folder in bucket to store audio files
 POLLING_INTERVAL = 10  # seconds
 TIMEOUT = 600  # 10 minutes
@@ -65,14 +65,13 @@ async def get_notes(data: objects.NightscoutData) -> str:
     treatments = pd.DataFrame.from_dict(treatments)
 
     print("get_notes")
-    podcast_dialog = ""
+    notes = ""
     try:
         print("Reading treatments and carbs")
         # treatments = nsingest.load_sgv_dict(data.treatments)
         # carbs = nsingest.load_carb_dict(data.carbs)
         notes = None
         notes = bgprompt.generate_notes(entries, treatments)
-        podcast_dialog = notes
     except json.JSONDecodeError as e:
         print(f"Error decoding JSON: {e}")
         raise HTTPException(status_code=400, detail="Invalid JSON data") from e
@@ -83,7 +82,7 @@ async def get_notes(data: objects.NightscoutData) -> str:
         raise HTTPException(
             status_code=500, detail="Internal Server Error") from e
 
-    return podcast_dialog
+    return notes
 
 
 async def async_generate(prompt, model):
@@ -155,9 +154,11 @@ async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> ob
             # This is the time to create/update the RSS feed
             base_path = "/".join(podcast_result.gcs_path.split("/")[:-1])
             rss_path = base_path + "/feed.xml"
+            pub_date = datetime.now(timezone.utc).astimezone()
+
             update_rss_feed(BUCKET_NAME, rss_path, podcast_result.title,
                             podcast_result.url, podcast_result.description,
-                            datetime.datetime.now(), str(uuid.uuid4()))
+                            pub_date, str(uuid.uuid4()))
 
             return podcast_result
         elif status.error:
@@ -288,27 +289,27 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
         no_ssml_tries = 0
         while not is_valid_ssml and no_ssml_tries < 3:
             print("Generating SSML")
-            if bgutils.is_debug() and bgutils.is_dev_environment():
-                response_text = bgutils.read_file(
-                    fr=os.path.join("..", "..", "_tmp", "pass3_output.txt"))
+            if bgutils.is_debug() and bgutils.is_dev_environment() and 1 == 2:
+                response = json.loads(bgutils.read_file(
+                    fr=os.path.join("..", "..", "_tmp", "pass3_output.txt")))
             else:
                 response = await async_generate_podcastjson(prompt, model)
                 # response_text = response_raw.text
 
             # response = json.loads(response_text)
-            podcast_dialog = response['podcast_ssml']
-            ssml_check = ssml.check_google_tts_ssml_format(podcast_dialog)
+            podcast_ssml = response['podcast_ssml']
+            ssml_check = ssml.check_google_tts_ssml_format(podcast_ssml)
             is_valid_ssml = ssml_check.is_correct
             print(f"Is valid SSML? {ssml_check.is_correct}")
             if not is_valid_ssml:
                 print(
-                    f"{no_ssml_tries}/3: Invalid SSML that couldn't be fixed: {podcast_dialog}")
+                    f"{no_ssml_tries}/3: Invalid SSML that couldn't be fixed: {podcast_ssml}")
                 if bgutils.is_write_local() and bgutils.is_dev_environment():
                     bgutils.write_file(to=os.path.join(
-                        "..", "..", "_tmp", "pass3_output.txt"), contents=podcast_dialog)
+                        "..", "..", "_tmp", "pass3_output.txt"), contents=json.dumps(response))
                 no_ssml_tries += 1
             else:
-                if bgutils.is_write_local() and bgutils.is_dev_environment():
+                if bgutils.is_write_local() and bgutils.is_dev_environment() and 1 == 2:
                     bgutils.write_file(to=os.path.join(
                         "..", "..", "_tmp", "pass3_output.txt"), contents=ssml_check.processed_ssml)
                 response['podcast_ssml'] = ssml_check.processed_ssml

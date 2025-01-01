@@ -18,16 +18,17 @@ export interface PodcastGenerateResult {
 }
 
 export interface AssessmentData {
-  valid?: boolean;
-  notes: string | null;
-  assessment1: string | null;
-  assessment2: string | null;
-  title: string;
-  description: string;
-  ssml_dialog: string | null;
-  podcastResult: PodcastGenerateResult | null;
-  timestamp: string | null;
-  id: string;
+  valid?: boolean | null;
+  notes?: string | null;
+  assessment1?: string | null;
+  assessment2?: string | null;
+  title?: string | null;
+  description?: string | null;
+  ssml_dialog?: string | null;
+  template_num?: number | 1;
+  timestamp?: string | null;
+  id?: string | null;
+  podcastResult?: PodcastGenerateResult | null;
 }
 
 export interface InitialStoredData {

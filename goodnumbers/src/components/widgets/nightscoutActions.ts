@@ -137,7 +137,7 @@ export async function generateAssessments(
     const assessment2 = assessment2Data.response;
 
     // Step 4: Generate Dialog
-    const podcast_info = await fetchWithErrorHandling(
+    const podcast_info: AssessmentData = await fetchWithErrorHandling(
       `${apiUrl}/api/gen_podcast_text`,
       {
         method: 'POST',
@@ -153,22 +153,14 @@ export async function generateAssessments(
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: podcast_info }),
+        body: JSON.stringify(podcast_info),
       },
       'Generating Dialog',
     );
 
-    return {
-      notes: notes,
-      assessment1: assessment1,
-      assessment2: assessment2,
-      title: podcast_info['title'],
-      description: podcast_info['description'],
-      ssml_dialog: podcast_info['ssml_dialog'],
-      podcastResult: podcastResult,
-      timestamp: timestamp,
-      id: id,
-    };
+    podcast_info.podcastResult = podcastResult;
+
+    return podcast_info;
   } catch (error) {
     const err = error as AssessmentError;
     logger.error('Failed to generate assessments:', { error: err });
