@@ -12,7 +12,7 @@ const LazyAudioPlayer = ({ audioUrl }: { audioUrl: string }) => {
   };
 
   return (
-    <div className="w-full max-w-xl">
+    <div className="w-full max-w-4xl">
       {isPlayerLoaded ? (
         <AudioPlayer
           ref={audioPlayerRef}

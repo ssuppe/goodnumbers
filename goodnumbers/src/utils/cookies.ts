@@ -1,3 +1,5 @@
+'use client';
+
 import Cookies from 'js-cookie';
 import pako from 'pako';
 
@@ -8,7 +10,7 @@ const base64ToUint8Array = (base64: string): Uint8Array => {
   // This creates a binary string from base64
   const binaryString = atob(base64);
   // Create a view into the buffer
-  return Uint8Array.from(binaryString, char => char.charCodeAt(0));
+  return Uint8Array.from(binaryString, (char) => char.charCodeAt(0));
 };
 
 /**
@@ -42,13 +44,13 @@ export const getCookieC = <T>(name: string): T | null => {
   try {
     const cookie = Cookies.get(name);
     if (!cookie) return null;
-    
+
     // Convert from base64 to Uint8Array
     const compressed = base64ToUint8Array(cookie);
-    
+
     // Decompress
     const decompressed = pako.inflate(compressed, { to: 'string' });
-    
+
     // Parse if it was originally an object
     try {
       return JSON.parse(decompressed) as T;
@@ -70,51 +72,42 @@ export const getCookieC = <T>(name: string): T | null => {
  * @param value The value to compress and store
  * @param options Cookie options to pass to js-cookie
  */
-export const setCookieC = async <T>(
-  name: string, 
-  value: T, 
-  options?: Cookies.CookieAttributes
-): Promise<void> => {
-  try {
-    // Convert to string if object
-    const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-    
-    // Compress
-    const compressed = pako.deflate(stringValue);
-    
-    // Convert to base64
-    const base64 = await uint8ArrayToBase64(compressed);
-    
-    // Set cookie
-    Cookies.set(name, base64, options);
-  } catch (e) {
-    console.error(`Failed to set cookie ${name}:`, e);
-    throw e;
-  }
+export const setCookieC = <T>(name: string, value: T, options?: Cookies.CookieAttributes): Promise<void> => {
+  // Convert to string if object
+  const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+
+  // Compress
+  const compressed = pako.deflate(stringValue, { level: 9, windowBits: 15 });
+
+  // Convert to base64 and set cookie
+  return uint8ArrayToBase64(compressed)
+    .then((base64) => {
+      Cookies.set(name, base64, options);
+    })
+    .catch((e) => {
+      console.error(`Failed to set cookie ${name}:`, e);
+      throw e;
+    });
 };
 
 /**
  * Sets and compresses a cookie value synchronously
  * Uses a slightly less efficient but synchronous base64 conversion
  */
-export const setCookieCSync = <T>(
-  name: string, 
-  value: T, 
-  options?: Cookies.CookieAttributes
-): void => {
+export const setCookieCSync = <T>(name: string, value: T, options?: Cookies.CookieAttributes): void => {
   try {
     // Convert to string if object
     const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-    
+
     // Compress
-    const compressed = pako.deflate(stringValue);
-    
+    const compressed = pako.deflate(stringValue, { level: 9, windowBits: 15 });
+
     // Convert to base64 using btoa
     const binaryString = Array.from(compressed)
-      .map(byte => String.fromCharCode(byte))
+      .map((byte) => String.fromCharCode(byte))
       .join('');
     const base64 = btoa(binaryString);
-    
+
     // Set cookie
     Cookies.set(name, base64, options);
   } catch (e) {
