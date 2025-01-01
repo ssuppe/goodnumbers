@@ -1,5 +1,5 @@
 from google.cloud import storage
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from feedgen.feed import FeedGenerator
 import feedparser
 from typing import Optional
@@ -47,11 +47,13 @@ def update_rss_feed(
         current_feed = feedparser.parse(BytesIO(content))
 
         # Only keep items newer than 10 days
-        cutoff_date = datetime.now() - timedelta(days=10)
+        cutoff_date = datetime.now(
+            timezone.utc).astimezone() - timedelta(days=10)
 
         for item in current_feed.entries:
             # Convert item timestamp to datetime
-            item_date = datetime.fromtimestamp(mktime(item.published_parsed))
+            item_date = datetime.fromtimestamp(
+                timestamp=mktime(item.published_parsed), tz=timezone.utc)
 
             if item_date > cutoff_date:
                 # Add item to new feed if it's recent enough

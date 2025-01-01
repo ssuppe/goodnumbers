@@ -11,7 +11,7 @@ from google.cloud import storage
 from fastapi import HTTPException
 from bgpodcast.utils.objects import Assessment, JobCheckResponse, PodcastGenerateResult
 
-BUCKET_NAME = "goodnumbers"  # Replace with your bucket name
+BUCKET_NAME = "goodnumbersmain"  # Replace with your bucket name
 GCS_PATH = "audio-files"  # Folder in bucket to store audio files
 POLLING_INTERVAL = 10  # seconds
 
@@ -126,14 +126,14 @@ async def gen_podcast(podcast: Assessment) -> PodcastGenerateResult:
         ValueError: If dialog is empty or invalid
         HTTPException: For various Google API errors
     """
-    if podcast is None or podcast.podcast_info is None:
+    if podcast is None or podcast.ssml_dialog is None:
         raise ValueError(f"Invalid dialog: {podcast.dialog}")
 
     try:
 
-        title = podcast.podcast_info['TITLE']
-        description = podcast.podcast_info['DESCRIPTION']
-        podcast_dialog = podcast.podcast_info['PODCAST']
+        title = podcast.title
+        description = podcast.description
+        ssml_dialog = podcast.ssml_dialog
 
         # Initialize Storage client
         storage_client = storage.Client()
@@ -141,7 +141,7 @@ async def gen_podcast(podcast: Assessment) -> PodcastGenerateResult:
 
         # Generate unique file path
         timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-        file_name = f"podcast_{timestamp}.mp3"
+        file_name = f"podcast_{timestamp}.wav"
         gcs_path = f"{GCS_PATH}/{podcast.id}/{file_name}"
         output_gcs_uri = f"gs://{BUCKET_NAME}/{gcs_path}"
 
@@ -156,8 +156,8 @@ async def gen_podcast(podcast: Assessment) -> PodcastGenerateResult:
             # Start the long audio synthesis operation
             operation = await client.synthesize_long_audio(
                 request=tts.SynthesizeLongAudioRequest(
-                    parent="projects/gemini-437920/locations/global",
-                    input=tts.SynthesisInput(ssml=podcast_dialog),
+                    parent="projects/goodnumbers-446416/locations/global",
+                    input=tts.SynthesisInput(ssml=ssml_dialog),
                     voice=tts.VoiceSelectionParams(
                         language_code="en-GB",
                         name="en-GB-Wavenet-B"
@@ -176,7 +176,7 @@ async def gen_podcast(podcast: Assessment) -> PodcastGenerateResult:
                                         operation_id=operation.operation.name,
                                         gcs_path=gcs_path,
                                         bucket_name=BUCKET_NAME,
-                                        url="https://storage.googleapis.com/goodnumbers/"+gcs_path,
+                                        url="https://storage.googleapis.com/goodnumbersmain/"+gcs_path,
                                         message="Audio generation started successfully", title=title,
                                         description=description)
             return res
@@ -186,52 +186,52 @@ async def gen_podcast(podcast: Assessment) -> PodcastGenerateResult:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-async def test():
-    dialog = PodcastDialog()
-    dialog.dialog = """
-<speak>
-  Here are <say-as interpret-as="characters">SSML</say-as> samples.
-    <break time="1s"/>
-    I can pause <break time="3s"/>.
-    <break time="500ms"/>
-    I can speak in cardinals. Your number is <say-as interpret-as="cardinal">10</say-as>.
-    <break time="500ms"/>
-    Or I can speak in ordinals. You are <say-as interpret-as="ordinal">10</say-as> in line.
-    <break time="500ms"/>
-    Or I can even speak in digits. The digits for ten are <say-as interpret-as="characters">10</say-as>.
-    <break time="500ms"/>
-    I can also substitute phrases, like the <sub alias="World Wide Web Consortium">W3C</sub>.
-    <break time="500ms"/>
-    Finally, I can speak a paragraph with two sentences.
-    <p><s>This is sentence one.</s><s>This is sentence two.</s></p>
-</speak>"""
+# async def test():
+#     dialog = PodcastDialog()
+#     dialog.dialog = """
+# <speak>
+#   Here are <say-as interpret-as="characters">SSML</say-as> samples.
+#     <break time="1s"/>
+#     I can pause <break time="3s"/>.
+#     <break time="500ms"/>
+#     I can speak in cardinals. Your number is <say-as interpret-as="cardinal">10</say-as>.
+#     <break time="500ms"/>
+#     Or I can speak in ordinals. You are <say-as interpret-as="ordinal">10</say-as> in line.
+#     <break time="500ms"/>
+#     Or I can even speak in digits. The digits for ten are <say-as interpret-as="characters">10</say-as>.
+#     <break time="500ms"/>
+#     I can also substitute phrases, like the <sub alias="World Wide Web Consortium">W3C</sub>.
+#     <break time="500ms"/>
+#     Finally, I can speak a paragraph with two sentences.
+#     <p><s>This is sentence one.</s><s>This is sentence two.</s></p>
+# </speak>"""
 
-    result = await gen_podcast(dialog)
-    print("Generated podcast, here's the first result:")
-    print(result)
+#     result = await gen_podcast(dialog)
+#     print("Generated podcast, here's the first result:")
+#     print(result)
 
-    # Check status periodically
-    start_time = time.time()
-    while time.time() - start_time < TIMEOUT:
-        status = await get_job_status(result['operation_id'])
-        print(f"\nCurrent status (after {
-              int(time.time() - start_time)} seconds):")
-        pprint(status)
+#     # Check status periodically
+#     start_time = time.time()
+#     while time.time() - start_time < TIMEOUT:
+#         status = await get_job_status(result['operation_id'])
+#         print(f"\nCurrent status (after {
+#               int(time.time() - start_time)} seconds):")
+#         pprint(status)
 
-        if status.status == "done":
-            print("All done!")
+#         if status.status == "done":
+#             print("All done!")
 
-            # print(status["result"])
-            break
-        elif status.status == "error":
-            # print(status["error"])
-            break
-        else:
-            # print("Still processing...")
-            print(status)
+#             # print(status["result"])
+#             break
+#         elif status.status == "error":
+#             # print(status["error"])
+#             break
+#         else:
+#             # print("Still processing...")
+#             print(status)
 
-        await asyncio.sleep(POLLING_INTERVAL)
+#         await asyncio.sleep(POLLING_INTERVAL)
 
 
-if __name__ == "__main__":
-    asyncio.run(test())
+# if __name__ == "__main__":
+#     asyncio.run(test())
