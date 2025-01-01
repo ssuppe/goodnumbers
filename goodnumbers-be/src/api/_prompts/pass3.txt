@@ -94,8 +94,3 @@ Use the following format:
 <voice name="en-GB-Wavenet-B">Hello, I'm Dr Turner, welcome to the podcast</voice>
 <voice name="en-US-Wavenet-C">And I'm Rebecca. We are your hosts</voice>
 </voice>
-
-Your output should be formatted into JSON as three entries:
-title: A 4 to 8 string title, which is the main topic of this week's podcast. All on one line.
-description: A 3 sentence string summarization of this week's podcast. All on one line.
-podcast_ssml: The SSML podcast, can be multilined.
