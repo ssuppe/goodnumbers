@@ -74,7 +74,7 @@ async function readLocalJson(filePath: string): Promise<any> {
 export async function generateAssessments(
   csgvData: Compressed,
   ccarbsData: Compressed,
-  useLocalData: boolean,
+  id: string,
 ): Promise<AssessmentData> {
   const apiUrl = config.backendUrl;
   if (!apiUrl || apiUrl == '') {
@@ -82,19 +82,6 @@ export async function generateAssessments(
     throw new Error('NEXT_PUBLIC_BACKEND_URL environment variable is not set');
   } else {
     logger.info('NEXT_PUBLIC_BACKEND_URL: ' + apiUrl);
-  }
-
-  if (useLocalData) {
-    try {
-      let sgvData = await readLocalJson('/data/24Sept.30d/Nightscout.entries.24Sept.30d.json');
-      csgvData = compress(sgvData);
-      let treatmentsData = await readLocalJson('/data/24Sept.30d/Nightscout.treatments.24Sept.30d.json');
-      treatmentsData = compress(treatmentsData);
-      logger.info('Local data loaded successfully');
-    } catch (error) {
-      logger.error('Failed to load local data:', { error });
-      throw new Error(`Failed to load local data: ${(error as Error).message}`);
-    }
   }
 
   try {
@@ -131,7 +118,7 @@ export async function generateAssessments(
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes, template_num: 1 }),
+        body: JSON.stringify({ valid: true, notes: notes, template_num: 1, id: id }),
       },
       'Generating Assessment 1',
     );
@@ -143,37 +130,37 @@ export async function generateAssessments(
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes, assessment1, template_num: 2 }),
+        body: JSON.stringify({ valid: true, notes: notes, assessment1: assessment1, template_num: 2, id: id }),
       },
       'Generating Assessment 2',
     );
     const assessment2 = assessment2Data.response;
 
     // Step 4: Generate Dialog
-    const dialogData = await fetchWithErrorHandling(
-      `${apiUrl}/api/get_assessment`,
+    const podcast_info: AssessmentData = await fetchWithErrorHandling(
+      `${apiUrl}/api/gen_podcast_text`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes, assessment1, assessment2, template_num: 3 }),
+        body: JSON.stringify({ valid: true, notes: notes, assessment1: assessment1, assessment2: assessment2, id: id }),
       },
       'Generating Dialog',
     );
-    const dialog = dialogData.response;
 
     // Step 5: Start generation of audio
-    const podcastData = await fetchWithErrorHandling(
+    const podcastResult: PodcastGenerateResult = await fetchWithErrorHandling(
       `${apiUrl}/api/gen_podcast`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dialog }),
+        body: JSON.stringify(podcast_info),
       },
       'Generating Dialog',
     );
-    const podcastResult: PodcastGenerateResult = podcastData;
 
-    return { notes, assessment1, assessment2, dialog, podcastResult, timestamp };
+    podcast_info.podcastResult = podcastResult;
+
+    return podcast_info;
   } catch (error) {
     const err = error as AssessmentError;
     logger.error('Failed to generate assessments:', { error: err });

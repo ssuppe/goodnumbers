@@ -1,92 +1,93 @@
-import { useCallback, useState, useEffect } from "react";
-import { AssessmentData, PodcastGenerateResult } from "~/types/nightscout";
-import { setCookieC, getCookieC } from "~/utils/cookies";
+import { useCallback, useState, useEffect } from 'react';
+import { AssessmentData, PodcastGenerateResult } from '~/types/nightscout';
+import { setCookieCSync, getCookieC } from '~/utils/cookies';
 
 export const useAssessmentState = () => {
-  // Initialize with null values
   const [assessmentData, setAssessmentData] = useState<AssessmentData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Load cookies after mount
   useEffect(() => {
-    const loadCookieData = () => {
-      try {
-        // setIsLoading(true);
-        
-        const cookieData : AssessmentData = {
-          notes: getCookieC<string>('notes'),
-          assessment1: getCookieC<string>('assessment1'),
-          assessment2: getCookieC<string>('assessment2'),
-          dialog: getCookieC<string>('dialog'),
-          podcastResult: getCookieC<PodcastGenerateResult>('podcastResult'),
-          timestamp: getCookieC<string>('timestamp'),
-        };
+    try {
+      const cookieData: AssessmentData = {
+        valid: getCookieC<boolean>('valid'),
+        notes: getCookieC<string>('notes'),
+        assessment1: getCookieC<string>('assessment1'),
+        assessment2: getCookieC<string>('assessment2'),
+        title: getCookieC<string>('title'),
+        description: getCookieC<string>('description'),
+        ssml_dialog: getCookieC<string>('dialog'),
+        template_num: 0,
+        timestamp: getCookieC<string>('timestamp'),
+        id: getCookieC<string>('id'),
+        podcastResult: getCookieC<PodcastGenerateResult>('podcastResult'),
+      };
 
-        // Only update if we have any non-null values
-        if (Object.values(cookieData).some(value => value !== null)) {
-          setAssessmentData(cookieData as AssessmentData);
-        }
-        
-        setError(null);
-      } catch (err) {
-        console.error('Error loading cookie data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load cookie data');
-      } finally {
-        // setIsLoading(false);
+      // Only update if we have any non-null values
+      if (Object.values(cookieData).some((value) => value !== null)) {
+        setAssessmentData(cookieData as AssessmentData);
       }
-    };
 
-    loadCookieData();
-  }, []); // Empty dependency array = run once after mount
-
-  const updateAssessmentData = useCallback(async (newData: AssessmentData) => {
-    try {
-      // Update state first
-      setAssessmentData(newData);
-      // setPodcastStatus(newData.podcastResult?.status || null);
-      
-      // Update all cookies in parallel
-      await Promise.all([
-        setCookieC('notes', newData.notes, { expires: 30 }),
-        setCookieC('assessment1', newData.assessment1, { expires: 30 }),
-        setCookieC('assessment2', newData.assessment2, { expires: 30 }),
-        setCookieC('dialog', newData.dialog, { expires: 30 }),
-        setCookieC('podcastResult', newData.podcastResult, { expires: 30 }),
-        setCookieC('timestamp', newData.timestamp, { expires: 30 })
-      ]);
+      setError(null);
     } catch (err) {
-      console.error('Error updating assessment data:', err);
-      throw err;
+      console.error('Error loading cookie data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load cookie data');
     }
   }, []);
 
-  const updatePodcastResult = useCallback(async (newPodcastResult: PodcastGenerateResult) => {
-    if (!assessmentData) return;
+  const updateAssessmentData = useCallback((newData: AssessmentData) => {
+    // Update state immediately
+    setAssessmentData(newData);
 
+    // Use synchronous cookie updates
     try {
-      const updatedData: AssessmentData =  {
+      setCookieCSync('valid', newData.valid, { expires: 30 });
+      setCookieCSync('notes', newData.notes, { expires: 30 });
+      setCookieCSync('assessment1', newData.assessment1, { expires: 30 });
+      setCookieCSync('assessment2', newData.assessment2, { expires: 30 });
+      setCookieCSync('title', newData.title, { expires: 30 });
+      setCookieCSync('description', newData.description, { expires: 30 });
+      setCookieCSync('ssml_dialog', newData.ssml_dialog, { expires: 30 });
+      // setCookieCSync('template_num', newData.template_num, { expires: 30 });
+      setCookieCSync('timestamp', newData.timestamp, { expires: 30 });
+      setCookieCSync('id', newData.id, { expires: 30 });
+      setCookieCSync('podcastResult', newData.podcastResult, { expires: 30 });
+    } catch (err) {
+      console.error('Error updating cookies:', err);
+    }
+  }, []);
+
+  const updatePodcastResult = useCallback(
+    (newPodcastResult: PodcastGenerateResult) => {
+      if (!assessmentData) return;
+
+      const updatedData: AssessmentData = {
         ...assessmentData,
-        podcastResult: newPodcastResult
-      } 
+        podcastResult: newPodcastResult,
+      };
 
-      await updateAssessmentData(updatedData);
-      // setPodcastStatus(newPodcastResult.status);
-    } catch (err) {
-      console.error('Error updating podcast result:', err);
-      throw err;
-    }
-  }, []);
+      // Update state immediately
+      setAssessmentData(updatedData);
 
-  const getCurrentPodcastResult  = useCallback(() => 
-    assessmentData?.podcastResult,
-    [assessmentData]
+      // Use synchronous cookie update
+      try {
+        setCookieCSync('podcastResult', newPodcastResult, { expires: 30 });
+      } catch (err) {
+        console.error('Error updating podcast result cookie:', err);
+      }
+    },
+    [assessmentData],
   );
+
+  const getCurrentPodcastResult = useCallback(() => {
+    return assessmentData?.podcastResult || null;
+  }, [assessmentData]);
 
   return {
     assessmentData,
     error,
     updateAssessmentData,
     updatePodcastResult,
-    getCurrentPodcastResult
+    getCurrentPodcastResult,
   };
 };
