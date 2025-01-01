@@ -13,10 +13,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
 from google.cloud import storage
 from compress_json import decompress
+from api.bgpodcast.llm_interaction.tts import async_generate_podcastjson
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils, ssml
 from bgpodcast.utils import objects
-from bgpodcast.audio.gcloud import gen_podcast, get_job_status
+from bgpodcast.audio.gcloud import gen_podcast_audio, get_job_status
 from bgpodcast.audio.rss import update_rss_feed
 from vellox import Vellox
 
@@ -53,18 +54,17 @@ TIMEOUT = 600  # 10 minutes
 
 
 @app.post("/api/get_notes")
-async def get_notes(data: objects.NightscoutData) -> str:
+async def get_analysis(data: objects.NightscoutData) -> str:
     """
-    Create manual notes
+    Create manual analysis
     """
-    print("get notes0")
+    print("get analysis")
 
     entries = decompress(data.entries)
     entries = pd.DataFrame.from_dict(entries)
     treatments = decompress(data.treatments)
     treatments = pd.DataFrame.from_dict(treatments)
 
-    print("get_notes")
     notes = ""
     try:
         print("Reading treatments and carbs")
@@ -83,100 +83,6 @@ async def get_notes(data: objects.NightscoutData) -> str:
             status_code=500, detail="Internal Server Error") from e
 
     return notes
-
-
-async def async_generate(prompt, model):
-    """
-    Generate
-    """
-    print("generating")
-    response = await model.generate_content_async(
-        prompt,
-        stream=False
-    )
-    print("done")
-    return response
-
-
-async def async_generate_podcastjson(prompt, model) -> dict:
-    """
-    Generate formal JSON
-    """
-    import typing_extensions as typing
-
-    class PodcastJSON(typing.TypedDict):
-        title: str
-        description: str
-        podcast_ssml: str
-
-    model.response_mime_type = "application/json"
-    model.response_schema = PodcastJSON
-
-    print("generating JSON")
-    response = await model.generate_content_async(
-        prompt,
-        stream=False
-    )
-
-    response = json.loads(response.text.replace(
-        "```json\n", "").replace("\n```", ""))
-
-    print("done")
-    return response
-
-
-@app.post("/api/gen_podcast")
-async def gen_podcast_api(data: objects.Assessment) -> objects.PodcastGenerateResult:
-    try:
-        # Your existing podcast generation logic
-        result = await gen_podcast(data)
-
-        return result
-    except Exception as e:
-        return objects.PodcastGenerateResult(
-            status="error",
-            operation_id="",
-            error=str(e)
-        )
-
-
-@app.post("/api/check_podcast")
-async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> objects.PodcastGenerateResult:
-    try:
-        status = await get_job_status(podcast_result.operation_id)
-        print(f"raw status: {status}")
-
-        if status.done and not status.error:
-            podcast_result.status = "done"
-
-            # Assuming this gets called and happens at least 1x
-            # Not totally foolproof but fine for POC
-            # This is the time to create/update the RSS feed
-            base_path = "/".join(podcast_result.gcs_path.split("/")[:-1])
-            rss_path = base_path + "/feed.xml"
-            pub_date = datetime.now(timezone.utc).astimezone()
-
-            update_rss_feed(BUCKET_NAME, rss_path, podcast_result.title,
-                            podcast_result.url, podcast_result.description,
-                            pub_date, str(uuid.uuid4()))
-
-            return podcast_result
-        elif status.error:
-            podcast_result.status = "error"
-            podcast_result.error = str(status.error)
-            return podcast_result
-
-        else:
-            podcast_result.status = "processing"
-            return podcast_result
-            # podcast_result.error = str(status.error)
-
-    except Exception as e:
-        return objects.PodcastGenerateResult(
-            status="error",
-            operation_id=podcast_result.operation_id,
-            error=str(e)
-        )
 
 
 @app.post("/api/get_assessment")
@@ -331,6 +237,60 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
         print(traceback.format_exc())
         raise HTTPException(
             status_code=500, detail="Internal Server Error") from e
+
+
+@app.post("/api/gen_podcast")
+async def gen_podcast_audio(data: objects.Assessment) -> objects.PodcastGenerateResult:
+    try:
+        # Your existing podcast generation logic
+        result = await gen_podcast_audio(data)
+
+        return result
+    except Exception as e:
+        return objects.PodcastGenerateResult(
+            status="error",
+            operation_id="",
+            error=str(e)
+        )
+
+
+@app.post("/api/check_podcast")
+async def check_podcast_status(podcast_result: objects.PodcastGenerateResult) -> objects.PodcastGenerateResult:
+    try:
+        status = await get_job_status(podcast_result.operation_id)
+        print(f"raw status: {status}")
+
+        if status.done and not status.error:
+            podcast_result.status = "done"
+
+            # Assuming this gets called and happens at least 1x
+            # Not totally foolproof but fine for POC
+            # This is the time to create/update the RSS feed
+            base_path = "/".join(podcast_result.gcs_path.split("/")[:-1])
+            rss_path = base_path + "/feed.xml"
+            pub_date = datetime.now(timezone.utc).astimezone()
+
+            update_rss_feed(BUCKET_NAME, rss_path, podcast_result.title,
+                            podcast_result.url, podcast_result.description,
+                            pub_date, str(uuid.uuid4()))
+
+            return podcast_result
+        elif status.error:
+            podcast_result.status = "error"
+            podcast_result.error = str(status.error)
+            return podcast_result
+
+        else:
+            podcast_result.status = "processing"
+            return podcast_result
+            # podcast_result.error = str(status.error)
+
+    except Exception as e:
+        return objects.PodcastGenerateResult(
+            status="error",
+            operation_id=podcast_result.operation_id,
+            error=str(e)
+        )
 
 
 @app.get("/api/test")
