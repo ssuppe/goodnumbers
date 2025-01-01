@@ -3,6 +3,7 @@ Python APIs
 """
 import os
 import json
+import typing
 import uuid
 from datetime import datetime, timezone
 import traceback
@@ -13,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
 from google.cloud import storage
 from compress_json import decompress
-from api.bgpodcast.llm_interaction.tts import async_generate_podcastjson
+from api.bgpodcast.llm_interaction.gemini import async_generate_json
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils, ssml
 from bgpodcast.utils import objects
@@ -38,6 +39,8 @@ with open(os.path.join("_prompts", "pass2.txt"), "r", encoding="utf-8") as f:
     template2 = f.read()
 with open(os.path.join("_prompts", "pass3.txt"), "r", encoding="utf-8") as f:
     template3 = f.read()
+with open(os.path.join("_prompts", "description.txt"), "r", encoding="utf-8") as f:
+    template_desc = f.read()
 
 
 @app.get("/api/hello")
@@ -199,7 +202,7 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
                 response = json.loads(bgutils.read_file(
                     fr=os.path.join("..", "..", "_tmp", "pass3_output.txt")))
             else:
-                response = await async_generate_podcastjson(prompt, model)
+                response = await async_generate_json(prompt, model)
                 # response_text = response_raw.text
 
             # response = json.loads(response_text)
@@ -226,6 +229,64 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
                 podcast_info.ssml_dialog = response['podcast_ssml']
                 return podcast_info
                 # return JSONResponse({'valid': True, 'response': response})
+    except ValueError as ve:
+        error_message = str(ve)
+        print(f"ValueError: {error_message}")
+        raise HTTPException(status_code=400, detail=error_message) from ve
+
+    except Exception as e:
+        error_message = f"An unexpected error occurred: {str(e)}"
+        print(f"Unexpected Error: {error_message}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=500, detail="Internal Server Error") from e
+
+
+@app.post("/api/gen_podcast_description")
+async def gen_podcast_description(data: objects.Assessment) -> objects.Assessment:
+    print("Generating podcast description")
+
+    genai.configure(api_key=gemini_api_key)
+
+    try:
+        generation_config = {
+            "temperature": 1,
+            "top_p": 0.95,
+            "top_k": 64,
+            "max_output_tokens": 10000,
+            "response_mime_type": "text/plain",
+        }
+
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            generation_config=generation_config,
+        )
+
+        prompt = bgutils.interpolate(
+            template_desc, ssml_dialog=data.ssml_dialog)
+
+        class Description(typing.TypedDict):
+            title: str
+            description: str
+
+        print("Generating description")
+        if bgutils.is_debug() and bgutils.is_dev_environment() and 1 == 2:
+            response = json.loads(bgutils.read_file(
+                fr=os.path.join("..", "..", "_tmp", "pass3_output.txt")))
+        else:
+            response = await async_generate_json(prompt, model, schema=Description)
+
+            # podcast_ssml = response['podcast_ssml']
+
+            if bgutils.is_write_local() and bgutils.is_dev_environment():
+                bgutils.write_file(to=os.path.join(
+                    "..", "..", "_tmp", "description_output.txt"), contents=json.dumps(response))
+
+            data.valid = True
+            data.title = response['title']
+            data.description = response['description']
+            return data
+
     except ValueError as ve:
         error_message = str(ve)
         print(f"ValueError: {error_message}")
