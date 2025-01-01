@@ -77,7 +77,7 @@ export const setCookieC = <T>(name: string, value: T, options?: Cookies.CookieAt
   const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
 
   // Compress
-  const compressed = pako.deflate(stringValue);
+  const compressed = pako.deflate(stringValue, { level: 9, windowBits: 15 });
 
   // Convert to base64 and set cookie
   return uint8ArrayToBase64(compressed)
@@ -100,7 +100,7 @@ export const setCookieCSync = <T>(name: string, value: T, options?: Cookies.Cook
     const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
 
     // Compress
-    const compressed = pako.deflate(stringValue);
+    const compressed = pako.deflate(stringValue, { level: 9, windowBits: 15 });
 
     // Convert to base64 using btoa
     const binaryString = Array.from(compressed)

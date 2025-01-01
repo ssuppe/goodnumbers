@@ -10,12 +10,17 @@ export const useAssessmentState = () => {
   useEffect(() => {
     try {
       const cookieData: AssessmentData = {
+        valid: getCookieC<boolean>('valid'),
         notes: getCookieC<string>('notes'),
         assessment1: getCookieC<string>('assessment1'),
         assessment2: getCookieC<string>('assessment2'),
+        title: getCookieC<string>('title'),
+        description: getCookieC<string>('description'),
         ssml_dialog: getCookieC<string>('dialog'),
-        podcastResult: getCookieC<PodcastGenerateResult>('podcastResult'),
+        template_num: 0,
         timestamp: getCookieC<string>('timestamp'),
+        id: getCookieC<string>('id'),
+        podcastResult: getCookieC<PodcastGenerateResult>('podcastResult'),
       };
 
       // Only update if we have any non-null values
@@ -36,12 +41,17 @@ export const useAssessmentState = () => {
 
     // Use synchronous cookie updates
     try {
+      setCookieCSync('valid', newData.valid, { expires: 30 });
       setCookieCSync('notes', newData.notes, { expires: 30 });
       setCookieCSync('assessment1', newData.assessment1, { expires: 30 });
       setCookieCSync('assessment2', newData.assessment2, { expires: 30 });
-      setCookieCSync('dialog', newData.ssml_dialog, { expires: 30 });
-      setCookieCSync('podcastResult', newData.podcastResult, { expires: 30 });
+      setCookieCSync('title', newData.title, { expires: 30 });
+      setCookieCSync('description', newData.description, { expires: 30 });
+      setCookieCSync('ssml_dialog', newData.ssml_dialog, { expires: 30 });
+      // setCookieCSync('template_num', newData.template_num, { expires: 30 });
       setCookieCSync('timestamp', newData.timestamp, { expires: 30 });
+      setCookieCSync('id', newData.id, { expires: 30 });
+      setCookieCSync('podcastResult', newData.podcastResult, { expires: 30 });
     } catch (err) {
       console.error('Error updating cookies:', err);
     }

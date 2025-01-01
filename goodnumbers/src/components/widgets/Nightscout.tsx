@@ -168,6 +168,9 @@ const NightscoutComponent = ({
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     console.log('Form submission started'); // Add this
 
+    Cookies.set('url', formData.nightscout_url);
+    Cookies.set('token', formData.nightscout_token);
+
     e.preventDefault();
     startLoading('Collecting Nightscout data...');
 
