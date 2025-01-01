@@ -2,44 +2,49 @@ from datetime import timedelta
 import pandas as pd
 from bgpodcast.data_analysis.dfutils import find_high_periods, prepare_data
 from bgpodcast.data_ingestion.nightscout import read_treatments_file
-from bgpodcast.utils.bgutils import add_comment, get_number_of_days
+
 
 def is_near_meal_time(start_time, meal_times):
-  """
-  This function takes in a start time and a list of meal times and returns True if the start time 
-  is within one hour of any of the meal times.
+    """
+    This function takes in a start time and a list of meal times and returns True if the start time 
+    is within one hour of any of the meal times.
 
-  Args:
-    start_time: A string representing a time in the format "%H:%M".
-    meal_times: A list of strings representing meal times in the format "%H:%M".
+    Args:
+      start_time: A string representing a time in the format "%H:%M".
+      meal_times: A list of strings representing meal times in the format "%H:%M".
 
-  Returns:
-    A boolean value indicating whether the start time is within one hour of any of the meal times.
-  """
+    Returns:
+      A boolean value indicating whether the start time is within one hour of any of the meal times.
+    """
 
-  # Convert the start time and meal times to datetime objects.
-  start_time = pd.to_datetime(start_time, format="%H:%M")
-  meal_times = pd.to_datetime(meal_times, format="%H:%M")
+    # Convert the start time and meal times to datetime objects.
+    start_time = pd.to_datetime(start_time, format="%H:%M")
+    meal_times = pd.to_datetime(meal_times, format="%H:%M")
 
-  # Create a boolean mask indicating whether the start time is within one hour of any of the meal times.
-  mask = (start_time >= meal_times - pd.Timedelta(hours=1)) & (start_time <= meal_times + pd.Timedelta(hours=2))
+    # Create a boolean mask indicating whether the start time is within one hour of any of the meal times.
+    mask = (start_time >= meal_times - pd.Timedelta(hours=1)
+            ) & (start_time <= meal_times + pd.Timedelta(hours=2))
 
-  # Return the boolean mask.
-  return mask.any()
+    # Return the boolean mask.
+    return mask.any()
+
+
 def analyze_pre_high_period(high_period, df_treatments, lookback_hours=4):
     """Analyze treatments before a high period"""
     start_time = high_period['start_time']
     lookback_start = start_time - timedelta(hours=lookback_hours)
-    
+
     # Get relevant treatments
     relevant_treatments = df_treatments[
         (df_treatments['datetime'] >= lookback_start) &
         (df_treatments['datetime'] <= start_time)
     ]
-    
-    meals = relevant_treatments[relevant_treatments['eventType'] == 'Meal Bolus']
-    corrections = relevant_treatments[relevant_treatments['eventType'] == 'Correction Bolus']
-    
+
+    meals = relevant_treatments[relevant_treatments['eventType']
+                                == 'Meal Bolus']
+    corrections = relevant_treatments[relevant_treatments['eventType']
+                                      == 'Correction Bolus']
+
     return {
         'meals': meals.to_dict('records'),
         'corrections': corrections.to_dict('records'),
@@ -49,7 +54,8 @@ def analyze_pre_high_period(high_period, df_treatments, lookback_hours=4):
         'last_correction_time': corrections['datetime'].max() if not corrections.empty else None
     }
 
-def high_period_report(entries : pd.DataFrame, treatments : pd.DataFrame) -> str:
+
+def high_period_report(entries: pd.DataFrame, treatments: pd.DataFrame) -> str:
     entries = prepare_data(entries)
     treatments = prepare_data(treatments)
     ######################################################
@@ -58,22 +64,22 @@ def high_period_report(entries : pd.DataFrame, treatments : pd.DataFrame) -> str
 
     notes = ""
     if len(high_periods) > 0:
-        notes = add_comment("Periods of the day with higher than normal blood sugar levels", notes)
-        notes = add_comment(f"""There are some portions of the day that could use improvement. 
+        notes += "Periods of the day with higher than normal blood sugar levels"
+        notes += f"""There are some portions of the day that could use improvement.
                 We break down the day into 3 to 4 hour segments and look for times the patient consistently runs high, and we found
-                {len(high_periods)} periods.""", notes)
+                {len(high_periods):d} periods."""
 
         # meal_times = get_probable_mealtimes(carbs)
         # meal_times.reset_index(drop=False, inplace=True)
         # high_periods["meal_time"] = high_periods["start_time"].apply(lambda x: is_near_meal_time(x, meal_times["start_time"]))
     #     # # display(high_periods)
-        
+
         for i, hp in high_periods.iterrows():
             # st = pd.to_datetime(hp.start_time, format="%H:%M")
-            notes += f"Time period {i}: from {hp.start_time} to {hp.end_time} runs high on average, at {hp.sgv} mg/dl."
+            notes += f"Time period {i}: from {hp.start_time} to {
+                hp.end_time} runs high on average, at {hp.sgv} mg/dl."
 
             pre = analyze_pre_high_period(hp, treatments, lookback_hours=4)
-
 
             # notes += f"{hp.start_time} is close to one of {patient_name}'s most common meal times.'"
             # if st.hour < 11:
@@ -91,8 +97,10 @@ def high_period_report(entries : pd.DataFrame, treatments : pd.DataFrame) -> str
 
 if __name__ == "__main__":
     from bgpodcast.data_ingestion.nightscout import read_entries_file
-    en = read_entries_file("/home/ssuppe/studioprojects/goodnumbers/data/5Dec/entries.json")
-    tr = read_treatments_file("/home/ssuppe/studioprojects/goodnumbers/data/5Dec/treatments.json")
+    en = read_entries_file(
+        "/home/ssuppe/studioprojects/goodnumbers/data/5Dec/entries.json")
+    tr = read_treatments_file(
+        "/home/ssuppe/studioprojects/goodnumbers/data/5Dec/treatments.json")
     results = high_period_report(en, tr)
 
     from pprint import pprint

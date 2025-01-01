@@ -3,14 +3,15 @@ from pprint import pprint
 import asyncio
 import time
 import traceback
+import re
 import google.cloud.texttospeech as tts
 from google.api_core import client_options
 from google.protobuf.json_format import MessageToDict
 from google.cloud import storage
 from fastapi import HTTPException
-from bgpodcast.utils.objects import JobCheckResponse, PodcastDialog, PodcastGenerateResult
+from bgpodcast.utils.objects import Assessment, JobCheckResponse, PodcastGenerateResult
 
-BUCKET_NAME = "goodnumbers"  # Replace with your bucket name
+BUCKET_NAME = "goodnumbersmain"  # Replace with your bucket name
 GCS_PATH = "audio-files"  # Folder in bucket to store audio files
 POLLING_INTERVAL = 10  # seconds
 
@@ -100,7 +101,18 @@ async def get_job_status(operation_id: str) -> JobCheckResponse:
         }) from e
 
 
-async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
+def parse_podcast_text(text):
+    # Extract each section using regex
+    title = re.search(r'TITLE: (.*?)(?=\nDESCRIPTION:|$)',
+                      text).group(1).strip()
+    description = re.search(
+        r'DESCRIPTION: (.*?)(?=\nPODCAST:|$)', text).group(1).strip()
+    podcast = re.search(r'PODCAST: (.*?)$', text, re.DOTALL).group(1).strip()
+
+    return title, description, podcast
+
+
+async def gen_podcast(podcast: Assessment) -> PodcastGenerateResult:
     """
     Generate long-form audio from SSML using Google Cloud Text-to-Speech.
 
@@ -114,18 +126,23 @@ async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
         ValueError: If dialog is empty or invalid
         HTTPException: For various Google API errors
     """
-    if dialog is None or dialog.dialog is None or dialog.dialog == "":
-        raise ValueError(f"Invalid dialog: {dialog.dialog}")
+    if podcast is None or podcast.ssml_dialog is None:
+        raise ValueError(f"Invalid dialog: {podcast.dialog}")
 
     try:
+
+        title = podcast.title
+        description = podcast.description
+        ssml_dialog = podcast.ssml_dialog
+
         # Initialize Storage client
         storage_client = storage.Client()
         bucket = storage_client.bucket(BUCKET_NAME)
 
         # Generate unique file path
         timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
-        file_name = f"podcast_{timestamp}.mp3"
-        gcs_path = f"{GCS_PATH}/{file_name}"
+        file_name = f"podcast_{timestamp}.wav"
+        gcs_path = f"{GCS_PATH}/{podcast.id}/{file_name}"
         output_gcs_uri = f"gs://{BUCKET_NAME}/{gcs_path}"
 
         # Initialize Text-to-Speech client with specific endpoint
@@ -139,8 +156,8 @@ async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
             # Start the long audio synthesis operation
             operation = await client.synthesize_long_audio(
                 request=tts.SynthesizeLongAudioRequest(
-                    parent="projects/gemini-437920/locations/global",
-                    input=tts.SynthesisInput(ssml=dialog.dialog),
+                    parent="projects/goodnumbers-446416/locations/global",
+                    input=tts.SynthesisInput(ssml=ssml_dialog),
                     voice=tts.VoiceSelectionParams(
                         language_code="en-GB",
                         name="en-GB-Wavenet-B"
@@ -159,8 +176,9 @@ async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
                                         operation_id=operation.operation.name,
                                         gcs_path=gcs_path,
                                         bucket_name=BUCKET_NAME,
-                                        url="https://storage.googleapis.com/goodnumbers/"+gcs_path,
-                                        message="Audio generation started successfully")
+                                        url="https://storage.googleapis.com/goodnumbersmain/"+gcs_path,
+                                        message="Audio generation started successfully", title=title,
+                                        description=description)
             return res
 
     except Exception as e:
@@ -168,52 +186,52 @@ async def gen_podcast(dialog: PodcastDialog) -> PodcastGenerateResult:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-async def test():
-    dialog = PodcastDialog()
-    dialog.dialog = """
-<speak>
-  Here are <say-as interpret-as="characters">SSML</say-as> samples.
-    <break time="1s"/>
-    I can pause <break time="3s"/>.
-    <break time="500ms"/>
-    I can speak in cardinals. Your number is <say-as interpret-as="cardinal">10</say-as>.
-    <break time="500ms"/>
-    Or I can speak in ordinals. You are <say-as interpret-as="ordinal">10</say-as> in line.
-    <break time="500ms"/>
-    Or I can even speak in digits. The digits for ten are <say-as interpret-as="characters">10</say-as>.
-    <break time="500ms"/>
-    I can also substitute phrases, like the <sub alias="World Wide Web Consortium">W3C</sub>.
-    <break time="500ms"/>
-    Finally, I can speak a paragraph with two sentences.
-    <p><s>This is sentence one.</s><s>This is sentence two.</s></p>
-</speak>"""
+# async def test():
+#     dialog = PodcastDialog()
+#     dialog.dialog = """
+# <speak>
+#   Here are <say-as interpret-as="characters">SSML</say-as> samples.
+#     <break time="1s"/>
+#     I can pause <break time="3s"/>.
+#     <break time="500ms"/>
+#     I can speak in cardinals. Your number is <say-as interpret-as="cardinal">10</say-as>.
+#     <break time="500ms"/>
+#     Or I can speak in ordinals. You are <say-as interpret-as="ordinal">10</say-as> in line.
+#     <break time="500ms"/>
+#     Or I can even speak in digits. The digits for ten are <say-as interpret-as="characters">10</say-as>.
+#     <break time="500ms"/>
+#     I can also substitute phrases, like the <sub alias="World Wide Web Consortium">W3C</sub>.
+#     <break time="500ms"/>
+#     Finally, I can speak a paragraph with two sentences.
+#     <p><s>This is sentence one.</s><s>This is sentence two.</s></p>
+# </speak>"""
 
-    result = await gen_podcast(dialog)
-    print("Generated podcast, here's the first result:")
-    print(result)
+#     result = await gen_podcast(dialog)
+#     print("Generated podcast, here's the first result:")
+#     print(result)
 
-    # Check status periodically
-    start_time = time.time()
-    while time.time() - start_time < TIMEOUT:
-        status = await get_job_status(result['operation_id'])
-        print(f"\nCurrent status (after {
-              int(time.time() - start_time)} seconds):")
-        pprint(status)
+#     # Check status periodically
+#     start_time = time.time()
+#     while time.time() - start_time < TIMEOUT:
+#         status = await get_job_status(result['operation_id'])
+#         print(f"\nCurrent status (after {
+#               int(time.time() - start_time)} seconds):")
+#         pprint(status)
 
-        if status.status == "done":
-            print("All done!")
+#         if status.status == "done":
+#             print("All done!")
 
-            # print(status["result"])
-            break
-        elif status.status == "error":
-            # print(status["error"])
-            break
-        else:
-            # print("Still processing...")
-            print(status)
+#             # print(status["result"])
+#             break
+#         elif status.status == "error":
+#             # print(status["error"])
+#             break
+#         else:
+#             # print("Still processing...")
+#             print(status)
 
-        await asyncio.sleep(POLLING_INTERVAL)
+#         await asyncio.sleep(POLLING_INTERVAL)
 
 
-if __name__ == "__main__":
-    asyncio.run(test())
+# if __name__ == "__main__":
+#     asyncio.run(test())
