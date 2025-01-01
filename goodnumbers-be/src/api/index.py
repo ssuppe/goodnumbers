@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
 from google.cloud import storage
 from compress_json import decompress
-from api.bgpodcast.llm_interaction.gemini import async_generate_json
+from api.bgpodcast.llm_interaction.gemini import async_generate, async_generate_json
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils, ssml
 from bgpodcast.utils import objects
@@ -175,7 +175,7 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
 
     try:
         generation_config = {
-            "temperature": 1.5,
+            "temperature": 1.2,
             "top_p": 0.95,
             "top_k": 64,
             "max_output_tokens": 128000,
@@ -190,10 +190,6 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
         prompt = bgutils.interpolate(
             template3, notes=data.notes, assessment1=data.assessment1, assessment2=data.assessment2)
 
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-pro",
-            generation_config=generation_config,
-        )
         is_valid_ssml = False
         no_ssml_tries = 0
         while not is_valid_ssml and no_ssml_tries < 3:
