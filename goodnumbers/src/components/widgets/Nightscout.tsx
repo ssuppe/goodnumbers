@@ -25,7 +25,6 @@ import ssmlToMarkdown from '~/utils/ssml';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
-  local?: string | null;
 }
 
 function createHash(url: string, token: string): Promise<string> {
@@ -252,7 +251,7 @@ const NightscoutComponent = ({
 
   // Simplified render method for assessments
   const renderAssessmentContent = () => {
-    console.log('SSML' + formattedSSML); // Add this
+    // console.log('SSML' + formattedSSML); // Add this
 
     return (
       <Tabs defaultIndex={3}>

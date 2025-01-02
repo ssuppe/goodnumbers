@@ -3,6 +3,7 @@ Python APIs
 """
 import os
 import json
+import typing
 import uuid
 from datetime import datetime, timezone
 import traceback
@@ -13,10 +14,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
 from google.cloud import storage
 from compress_json import decompress
+from bgpodcast.llm_interaction.gemini import async_generate, async_generate_json
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils, ssml
 from bgpodcast.utils import objects
-from bgpodcast.audio.gcloud import gen_podcast, get_job_status
+from bgpodcast.audio.gcloud import gen_podcast_audiofile, get_job_status
 from bgpodcast.audio.rss import update_rss_feed
 from vellox import Vellox
 
@@ -37,6 +39,8 @@ with open(os.path.join("_prompts", "pass2.txt"), "r", encoding="utf-8") as f:
     template2 = f.read()
 with open(os.path.join("_prompts", "pass3.txt"), "r", encoding="utf-8") as f:
     template3 = f.read()
+with open(os.path.join("_prompts", "description.txt"), "r", encoding="utf-8") as f:
+    template_desc = f.read()
 
 
 @app.get("/api/hello")
@@ -53,18 +57,17 @@ TIMEOUT = 600  # 10 minutes
 
 
 @app.post("/api/get_notes")
-async def get_notes(data: objects.NightscoutData) -> str:
+async def get_analysis(data: objects.NightscoutData) -> str:
     """
-    Create manual notes
+    Create manual analysis
     """
-    print("get notes0")
+    print("get analysis")
 
     entries = decompress(data.entries)
     entries = pd.DataFrame.from_dict(entries)
     treatments = decompress(data.treatments)
     treatments = pd.DataFrame.from_dict(treatments)
 
-    print("get_notes")
     notes = ""
     try:
         print("Reading treatments and carbs")
@@ -83,100 +86,6 @@ async def get_notes(data: objects.NightscoutData) -> str:
             status_code=500, detail="Internal Server Error") from e
 
     return notes
-
-
-async def async_generate(prompt, model):
-    """
-    Generate
-    """
-    print("generating")
-    response = await model.generate_content_async(
-        prompt,
-        stream=False
-    )
-    print("done")
-    return response
-
-
-async def async_generate_podcastjson(prompt, model) -> dict:
-    """
-    Generate formal JSON
-    """
-    import typing_extensions as typing
-
-    class PodcastJSON(typing.TypedDict):
-        title: str
-        description: str
-        podcast_ssml: str
-
-    model.response_mime_type = "application/json"
-    model.response_schema = PodcastJSON
-
-    print("generating JSON")
-    response = await model.generate_content_async(
-        prompt,
-        stream=False
-    )
-
-    response = json.loads(response.text.replace(
-        "```json\n", "").replace("\n```", ""))
-
-    print("done")
-    return response
-
-
-@app.post("/api/gen_podcast")
-async def gen_podcast_api(data: objects.Assessment) -> objects.PodcastGenerateResult:
-    try:
-        # Your existing podcast generation logic
-        result = await gen_podcast(data)
-
-        return result
-    except Exception as e:
-        return objects.PodcastGenerateResult(
-            status="error",
-            operation_id="",
-            error=str(e)
-        )
-
-
-@app.post("/api/check_podcast")
-async def check_podcast_api(podcast_result: objects.PodcastGenerateResult) -> objects.PodcastGenerateResult:
-    try:
-        status = await get_job_status(podcast_result.operation_id)
-        print(f"raw status: {status}")
-
-        if status.done and not status.error:
-            podcast_result.status = "done"
-
-            # Assuming this gets called and happens at least 1x
-            # Not totally foolproof but fine for POC
-            # This is the time to create/update the RSS feed
-            base_path = "/".join(podcast_result.gcs_path.split("/")[:-1])
-            rss_path = base_path + "/feed.xml"
-            pub_date = datetime.now(timezone.utc).astimezone()
-
-            update_rss_feed(BUCKET_NAME, rss_path, podcast_result.title,
-                            podcast_result.url, podcast_result.description,
-                            pub_date, str(uuid.uuid4()))
-
-            return podcast_result
-        elif status.error:
-            podcast_result.status = "error"
-            podcast_result.error = str(status.error)
-            return podcast_result
-
-        else:
-            podcast_result.status = "processing"
-            return podcast_result
-            # podcast_result.error = str(status.error)
-
-    except Exception as e:
-        return objects.PodcastGenerateResult(
-            status="error",
-            operation_id=podcast_result.operation_id,
-            error=str(e)
-        )
 
 
 @app.post("/api/get_assessment")
@@ -266,7 +175,7 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
 
     try:
         generation_config = {
-            "temperature": 1.5,
+            "temperature": 1.2,
             "top_p": 0.95,
             "top_k": 64,
             "max_output_tokens": 128000,
@@ -281,10 +190,6 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
         prompt = bgutils.interpolate(
             template3, notes=data.notes, assessment1=data.assessment1, assessment2=data.assessment2)
 
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-pro",
-            generation_config=generation_config,
-        )
         is_valid_ssml = False
         no_ssml_tries = 0
         while not is_valid_ssml and no_ssml_tries < 3:
@@ -293,11 +198,11 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
                 response = json.loads(bgutils.read_file(
                     fr=os.path.join("..", "..", "_tmp", "pass3_output.txt")))
             else:
-                response = await async_generate_podcastjson(prompt, model)
+                response = await async_generate(prompt, model)
                 # response_text = response_raw.text
 
             # response = json.loads(response_text)
-            podcast_ssml = response['podcast_ssml']
+            podcast_ssml = response.text
             ssml_check = ssml.check_google_tts_ssml_format(podcast_ssml)
             is_valid_ssml = ssml_check.is_correct
             print(f"Is valid SSML? {ssml_check.is_correct}")
@@ -306,18 +211,15 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
                     f"{no_ssml_tries}/3: Invalid SSML that couldn't be fixed: {podcast_ssml}")
                 if bgutils.is_write_local() and bgutils.is_dev_environment():
                     bgutils.write_file(to=os.path.join(
-                        "..", "..", "_tmp", "pass3_output.txt"), contents=json.dumps(response))
+                        "..", "..", "_tmp", "pass3_output.txt"), contents=json.dumps(podcast_ssml))
                 no_ssml_tries += 1
             else:
                 if bgutils.is_write_local() and bgutils.is_dev_environment() and 1 == 2:
                     bgutils.write_file(to=os.path.join(
                         "..", "..", "_tmp", "pass3_output.txt"), contents=ssml_check.processed_ssml)
-                response['podcast_ssml'] = ssml_check.processed_ssml
                 podcast_info: objects.Assessment = data
                 podcast_info.valid = True
-                podcast_info.title = response['title']
-                podcast_info.description = response['description']
-                podcast_info.ssml_dialog = response['podcast_ssml']
+                podcast_info.ssml_dialog = ssml_check.processed_ssml
                 return podcast_info
                 # return JSONResponse({'valid': True, 'response': response})
     except ValueError as ve:
@@ -331,6 +233,118 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
         print(traceback.format_exc())
         raise HTTPException(
             status_code=500, detail="Internal Server Error") from e
+
+
+@app.post("/api/gen_podcast_description")
+async def gen_podcast_description(data: objects.Assessment) -> objects.Assessment:
+    print("Generating podcast description")
+
+    genai.configure(api_key=gemini_api_key)
+
+    try:
+        generation_config = {
+            "temperature": 1,
+            "top_p": 0.95,
+            "top_k": 64,
+            "max_output_tokens": 10000,
+            "response_mime_type": "text/plain",
+        }
+
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            generation_config=generation_config,
+        )
+
+        prompt = bgutils.interpolate(
+            template_desc, ssml_dialog=data.ssml_dialog)
+
+        class Description(typing.TypedDict):
+            title: str
+            description: str
+
+        print("Generating description")
+        if bgutils.is_debug() and bgutils.is_dev_environment() and 1 == 2:
+            response = json.loads(bgutils.read_file(
+                fr=os.path.join("..", "..", "_tmp", "pass3_output.txt")))
+        else:
+            response = await async_generate_json(prompt, model, schema=Description)
+
+            # podcast_ssml = response['podcast_ssml']
+
+            if bgutils.is_write_local() and bgutils.is_dev_environment():
+                bgutils.write_file(to=os.path.join(
+                    "..", "..", "_tmp", "description_output.txt"), contents=json.dumps(response))
+
+            data.valid = True
+            data.title = response['title']
+            data.description = response['description']
+            return data
+
+    except ValueError as ve:
+        error_message = str(ve)
+        print(f"ValueError: {error_message}")
+        raise HTTPException(status_code=400, detail=error_message) from ve
+
+    except Exception as e:
+        error_message = f"An unexpected error occurred: {str(e)}"
+        print(f"Unexpected Error: {error_message}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=500, detail="Internal Server Error") from e
+
+
+@app.post("/api/gen_podcast")
+async def gen_podcast_audio(data: objects.Assessment) -> objects.PodcastGenerateResult:
+    try:
+        # Your existing podcast generation logic
+        result = await gen_podcast_audiofile(data)
+
+        return result
+    except Exception as e:
+        return objects.PodcastGenerateResult(
+            status="error",
+            operation_id="",
+            error=str(e)
+        )
+
+
+@app.post("/api/check_podcast")
+async def check_podcast_status(podcast_result: objects.PodcastGenerateResult) -> objects.PodcastGenerateResult:
+    try:
+        status = await get_job_status(podcast_result.operation_id)
+        print(f"raw status: {status}")
+
+        if status.done and not status.error:
+            podcast_result.status = "done"
+
+            # Assuming this gets called and happens at least 1x
+            # Not totally foolproof but fine for POC
+            # This is the time to create/update the RSS feed
+            base_path = "/".join(podcast_result.gcs_path.split("/")[:-1])
+            rss_path = base_path + "/feed.xml"
+            pub_date = datetime.now(timezone.utc).astimezone()
+
+            update_rss_feed(BUCKET_NAME, rss_path, podcast_result.title,
+                            podcast_result.url, podcast_result.description,
+                            pub_date, str(uuid.uuid4()))
+
+            return podcast_result
+        elif status.error:
+            podcast_result.status = "error"
+            podcast_result.error = str(status.error)
+            return podcast_result
+
+        else:
+            podcast_result.status = "processing"
+            return podcast_result
+            # podcast_result.error = str(status.error)
+
+    except Exception as e:
+        return objects.PodcastGenerateResult(
+            status="error",
+            operation_id=podcast_result.operation_id,
+            error=str(e)
+        )
 
 
 @app.get("/api/test")

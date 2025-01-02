@@ -112,7 +112,7 @@ def parse_podcast_text(text):
     return title, description, podcast
 
 
-async def gen_podcast(podcast: Assessment) -> PodcastGenerateResult:
+async def gen_podcast_audiofile(podcast: Assessment) -> PodcastGenerateResult:
     """
     Generate long-form audio from SSML using Google Cloud Text-to-Speech.
 

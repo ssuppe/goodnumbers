@@ -1,0 +1,40 @@
+Given the following SSML text from a diabetes podcast where two hosts discuss a 
+patient's weekly diabetes numbers, generate a concise and informative podcast 
+title and description. 
+
+**Focus on the most important aspect of the patient's diabetes management this 
+week, as determined by their blood glucose control.**
+
+  **Title:** 
+    * Should be 3-8 words.
+    * Should summarize the main topic of the dialog. 
+    * Should emphasize the patient's biggest success in diabetes management this week. 
+    * If possible, include a subtle hint towards an area for improvement.
+
+  **Description:** 
+    * Should be 2-3 sentences long. 
+    * Should concisely summarize the key takeaways from the patient's diabetes management this week.
+    * Should highlight the patient's successes and any areas for improvement.
+
+  **Return the output in the following JSON format:**
+
+  ```json
+  {
+    "title": "Your Generated Title",
+    "description": "Your Generated Description"
+  }
+  ```
+
+Example:
+
+If the patient had excellent blood sugar control this week but struggled with 
+dawn phenomemenom, a potential title could be: 'Consistently on target, mornings 
+need fine tuning'.
+
+If the patient had a few high blood sugar readings due to stress, a potential 
+title could be: 'Stress Impact on Blood Sugar, Strategies for Resilience'.
+
+Please prioritize accuracy and conciseness in your output.
+
+Here is the dialog of the podcast in SSML:
+{ssml_dialog}
