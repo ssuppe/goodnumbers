@@ -251,7 +251,7 @@ const NightscoutComponent = ({
 
   // Simplified render method for assessments
   const renderAssessmentContent = () => {
-    console.log('SSML' + formattedSSML); // Add this
+    // console.log('SSML' + formattedSSML); // Add this
 
     return (
       <Tabs defaultIndex={3}>
