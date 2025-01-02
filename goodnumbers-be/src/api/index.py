@@ -211,7 +211,7 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
                     f"{no_ssml_tries}/3: Invalid SSML that couldn't be fixed: {podcast_ssml}")
                 if bgutils.is_write_local() and bgutils.is_dev_environment():
                     bgutils.write_file(to=os.path.join(
-                        "..", "..", "_tmp", "pass3_output.txt"), contents=json.dumps(response))
+                        "..", "..", "_tmp", "pass3_output.txt"), contents=json.dumps(podcast_ssml))
                 no_ssml_tries += 1
             else:
                 if bgutils.is_write_local() and bgutils.is_dev_environment() and 1 == 2:
