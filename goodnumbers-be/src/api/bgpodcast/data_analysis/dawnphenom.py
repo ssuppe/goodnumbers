@@ -309,7 +309,7 @@ def get_clinical_report(entries) -> dict:
 if __name__ == "__main__":
     from bgpodcast.data_ingestion.nightscout import read_entries_file
     en = read_entries_file(
-        "/home/ssuppe/studioprojects/goodnumbers/data/5Dec/entries.json")
+        "/home/ssuppe/vscode/goodnumbers/data/5Dec/entries.json")
     results = get_clinical_report(en)
 
     from pprint import pprint

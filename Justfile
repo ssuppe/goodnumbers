@@ -6,7 +6,7 @@ backend-dir := "goodnumbers-be"
 frontend-dir := "goodnumbers"
 gcp-region := "us-east1"
 gcp-project := "gemini-437920"
-env-dir := "/home/ssuppe/studioprojects/envs"
+env-dir := "/home/ssuppe/vscode/envs"
 
 set dotenv-load := false
 
