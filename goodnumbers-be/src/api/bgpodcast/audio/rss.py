@@ -39,7 +39,8 @@ def update_rss_feed(
     fg = FeedGenerator()
     fg.title('Goodnumbers')  # TODO: Replace with your site info
     fg.link(href='http://www.foo.com')
-    fg.description('Goodnumbers test')
+    fg.logo(logo="https://storage.googleapis.com/goodnumbersmainassets/assets/goodnumberspodcast.jpg")
+    fg.description('GoodNumbers is an experimental weekly personalized podcast about your blood sugar levels. We use non-AI statistical algorithms to analyze your blood sugar levels and creates an AI-generated podcast for you to listen to, discussing your highs, lows, and strategies to address them. Use it for self-reflection, to find your blind spots to your diabetes management, and to continuously improve.')
 
     if blob.exists():
         # Download and parse existing RSS feed

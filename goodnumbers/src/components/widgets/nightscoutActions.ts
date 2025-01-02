@@ -137,7 +137,7 @@ export async function generateAssessments(
     const assessment2 = assessment2Data.response;
 
     // Step 4: Generate Dialog
-    const podcast_info: AssessmentData = await fetchWithErrorHandling(
+    let podcast_info: AssessmentData = await fetchWithErrorHandling(
       `${apiUrl}/api/gen_podcast_text`,
       {
         method: 'POST',
@@ -147,7 +147,18 @@ export async function generateAssessments(
       'Generating Dialog',
     );
 
-    // Step 5: Start generation of audio
+    // Step 5: Generate title and description
+    podcast_info = await fetchWithErrorHandling(
+      `${apiUrl}/api/gen_podcast_description`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(podcast_info),
+      },
+      'Generating title and description',
+    );
+
+    // Step 6: Start generation of audio
     const podcastResult: PodcastGenerateResult = await fetchWithErrorHandling(
       `${apiUrl}/api/gen_podcast`,
       {

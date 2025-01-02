@@ -2,5 +2,6 @@
   "css.customData": ["./vscode.tailwind.json"],
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,
-  "python.envFile": "${workspaceFolder}/.env.development"
+  "python.envFile": "${workspaceFolder}/.env.development",
+  "python.terminal.activateEnvironment": true
 }
