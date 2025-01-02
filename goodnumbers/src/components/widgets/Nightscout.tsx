@@ -25,7 +25,6 @@ import ssmlToMarkdown from '~/utils/ssml';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
-  local?: string | null;
 }
 
 function createHash(url: string, token: string): Promise<string> {
