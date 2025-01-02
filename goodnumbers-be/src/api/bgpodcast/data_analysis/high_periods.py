@@ -98,9 +98,9 @@ def high_period_report(entries: pd.DataFrame, treatments: pd.DataFrame) -> str:
 if __name__ == "__main__":
     from bgpodcast.data_ingestion.nightscout import read_entries_file
     en = read_entries_file(
-        "/home/ssuppe/studioprojects/goodnumbers/data/5Dec/entries.json")
+        "/home/ssuppe/vscode/goodnumbers/data/5Dec/entries.json")
     tr = read_treatments_file(
-        "/home/ssuppe/studioprojects/goodnumbers/data/5Dec/treatments.json")
+        "/home/ssuppe/vscode/goodnumbers/data/5Dec/treatments.json")
     results = high_period_report(en, tr)
 
     from pprint import pprint

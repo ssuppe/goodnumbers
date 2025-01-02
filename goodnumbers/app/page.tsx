@@ -19,7 +19,7 @@ const heroHome = {
         is an experimental weekly personalized podcast about your blood sugar levels. We use non-AI statistical
         algorithms to analyze your blood sugar levels and creates an AI-generated podcast for you to listen to,
         discussing your highs, lows, and strategies to address them. Use it for self-reflection, to find your blind
-        spots to your diabetes managements, and to continuously improve.
+        spots to your diabetes management, and to continuously improve.
       </span>
     </>
   ),

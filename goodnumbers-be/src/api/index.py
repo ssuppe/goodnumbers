@@ -14,11 +14,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import google.generativeai as genai
 from google.cloud import storage
 from compress_json import decompress
-from api.bgpodcast.llm_interaction.gemini import async_generate, async_generate_json
+from bgpodcast.llm_interaction.gemini import async_generate, async_generate_json
 from bgpodcast.prompt_generation import bgprompt
 from bgpodcast.utils import bgutils, ssml
 from bgpodcast.utils import objects
-from bgpodcast.audio.gcloud import gen_podcast_audio, get_job_status
+from bgpodcast.audio.gcloud import gen_podcast_audiofile, get_job_status
 from bgpodcast.audio.rss import update_rss_feed
 from vellox import Vellox
 
@@ -198,11 +198,11 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
                 response = json.loads(bgutils.read_file(
                     fr=os.path.join("..", "..", "_tmp", "pass3_output.txt")))
             else:
-                response = await async_generate_json(prompt, model)
+                response = await async_generate(prompt, model)
                 # response_text = response_raw.text
 
             # response = json.loads(response_text)
-            podcast_ssml = response['podcast_ssml']
+            podcast_ssml = response.text
             ssml_check = ssml.check_google_tts_ssml_format(podcast_ssml)
             is_valid_ssml = ssml_check.is_correct
             print(f"Is valid SSML? {ssml_check.is_correct}")
@@ -217,12 +217,9 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
                 if bgutils.is_write_local() and bgutils.is_dev_environment() and 1 == 2:
                     bgutils.write_file(to=os.path.join(
                         "..", "..", "_tmp", "pass3_output.txt"), contents=ssml_check.processed_ssml)
-                response['podcast_ssml'] = ssml_check.processed_ssml
                 podcast_info: objects.Assessment = data
                 podcast_info.valid = True
-                podcast_info.title = response['title']
-                podcast_info.description = response['description']
-                podcast_info.ssml_dialog = response['podcast_ssml']
+                podcast_info.ssml_dialog = ssml_check.processed_ssml
                 return podcast_info
                 # return JSONResponse({'valid': True, 'response': response})
     except ValueError as ve:
@@ -300,7 +297,7 @@ async def gen_podcast_description(data: objects.Assessment) -> objects.Assessmen
 async def gen_podcast_audio(data: objects.Assessment) -> objects.PodcastGenerateResult:
     try:
         # Your existing podcast generation logic
-        result = await gen_podcast_audio(data)
+        result = await gen_podcast_audiofile(data)
 
         return result
     except Exception as e:
