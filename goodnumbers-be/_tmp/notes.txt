@@ -1,13 +1,13 @@
 # Patient's latest results:
 ## This week's general statistics:
   * This week was from 2024-12-26 00:00:00 to 2025-01-02 00:00:00
-  * This week was the patient's average blood glucose was 138 mg/dl, with a coefficient of variation of 35.1%
-    * Their mean is right in the recommended target of 126-154, so they're doing a good job.  Practically speaking, they've spent 95% of their week between 41 and 235.
+  * This week was the patient's average blood glucose was 137 mg/dl, with a coefficient of variation of 35.4%
+    * Their mean is right in the recommended target of 126-154, so they're doing a good job.  Practically speaking, they've spent 95% of their week between 40 and 234.
   * Time in range (70-180) was 80% mg/dl.
   * Time spent high (above 180) was 17%.This is less than the recommended percentage of 25%, which is very good.
   * Time spent low (below 70) was 3%.This is less than the recommended percentage of 4%, which is very good.
   * Finally, time in tight range (70-140) was
-        55%. Time in tight range is closer to what a non-diabetic's glucose levels are.
+        57%. Time in tight range is closer to what a non-diabetic's glucose levels are.
 
 ## Dawn phenomenom report
   * No dawn phenomenon detected between the hours of 4am and 9am.

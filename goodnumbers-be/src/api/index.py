@@ -41,6 +41,8 @@ with open(os.path.join("_prompts", "pass3.txt"), "r", encoding="utf-8") as f:
     template3 = f.read()
 with open(os.path.join("_prompts", "description.txt"), "r", encoding="utf-8") as f:
     template_desc = f.read()
+with open(os.path.join("_prompts", "pass4.txt"), "r", encoding="utf-8") as f:
+    template4 = f.read()
 
 
 @app.get("/api/hello")
@@ -214,14 +216,35 @@ async def gen_podcast_text(data: objects.Assessment) -> objects.Assessment:
                         "..", "..", "_tmp", "pass3_output.txt"), contents=json.dumps(podcast_ssml))
                 no_ssml_tries += 1
             else:
+
+                # Got valid SSML, let's make it more human intonated
+                # This may also have SSML errors but let's be optimistic for now
+                generation_config = {
+                    "temperature": 1.5,
+                    "top_p": 0.95,
+                    "max_output_tokens": 8192,
+                    "response_mime_type": "text/plain",
+                }
+
+                model = genai.GenerativeModel(
+                    model_name="gemini-2.0-flash-exp",
+                    generation_config=generation_config,
+                )
+
+                prompt = bgutils.interpolate(
+                    template4, ssml_dialog=ssml_check.processed_ssml)
+
+                response = await async_generate(prompt, model)
+                final_ssml = response.text.replace(
+                    "```xml", "").replace("```", "").replace("\\n", "\n")
+
                 if bgutils.is_write_local() and bgutils.is_dev_environment() and 1 == 2:
                     bgutils.write_file(to=os.path.join(
-                        "..", "..", "_tmp", "pass3_output.txt"), contents=ssml_check.processed_ssml)
+                        "..", "..", "_tmp", "pass3_output.txt"), contents=final_ssml)
                 podcast_info: objects.Assessment = data
                 podcast_info.valid = True
-                podcast_info.ssml_dialog = ssml_check.processed_ssml
+                podcast_info.ssml_dialog = final_ssml
                 return podcast_info
-                # return JSONResponse({'valid': True, 'response': response})
     except ValueError as ve:
         error_message = str(ve)
         print(f"ValueError: {error_message}")
