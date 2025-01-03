@@ -19,9 +19,10 @@ import DebugInterfaceViewer from './DebugInterfaceViewer';
 import ReactMarkdown from 'react-markdown';
 import prettier from 'prettier/standalone';
 import parserXml from '@prettier/plugin-xml';
-import { generateAssessments } from './nightscoutActions';
+import { generateAssessments } from './podcastActions';
 import { setCookieCSync } from '~/utils/cookies';
 import ssmlToMarkdown from '~/utils/ssml';
+import fetchNightscoutData from './nightscoutActions';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
@@ -39,44 +40,6 @@ function createHash(url: string, token: string): Promise<string> {
 }
 
 const axiosInstance = createApiClient();
-
-// Separate data fetching logic into a plain function
-const fetchNightscoutData = (nightscout_url: string, nightscout_token: string) => {
-  const today = new Date();
-  const daysAgo = new Date(today.setDate(today.getDate() - 9));
-  const daysAgoTimestamp = daysAgo.getTime();
-
-  const entriesUrl = `${nightscout_url}/api/v1/entries/sgv.json?token=${nightscout_token}&find[date][$gte]=${daysAgoTimestamp}&count=20000`;
-  const treatmentsUrl = `${nightscout_url}/api/v1/treatments.json?token=${nightscout_token}&find[created_at][$gte]=${daysAgoTimestamp}&count=10000`;
-
-  return Promise.all([axiosInstance.get(entriesUrl), axiosInstance.get(treatmentsUrl)]).then(
-    ([entriesResponse, treatmentsResponse]) => {
-      let entriesData = entriesResponse.data
-        .filter((item: { date: number }) => item.date >= daysAgoTimestamp)
-        .map((item: { date: number; sgv: number; units: string; utcOffset: number }) => ({
-          date: item.date,
-          sgv: item.sgv,
-          units: item.units,
-          utcOffset: item.utcOffset,
-        }));
-
-      let treatmentsData = treatmentsResponse.data
-        .filter(
-          (item: { date: number; eventType: string; carbs?: number; insulin?: number }) =>
-            item.date >= daysAgoTimestamp && (item.carbs !== null || item.insulin !== null),
-        )
-        .map((item: { date: number; carbs?: number; utcOffset: number; insulin?: number; eventType: string }) => ({
-          date: item.date,
-          carbs: item.carbs,
-          insulin: item.insulin,
-          utcOffset: item.utcOffset,
-          eventType: item.eventType,
-        }));
-
-      return { entries: entriesData, treatments: treatmentsData };
-    },
-  );
-};
 
 const NightscoutComponent = ({
   header,
@@ -175,7 +138,7 @@ const NightscoutComponent = ({
 
     // First handle the Nightscout data fetch
     updateProgress(25, 'Collecting Nightscout data...');
-    fetchNightscoutData(formData.nightscout_url, formData.nightscout_token)
+    fetchNightscoutData({ url: formData.nightscout_url, token: formData.nightscout_token })
       .then((nightscoutData) => {
         updateProgress(50, 'Generating assessments...');
         const compressedData = {
