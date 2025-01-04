@@ -1,21 +1,20 @@
-import { createApiClient } from '~/lib/api/axios';
+import { AxiosResponse } from 'axios';
+import { createApiClient } from '../../lib/api/axios';
+import { NightscoutProfile } from './nightscoutProfile';
 
 interface NightscoutConfig {
   url: string;
   token: string;
-  daysToFetch?: number;
-  entriesCount?: number;
-  treatmentsCount?: number;
 }
 
-interface NightscoutEntry {
+export interface NightscoutEntry {
   date: number;
   sgv: number;
   units: string;
   utcOffset: number;
 }
 
-interface NightscoutTreatment {
+export interface NightscoutTreatment {
   date: number;
   carbs?: number;
   insulin?: number;
@@ -23,41 +22,35 @@ interface NightscoutTreatment {
   eventType: string;
 }
 
-interface NightscoutData {
+export interface NightscoutData {
   entries: NightscoutEntry[];
   treatments: NightscoutTreatment[];
 }
 
-const fetchNightscoutData = async ({
-  url,
-  token,
-  daysToFetch = 9,
-  entriesCount = 20000,
-  treatmentsCount = 10000,
-}: NightscoutConfig): Promise<NightscoutData> => {
+export const fetchNightscoutProfiles = async (nsconfig: NightscoutConfig): Promise<NightscoutProfile[]> => {
+  const axiosInstance = createApiClient();
+  const profilesUrl = `${nsconfig.url}/api/v1/profile?token=${nsconfig.token}`;
+
+  const { data } = await axiosInstance.get<NightscoutProfile[]>(profilesUrl);
+
+  return data;
+};
+
+export const fetchNightscoutTreatments = async (
+  nsconfig: NightscoutConfig,
+  daysToFetch: number = 9,
+  treatmentsCount: number = 10000,
+): Promise<NightscoutTreatment[]> => {
   const axiosInstance = createApiClient();
 
   const today = new Date();
   const daysAgo = new Date(today.setDate(today.getDate() - daysToFetch));
   const daysAgoTimestamp = daysAgo.getTime();
 
-  const entriesUrl = `${url}/api/v1/entries/sgv.json?token=${token}&find[date][$gte]=${daysAgoTimestamp}&count=${entriesCount}`;
-  const treatmentsUrl = `${url}/api/v1/treatments.json?token=${token}&find[created_at][$gte]=${daysAgoTimestamp}&count=${treatmentsCount}`;
+  const treatmentsUrl = `${nsconfig.url}/api/v1/treatments.json?token=${nsconfig.token}&find[created_at][$gte]=${daysAgoTimestamp}&count=${treatmentsCount}`;
 
   try {
-    const [entriesResponse, treatmentsResponse] = await Promise.all([
-      axiosInstance.get(entriesUrl),
-      axiosInstance.get(treatmentsUrl),
-    ]);
-
-    const entriesData = entriesResponse.data
-      .filter((item: { date: number }) => item.date >= daysAgoTimestamp)
-      .map((item: NightscoutEntry) => ({
-        date: item.date,
-        sgv: item.sgv,
-        units: item.units,
-        utcOffset: item.utcOffset,
-      }));
+    const treatmentsResponse = await axiosInstance.get(treatmentsUrl);
 
     const treatmentsData = treatmentsResponse.data
       .filter(
@@ -72,10 +65,53 @@ const fetchNightscoutData = async ({
         eventType: item.eventType,
       }));
 
-    return { entries: entriesData, treatments: treatmentsData };
+    return treatmentsData;
   } catch (error: any) {
     throw new Error(`Failed to fetch Nightscout data: ${error.message}`);
   }
 };
 
-export default fetchNightscoutData;
+export const fetchNightscoutEntries = async (
+  nsconfig: NightscoutConfig,
+  daysToFetch: number = 9,
+  entriesCount: number = 20000,
+): Promise<NightscoutEntry[]> => {
+  const axiosInstance = createApiClient();
+
+  const today = new Date();
+  const daysAgo = new Date(today.setDate(today.getDate() - daysToFetch));
+  const daysAgoTimestamp = daysAgo.getTime();
+
+  const entriesUrl = `${nsconfig.url}/api/v1/entries/sgv.json?token=${nsconfig.token}&find[date][$gte]=${daysAgoTimestamp}&count=${entriesCount}`;
+
+  try {
+    const entriesResponse = await axiosInstance.get(entriesUrl);
+
+    const entriesData: NightscoutEntry[] = entriesResponse.data
+      .filter((item: { date: number }) => item.date >= daysAgoTimestamp)
+      .map((item: NightscoutEntry) => ({
+        date: item.date,
+        sgv: item.sgv,
+        units: item.units,
+        utcOffset: item.utcOffset,
+      }));
+
+    return entriesData;
+  } catch (error: any) {
+    throw new Error(`Failed to fetch Nightscout data: ${error.message}`);
+  }
+};
+
+export const fetchNightscoutData = async (nsconfig: NightscoutConfig): Promise<NightscoutData> => {
+  try {
+    const [entriesData, treatmentsData] = await Promise.all([
+      fetchNightscoutEntries(nsconfig),
+      fetchNightscoutTreatments(nsconfig),
+      // axiosInstance.get(profilesUrl),
+    ]);
+
+    return { entries: entriesData, treatments: treatmentsData };
+  } catch (error: any) {
+    throw new Error(`Failed to fetch Nightscout data: ${error.message}`);
+  }
+};
