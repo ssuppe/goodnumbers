@@ -16,6 +16,7 @@ export interface NightscoutEntry {
 
 export interface NightscoutTreatment {
   date: number;
+  created_at: string;
   carbs?: number;
   insulin?: number;
   utcOffset: number;
@@ -25,6 +26,7 @@ export interface NightscoutTreatment {
 export interface NightscoutData {
   entries: NightscoutEntry[];
   treatments: NightscoutTreatment[];
+  profiles: NightscoutProfile[];
 }
 
 export const fetchNightscoutProfiles = async (nsconfig: NightscoutConfig): Promise<NightscoutProfile[]> => {
@@ -63,6 +65,7 @@ export const fetchNightscoutTreatments = async (
         insulin: item.insulin,
         utcOffset: item.utcOffset,
         eventType: item.eventType,
+        created_at: item.created_at,
       }));
 
     return treatmentsData;
@@ -104,13 +107,13 @@ export const fetchNightscoutEntries = async (
 
 export const fetchNightscoutData = async (nsconfig: NightscoutConfig): Promise<NightscoutData> => {
   try {
-    const [entriesData, treatmentsData] = await Promise.all([
+    const [entriesData, treatmentsData, profilesData] = await Promise.all([
       fetchNightscoutEntries(nsconfig),
       fetchNightscoutTreatments(nsconfig),
-      // axiosInstance.get(profilesUrl),
+      fetchNightscoutProfiles(nsconfig),
     ]);
 
-    return { entries: entriesData, treatments: treatmentsData };
+    return { entries: entriesData, treatments: treatmentsData, profiles: profilesData };
   } catch (error: any) {
     throw new Error(`Failed to fetch Nightscout data: ${error.message}`);
   }
