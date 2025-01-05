@@ -95,12 +95,55 @@ var moment = require('moment');
     var carb_input = inputs[4]; // 
 */
 
+export interface AutotunePreppedData {
+  // Carb ratio related data
+  CRData: Array<{
+    CRInitialIOB: number;
+    CRInitialBG: number;
+    CRInitialCarbTime: Date;
+    CREndIOB: number;
+    CREndBG: number;
+    CREndTime: Date;
+    CRCarbs: number;
+    CRInsulin: number;
+  }>;
+
+  // Carb-sensitivity related glucose data (meal-related)
+  CSFGlucoseData: Array<{
+    date: string;
+    glucose: number;
+    deviation: number;
+    mealAbsorption?: 'start' | 'end';
+    mealCarbs?: number;
+    BGI: number;
+    avgDelta: number;
+  }>;
+
+  // Insulin-sensitivity related glucose data
+  ISFGlucoseData: Array<{
+    date: string;
+    glucose: number;
+    deviation: number;
+    BGI: number;
+    avgDelta: number;
+  }>;
+
+  // Basal-related glucose data
+  basalGlucoseData: Array<{
+    date: string;
+    glucose: number;
+    deviation: number;
+    BGI: number;
+    avgDelta: number;
+  }>;
+}
+
 export const gn_autotune_prep = (
   dayEntries: NightscoutEntry[],
   dayTreatments: NightscoutTreatment[],
   profile_data: ATProfileSettings,
   pumpprofile_data: ATProfileSettings,
-) => {
+): AutotunePreppedData => {
   // get insulin curve from pump profile that is maintained
   // GN: Ignoring this as we won't be tuning the insulin curve, and
   // GN: we don't have access to the pump profile anyway
