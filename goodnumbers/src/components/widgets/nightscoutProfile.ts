@@ -1,26 +1,45 @@
-// types.ts
-export interface ProfileSettings {
-  dia: number;
-  carbratio: TimeValue[];
-  sens: TimeValue[];
-  basal: TimeValue[];
-  target_low: TimeValue[];
-  target_high: TimeValue[];
-  units: string;
-  timezone: string;
-}
+// export interface BasalProfileEntry {
+//   start: string;
+//   minutes: number;
+//   rate: number;
+// }
 
-interface TimeValue {
-  time: string;
-  timeAsSeconds: number;
-  value: number;
-}
+// export interface Sensitivity {
+//   i: number;
+//   start: string;
+//   sensitivity: number;
+//   offset: number;
+//   x: number;
+//   endOffset: number;
+// }
+
+// export interface ISFProfile {
+//   sensitivities: Sensitivity[];
+// }
+
+// export interface ProfileSettings {
+//   dia: number;
+//   min_5m_carbimpact: number;
+//   carb_ratio: TimeValue[];
+//   sens: TimeValue[];
+//   basal: TimeValue[];
+//   target_low: TimeValue[];
+//   target_high: TimeValue[];
+//   units: string;
+//   timezone: string;
+// }
+
+// interface TimeValue {
+//   time: string;
+//   timeAsSeconds: number;
+//   value: number;
+// }
 
 export interface NightscoutProfile {
   _id: string;
   defaultProfile: string;
   startDate: string;
-  store: Record<string, ProfileSettings>;
+  store: Record<string, NSProfileSettings>;
   identifier: string;
   date: number;
   created_at: string;
@@ -38,11 +57,103 @@ interface DateRange {
   daysActive: number;
 }
 
+interface TimeValue {
+  time: string;
+  timeAsSeconds: number;
+  value: number;
+}
+
+interface NSProfileSettings {
+  dia: number;
+  carbratio: TimeValue[];
+  sens: TimeValue[];
+  basal: TimeValue[];
+  target_low: TimeValue[];
+  target_high: TimeValue[];
+  units: string;
+  timezone: string;
+}
+
+// Output interfaces - updated ISFProfile to match your needs
+interface BasalEntry {
+  start: string;
+  minutes: number;
+  rate: number;
+}
+
+interface Sensitivity {
+  i: number;
+  start: string;
+  sensitivity: number;
+  offset: number;
+  x: number;
+  endOffset: number;
+}
+
+interface ISFProfile {
+  sensitivities: Sensitivity[];
+}
+
+interface ATProfileSettings {
+  min_5m_carbimpact: number;
+  dia: number;
+  basalprofile: BasalEntry[];
+  isfProfile: ISFProfile;
+  carb_ratio: number;
+  autosens_max: number;
+  autosens_min: number;
+}
+
+function convertToMinutes(timeStr: string): number {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+export function transformNightscoutProfileToAutotune(input: NSProfileSettings): ATProfileSettings {
+  // Calculate average for carbs only
+  const averageCarbs = averageTimeValues(input.carbratio);
+
+  // Transform basal entries
+  const basalprofile: BasalEntry[] = input.basal.map((entry) => ({
+    start: entry.time + ':00',
+    minutes: convertToMinutes(entry.time),
+    rate: entry.value,
+  }));
+
+  // Transform sensitivities
+  const sensitivities: Sensitivity[] = input.sens.map((entry, index) => {
+    const nextEntry = input.sens[index + 1];
+    return {
+      i: index,
+      start: entry.time + ':00',
+      sensitivity: entry.value,
+      offset: convertToMinutes(entry.time),
+      x: 0,
+      // If this is the last entry, endOffset is 1440 (24 hours), otherwise it's the next entry's offset
+      endOffset: nextEntry ? convertToMinutes(nextEntry.time) : 1440,
+    };
+  });
+
+  const isfProfile: ISFProfile = {
+    sensitivities,
+  };
+
+  return {
+    min_5m_carbimpact: 8.0,
+    dia: input.dia,
+    basalprofile,
+    isfProfile,
+    carb_ratio: averageCarbs,
+    autosens_max: 1.2,
+    autosens_min: 0.7,
+  };
+}
+
 // profileAnalyzer.ts
 export function findMostActiveProfile(profiles: NightscoutProfile[]): {
   profile: NightscoutProfile;
   daysActive: number;
-  activeSettings: ProfileSettings;
+  activeSettings: NSProfileSettings;
 } {
   // Sort profiles by startDate for proper sequencing
   const sortedProfiles = profiles.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
@@ -98,25 +209,8 @@ export function findMostActiveProfile(profiles: NightscoutProfile[]): {
   };
 }
 
-// Example usage in your API route or component:
-// import { findMostActiveProfile } from './profileAnalyzer';
-
-// // In your API route or component:
-// async function getActiveProfile() {
-//   try {
-//     const response = await axios.get('/api/profiles', {
-//       // Your axios configuration here
-//     });
-
-//     const { profile, daysActive, activeSettings } = findMostActiveProfile(response.data);
-
-//     // Now you have access to:
-//     // - The full profile object
-//     // - The number of days it was active
-//     // - The specific settings for the default profile
-//     return { profile, daysActive, activeSettings };
-//   } catch (error) {
-//     console.error('Error fetching profile data:', error);
-//     throw error;
-//   }
-// }
+function averageTimeValues(timeValues: TimeValue[]): number {
+  if (!timeValues.length) return 0;
+  const sum = timeValues.reduce((acc, curr) => acc + curr.value, 0);
+  return sum / timeValues.length;
+}
