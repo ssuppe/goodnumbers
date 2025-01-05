@@ -35,6 +35,14 @@ import { fetchNightscoutData, NightscoutEntry, NightscoutTreatment } from '../wi
 import { gn_autotune_prep } from './gn-autotune-prep';
 import { gn_autotune_core } from './gn-autotune-core';
 import { compareProfiles } from './gn-autotune-recommends-report';
+import {
+  analyzeMealEvents,
+  analyzeTimeOfDay,
+  DailyPatternSummary,
+  generatePatternSummary,
+  MealEvent,
+  TimeOfDayAnalysis,
+} from './gn-meal-analysis';
 
 dotenv.config();
 
@@ -101,6 +109,17 @@ fetchNightscoutData(nsconfig, 7).then((nsData) => {
     }
   }
 
+  ///////////////////////////////////////////////////////////////////////////
+  // Meal analysis
+  ///////////////////////////////////////////////////////////////////////////
+  const all_prepped_glucose = gn_autotune_prep(nsData.entries, nsData.treatments, profile_data, pumpprofile_data);
+  const meal_events: MealEvent[] = analyzeMealEvents(all_prepped_glucose);
+  const tod_analysis: TimeOfDayAnalysis[] = analyzeTimeOfDay(all_prepped_glucose);
+  const pattern_summary: DailyPatternSummary = generatePatternSummary(meal_events, tod_analysis);
+  console.log(pattern_summary);
+  ///////////////////////////////////////////////////////////////////////////
+  // Generate tuned profile like autotune
+  ///////////////////////////////////////////////////////////////////////////
   // Iterate over days just like autotune
   const entriesByDay = _.groupBy(
     nsData.entries,
@@ -110,20 +129,19 @@ fetchNightscoutData(nsconfig, 7).then((nsData) => {
     nsData.treatments,
     (treatment: NightscoutTreatment) => new Date(treatment.date).toISOString().split('T')[0],
   );
-
   // Sort days in ascending order
-  const sortedDays = Object.keys(entriesByDay).sort();
-  for (const day of sortedDays) {
-    const dayEntries = entriesByDay[day];
-    const dayTreatments = treatmentsByDay[day];
+  //   const sortedDays = Object.keys(entriesByDay).sort();
+  //   for (const day of sortedDays) {
+  //     const dayEntries = entriesByDay[day];
+  //     const dayTreatments = treatmentsByDay[day];
 
-    const day_prepped_glucose = gn_autotune_prep(dayEntries, dayTreatments, profile_data, pumpprofile_data);
+  //     const day_prepped_glucose = gn_autotune_prep(dayEntries, dayTreatments, profile_data, pumpprofile_data);
 
-    /////////////////////////////////////////////////////////////////////////
-    // AUTOTUNE CORE
-    /////////////////////////////////////////////////////////////////////////
-    profile_data = gn_autotune_core(day_prepped_glucose, profile_data, pumpprofile_data);
-  }
-  compareProfiles(pumpprofile_data, profile_data);
-  //   console.log(generateProfileComparison(profile_data));
+  //     /////////////////////////////////////////////////////////////////////////
+  //     // AUTOTUNE CORE
+  //     /////////////////////////////////////////////////////////////////////////
+  //     profile_data = gn_autotune_core(day_prepped_glucose, profile_data, pumpprofile_data);
+  //   }
+
+  //   compareProfiles(pumpprofile_data, profile_data);
 });
