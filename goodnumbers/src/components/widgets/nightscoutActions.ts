@@ -8,19 +8,47 @@ interface NightscoutConfig {
 }
 
 export interface NightscoutEntry {
+  _id: string;
+  app: string;
   date: number;
+  device: string;
+  direction: string;
+  isReadOnly: boolean;
+  isValid: boolean;
   sgv: number;
+  type: string;
+  unfiltered: number;
   units: string;
   utcOffset: number;
+  created_at: string;
+  identifier: string;
+  srvModified: number;
+  srvCreated: number;
+  subject: string;
+  modifiedBy: string;
+  mills: number;
 }
 
 export interface NightscoutTreatment {
+  _id: string;
+  app: string;
   date: number;
-  created_at: string;
-  carbs?: number;
-  insulin?: number;
-  utcOffset: number;
+  duration: number;
+  durationInMilliseconds: number;
+  enteredBy: string;
   eventType: string;
+  isReadOnly: boolean;
+  isValid: boolean;
+  notes: string;
+  units: string;
+  utcOffset: number;
+  created_at: string;
+  identifier: string;
+  srvModified: number;
+  srvCreated: number;
+  subject: string;
+  carbs: number | null;
+  insulin: number | null;
 }
 
 export interface NightscoutData {
@@ -54,20 +82,20 @@ export const fetchNightscoutTreatments = async (
   try {
     const treatmentsResponse = await axiosInstance.get(treatmentsUrl);
 
-    const treatmentsData = treatmentsResponse.data
-      .filter(
-        (item: { date: number; eventType: string; carbs?: number; insulin?: number }) =>
-          item.date >= daysAgoTimestamp && (item.carbs !== null || item.insulin !== null),
-      )
-      .map((item: NightscoutTreatment) => ({
-        date: item.date,
-        carbs: item.carbs,
-        insulin: item.insulin,
-        utcOffset: item.utcOffset,
-        eventType: item.eventType,
-        created_at: item.created_at,
-      }));
-
+    const treatmentsData = treatmentsResponse.data;
+    // .filter(
+    //   (item: { date: number; eventType: string; carbs?: number; insulin?: number }) =>
+    //     item.date >= daysAgoTimestamp && (item.carbs !== null || item.insulin !== null),
+    // )
+    // .map((item: NightscoutTreatment) => ({
+    //   date: item.date,
+    //   carbs: item.carbs,
+    //   insulin: item.insulin,
+    //   utcOffset: item.utcOffset,
+    //   eventType: item.eventType,
+    //   created_at: item.created_at,
+    // })
+    // )
     return treatmentsData;
   } catch (error: any) {
     throw new Error(`Failed to fetch Nightscout data: ${error.message}`);
@@ -90,14 +118,15 @@ export const fetchNightscoutEntries = async (
   try {
     const entriesResponse = await axiosInstance.get(entriesUrl);
 
-    const entriesData: NightscoutEntry[] = entriesResponse.data
-      .filter((item: { date: number }) => item.date >= daysAgoTimestamp)
-      .map((item: NightscoutEntry) => ({
-        date: item.date,
-        sgv: item.sgv,
-        units: item.units,
-        utcOffset: item.utcOffset,
-      }));
+    const entriesData: NightscoutEntry[] = entriesResponse.data;
+    // .filter((item: { date: number }) => item.date >= daysAgoTimestamp)
+    // .map((item: NightscoutEntry) => ({
+    //   date: item.date,
+    //   created_at: item.date,
+    //   sgv: item.sgv,
+    //   units: item.units,
+    //   utcOffset: item.utcOffset,
+    // }));
 
     return entriesData;
   } catch (error: any) {
@@ -105,11 +134,16 @@ export const fetchNightscoutEntries = async (
   }
 };
 
-export const fetchNightscoutData = async (nsconfig: NightscoutConfig): Promise<NightscoutData> => {
+export const fetchNightscoutData = async (
+  nsconfig: NightscoutConfig,
+  daysToFetch: number = 9,
+  entriesCount: number = 20000,
+  treatmentsCount: number = 10000,
+): Promise<NightscoutData> => {
   try {
     const [entriesData, treatmentsData, profilesData] = await Promise.all([
-      fetchNightscoutEntries(nsconfig),
-      fetchNightscoutTreatments(nsconfig),
+      fetchNightscoutEntries(nsconfig, (daysToFetch = daysToFetch), (entriesCount = entriesCount)),
+      fetchNightscoutTreatments(nsconfig, (daysToFetch = daysToFetch), (treatmentsCount = treatmentsCount)),
       fetchNightscoutProfiles(nsconfig),
     ]);
 

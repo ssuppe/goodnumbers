@@ -23,6 +23,9 @@
 
 */
 
+import { NightscoutEntry, NightscoutTreatment } from '../widgets/nightscoutActions';
+import { ATProfileSettings } from '../widgets/nightscoutProfile';
+
 var generate = require('./lib/autotune-prep');
 var _ = require('lodash');
 var moment = require('moment');
@@ -84,38 +87,6 @@ var moment = require('moment');
 //     }
 //   }
 
-import dotenv from 'dotenv';
-import {
-  findMostActiveProfile,
-  NightscoutProfile,
-  ProfileSettings,
-  transformNightscoutProfileToAutotune,
-} from '../widgets/nightscoutProfile';
-import { fetchNightscoutData, NightscoutEntry, NightscoutTreatment } from '../widgets/nightscoutActions';
-
-dotenv.config();
-
-interface NSConfig {
-  url: string;
-  token: string;
-}
-
-const getNSConfig = (): NSConfig => {
-  const config: NSConfig = {
-    url: process.env.NSURL || '',
-    token: process.env.NSTOKEN || '',
-  };
-
-  if (!config.url || !config.token) {
-    throw new Error('NSURL and NSTOKEN environment variables are required');
-  }
-
-  return config;
-};
-
-const nsconfig = getNSConfig();
-console.log('Nightscout Configuration:', nsconfig);
-
 /* INPUT ORDER FROM AUTOTUNE
     var pumphistory_input = inputs[0]; // ns-treatments.$i.json, or treatments
     var profile_input = inputs[1]; // profile
@@ -124,36 +95,12 @@ console.log('Nightscout Configuration:', nsconfig);
     var carb_input = inputs[4]; // 
 */
 
-let profile_data: ProfileSettings;
-let pumpprofile_data: ProfileSettings;
-
-fetchNightscoutData(nsconfig).then((nsData) => {
-  const { profile, daysActive, activeSettings } = findMostActiveProfile(nsData.profiles);
-
-  // Simple assignment of activeSettings to both variables, to allow the regular
-  // autotune code to work without modifications
-  profile_data = activeSettings;
-  pumpprofile_data = activeSettings;
-
-  // disallow impossibly low carbRatios due to bad decoding
-  // GN: Goodnumbers version of this only looks at
-  if (typeof profile_data.carbratio === 'undefined' || profile_data.carbratio < 2) {
-    if (typeof pumpprofile_data.carbratio === 'undefined' || pumpprofile_data.carbratio < 2) {
-      console.log(
-        '{ "carbs": 0, "mealCOB": 0, "reason": "carb_ratios ' +
-          profile_data.carbratio +
-          ' and ' +
-          pumpprofile_data.carbratio +
-          ' out of bounds" }',
-      );
-      return console.error(
-        'Error: carb_ratios ' + profile_data.carbratio + ' and ' + pumpprofile_data.carbratio + ' out of bounds',
-      );
-    } else {
-      profile_data.carbratio = pumpprofile_data.carbratio;
-    }
-  }
-
+export const gn_autotune_prep = (
+  dayEntries: NightscoutEntry[],
+  dayTreatments: NightscoutTreatment[],
+  profile_data: ATProfileSettings,
+  pumpprofile_data: ATProfileSettings,
+) => {
   // get insulin curve from pump profile that is maintained
   // GN: Ignoring this as we won't be tuning the insulin curve, and
   // GN: we don't have access to the pump profile anyway
@@ -175,7 +122,7 @@ fetchNightscoutData(nsconfig).then((nsData) => {
   // } catch (e) {
   //   return console.error('Warning: could not parse ' + glucose_input, e);
   // }
-  let glucose_data = nsData.entries;
+  let glucose_data = dayEntries;
 
   // var carb_data = {};
   // if (typeof carb_input !== 'undefined') {
@@ -185,10 +132,10 @@ fetchNightscoutData(nsconfig).then((nsData) => {
   //     console.error('Warning: could not parse ' + carb_input);
   //   }
   // }
-  let carb_data = nsData.treatments;
+  let carb_data = dayTreatments;
 
   // Have to sort history - NS sort doesn't account for different zulu and local timestamps
-  let pumphistory_data = nsData.entries;
+  let pumphistory_data = dayTreatments;
   pumphistory_data = _.orderBy(
     pumphistory_data,
     [
@@ -199,10 +146,9 @@ fetchNightscoutData(nsconfig).then((nsData) => {
     ['desc'],
   );
 
-  const ATProfile = transformNightscoutProfileToAutotune(profile_data);
   let inputs = {
     history: pumphistory_data,
-    profile: ATProfile,
+    profile: profile_data,
     pumpprofile: pumpprofile_data,
     carbs: carb_data,
     glucose: glucose_data,
@@ -211,9 +157,13 @@ fetchNightscoutData(nsconfig).then((nsData) => {
   };
 
   var prepped_glucose = generate(inputs);
+  return prepped_glucose;
   // if (params['output-file']) {
   //   fs.writeFileSync(params['output-file'], JSON.stringify(prepped_glucose));
   // } else {
-  console.log(JSON.stringify(prepped_glucose));
+  // console.log(JSON.stringify(prepped_glucose));
   // }
-});
+  /////////////////////////////////////////////////////////////////////////
+  // PREP COMPLETE
+  /////////////////////////////////////////////////////////////////////////
+};
