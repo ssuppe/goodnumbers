@@ -1,40 +1,3 @@
-// export interface BasalProfileEntry {
-//   start: string;
-//   minutes: number;
-//   rate: number;
-// }
-
-// export interface Sensitivity {
-//   i: number;
-//   start: string;
-//   sensitivity: number;
-//   offset: number;
-//   x: number;
-//   endOffset: number;
-// }
-
-// export interface ISFProfile {
-//   sensitivities: Sensitivity[];
-// }
-
-// export interface ProfileSettings {
-//   dia: number;
-//   min_5m_carbimpact: number;
-//   carb_ratio: TimeValue[];
-//   sens: TimeValue[];
-//   basal: TimeValue[];
-//   target_low: TimeValue[];
-//   target_high: TimeValue[];
-//   units: string;
-//   timezone: string;
-// }
-
-// interface TimeValue {
-//   time: string;
-//   timeAsSeconds: number;
-//   value: number;
-// }
-
 export interface NightscoutProfile {
   _id: string;
   defaultProfile: string;
@@ -63,7 +26,7 @@ interface TimeValue {
   value: number;
 }
 
-interface NSProfileSettings {
+export interface NSProfileSettings {
   dia: number;
   carbratio: TimeValue[];
   sens: TimeValue[];
@@ -94,7 +57,7 @@ interface ISFProfile {
   sensitivities: Sensitivity[];
 }
 
-interface ATProfileSettings {
+export interface ATProfileSettings {
   min_5m_carbimpact: number;
   dia: number;
   basalprofile: BasalEntry[];
@@ -153,7 +116,7 @@ export function transformNightscoutProfileToAutotune(input: NSProfileSettings): 
 export function findMostActiveProfile(profiles: NightscoutProfile[]): {
   profile: NightscoutProfile;
   daysActive: number;
-  activeSettings: NSProfileSettings;
+  activeProfileSettings: NSProfileSettings;
 } {
   // Sort profiles by startDate for proper sequencing
   const sortedProfiles = profiles.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
@@ -205,7 +168,7 @@ export function findMostActiveProfile(profiles: NightscoutProfile[]): {
   return {
     profile: mostActive.profile,
     daysActive: mostActive.daysActive,
-    activeSettings,
+    activeProfileSettings: activeSettings,
   };
 }
 
