@@ -14,10 +14,6 @@ interface MealEvent {
   startTime: Date;
   endTime: Date;
   durationMinutes: number; // Time until autotune marks 'end'
-  fullMealDuration: number | null; // Time until glucose returns to near starting level
-  glucoseReturnTime: Date | null; // When glucose returned to within 10% of start
-  didReturnToStart: boolean; // Did it ever return to within 10% of start?
-  deviationsUntilReturn: number; // Total deviations until return to start
   carbCount: number | undefined;
   readings: AutotunePreppedData['CSFGlucoseData'];
 
@@ -30,20 +26,21 @@ interface MealEvent {
   totalDeviation: number;
   timeToMaxGlucose: number; // minutes
   avgDeltaAtStart: number; // rate of change at meal start
+
+  // New stabilization tracking
+  didReturnToStart: boolean;
+  fullMealDuration: number | null; // Time until glucose returns to near starting level, null if never returned to start
+  timeToStabilize: number | null; // minutes from peak until return to start
+  deviationsUntilReturn: number;
 }
 
 function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
-  // Array to store all completed meal events we'll find
   const mealEvents: MealEvent[] = [];
-
-  // Object to track the current meal we're analyzing
-  // Note: we have to define it with readings array because TypeScript needs it
   let currentEvent: Partial<MealEvent> & { readings: AutotunePreppedData['CSFGlucoseData'] } = {
     readings: [],
   };
 
   // Process CSFGlucoseData to extract meal events
-  // Loop through CSFGlucoseData (the meal-related readings)
   for (const reading of data.CSFGlucoseData) {
     // Start of a new meal event
     if (reading.mealAbsorption === 'start') {
@@ -59,57 +56,73 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
 
       // End of meal event
       if (reading.mealAbsorption === 'end') {
+        // Get all glucose values for this meal event
         const glucoseValues = currentEvent.readings.map((r) => r.glucose);
         const deviations = currentEvent.readings.map((r) => Number(r.deviation));
+        const startGlucose = glucoseValues[0];
 
+        // Find peak glucose and when it occurred
         const maxGlucose = Math.max(...glucoseValues);
         const maxGlucoseIndex = glucoseValues.indexOf(maxGlucose);
 
-        // Look at time to return back to start BG
-        const startGlucose = glucoseValues[0];
+        // Define target range for "return to start" (within 10% of starting glucose)
         const targetRange = {
           lower: startGlucose * 0.9,
           upper: startGlucose * 1.1,
         };
 
-        // Find first reading after peak where glucose returns to within 10% of start
-        let returnIndex = currentEvent.readings.findIndex((reading, index) => {
-          // Only look at readings after peak
+        // Find first reading AFTER peak where glucose returns to within target range
+        const returnIndex = currentEvent.readings.findIndex((reading, index) => {
+          // Skip any readings before or at peak
           if (index <= maxGlucoseIndex) return false;
+
           return reading.glucose >= targetRange.lower && reading.glucose <= targetRange.upper;
         });
 
-        const returnTime = returnIndex !== -1 ? new Date(currentEvent.readings[returnIndex].date) : null;
+        // Calculate time and deviations until return to start (if it did return)
+        const didReturnToStart = returnIndex !== -1;
+        const returnTime = didReturnToStart ? new Date(currentEvent.readings[returnIndex].date) : null;
 
-        const fullDurationMinutes = returnTime
+        // Calculate full meal duration (if returned to start)
+        const fullMealDuration = returnTime
           ? (returnTime.getTime() - currentEvent.startTime!.getTime()) / (1000 * 60)
           : null;
 
-        // Calculate deviations until return or end of readings
+        // Calculate time from peak to stabilization (if returned to start)
+        const timeToStabilize = returnTime
+          ? (returnTime.getTime() - new Date(currentEvent.readings[maxGlucoseIndex].date).getTime()) / (1000 * 60)
+          : null;
+
+        // Calculate total deviations until return or end of readings
         const deviationsUntilReturn = currentEvent.readings
           .slice(0, returnIndex !== -1 ? returnIndex + 1 : undefined)
           .reduce((sum, reading) => sum + Number(reading.deviation), 0);
 
-        // Complete the meal event data
+        // Create complete meal event with all analysis
         mealEvents.push({
           ...(currentEvent as Required<typeof currentEvent>),
           endTime: new Date(reading.date),
+          // Basic autotune duration
           durationMinutes: (new Date(reading.date).getTime() - currentEvent.startTime!.getTime()) / (1000 * 60),
+          // Glucose values
           maxGlucose,
           minGlucose: Math.min(...glucoseValues),
           startGlucose: glucoseValues[0],
           endGlucose: glucoseValues[glucoseValues.length - 1],
+          // Deviation analysis
           peakDeviation: Math.max(...deviations),
           totalDeviation: deviations.reduce((sum, dev) => sum + dev, 0),
+          // Timing analysis
           timeToMaxGlucose: maxGlucoseIndex * 5, // Assuming 5 minute intervals
           avgDeltaAtStart: currentEvent.readings[0].avgDelta,
-          fullMealDuration: fullDurationMinutes,
-          glucoseReturnTime: returnTime,
-          didReturnToStart: returnIndex !== -1,
+          // Stabilization analysis
+          didReturnToStart,
+          fullMealDuration,
+          timeToStabilize,
           deviationsUntilReturn,
         });
 
-        // Reset current event
+        // Reset for next meal
         currentEvent = { readings: [] };
       }
     }
@@ -214,9 +227,13 @@ interface DailyPatternSummary {
       typicalStabilizeTime: number; // 75th percentile of stabilization times
 
       // Deviation patterns
-      avgDeviationsUntilStable: number;
       totalMealsAnalyzed: number;
       mealsWithExtendedImpact: number; // Meals taking >4h to stabilize
+      avgFullMealDuration: number; // Average time until return to start
+      maxFullMealDuration: number; // Longest time until return to start
+      maxTimeToStabilize: number; // Longest time from peak to stabilization
+      totalDeviationsUntilStable: number; // Sum of all deviations until stable
+      avgDeviationsUntilStable: number; // Average deviations per meal until stable
     };
   };
   problematicHours: {
@@ -251,6 +268,10 @@ function generatePatternSummary(mealEvents: MealEvent[], hourlyAnalysis: TimeOfD
         avgDeviationsUntilStable: 0,
         totalMealsAnalyzed: mealEvents.length,
         mealsWithExtendedImpact: 0,
+        avgFullMealDuration: 0,
+        maxFullMealDuration: 0,
+        maxTimeToStabilize: 0,
+        totalDeviationsUntilStable: 0,
       },
     },
     problematicHours: {
@@ -300,25 +321,28 @@ function generatePatternSummary(mealEvents: MealEvent[], hourlyAnalysis: TimeOfD
       (e): e is MealEvent & { didReturnToStart: true } => e.didReturnToStart === true,
     );
 
-    const stabilizationTimes = stabilizedMeals!
-      .map((e) => e.fullMealDuration!)
-      .sort((a, b) => {
-        if (a == null) a = 0;
-        if (b == null) b = 0;
-        return a - b;
-      });
+    // Calculate time to stabilize stats
+    const stabilizationTimes = stabilizedMeals
+      .map((meal) => meal.timeToStabilize)
+      .filter((t): t is number => t !== null);
 
     // Calculate percentage of meals that returned to starting range
     summary.meals.impactPatterns.stabilizeRate = (stabilizedMeals.length / mealEvents.length) * 100;
 
     if (stabilizedMeals.length > 0) {
-      // Filter out null values once
+      const fullDurations = stabilizedMeals.map((meal) => meal.fullMealDuration).filter((d): d is number => d !== null);
+
+      summary.meals.impactPatterns.avgFullMealDuration =
+        fullDurations.length > 0 ? fullDurations.reduce((sum, d) => sum + d, 0) / fullDurations.length : 0;
+      summary.meals.impactPatterns.maxFullMealDuration = fullDurations.length > 0 ? Math.max(...fullDurations) : 0;
 
       // Average time until glucose returns to starting range
       summary.meals.impactPatterns.avgTimeToStabilize =
-        (stabilizationTimes ?? []).length > 0
-          ? (stabilizationTimes ?? []).reduce((sum, t) => (sum ?? 0) + (t ?? 0), 0) / (stabilizationTimes ?? []).length
+        stabilizationTimes.length > 0
+          ? stabilizationTimes.reduce((sum, t) => sum + t, 0) / stabilizationTimes.length
           : 0;
+      summary.meals.impactPatterns.maxTimeToStabilize =
+        stabilizationTimes.length > 0 ? Math.max(...stabilizationTimes) : 0;
 
       // 75th percentile of stabilization times
       const p75Index = Math.floor(stabilizationTimes.length * 0.75);
@@ -338,6 +362,12 @@ function generatePatternSummary(mealEvents: MealEvent[], hourlyAnalysis: TimeOfD
         return event.durationMinutes > 240;
       }
     }).length;
+
+    // Calculate deviation stats
+    const totalDeviations = stabilizedMeals.reduce((sum, meal) => sum + meal.deviationsUntilReturn, 0);
+    summary.meals.impactPatterns.totalDeviationsUntilStable = totalDeviations;
+    summary.meals.impactPatterns.avgDeviationsUntilStable =
+      stabilizedMeals.length > 0 ? totalDeviations / stabilizedMeals.length : 0;
   }
 
   // Analyze each hour for problems
