@@ -370,7 +370,7 @@ function categorizeBGDatums(opts) {
         var BGDateArray = BGDate.toString().split(" ");
         BGTime = BGDateArray[4];
         // console.error(absorbing.toString(),"mealCOB:",mealCOB.toFixed(1),"mealCarbs:",mealCarbs,"basalBGI:",basalBGI.toFixed(1),"BGI:",BGI.toFixed(1),"IOB:",iob.iob.toFixed(1),"at",BGTime,"dev:",deviation,"avgDelta:",avgDelta,type);
-        console.error(absorbing.toString(),"mealCOB:",mealCOB.toFixed(1),"mealCarbs:",mealCarbs,"BGI:",BGI.toFixed(1),"IOB:",iob.iob.toFixed(1),"at",BGTime,"dev:",dev5m,"avgDev:",deviation,"avgDelta:",avgDelta,type,BG,myCarbs);
+        // GN: console.error(absorbing.toString(),"mealCOB:",mealCOB.toFixed(1),"mealCarbs:",mealCarbs,"BGI:",BGI.toFixed(1),"IOB:",iob.iob.toFixed(1),"at",BGTime,"dev:",dev5m,"avgDev:",deviation,"avgDelta:",avgDelta,type,BG,myCarbs);
     }
 
     IOBInputs = {
