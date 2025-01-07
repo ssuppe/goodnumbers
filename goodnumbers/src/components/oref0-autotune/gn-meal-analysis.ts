@@ -5,7 +5,8 @@ const GLUCOSE_RANGES = {
   VERY_LOW: 54,
   LOW: 70,
   TARGET_BOTTOM: 80,
-  TARGET_TOP: 160,
+  TARGET_TOP: 104,
+  TITR_HIGH: 140,
   HIGH: 180,
   VERY_HIGH: 250,
 } as const;
@@ -66,7 +67,7 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
         const maxGlucoseIndex = glucoseValues.indexOf(maxGlucose);
 
         // Define target range for "return to start" (within 10% of starting glucose)
-        const targetRange = {
+        const targetReturnRange = {
           lower: startGlucose * 0.9,
           upper: startGlucose * 1.1,
         };
@@ -76,7 +77,7 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
           // Skip any readings before or at peak
           if (index <= maxGlucoseIndex) return false;
 
-          return reading.glucose >= targetRange.lower && reading.glucose <= targetRange.upper;
+          return reading.glucose >= targetReturnRange.lower && reading.glucose <= targetReturnRange.upper;
         });
 
         // Calculate time and deviations until return to start (if it did return)
@@ -89,8 +90,13 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
           : null;
 
         // Calculate time from peak to stabilization (if returned to start)
+        // const timeToStabilize = returnTime
+        //   ? (returnTime.getTime() - new Date(currentEvent.readings[maxGlucoseIndex].date).getTime()) / (1000 * 60)
+        //   : null;
+
+        // Calculate time from peak to stabilization (if returned to start)
         const timeToStabilize = returnTime
-          ? (returnTime.getTime() - new Date(currentEvent.readings[maxGlucoseIndex].date).getTime()) / (1000 * 60)
+          ? (returnTime.getTime() - new Date(currentEvent.readings[0].date).getTime()) / (1000 * 60)
           : null;
 
         // Calculate total deviations until return or end of readings
@@ -105,7 +111,7 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
           // Basic autotune duration
           durationMinutes: (new Date(reading.date).getTime() - currentEvent.startTime!.getTime()) / (1000 * 60),
           // Glucose values
-          maxGlucose,
+          maxGlucose: maxGlucose,
           minGlucose: Math.min(...glucoseValues),
           startGlucose: glucoseValues[0],
           endGlucose: glucoseValues[glucoseValues.length - 1],
@@ -116,10 +122,10 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
           timeToMaxGlucose: maxGlucoseIndex * 5, // Assuming 5 minute intervals
           avgDeltaAtStart: currentEvent.readings[0].avgDelta,
           // Stabilization analysis
-          didReturnToStart,
-          fullMealDuration,
-          timeToStabilize,
-          deviationsUntilReturn,
+          didReturnToStart: didReturnToStart,
+          fullMealDuration: fullMealDuration,
+          timeToStabilize: timeToStabilize,
+          deviationsUntilReturn: deviationsUntilReturn,
         });
 
         // Reset for next meal
@@ -133,12 +139,14 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
 
 interface TimeOfDayAnalysis {
   hour: number;
-  readings: number;
+  numReadings: number;
   avgGlucose: number;
   avgDeviation: number;
   highPercentage: number;
   lowPercentage: number;
   inRangePercentage: number;
+  inTargetPercentage: number; // Between TARGET_BOTTOM and TARGET_TOP (80-104)
+  inTITRPercentage: number;
   mealStartsCount: number;
   mealInProgressCount: number;
   basalDeviations: number[];
@@ -148,12 +156,14 @@ interface TimeOfDayAnalysis {
 function analyzeTimeOfDay(data: AutotunePreppedData): TimeOfDayAnalysis[] {
   const hourlyAnalysis: TimeOfDayAnalysis[] = Array.from({ length: 24 }, (_, hour) => ({
     hour,
-    readings: 0,
+    numReadings: 0,
     avgGlucose: 0,
     avgDeviation: 0,
     highPercentage: 0,
     lowPercentage: 0,
     inRangePercentage: 0,
+    inTargetPercentage: 0, // Between TARGET_BOTTOM and TARGET_TOP (80-104)
+    inTITRPercentage: 0, // Between LOW and TITR_HIGH (70-140)
     mealStartsCount: 0,
     mealInProgressCount: 0,
     basalDeviations: [],
@@ -169,16 +179,38 @@ function analyzeTimeOfDay(data: AutotunePreppedData): TimeOfDayAnalysis[] {
     const analysis = hourlyAnalysis[hour];
 
     // Update basic statistics
-    analysis.readings++;
-    analysis.avgGlucose = (analysis.avgGlucose * (analysis.readings - 1) + reading.glucose) / analysis.readings;
+    analysis.numReadings++;
+    analysis.avgGlucose = (analysis.avgGlucose * (analysis.numReadings - 1) + reading.glucose) / analysis.numReadings;
 
     // Track high/low/in-range
     if (reading.glucose > GLUCOSE_RANGES.HIGH) {
-      analysis.highPercentage = (analysis.highPercentage * (analysis.readings - 1) + 100) / analysis.readings;
+      analysis.highPercentage = (analysis.highPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
     } else if (reading.glucose < GLUCOSE_RANGES.LOW) {
-      analysis.lowPercentage = (analysis.lowPercentage * (analysis.readings - 1) + 100) / analysis.readings;
+      analysis.lowPercentage = (analysis.lowPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
+    }
+
+    // Calculate LOW to HIGH (InRange)
+    if (reading.glucose >= GLUCOSE_RANGES.LOW && reading.glucose <= GLUCOSE_RANGES.HIGH) {
+      analysis.inRangePercentage =
+        (analysis.inRangePercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
     } else {
-      analysis.inRangePercentage = (analysis.inRangePercentage * (analysis.readings - 1) + 100) / analysis.readings;
+      analysis.inRangePercentage = (analysis.inRangePercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
+    }
+
+    // Calculate TARGET_BOTTOM to TARGET_TOP (InTarget)
+    if (reading.glucose >= GLUCOSE_RANGES.TARGET_BOTTOM && reading.glucose <= GLUCOSE_RANGES.TARGET_TOP) {
+      analysis.inTargetPercentage =
+        (analysis.inTargetPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
+    } else {
+      analysis.inTargetPercentage =
+        (analysis.inTargetPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
+    }
+
+    // Calculate LOW to TITR_HIGH (InTITR)
+    if (reading.glucose >= GLUCOSE_RANGES.LOW && reading.glucose <= GLUCOSE_RANGES.TITR_HIGH) {
+      analysis.inTITRPercentage = (analysis.inTITRPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
+    } else {
+      analysis.inTITRPercentage = (analysis.inTITRPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
     }
   });
 
