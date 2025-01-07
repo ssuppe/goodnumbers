@@ -79,7 +79,7 @@ let profile_data: ATProfileSettings;
 let pumpprofile_data: ATProfileSettings;
 // Get NS Data for last 7 days, then will iterate day by day just like
 // Autotune
-fetchNightscoutData(nsconfig, 7).then((nsData) => {
+fetchNightscoutData(nsconfig, 3).then((nsData) => {
   //////////////////////////////////////////////////////////////////////////////
   // PROFILE: Autotune only uses a single profile over all days, so I will replicate here
   /////////////////////////////////////////////////////////////////////////////
