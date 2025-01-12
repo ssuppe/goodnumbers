@@ -336,13 +336,13 @@ function categorizeBGDatums(opts) {
             }
             if ( type !== "uam" ) {
                 glucoseDatum.uamAbsorption = "start";
-                console.error(glucoseDatum.uamAbsorption,"uannnounced meal absorption");
+                // console.error(glucoseDatum.uamAbsorption,"uannnounced meal absorption");
             }
             type="uam";
             UAMGlucoseData.push(glucoseDatum);
           } else {
             if ( type === "uam" ) {
-                console.error("end unannounced meal absorption");
+                // console.error("end unannounced meal absorption");
             }
 
 
@@ -396,16 +396,16 @@ function categorizeBGDatums(opts) {
     var basalLength = basalGlucoseData.length;
 
     if (opts.categorize_uam_as_basal) {
-        console.error("--categorize-uam-as-basal=true set: categorizing all UAM data as basal.");
+        // console.error("--categorize-uam-as-basal=true set: categorizing all UAM data as basal.");
         basalGlucoseData = basalGlucoseData.concat(UAMGlucoseData);
     } else if (CSFLength > 12) {
-        console.error("Found at least 1h of carb absorption: assuming all meals were announced, and categorizing UAM data as basal.");
+        // console.error("Found at least 1h of carb absorption: assuming all meals were announced, and categorizing UAM data as basal.");
         basalGlucoseData = basalGlucoseData.concat(UAMGlucoseData);
     } else {
         if (2*basalLength < UAMLength) {
             //console.error(basalGlucoseData, UAMGlucoseData);
-            console.error("Warning: too many deviations categorized as UnAnnounced Meals");
-            console.error("Adding",UAMLength,"UAM deviations to",basalLength,"basal ones");
+            // console.error("Warning: too many deviations categorized as UnAnnounced Meals");
+            // console.error("Adding",UAMLength,"UAM deviations to",basalLength,"basal ones");
             basalGlucoseData = basalGlucoseData.concat(UAMGlucoseData);
             //console.error(basalGlucoseData);
             // if too much data is excluded as UAM, add in the UAM deviations to basal, but then discard the highest 50%
@@ -415,7 +415,7 @@ function categorizeBGDatums(opts) {
             var newBasalGlucose = basalGlucoseData.slice(0,basalGlucoseData.length/2);
             //console.error(newBasalGlucose);
             basalGlucoseData = newBasalGlucose;
-            console.error("and selecting the lowest 50%, leaving", basalGlucoseData.length, "basal+UAM ones");
+            // console.error("and selecting the lowest 50%, leaving", basalGlucoseData.length, "basal+UAM ones");
         }
 
         if (2*ISFLength < UAMLength && ISFLength < 10) {
@@ -428,17 +428,17 @@ function categorizeBGDatums(opts) {
             var newISFGlucose = ISFGlucoseData.slice(0,ISFGlucoseData.length/2);
             //console.error(newISFGlucose);
             ISFGlucoseData = newISFGlucose;
-            console.error("and selecting the lowest 50%, leaving", ISFGlucoseData.length, "ISF+UAM ones");
+            // console.error("and selecting the lowest 50%, leaving", ISFGlucoseData.length, "ISF+UAM ones");
             //console.error(ISFGlucoseData.length, UAMLength);
         }
     }
     basalLength = basalGlucoseData.length;
     ISFLength = ISFGlucoseData.length;
     if ( 4*basalLength + ISFLength < CSFLength && ISFLength < 10 ) {
-        console.error("Warning: too many deviations categorized as meals");
+        // console.error("Warning: too many deviations categorized as meals");
         //console.error("Adding",CSFLength,"CSF deviations to",basalLength,"basal ones");
         //var basalGlucoseData = basalGlucoseData.concat(CSFGlucoseData);
-        console.error("Adding",CSFLength,"CSF deviations to",ISFLength,"ISF ones");
+        // console.error("Adding",CSFLength,"CSF deviations to",ISFLength,"ISF ones");
         ISFGlucoseData = ISFGlucoseData.concat(CSFGlucoseData);
         CSFGlucoseData = [];
     }
