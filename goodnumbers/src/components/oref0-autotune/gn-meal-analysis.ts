@@ -1,15 +1,7 @@
+import { GLUCOSE_RANGES } from 'gn-autotune-main';
 import { AutotunePreppedData } from 'gn-autotune-prep';
 
 // Thresholds for glucose values in mg/dL
-const GLUCOSE_RANGES = {
-  VERY_LOW: 54,
-  LOW: 70,
-  TARGET_BOTTOM: 80,
-  TARGET_TOP: 104,
-  TITR_HIGH: 140,
-  HIGH: 180,
-  VERY_HIGH: 250,
-} as const;
 
 interface MealEvent {
   startTime: Date;
@@ -25,7 +17,7 @@ interface MealEvent {
   endGlucose: number;
   peakDeviation: number;
   totalDeviation: number;
-  timeToMaxGlucose: number; // minutes
+  timeToMaxGlucoseMinutes: number; // minutes
   avgDeltaAtStart: number; // rate of change at meal start
 
   // New stabilization tracking
@@ -76,25 +68,35 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
         const returnIndex = currentEvent.readings.findIndex((reading, index) => {
           // Skip any readings before or at peak
           if (index <= maxGlucoseIndex) return false;
-
           return reading.glucose >= targetReturnRange.lower && reading.glucose <= targetReturnRange.upper;
+        });
+
+        // Find first reading AFTER peak where glucose goes low
+        const lowIndex = currentEvent.readings.findIndex((reading, index) => {
+          // Skip any readings before or at peak
+          if (index <= maxGlucoseIndex) return false;
+          return reading.glucose <= GLUCOSE_RANGES.LOW;
         });
 
         // Calculate time and deviations until return to start (if it did return)
         const didReturnToStart = returnIndex !== -1;
         const returnTime = didReturnToStart ? new Date(currentEvent.readings[returnIndex].date) : null;
 
+        // Calculate time and deviations until low (if it was low)
+        const didGoLow = lowIndex !== -1;
+        const lowTime = didGoLow ? new Date(currentEvent.readings[lowIndex].date) : null;
+
         // Calculate full meal duration (if returned to start)
         const fullMealDuration = returnTime
           ? (returnTime.getTime() - currentEvent.startTime!.getTime()) / (1000 * 60)
           : null;
 
-        // Calculate time from peak to stabilization (if returned to start)
-        // const timeToStabilize = returnTime
-        //   ? (returnTime.getTime() - new Date(currentEvent.readings[maxGlucoseIndex].date).getTime()) / (1000 * 60)
-        //   : null;
+        // Calculate full meal duration (if returned to start)
+        const fullMealDurationToLow = lowTime
+          ? (lowTime.getTime() - currentEvent.startTime!.getTime()) / (1000 * 60)
+          : null;
 
-        // Calculate time from peak to stabilization (if returned to start)
+        // Calculate time from start to stabilization (if returned to start)
         const timeToStabilize = returnTime
           ? (returnTime.getTime() - new Date(currentEvent.readings[0].date).getTime()) / (1000 * 60)
           : null;
@@ -119,7 +121,7 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
           peakDeviation: Math.max(...deviations),
           totalDeviation: deviations.reduce((sum, dev) => sum + dev, 0),
           // Timing analysis
-          timeToMaxGlucose: maxGlucoseIndex * 5, // Assuming 5 minute intervals
+          timeToMaxGlucoseMinutes: maxGlucoseIndex * 5, // Assuming 5 minute intervals
           avgDeltaAtStart: currentEvent.readings[0].avgDelta,
           // Stabilization analysis
           didReturnToStart: didReturnToStart,
@@ -137,8 +139,7 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
   return mealEvents;
 }
 
-interface TimeOfDayAnalysis {
-  hour: number;
+interface TimeRangeAnalysis {
   numReadings: number;
   avgGlucose: number;
   avgDeviation: number;
@@ -153,9 +154,28 @@ interface TimeOfDayAnalysis {
   isfDeviations: number[];
 }
 
-function analyzeTimeOfDay(data: AutotunePreppedData): TimeOfDayAnalysis[] {
-  const hourlyAnalysis: TimeOfDayAnalysis[] = Array.from({ length: 24 }, (_, hour) => ({
-    hour,
+interface TimeRangeAnalysisWithHours extends TimeRangeAnalysis {
+  hours: TimeRangeAnalysis[];
+}
+
+function analyzeRange(data: AutotunePreppedData): TimeRangeAnalysisWithHours {
+  // const hourlyAnalysis: HourlyAnalysis[] = Array.from({ length: 24 }, (_, hour) => ({
+  //   hour,
+  //   numReadings: 0,
+  //   avgGlucose: 0,
+  //   avgDeviation: 0,
+  //   highPercentage: 0,
+  //   lowPercentage: 0,
+  //   inRangePercentage: 0,
+  //   inTargetPercentage: 0, // Between TARGET_BOTTOM and TARGET_TOP (80-104)
+  //   inTITRPercentage: 0, // Between LOW and TITR_HIGH (70-140)
+  //   mealStartsCount: 0,
+  //   mealInProgressCount: 0,
+  //   basalDeviations: [],
+  //   isfDeviations: [],
+  // }));
+
+  const analysis: TimeRangeAnalysisWithHours = {
     numReadings: 0,
     avgGlucose: 0,
     avgDeviation: 0,
@@ -168,7 +188,8 @@ function analyzeTimeOfDay(data: AutotunePreppedData): TimeOfDayAnalysis[] {
     mealInProgressCount: 0,
     basalDeviations: [],
     isfDeviations: [],
-  }));
+    hours: [] as TimeRangeAnalysis[],
+  };
 
   // Combine all glucose readings
   const allReadings = [...data.CSFGlucoseData, ...data.ISFGlucoseData, ...data.basalGlucoseData];
@@ -176,66 +197,88 @@ function analyzeTimeOfDay(data: AutotunePreppedData): TimeOfDayAnalysis[] {
   // Process each reading
   allReadings.forEach((reading) => {
     const hour = new Date(reading.date).getHours();
-    const analysis = hourlyAnalysis[hour];
+    const hourlyAnalysis = analysis.hours[hour];
 
-    // Update basic statistics
+    // Update basic statistics for the whole range
     analysis.numReadings++;
+    hourlyAnalysis.numReadings++;
     analysis.avgGlucose = (analysis.avgGlucose * (analysis.numReadings - 1) + reading.glucose) / analysis.numReadings;
+    hourlyAnalysis.avgGlucose =
+      (hourlyAnalysis.avgGlucose * (hourlyAnalysis.numReadings - 1) + reading.glucose) / hourlyAnalysis.numReadings;
 
     // Track high/low/in-range
     if (reading.glucose > GLUCOSE_RANGES.HIGH) {
       analysis.highPercentage = (analysis.highPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
+      hourlyAnalysis.highPercentage =
+        (hourlyAnalysis.highPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
     } else if (reading.glucose < GLUCOSE_RANGES.LOW) {
       analysis.lowPercentage = (analysis.lowPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
+      hourlyAnalysis.lowPercentage =
+        (hourlyAnalysis.lowPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
     }
 
     // Calculate LOW to HIGH (InRange)
     if (reading.glucose >= GLUCOSE_RANGES.LOW && reading.glucose <= GLUCOSE_RANGES.HIGH) {
       analysis.inRangePercentage =
         (analysis.inRangePercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
+      hourlyAnalysis.inRangePercentage =
+        (hourlyAnalysis.inRangePercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
     } else {
       analysis.inRangePercentage = (analysis.inRangePercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
+      hourlyAnalysis.inRangePercentage =
+        (hourlyAnalysis.inRangePercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
     }
 
     // Calculate TARGET_BOTTOM to TARGET_TOP (InTarget)
     if (reading.glucose >= GLUCOSE_RANGES.TARGET_BOTTOM && reading.glucose <= GLUCOSE_RANGES.TARGET_TOP) {
       analysis.inTargetPercentage =
         (analysis.inTargetPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
+      hourlyAnalysis.inTargetPercentage =
+        (hourlyAnalysis.inTargetPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
     } else {
       analysis.inTargetPercentage =
         (analysis.inTargetPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
+      hourlyAnalysis.inTargetPercentage =
+        (hourlyAnalysis.inTargetPercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
     }
 
     // Calculate LOW to TITR_HIGH (InTITR)
     if (reading.glucose >= GLUCOSE_RANGES.LOW && reading.glucose <= GLUCOSE_RANGES.TITR_HIGH) {
       analysis.inTITRPercentage = (analysis.inTITRPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
+      hourlyAnalysis.inTITRPercentage =
+        (hourlyAnalysis.inTITRPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
     } else {
       analysis.inTITRPercentage = (analysis.inTITRPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
+      hourlyAnalysis.inTITRPercentage =
+        (hourlyAnalysis.inTITRPercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
     }
   });
 
   // Track meal starts and meal periods
   data.CSFGlucoseData.forEach((reading) => {
     const hour = new Date(reading.date).getHours();
-
+    const hourlyAnalysis = analysis.hours[hour];
     if (reading.mealAbsorption === 'start') {
-      hourlyAnalysis[hour].mealStartsCount++;
+      hourlyAnalysis.mealStartsCount++;
     }
-    hourlyAnalysis[hour].mealInProgressCount++;
+    hourlyAnalysis.mealInProgressCount++;
   });
 
   // Track deviations by type
   data.basalGlucoseData.forEach((reading) => {
     const hour = new Date(reading.date).getHours();
-    hourlyAnalysis[hour].basalDeviations.push(Number(reading.deviation));
+    const hourlyAnalysis = analysis.hours[hour];
+
+    hourlyAnalysis.basalDeviations.push(Number(reading.deviation));
   });
 
   data.ISFGlucoseData.forEach((reading) => {
     const hour = new Date(reading.date).getHours();
-    hourlyAnalysis[hour].isfDeviations.push(Number(reading.deviation));
+    const hourlyAnalysis = analysis.hours[hour];
+    hourlyAnalysis.isfDeviations.push(Number(reading.deviation));
   });
 
-  return hourlyAnalysis;
+  return analysis;
 }
 
 interface DailyPatternSummary {
@@ -279,7 +322,7 @@ interface DailyPatternSummary {
   };
 }
 
-function generatePatternSummary(mealEvents: MealEvent[], hourlyAnalysis: TimeOfDayAnalysis[]): DailyPatternSummary {
+function generatePatternSummary(analysis: TimeRangeAnalysisWithHours, mealEvents?: MealEvent[]): DailyPatternSummary {
   // Initialize our summary object
   const summary: DailyPatternSummary = {
     meals: {
@@ -324,7 +367,7 @@ function generatePatternSummary(mealEvents: MealEvent[], hourlyAnalysis: TimeOfD
       mealEvents.reduce((sum, event) => sum + event.durationMinutes, 0) / mealEvents.length;
 
     // Find hours where >20% of meals start
-    const mealThreshold = mealEvents.length * 0.2;
+    const mealThreshold = mealEvents.length * 0.15;
     summary.meals.commonStartTimes = hourlyAnalysis
       .filter((hour) => hour.mealStartsCount > mealThreshold)
       .map((hour) => hour.hour);
@@ -333,11 +376,11 @@ function generatePatternSummary(mealEvents: MealEvent[], hourlyAnalysis: TimeOfD
     let totalTimeToMax = 0;
     mealEvents.forEach((event) => {
       // Calculate how fast glucose rises (mg/dL/min)
-      const riseRate = (event.maxGlucose - event.startGlucose) / (event.timeToMaxGlucose / 60);
+      const riseRate = (event.maxGlucose - event.startGlucose) / (event.timeToMaxGlucoseMinutes / 60);
 
       if (riseRate > 2) summary.meals.spikePatterns.fastRises++;
       if (riseRate < 1) summary.meals.spikePatterns.slowRises++;
-      totalTimeToMax += event.timeToMaxGlucose;
+      totalTimeToMax += event.timeToMaxGlucoseMinutes;
     });
     summary.meals.spikePatterns.avgTimeToMax = totalTimeToMax / mealEvents.length;
 
@@ -377,13 +420,19 @@ function generatePatternSummary(mealEvents: MealEvent[], hourlyAnalysis: TimeOfD
         stabilizationTimes.length > 0 ? Math.max(...stabilizationTimes) : 0;
 
       // 75th percentile of stabilization times
+      stabilizationTimes.sort((a, b) => a - b); // Sorts in place
       const p75Index = Math.floor(stabilizationTimes.length * 0.75);
       summary.meals.impactPatterns.typicalStabilizeTime = stabilizationTimes[p75Index] ?? 0;
 
       // Average total deviation until return to starting range
       summary.meals.impactPatterns.avgDeviationsUntilStable =
         stabilizedMeals.reduce((sum, meal) => sum + meal.deviationsUntilReturn, 0) / stabilizedMeals.length;
+
+      //////////////////////////////////////////////////////////////////////////
+      // Find meals that end in lows
+      //////////////////////////////////////////////////////////////////////////
     }
+
     // Count meals with extended impact (>4 hours)
     summary.meals.impactPatterns.mealsWithExtendedImpact = mealEvents.filter((event) => {
       if (event.didReturnToStart) {
@@ -453,10 +502,10 @@ function generatePatternSummary(mealEvents: MealEvent[], hourlyAnalysis: TimeOfD
 
 export {
   analyzeMealEvents,
-  analyzeTimeOfDay,
+  analyzeRange as analyzeTimeOfDay,
   generatePatternSummary,
+  type TimeRangeAnalysisWithHours,
   type AutotunePreppedData,
   type MealEvent,
-  type TimeOfDayAnalysis,
   type DailyPatternSummary,
 };
