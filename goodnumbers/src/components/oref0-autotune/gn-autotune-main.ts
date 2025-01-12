@@ -94,10 +94,9 @@ fetchNightscoutData(nsconfig, 7).then((nsData) => {
   // Sort nsData entries and treatments
   nsData.entries.sort((a, b) => a.date - b.date);
   nsData.treatments.sort((a, b) => a.date - b.date);
-  const firstDate = nsData.entries.length ? new Date(nsData.entries[0].date).toISOString().split('T')[0] : null;
-  const endDate = nsData.entries.length
-    ? new Date(nsData.entries[nsData.entries.length - 1].date).toISOString().split('T')[0]
-    : null;
+  const firstDate = new Date(nsData.entries[0].date).toISOString().split('T')[0];
+  const endDate = new Date(nsData.entries[nsData.entries.length - 1].date).toISOString().split('T')[0];
+  const numDays = Math.round((new Date(endDate).getTime() - new Date(firstDate).getTime()) / (1000 * 60 * 60 * 24));
 
   //////////////////////////////////////////////////////////////////////////////
   // PROFILE: Autotune only uses a single profile over all days, so I will replicate here
@@ -166,6 +165,7 @@ fetchNightscoutData(nsconfig, 7).then((nsData) => {
     '  * We need to look at time in range and variability. In addition to a target average glucose, diabetics need to have a lot of time in range, and ideally slow changes in rising and falling blood sugars. These are good indicators of diabetes control and whether the patient may need to overreact to changes.\n';
 
   notes += `  * The patient's time in range is ${Math.round(tod_analysis.inRangePercentage)}%.`;
+  notes += `  * Practically speaking, the patient spent ${Math.round(tod_analysis.inRangePercentage * numDays)} days of the last ${numDays} in range.`;
   if (Math.round(tod_analysis.inRangePercentage) < 50) {
     notes +=
       "    * This TIR indicates significant glucose variability and puts you at a higher risk for both short-term and long-term complications. We need to identify the underlying causes of these fluctuations. Let's review your insulin regimen, medication adherence, diet, exercise habits, and any other factors that might be contributing to these swings. It’s crucial we work together to improve this to at least 70%, the minimum recommended by the American Diabetes Association (ADA) (1).\n";
