@@ -1,5 +1,5 @@
-import { GLUCOSE_RANGES } from 'gn-autotune-main';
 import { AutotunePreppedData } from 'gn-autotune-prep';
+import { GLUCOSE_RANGES } from './gn-constants';
 
 // Thresholds for glucose values in mg/dL
 
@@ -142,7 +142,7 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
 interface TimeRangeAnalysis {
   numReadings: number;
   avgGlucose: number;
-  avgDeviation: number;
+  // avgDeviation: number;
   highPercentage: number;
   lowPercentage: number;
   inRangePercentage: number;
@@ -178,7 +178,7 @@ function analyzeRange(data: AutotunePreppedData): TimeRangeAnalysisWithHours {
   const analysis: TimeRangeAnalysisWithHours = {
     numReadings: 0,
     avgGlucose: 0,
-    avgDeviation: 0,
+    // avgDeviation: 0,
     highPercentage: 0,
     lowPercentage: 0,
     inRangePercentage: 0,
@@ -190,6 +190,22 @@ function analyzeRange(data: AutotunePreppedData): TimeRangeAnalysisWithHours {
     isfDeviations: [],
     hours: [] as TimeRangeAnalysis[],
   };
+
+  analysis.hours = Array.from({ length: 24 }, (_, hour) => ({
+    hour,
+    numReadings: 0,
+    avgGlucose: 0,
+    // avgDeviation: 0,
+    highPercentage: 0,
+    lowPercentage: 0,
+    inRangePercentage: 0,
+    inTargetPercentage: 0, // Between TARGET_BOTTOM and TARGET_TOP (80-104)
+    inTITRPercentage: 0, // Between LOW and TITR_HIGH (70-140)
+    mealStartsCount: 0,
+    mealInProgressCount: 0,
+    basalDeviations: [],
+    isfDeviations: [],
+  }));
 
   // Combine all glucose readings
   const allReadings = [...data.CSFGlucoseData, ...data.ISFGlucoseData, ...data.basalGlucoseData];
@@ -211,10 +227,22 @@ function analyzeRange(data: AutotunePreppedData): TimeRangeAnalysisWithHours {
       analysis.highPercentage = (analysis.highPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
       hourlyAnalysis.highPercentage =
         (hourlyAnalysis.highPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
-    } else if (reading.glucose < GLUCOSE_RANGES.LOW) {
+    } else {
+      // Explicitly handle in-range case for high
+      analysis.highPercentage = (analysis.highPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
+      hourlyAnalysis.highPercentage =
+        (hourlyAnalysis.highPercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
+    }
+
+    if (reading.glucose < GLUCOSE_RANGES.LOW) {
       analysis.lowPercentage = (analysis.lowPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
       hourlyAnalysis.lowPercentage =
         (hourlyAnalysis.lowPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
+    } else {
+      // Explicitly handle in-range case for low
+      analysis.lowPercentage = (analysis.lowPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
+      hourlyAnalysis.lowPercentage =
+        (hourlyAnalysis.lowPercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
     }
 
     // Calculate LOW to HIGH (InRange)
@@ -322,188 +350,188 @@ interface DailyPatternSummary {
   };
 }
 
-function generatePatternSummary(analysis: TimeRangeAnalysisWithHours, mealEvents?: MealEvent[]): DailyPatternSummary {
-  // Initialize our summary object
-  const summary: DailyPatternSummary = {
-    meals: {
-      averageDuration: 0,
-      commonStartTimes: [],
-      spikePatterns: {
-        fastRises: 0,
-        slowRises: 0,
-        avgTimeToMax: 0,
-      },
-      impactPatterns: {
-        autotuneAvgDuration: 0,
-        autotuneMinDuration: Infinity,
-        autotuneMaxDuration: 0,
-        avgTimeToStabilize: 0,
-        stabilizeRate: 0,
-        typicalStabilizeTime: 0,
-        avgDeviationsUntilStable: 0,
-        totalMealsAnalyzed: mealEvents.length,
-        mealsWithExtendedImpact: 0,
-        avgFullMealDuration: 0,
-        maxFullMealDuration: 0,
-        maxTimeToStabilize: 0,
-        totalDeviationsUntilStable: 0,
-      },
-    },
-    problematicHours: {
-      highRisk: [],
-      lowRisk: [],
-      mealRelated: false,
-    },
-    sensitivityPatterns: {
-      hourlyISFIssues: [],
-      hourlyBasalIssues: [],
-    },
-  };
+// function generatePatternSummary(analysis: TimeRangeAnalysisWithHours, mealEvents?: MealEvent[]): DailyPatternSummary {
+//   // Initialize our summary object
+//   const summary: DailyPatternSummary = {
+//     meals: {
+//       averageDuration: 0,
+//       commonStartTimes: [],
+//       spikePatterns: {
+//         fastRises: 0,
+//         slowRises: 0,
+//         avgTimeToMax: 0,
+//       },
+//       impactPatterns: {
+//         autotuneAvgDuration: 0,
+//         autotuneMinDuration: Infinity,
+//         autotuneMaxDuration: 0,
+//         avgTimeToStabilize: 0,
+//         stabilizeRate: 0,
+//         typicalStabilizeTime: 0,
+//         avgDeviationsUntilStable: 0,
+//         totalMealsAnalyzed: mealEvents.length,
+//         mealsWithExtendedImpact: 0,
+//         avgFullMealDuration: 0,
+//         maxFullMealDuration: 0,
+//         maxTimeToStabilize: 0,
+//         totalDeviationsUntilStable: 0,
+//       },
+//     },
+//     problematicHours: {
+//       highRisk: [],
+//       lowRisk: [],
+//       mealRelated: false,
+//     },
+//     sensitivityPatterns: {
+//       hourlyISFIssues: [],
+//       hourlyBasalIssues: [],
+//     },
+//   };
 
-  // Only analyze if we have meal events
-  if (mealEvents != null && mealEvents.length > 0) {
-    // Calculate average meal duration (autotune duration)
-    summary.meals.averageDuration =
-      mealEvents.reduce((sum, event) => sum + event.durationMinutes, 0) / mealEvents.length;
+//   // Only analyze if we have meal events
+//   if (mealEvents != null && mealEvents.length > 0) {
+//     // Calculate average meal duration (autotune duration)
+//     summary.meals.averageDuration =
+//       mealEvents.reduce((sum, event) => sum + event.durationMinutes, 0) / mealEvents.length;
 
-    // Find hours where >20% of meals start
-    const mealThreshold = mealEvents.length * 0.15;
-    summary.meals.commonStartTimes = hourlyAnalysis
-      .filter((hour) => hour.mealStartsCount > mealThreshold)
-      .map((hour) => hour.hour);
+//     // Find hours where >20% of meals start
+//     const mealThreshold = mealEvents.length * 0.15;
+//     summary.meals.commonStartTimes = hourlyAnalysis
+//       .filter((hour) => hour.mealStartsCount > mealThreshold)
+//       .map((hour) => hour.hour);
 
-    // Analyze glucose rise patterns
-    let totalTimeToMax = 0;
-    mealEvents.forEach((event) => {
-      // Calculate how fast glucose rises (mg/dL/min)
-      const riseRate = (event.maxGlucose - event.startGlucose) / (event.timeToMaxGlucoseMinutes / 60);
+//     // Analyze glucose rise patterns
+//     let totalTimeToMax = 0;
+//     mealEvents.forEach((event) => {
+//       // Calculate how fast glucose rises (mg/dL/min)
+//       const riseRate = (event.maxGlucose - event.startGlucose) / (event.timeToMaxGlucoseMinutes / 60);
 
-      if (riseRate > 2) summary.meals.spikePatterns.fastRises++;
-      if (riseRate < 1) summary.meals.spikePatterns.slowRises++;
-      totalTimeToMax += event.timeToMaxGlucoseMinutes;
-    });
-    summary.meals.spikePatterns.avgTimeToMax = totalTimeToMax / mealEvents.length;
+//       if (riseRate > 2) summary.meals.spikePatterns.fastRises++;
+//       if (riseRate < 1) summary.meals.spikePatterns.slowRises++;
+//       totalTimeToMax += event.timeToMaxGlucoseMinutes;
+//     });
+//     summary.meals.spikePatterns.avgTimeToMax = totalTimeToMax / mealEvents.length;
 
-    // Analyze autotune's meal impact assessment
-    const autotuneDurations = mealEvents.map((e) => e.durationMinutes);
-    summary.meals.impactPatterns.autotuneAvgDuration =
-      autotuneDurations.reduce((sum, d) => sum + d, 0) / mealEvents.length;
-    summary.meals.impactPatterns.autotuneMinDuration = Math.min(...autotuneDurations);
-    summary.meals.impactPatterns.autotuneMaxDuration = Math.max(...autotuneDurations);
+//     // Analyze autotune's meal impact assessment
+//     const autotuneDurations = mealEvents.map((e) => e.durationMinutes);
+//     summary.meals.impactPatterns.autotuneAvgDuration =
+//       autotuneDurations.reduce((sum, d) => sum + d, 0) / mealEvents.length;
+//     summary.meals.impactPatterns.autotuneMinDuration = Math.min(...autotuneDurations);
+//     summary.meals.impactPatterns.autotuneMaxDuration = Math.max(...autotuneDurations);
 
-    // Analyze full meal impact until stabilization
-    const stabilizedMeals = mealEvents.filter(
-      (e): e is MealEvent & { didReturnToStart: true } => e.didReturnToStart === true,
-    );
+//     // Analyze full meal impact until stabilization
+//     const stabilizedMeals = mealEvents.filter(
+//       (e): e is MealEvent & { didReturnToStart: true } => e.didReturnToStart === true,
+//     );
 
-    // Calculate time to stabilize stats
-    const stabilizationTimes = stabilizedMeals
-      .map((meal) => meal.timeToStabilize)
-      .filter((t): t is number => t !== null);
+//     // Calculate time to stabilize stats
+//     const stabilizationTimes = stabilizedMeals
+//       .map((meal) => meal.timeToStabilize)
+//       .filter((t): t is number => t !== null);
 
-    // Calculate percentage of meals that returned to starting range
-    summary.meals.impactPatterns.stabilizeRate = (stabilizedMeals.length / mealEvents.length) * 100;
+//     // Calculate percentage of meals that returned to starting range
+//     summary.meals.impactPatterns.stabilizeRate = (stabilizedMeals.length / mealEvents.length) * 100;
 
-    if (stabilizedMeals.length > 0) {
-      const fullDurations = stabilizedMeals.map((meal) => meal.fullMealDuration).filter((d): d is number => d !== null);
+//     if (stabilizedMeals.length > 0) {
+//       const fullDurations = stabilizedMeals.map((meal) => meal.fullMealDuration).filter((d): d is number => d !== null);
 
-      summary.meals.impactPatterns.avgFullMealDuration =
-        fullDurations.length > 0 ? fullDurations.reduce((sum, d) => sum + d, 0) / fullDurations.length : 0;
-      summary.meals.impactPatterns.maxFullMealDuration = fullDurations.length > 0 ? Math.max(...fullDurations) : 0;
+//       summary.meals.impactPatterns.avgFullMealDuration =
+//         fullDurations.length > 0 ? fullDurations.reduce((sum, d) => sum + d, 0) / fullDurations.length : 0;
+//       summary.meals.impactPatterns.maxFullMealDuration = fullDurations.length > 0 ? Math.max(...fullDurations) : 0;
 
-      // Average time until glucose returns to starting range
-      summary.meals.impactPatterns.avgTimeToStabilize =
-        stabilizationTimes.length > 0
-          ? stabilizationTimes.reduce((sum, t) => sum + t, 0) / stabilizationTimes.length
-          : 0;
-      summary.meals.impactPatterns.maxTimeToStabilize =
-        stabilizationTimes.length > 0 ? Math.max(...stabilizationTimes) : 0;
+//       // Average time until glucose returns to starting range
+//       summary.meals.impactPatterns.avgTimeToStabilize =
+//         stabilizationTimes.length > 0
+//           ? stabilizationTimes.reduce((sum, t) => sum + t, 0) / stabilizationTimes.length
+//           : 0;
+//       summary.meals.impactPatterns.maxTimeToStabilize =
+//         stabilizationTimes.length > 0 ? Math.max(...stabilizationTimes) : 0;
 
-      // 75th percentile of stabilization times
-      stabilizationTimes.sort((a, b) => a - b); // Sorts in place
-      const p75Index = Math.floor(stabilizationTimes.length * 0.75);
-      summary.meals.impactPatterns.typicalStabilizeTime = stabilizationTimes[p75Index] ?? 0;
+//       // 75th percentile of stabilization times
+//       stabilizationTimes.sort((a, b) => a - b); // Sorts in place
+//       const p75Index = Math.floor(stabilizationTimes.length * 0.75);
+//       summary.meals.impactPatterns.typicalStabilizeTime = stabilizationTimes[p75Index] ?? 0;
 
-      // Average total deviation until return to starting range
-      summary.meals.impactPatterns.avgDeviationsUntilStable =
-        stabilizedMeals.reduce((sum, meal) => sum + meal.deviationsUntilReturn, 0) / stabilizedMeals.length;
+//       // Average total deviation until return to starting range
+//       summary.meals.impactPatterns.avgDeviationsUntilStable =
+//         stabilizedMeals.reduce((sum, meal) => sum + meal.deviationsUntilReturn, 0) / stabilizedMeals.length;
 
-      //////////////////////////////////////////////////////////////////////////
-      // Find meals that end in lows
-      //////////////////////////////////////////////////////////////////////////
-    }
+//       //////////////////////////////////////////////////////////////////////////
+//       // Find meals that end in lows
+//       //////////////////////////////////////////////////////////////////////////
+//     }
 
-    // Count meals with extended impact (>4 hours)
-    summary.meals.impactPatterns.mealsWithExtendedImpact = mealEvents.filter((event) => {
-      if (event.didReturnToStart) {
-        // Only count if fullMealDuration exists and is >4 hours
-        return event.fullMealDuration != null && event.fullMealDuration > 240;
-      } else {
-        // For meals that didn't return to start, use autotune duration
-        return event.durationMinutes > 240;
-      }
-    }).length;
+//     // Count meals with extended impact (>4 hours)
+//     summary.meals.impactPatterns.mealsWithExtendedImpact = mealEvents.filter((event) => {
+//       if (event.didReturnToStart) {
+//         // Only count if fullMealDuration exists and is >4 hours
+//         return event.fullMealDuration != null && event.fullMealDuration > 240;
+//       } else {
+//         // For meals that didn't return to start, use autotune duration
+//         return event.durationMinutes > 240;
+//       }
+//     }).length;
 
-    // Calculate deviation stats
-    const totalDeviations = stabilizedMeals.reduce((sum, meal) => sum + meal.deviationsUntilReturn, 0);
-    summary.meals.impactPatterns.totalDeviationsUntilStable = totalDeviations;
-    summary.meals.impactPatterns.avgDeviationsUntilStable =
-      stabilizedMeals.length > 0 ? totalDeviations / stabilizedMeals.length : 0;
-  }
+//     // Calculate deviation stats
+//     const totalDeviations = stabilizedMeals.reduce((sum, meal) => sum + meal.deviationsUntilReturn, 0);
+//     summary.meals.impactPatterns.totalDeviationsUntilStable = totalDeviations;
+//     summary.meals.impactPatterns.avgDeviationsUntilStable =
+//       stabilizedMeals.length > 0 ? totalDeviations / stabilizedMeals.length : 0;
+//   }
 
-  // Analyze each hour for problems
-  hourlyAnalysis.forEach((hour, index) => {
-    // Look for hours with frequent highs/lows
-    if (hour.highPercentage > 30) {
-      summary.problematicHours.highRisk.push(index);
-    }
-    if (hour.lowPercentage > 15) {
-      summary.problematicHours.lowRisk.push(index);
-    }
+//   // Analyze each hour for problems
+//   hourlyAnalysis.forEach((hour, index) => {
+//     // Look for hours with frequent highs/lows
+//     if (hour.highPercentage > 30) {
+//       summary.problematicHours.highRisk.push(index);
+//     }
+//     if (hour.lowPercentage > 15) {
+//       summary.problematicHours.lowRisk.push(index);
+//     }
 
-    // Check for insulin sensitivity issues
-    if (hour.isfDeviations.length > 0) {
-      const avgISFDeviation = hour.isfDeviations.reduce((sum, dev) => sum + dev, 0) / hour.isfDeviations.length;
+//     // Check for insulin sensitivity issues
+//     if (hour.isfDeviations.length > 0) {
+//       const avgISFDeviation = hour.isfDeviations.reduce((sum, dev) => sum + dev, 0) / hour.isfDeviations.length;
 
-      // If average deviation is significant, mark as problematic
-      if (Math.abs(avgISFDeviation) > 20) {
-        summary.sensitivityPatterns.hourlyISFIssues.push(index);
-      }
-    }
+//       // If average deviation is significant, mark as problematic
+//       if (Math.abs(avgISFDeviation) > 20) {
+//         summary.sensitivityPatterns.hourlyISFIssues.push(index);
+//       }
+//     }
 
-    // Check for basal rate issues
-    if (hour.basalDeviations.length > 0) {
-      const avgBasalDeviation = hour.basalDeviations.reduce((sum, dev) => sum + dev, 0) / hour.basalDeviations.length;
+//     // Check for basal rate issues
+//     if (hour.basalDeviations.length > 0) {
+//       const avgBasalDeviation = hour.basalDeviations.reduce((sum, dev) => sum + dev, 0) / hour.basalDeviations.length;
 
-      // If average deviation is significant, mark as problematic
-      if (Math.abs(avgBasalDeviation) > 20) {
-        summary.sensitivityPatterns.hourlyBasalIssues.push(index);
-      }
-    }
-  });
+//       // If average deviation is significant, mark as problematic
+//       if (Math.abs(avgBasalDeviation) > 20) {
+//         summary.sensitivityPatterns.hourlyBasalIssues.push(index);
+//       }
+//     }
+//   });
 
-  // Check if problems tend to happen around meals
-  const mealRelatedHours = new Set([
-    ...summary.meals.commonStartTimes,
-    // Include 2 hours after common meal times
-    ...summary.meals.commonStartTimes.map((h) => (h + 1) % 24),
-    ...summary.meals.commonStartTimes.map((h) => (h + 2) % 24),
-  ]);
+//   // Check if problems tend to happen around meals
+//   const mealRelatedHours = new Set([
+//     ...summary.meals.commonStartTimes,
+//     // Include 2 hours after common meal times
+//     ...summary.meals.commonStartTimes.map((h) => (h + 1) % 24),
+//     ...summary.meals.commonStartTimes.map((h) => (h + 2) % 24),
+//   ]);
 
-  // Combine all problematic hours
-  const problemHours = new Set([...summary.problematicHours.highRisk, ...summary.problematicHours.lowRisk]);
+//   // Combine all problematic hours
+//   const problemHours = new Set([...summary.problematicHours.highRisk, ...summary.problematicHours.lowRisk]);
 
-  // If >50% of problems overlap with meal times, consider it meal-related
-  const overlappingHours = [...problemHours].filter((h) => mealRelatedHours.has(h));
-  summary.problematicHours.mealRelated = overlappingHours.length > problemHours.size * 0.5;
+//   // If >50% of problems overlap with meal times, consider it meal-related
+//   const overlappingHours = [...problemHours].filter((h) => mealRelatedHours.has(h));
+//   summary.problematicHours.mealRelated = overlappingHours.length > problemHours.size * 0.5;
 
-  return summary;
-}
+//   return summary;
+// }
 
 export {
   analyzeMealEvents,
   analyzeRange as analyzeTimeOfDay,
-  generatePatternSummary,
+  // generatePatternSummary,
   type TimeRangeAnalysisWithHours,
   type AutotunePreppedData,
   type MealEvent,
