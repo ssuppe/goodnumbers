@@ -258,7 +258,7 @@ function categorizeBGDatums(opts) {
                 var CRInitialIOB = iob.iob;
                 var CRInitialBG = glucoseDatum.glucose;
                 var CRInitialCarbTime = new Date(glucoseDatum.date);
-                console.error("CRInitialIOB:",CRInitialIOB,"CRInitialBG:",CRInitialBG,"CRInitialCarbTime:",CRInitialCarbTime);
+                // console.error("CRInitialIOB:",CRInitialIOB,"CRInitialBG:",CRInitialBG,"CRInitialCarbTime:",CRInitialCarbTime);
             }
             // keep calculatingCR as long as we have COB or enough IOB
             if ( mealCOB > 0 && i>1 ) {
@@ -270,7 +270,7 @@ function categorizeBGDatums(opts) {
                 var CREndIOB = iob.iob;
                 var CREndBG = glucoseDatum.glucose;
                 var CREndTime = new Date(glucoseDatum.date);
-                console.error("CREndIOB:",CREndIOB,"CREndBG:",CREndBG,"CREndTime:",CREndTime);
+                // console.error("CREndIOB:",CREndIOB,"CREndBG:",CREndBG,"CREndTime:",CREndTime);
                 var CRDatum = {
                     CRInitialIOB: CRInitialIOB
                 ,   CRInitialBG: CRInitialBG
@@ -285,7 +285,7 @@ function categorizeBGDatums(opts) {
                 var CRElapsedMinutes = Math.round((CREndTime - CRInitialCarbTime) / 1000 / 60);
                 //console.error(CREndTime - CRInitialCarbTime, CRElapsedMinutes);
                 if ( CRElapsedMinutes < 60 || ( i===1 && mealCOB > 0 ) ) {
-                    console.error("Ignoring",CRElapsedMinutes,"m CR period.");
+                    // console.error("Ignoring",CRElapsedMinutes,"m CR period.");
                 } else {
                     CRData.push(CRDatum);
                 }
@@ -315,7 +315,7 @@ function categorizeBGDatums(opts) {
             //console.error(type);
             if ( type !== "csf" ) {
                 glucoseDatum.mealAbsorption = "start";
-                console.error(glucoseDatum.mealAbsorption,"carb absorption");
+                // console.error(glucoseDatum.mealAbsorption,"carb absorption");
             }
             type="csf";
             glucoseDatum.mealCarbs = mealCarbs;
@@ -325,7 +325,7 @@ function categorizeBGDatums(opts) {
           // check previous "type" value, and if it was csf, set a mealAbsorption end flag
           if ( type === "csf" ) {
             CSFGlucoseData[CSFGlucoseData.length-1].mealAbsorption = "end";
-            console.error(CSFGlucoseData[CSFGlucoseData.length-1].mealAbsorption,"carb absorption");
+            // console.error(CSFGlucoseData[CSFGlucoseData.length-1].mealAbsorption,"carb absorption");
           }
 
           if ((iob.iob > 2 * currentBasal || deviation > 6 || uam) ) {

@@ -38,11 +38,13 @@ import { compareProfiles } from './gn-autotune-recommends-report';
 import {
   analyzeMealEvents,
   analyzeTimeOfDay,
-  DailyPatternSummary,
-  generatePatternSummary,
+  // DailyPatternSummary,
+  // generatePatternSummary,
   MealEvent,
   TimeRangeAnalysisWithHours,
 } from './gn-meal-analysis';
+import { GLUCOSE_RANGES } from './gn-constants';
+import { checkDawnPhenomenon } from './gn-dawn-phenom';
 
 dotenv.config();
 
@@ -50,16 +52,6 @@ interface NSConfig {
   url: string;
   token: string;
 }
-
-export const GLUCOSE_RANGES = {
-  VERY_LOW: 54,
-  LOW: 70,
-  TARGET_BOTTOM: 80,
-  TARGET_TOP: 104,
-  TITR_HIGH: 140,
-  HIGH: 180,
-  VERY_HIGH: 250,
-};
 
 const getNSConfig = (): NSConfig => {
   const config: NSConfig = {
@@ -165,7 +157,7 @@ fetchNightscoutData(nsconfig, 7).then((nsData) => {
     '  * We need to look at time in range and variability. In addition to a target average glucose, diabetics need to have a lot of time in range, and ideally slow changes in rising and falling blood sugars. These are good indicators of diabetes control and whether the patient may need to overreact to changes.\n';
 
   notes += `  * The patient's time in range is ${Math.round(tod_analysis.inRangePercentage)}%.`;
-  notes += `  * Practically speaking, the patient spent ${Math.round(tod_analysis.inRangePercentage * numDays)} days of the last ${numDays} in range.`;
+  notes += `  * Practically speaking, the patient spent ${Math.round((tod_analysis.inRangePercentage / 100.0) * numDays)} days of the last ${numDays} in range.`;
   if (Math.round(tod_analysis.inRangePercentage) < 50) {
     notes +=
       "    * This TIR indicates significant glucose variability and puts you at a higher risk for both short-term and long-term complications. We need to identify the underlying causes of these fluctuations. Let's review your insulin regimen, medication adherence, diet, exercise habits, and any other factors that might be contributing to these swings. It’s crucial we work together to improve this to at least 70%, the minimum recommended by the American Diabetes Association (ADA) (1).\n";
@@ -186,7 +178,7 @@ fetchNightscoutData(nsconfig, 7).then((nsData) => {
       "    * This is outstanding! Your TIR is truly exceptional. However, we need to be cautious about potential overtreatment and the risk of hypoglycemia. Let's review your data for any signs of frequent or severe low glucose events. Maintaining this level of control long-term requires vigilance, but remember to prioritize safety and avoid aggressive targets that might increase hypoglycemia risk. It's essential to find a balance between excellent control and a safe, sustainable approach.";
   }
 
-  notes += `  * Time spent LOW (< ${GLUCOSE_RANGES.LOW} mg/dl) is ${tod_analysis.lowPercentage}%`;
+  notes += `  * Time spent LOW (< ${GLUCOSE_RANGES.LOW} mg/dl) is ${Math.round(tod_analysis.lowPercentage)}%`;
   if (Math.round(tod_analysis.lowPercentage) <= 1) {
     notes +=
       "    * Excellent! Your time spent below 70 mg/dL is very low, which minimizes your risk of hypoglycemia. This suggests a good balance between glucose control and avoiding lows. Let's aim to maintain this while also optimizing your time in range.";
@@ -226,9 +218,46 @@ fetchNightscoutData(nsconfig, 7).then((nsData) => {
       "    * Your time spent above target is too high and significantly increases your risk of long-term complications. This requires closer attention.  We need to carefully review your current management plan, including your basal and bolus insulin doses, carbohydrate ratios, and correction factors. We'll also consider additional factors that may be influencing your glucose levels, such as stress, illness, or medications. It's important to address this promptly to protect your long-term health.";
   }
 
-  // const pattern_summary: DailyPatternSummary = generatePatternSummary(tod_analysis, meal_events);
+  ///////////////////////////////////////////////////////////////////////////
+  // Dawn phenomenom
+  ///////////////////////////////////////////////////////////////////////////
+  notes += '\n\n';
+  notes += '# Dawn phenomenon analysis\n';
+  const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose);
 
-  // console.log(pattern_summary);
+  const patternFrequency = dawn_phenom_data.daysShowingPattern / 7; // Assuming 7 days of data
+  const averageRiseSignificance = dawn_phenom_data.averageRise > 20;
+  const startTimes = dawn_phenom_data.dailyPatterns.map((d) => d.startTime.getHours() * 60 + d.startTime.getMinutes());
+  const consistentTiming = new Set(startTimes).size < 4; // Less than 4 different start times
+
+  if (patternFrequency > 0.7 && dawn_phenom_data.averageRise > 30) {
+    notes += '  * The patient has strong indication of severe dawn phenomenon.\n';
+    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${Math.round(dawn_phenom_data.averageRise)} mg/dl\n`;
+    if (consistentTiming) {
+      notes += `  * Most of the time, the dawn phenomenon started around ${dawn_phenom_data.typicalStartTime} AM.\n`;
+    }
+  } else if (patternFrequency > 0.7 && dawn_phenom_data.averageRise > 20) {
+    notes += '  * The patient has strong indication of strong dawn phenomenon.\n';
+    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${Math.round(dawn_phenom_data.averageRise)} mg/dl\n`;
+    if (consistentTiming) {
+      notes += `  * Most of the time, the dawn phenomenon started around ${dawn_phenom_data.typicalStartTime} AM.\n`;
+    }
+  } else if (patternFrequency > 0.5 && dawn_phenom_data.averageRise > 20) {
+    notes += '  * There is some indication of dawn phenomenon.\n';
+    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${Math.round(dawn_phenom_data.averageRise)} mg/dl\n`;
+    if (consistentTiming) {
+      notes += `  * Most of the time, the dawn phenomenon started around ${dawn_phenom_data.typicalStartTime} AM.\n`;
+    }
+  } else if (patternFrequency > 0.2 && dawn_phenom_data.averageRise > 20) {
+    notes += '  * The patient may be experiencing dawn phenomenon.\n';
+    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${Math.round(dawn_phenom_data.averageRise)} mg/dl\n`;
+    if (consistentTiming) {
+      notes += `  * Most of the time, the dawn phenomenon started around ${dawn_phenom_data.typicalStartTime} AM.\n`;
+    }
+  } else {
+    notes += "  * The patient didn't have any indications of dawn phenomenon.\n";
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // Generate tuned profile like autotune
   ///////////////////////////////////////////////////////////////////////////
