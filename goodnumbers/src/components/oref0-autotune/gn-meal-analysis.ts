@@ -142,7 +142,7 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
 interface TimeRangeAnalysis {
   numReadings: number;
   avgGlucose: number;
-  // avgDeviation: number;
+  avgDeviation: number;
   highPercentage: number;
   lowPercentage: number;
   inRangePercentage: number;
@@ -178,7 +178,7 @@ function analyzeRange(data: AutotunePreppedData): TimeRangeAnalysisWithHours {
   const analysis: TimeRangeAnalysisWithHours = {
     numReadings: 0,
     avgGlucose: 0,
-    // avgDeviation: 0,
+    avgDeviation: 0,
     highPercentage: 0,
     lowPercentage: 0,
     inRangePercentage: 0,
@@ -195,7 +195,7 @@ function analyzeRange(data: AutotunePreppedData): TimeRangeAnalysisWithHours {
     hour,
     numReadings: 0,
     avgGlucose: 0,
-    // avgDeviation: 0,
+    avgDeviation: 0,
     highPercentage: 0,
     lowPercentage: 0,
     inRangePercentage: 0,
@@ -221,6 +221,11 @@ function analyzeRange(data: AutotunePreppedData): TimeRangeAnalysisWithHours {
     analysis.avgGlucose = (analysis.avgGlucose * (analysis.numReadings - 1) + reading.glucose) / analysis.numReadings;
     hourlyAnalysis.avgGlucose =
       (hourlyAnalysis.avgGlucose * (hourlyAnalysis.numReadings - 1) + reading.glucose) / hourlyAnalysis.numReadings;
+
+    analysis.avgDeviation =
+      (analysis.avgDeviation * (analysis.numReadings - 1) + reading.deviation) / analysis.numReadings;
+    hourlyAnalysis.avgDeviation =
+      (hourlyAnalysis.avgDeviation * (hourlyAnalysis.numReadings - 1) + reading.deviation) / hourlyAnalysis.numReadings;
 
     // Track high/low/in-range
     if (reading.glucose > GLUCOSE_RANGES.HIGH) {
@@ -307,47 +312,6 @@ function analyzeRange(data: AutotunePreppedData): TimeRangeAnalysisWithHours {
   });
 
   return analysis;
-}
-
-interface DailyPatternSummary {
-  meals: {
-    averageDuration: number;
-    commonStartTimes: number[];
-    spikePatterns: {
-      fastRises: number; // Count of rises >2 mg/dL/min
-      slowRises: number; // Count of rises <1 mg/dL/min
-      avgTimeToMax: number;
-    };
-    impactPatterns: {
-      // Autotune's assessment of meal impact
-      autotuneAvgDuration: number;
-      autotuneMinDuration: number;
-      autotuneMaxDuration: number;
-
-      // Time until glucose returns to starting range
-      avgTimeToStabilize: number; // Only for meals that did stabilize
-      stabilizeRate: number; // % of meals that returned to starting range
-      typicalStabilizeTime: number; // 75th percentile of stabilization times
-
-      // Deviation patterns
-      totalMealsAnalyzed: number;
-      mealsWithExtendedImpact: number; // Meals taking >4h to stabilize
-      avgFullMealDuration: number; // Average time until return to start
-      maxFullMealDuration: number; // Longest time until return to start
-      maxTimeToStabilize: number; // Longest time from peak to stabilization
-      totalDeviationsUntilStable: number; // Sum of all deviations until stable
-      avgDeviationsUntilStable: number; // Average deviations per meal until stable
-    };
-  };
-  problematicHours: {
-    highRisk: number[]; // Hours with >30% high readings
-    lowRisk: number[]; // Hours with >15% low readings
-    mealRelated: boolean; // Whether issues correlate with meal times
-  };
-  sensitivityPatterns: {
-    hourlyISFIssues: number[]; // Hours with consistent ISF deviations
-    hourlyBasalIssues: number[]; // Hours with consistent basal deviations
-  };
 }
 
 // function generatePatternSummary(analysis: TimeRangeAnalysisWithHours, mealEvents?: MealEvent[]): DailyPatternSummary {
@@ -531,9 +495,8 @@ interface DailyPatternSummary {
 export {
   analyzeMealEvents,
   analyzeRange as analyzeTimeOfDay,
-  // generatePatternSummary,
+  type TimeRangeAnalysis,
   type TimeRangeAnalysisWithHours,
   type AutotunePreppedData,
   type MealEvent,
-  type DailyPatternSummary,
 };
