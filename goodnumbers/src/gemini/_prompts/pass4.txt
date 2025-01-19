@@ -1,0 +1,14 @@
+Here is an SSML file of two healthcare professionals speaking. I want you to add syntactically correct, additional SSML tags to the script to make it sound more natural and friendly. Add pauses for clarity, especially around complex points. Add variation to speech to keep it interesting, but keep it moderate and realistic. You can add a maximum of 3 tags to each time a voice speaks.
+
+Only use the following SSML tags:
+<break>
+<say-as>
+
+<p>
+<s>
+<prosody>
+<emphasis>
+<par>
+Here is the SSML dialog:
+
+${ssml_dialog}
