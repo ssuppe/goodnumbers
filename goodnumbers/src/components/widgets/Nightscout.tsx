@@ -11,7 +11,7 @@ import { compress } from 'compress-json';
 import { createApiClient } from '~/lib/api/axios';
 import { useAssessmentState } from '~/hooks/useAssessmentState';
 import { useLoadingState } from '~/hooks/useLoadingState';
-import { AssessmentData } from '~/types/nightscout';
+import { AssessmentData, NightscoutData } from '~/types/nightscout';
 import 'react-h5-audio-player/lib/styles.css';
 import LazyAudioPlayer from './LazyAudioPlayer';
 import { config } from 'src/utils/env';
@@ -22,7 +22,7 @@ import parserXml from '@prettier/plugin-xml';
 import { generateAssessments } from './podcastActions';
 import { setCookieCSync } from '~/utils/cookies';
 import ssmlToMarkdown from '~/utils/ssml';
-import fetchNightscoutData from './nightscoutActions';
+import { fetchNightscoutData } from './nightscoutActions';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
@@ -129,7 +129,7 @@ const NightscoutComponent = ({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     console.log('Form submission started'); // Add this
-
+    console.log('new');
     Cookies.set('url', formData.nightscout_url);
     Cookies.set('token', formData.nightscout_token);
 
@@ -139,11 +139,12 @@ const NightscoutComponent = ({
     // First handle the Nightscout data fetch
     updateProgress(25, 'Collecting Nightscout data...');
     fetchNightscoutData({ url: formData.nightscout_url, token: formData.nightscout_token })
-      .then((nightscoutData) => {
+      .then((nightscoutData: NightscoutData) => {
         updateProgress(50, 'Generating assessments...');
         const compressedData = {
           entries: compress(nightscoutData.entries),
           treatments: compress(nightscoutData.treatments),
+          profiles: compress(nightscoutData.profiles),
         };
 
         // Create ID for serverside saving, podcast management, etc
@@ -151,7 +152,12 @@ const NightscoutComponent = ({
         // Server action call wrapped in regular Promise
         // return generateAssessments(compressedData?.entries, compressedData?.treatments || null, formData.demo_data);
         return createHash(formData.nightscout_url, formData.nightscout_token).then((hash) => {
-          return generateAssessments(compressedData?.entries, compressedData?.treatments || null, hash);
+          return generateAssessments(
+            compressedData?.entries,
+            compressedData?.treatments || null,
+            compressedData.profiles,
+            hash,
+          );
         });
       })
       .then((data) => {
