@@ -1,41 +1,4 @@
-export interface NightscoutProfile {
-  _id: string;
-  defaultProfile: string;
-  startDate: string;
-  store: Record<string, NSProfileSettings>;
-  identifier: string;
-  date: number;
-  created_at: string;
-  app: string;
-  utcOffset: number;
-  srvModified: number;
-  srvCreated: number;
-  subject: string;
-}
-
-interface DateRange {
-  profile: NightscoutProfile;
-  startDate: Date;
-  endDate: Date;
-  daysActive: number;
-}
-
-interface TimeValue {
-  time: string;
-  timeAsSeconds: number;
-  value: number;
-}
-
-export interface NSProfileSettings {
-  dia: number;
-  carbratio: TimeValue[];
-  sens: TimeValue[];
-  basal: TimeValue[];
-  target_low: TimeValue[];
-  target_high: TimeValue[];
-  units: string;
-  timezone: string;
-}
+import { DateRange, NightscoutProfile, NSProfileSettings, TimeValue } from '~/types/nightscout';
 
 // Output interfaces - updated ISFProfile to match your needs
 interface BasalEntry {

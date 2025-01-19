@@ -1,61 +1,12 @@
 import { AxiosResponse } from 'axios';
 import { createApiClient } from '../../lib/api/axios';
-import { NightscoutProfile } from './nightscoutProfile';
-
-interface NightscoutConfig {
-  url: string;
-  token: string;
-}
-
-export interface NightscoutEntry {
-  _id: string;
-  app: string;
-  date: number;
-  device: string;
-  direction: string;
-  isReadOnly: boolean;
-  isValid: boolean;
-  sgv: number;
-  type: string;
-  unfiltered: number;
-  units: string;
-  utcOffset: number;
-  created_at: string;
-  identifier: string;
-  srvModified: number;
-  srvCreated: number;
-  subject: string;
-  modifiedBy: string;
-  mills: number;
-}
-
-export interface NightscoutTreatment {
-  _id: string;
-  app: string;
-  date: number;
-  duration: number;
-  durationInMilliseconds: number;
-  enteredBy: string;
-  eventType: string;
-  isReadOnly: boolean;
-  isValid: boolean;
-  notes: string;
-  units: string;
-  utcOffset: number;
-  created_at: string;
-  identifier: string;
-  srvModified: number;
-  srvCreated: number;
-  subject: string;
-  carbs: number | null;
-  insulin: number | null;
-}
-
-export interface NightscoutData {
-  entries: NightscoutEntry[];
-  treatments: NightscoutTreatment[];
-  profiles: NightscoutProfile[];
-}
+import {
+  NightscoutConfig,
+  NightscoutData,
+  NightscoutEntry,
+  NightscoutProfile,
+  NightscoutTreatment,
+} from '~/types/nightscout';
 
 export const fetchNightscoutProfiles = async (nsconfig: NightscoutConfig): Promise<NightscoutProfile[]> => {
   const axiosInstance = createApiClient();
@@ -147,8 +98,10 @@ export const fetchNightscoutData = async (
       fetchNightscoutProfiles(nsconfig),
     ]);
 
-    return { entries: entriesData, treatments: treatmentsData, profiles: profilesData };
+    const nsData: NightscoutData = { entries: entriesData, treatments: treatmentsData, profiles: profilesData };
+    return nsData;
   } catch (error: any) {
     throw new Error(`Failed to fetch Nightscout data: ${error.message}`);
   }
 };
+export { type NightscoutEntry };
