@@ -82,8 +82,8 @@ export async function getAssessment(data: AssessmentData): Promise<AssessmentDat
 }
 
 const isDevelopment = process.env.NODE_ENV === 'development';
-const isDebug = process.env.DEBUG === 'true';
-const isWriteLocal = process.env.WRITE_LOCAL === 'true';
+const isDebug = process.env.DEBUG === 'false';
+const isWriteLocal = process.env.WRITE_LOCAL === 'false';
 
 export async function generatePodcastText(data: AssessmentData): Promise<AssessmentData> {
   console.log('Generating podcast');
