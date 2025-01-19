@@ -157,36 +157,12 @@ export async function generateAssessments(
 
     notes += getDawnPhenomenonNotes(dawn_phenom_data, notes, numDays);
 
-    // Step 2: Generate Assessment 1
-    // const assessment1Data = await fetchWithErrorHandling(
-    //   `${apiUrl}/api/get_assessment`,
-    //   {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ valid: true, notes: notes, template_num: 1, id: id }),
-    //   },
-    //   'Generating Assessment 1',
-    // );
-    // const assessment1 = assessment1Data.response;
-
     const assessment1: AssessmentData = await getAssessment({
       valid: true,
       notes: notes,
       template_num: 1,
       id: id,
     });
-
-    // Step 3: Generate Assessment 2
-    // const assessment2Data = await fetchWithErrorHandling(
-    //   `${apiUrl}/api/get_assessment`,
-    //   {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ valid: true, notes: notes, assessment1: assessment1, template_num: 2, id: id }),
-    //   },
-    //   'Generating Assessment 2',
-    // );
-    // const assessment2 = assessment2Data.response;
 
     const assessment2: AssessmentData = await getAssessment({
       valid: true,
