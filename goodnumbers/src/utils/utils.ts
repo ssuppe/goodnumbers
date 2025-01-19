@@ -17,3 +17,9 @@ export const getSuffixNumber = (number: number, digits: number = 1): string => {
     .find((item) => number >= item.value);
   return lookupItem ? (number / lookupItem.value).toFixed(digits).replace(rx, '$1') + lookupItem.symbol : '0';
 };
+
+export function interpolate(template: string, params: Record<string, string | null | undefined>): string {
+  return Object.entries(params).reduce((result, [key, value]) => {
+    return value ? result.replace(`\${${key}}`, value) : result;
+  }, template);
+}
