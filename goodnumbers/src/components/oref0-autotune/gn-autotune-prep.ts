@@ -23,7 +23,8 @@
 
 */
 
-import { NightscoutEntry, NightscoutTreatment } from '../widgets/nightscoutActions';
+import { NightscoutTreatment } from '../../types/nightscout';
+import { NightscoutEntry } from '../widgets/nightscoutActions';
 import { ATProfileSettings } from '../widgets/nightscoutProfile';
 
 var generate = require('./lib/autotune-prep');
@@ -182,7 +183,7 @@ export const gn_autotune_prep = (
   pumphistory_data = _.orderBy(
     pumphistory_data,
     [
-      function (o) {
+      function (o: NightscoutTreatment) {
         return moment(o.created_at).valueOf();
       },
     ],

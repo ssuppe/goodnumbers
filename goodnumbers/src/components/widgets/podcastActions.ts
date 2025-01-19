@@ -4,9 +4,15 @@
 import winston from 'winston';
 import fs from 'fs/promises';
 import path from 'path';
-import { compress, decompress, Compressed } from 'compress-json';
-import { AssessmentData, PodcastGenerateResult } from '~/types/nightscout';
+import { decompress, Compressed } from 'compress-json';
+import { AssessmentData, NightscoutData, PodcastGenerateResult } from '~/types/nightscout';
 import { config } from '~/utils/env';
+import { ATProfileSettings, findMostActiveProfile, transformNightscoutProfileToAutotune } from './nightscoutProfile';
+import dotenv from 'dotenv';
+import { AutotunePreppedData, gn_autotune_prep } from '../oref0-autotune/gn-autotune-prep';
+import { checkDawnPhenomenon, getDawnPhenomenonNotes } from '../oref0-autotune/gn-dawn-phenom';
+import { getWeekOverview } from '../oref0-autotune/gn-overview';
+var _ = require('lodash');
 
 // Configure Winston logger
 const logger = winston.createLogger({
@@ -72,10 +78,11 @@ async function readLocalJson(filePath: string): Promise<any> {
 }
 
 export async function generateAssessments(
-  csgvData: Compressed,
-  ccarbsData: Compressed,
+  cEntries: Compressed,
+  cTreatments: Compressed,
+  cProfiles: Compressed,
   id: string,
-): Promise<AssessmentData> {
+): Promise<AssessmentData | null> {
   const apiUrl = config.backendUrl;
   if (!apiUrl || apiUrl == '') {
     logger.error('NEXT_PUBLIC_BACKEND_URL environment variable is not set');
@@ -83,36 +90,83 @@ export async function generateAssessments(
   } else {
     logger.info('NEXT_PUBLIC_BACKEND_URL: ' + apiUrl);
   }
+  debugger;
+
+  const nsData: NightscoutData = {
+    entries: decompress(cEntries),
+    treatments: decompress(cTreatments),
+    profiles: decompress(cProfiles),
+  };
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Sort nsData entries and treatments
+  nsData.entries.sort((a, b) => a.date - b.date);
+  nsData.treatments.sort((a, b) => a.date - b.date);
+
+  //////////////////////////////////////////////////////////////////////////////
+  // PROFILE: Autotune only uses a single profile over all days, so I will replicate here
+  /////////////////////////////////////////////////////////////////////////////
+
+  const { profile, daysActive, activeProfileSettings } = findMostActiveProfile(nsData.profiles);
+  const activeATProfileSettings: ATProfileSettings = transformNightscoutProfileToAutotune(activeProfileSettings);
+  // Simple assignment of activeSettings to both variables, to allow the regular
+  // autotune code to work without modifications
+  const profile_data: ATProfileSettings = _.cloneDeep(activeATProfileSettings);
+  const pumpprofile_data: ATProfileSettings = _.cloneDeep(activeATProfileSettings);
+
+  // disallow impossibly low carbRatios due to bad decoding
+  // GN: Goodnumbers version of this only looks at
+  if (typeof profile_data.carb_ratio === 'undefined' || profile_data.carb_ratio < 2) {
+    if (typeof pumpprofile_data.carb_ratio === 'undefined' || pumpprofile_data.carb_ratio < 2) {
+      console.log(
+        '{ "carbs": 0, "mealCOB": 0, "reason": "carb_ratios ' +
+          profile_data.carb_ratio +
+          ' and ' +
+          pumpprofile_data.carb_ratio +
+          ' out of bounds" }',
+      );
+      console.error(
+        'Error: carb_ratios ' + profile_data.carb_ratio + ' and ' + pumpprofile_data.carb_ratio + ' out of bounds',
+      );
+      return null;
+    } else {
+      profile_data.carb_ratio = pumpprofile_data.carb_ratio;
+    }
+  }
 
   try {
-    // Store the current timestamp
-    const now = new Date();
-    const timestamp = now
-      .toLocaleString('en-GB', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      })
-      .replace(/\//g, '-');
-
     // Step 1: Generate Notes
     logger.info('Step 1');
-    logger.info('sgvData: ' + (csgvData == null));
     logger.info('Sending to ' + `${apiUrl}/api/get_notes`);
-    const notes = await fetchWithErrorHandling(
-      `${apiUrl}/api/get_notes`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: csgvData, treatments: ccarbsData }),
-      },
-      'Generating Notes',
-    );
+    // const notes = await fetchWithErrorHandling(
+    //   `${apiUrl}/api/get_notes`,
+    //   {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify({ entries: cEntries, treatments: cTreatments }),
+    //   },
+    //   'Generating Notes',
+    // );
+    ///////////////////////////////////////////////////////////////////////////
+    // Meal analysis
+    ///////////////////////////////////////////////////////////////////////////
+    const firstDate = new Date(nsData.entries[0].date).toISOString().split('T')[0];
+    const endDate = new Date(nsData.entries[nsData.entries.length - 1].date).toISOString().split('T')[0];
+    const numDays = Math.round((new Date(endDate).getTime() - new Date(firstDate).getTime()) / (1000 * 60 * 60 * 24));
+    const all_prepped_glucose = gn_autotune_prep(nsData.entries, nsData.treatments, profile_data, pumpprofile_data);
 
-    // Step 2: Generate Assessment 1
+    var notes = getWeekOverview(all_prepped_glucose, firstDate, endDate, numDays);
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Dawn phenomenom
+    ///////////////////////////////////////////////////////////////////////////
+    notes += '\n\n';
+    notes += '# Dawn phenomenon analysis\n';
+    const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose);
+
+    notes += getDawnPhenomenonNotes(dawn_phenom_data, notes, numDays);
+
+    // Step 2: Generate Assessment 2
     const assessment1Data = await fetchWithErrorHandling(
       `${apiUrl}/api/get_assessment`,
       {
