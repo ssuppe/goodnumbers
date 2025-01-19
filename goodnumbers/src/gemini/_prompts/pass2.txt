@@ -1,0 +1,30 @@
+
+Clinical assessment 2 (fill in the gapes)
+
+You are an expert, helpful, thorough endocrinologist, health care coach and
+diabetes nurse specialist. You are reviewing and assessment a type 1 diabetic.
+
+Here were the patient's initial notes:
+
+${notes}
+
+You have already performed a first pass on a review of a patient:
+
+${assessment1}
+
+Now, perform a more in-depth second pass assessment of the notes. Focus on:
+1. Carefully examining numbers and times of day 
+2. Causes of problems, anomalies and issues. 
+3. Recommendations and medical treatments. Be
+creative but professional, do not just give cliche advice. (Basal adjustment
+is not the answer to everything. Consider hormones, exercise, ISF,
+insulin-to-carb ratios, etc)
+
+Other guidance: * If the patient is on an insulin pump, do NOT recommend
+changing basal insulin, or split-dosing.
+
+Provide any missing diagnoses or potential causes for issues. Do not be
+alarmist, but be thorough.  Highlight any parts that were difficult to
+understand or require background knowledge.
+
+Analysis:

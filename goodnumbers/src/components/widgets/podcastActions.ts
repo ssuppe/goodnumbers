@@ -12,6 +12,7 @@ import dotenv from 'dotenv';
 import { AutotunePreppedData, gn_autotune_prep } from '../oref0-autotune/gn-autotune-prep';
 import { checkDawnPhenomenon, getDawnPhenomenonNotes } from '../oref0-autotune/gn-dawn-phenom';
 import { getWeekOverview } from '../oref0-autotune/gn-overview';
+import { getAssessment } from '~/gemini/geminiActions';
 var _ = require('lodash');
 
 // Configure Winston logger
@@ -90,7 +91,6 @@ export async function generateAssessments(
   } else {
     logger.info('NEXT_PUBLIC_BACKEND_URL: ' + apiUrl);
   }
-  debugger;
 
   const nsData: NightscoutData = {
     entries: decompress(cEntries),
@@ -138,15 +138,6 @@ export async function generateAssessments(
     // Step 1: Generate Notes
     logger.info('Step 1');
     logger.info('Sending to ' + `${apiUrl}/api/get_notes`);
-    // const notes = await fetchWithErrorHandling(
-    //   `${apiUrl}/api/get_notes`,
-    //   {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ entries: cEntries, treatments: cTreatments }),
-    //   },
-    //   'Generating Notes',
-    // );
     ///////////////////////////////////////////////////////////////////////////
     // Meal analysis
     ///////////////////////////////////////////////////////////////////////////
@@ -166,29 +157,44 @@ export async function generateAssessments(
 
     notes += getDawnPhenomenonNotes(dawn_phenom_data, notes, numDays);
 
-    // Step 2: Generate Assessment 2
-    const assessment1Data = await fetchWithErrorHandling(
-      `${apiUrl}/api/get_assessment`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ valid: true, notes: notes, template_num: 1, id: id }),
-      },
-      'Generating Assessment 1',
-    );
-    const assessment1 = assessment1Data.response;
+    // Step 2: Generate Assessment 1
+    // const assessment1Data = await fetchWithErrorHandling(
+    //   `${apiUrl}/api/get_assessment`,
+    //   {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify({ valid: true, notes: notes, template_num: 1, id: id }),
+    //   },
+    //   'Generating Assessment 1',
+    // );
+    // const assessment1 = assessment1Data.response;
+
+    const assessment1: AssessmentData = await getAssessment({
+      valid: true,
+      notes: notes,
+      template_num: 1,
+      id: id,
+    });
 
     // Step 3: Generate Assessment 2
-    const assessment2Data = await fetchWithErrorHandling(
-      `${apiUrl}/api/get_assessment`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ valid: true, notes: notes, assessment1: assessment1, template_num: 2, id: id }),
-      },
-      'Generating Assessment 2',
-    );
-    const assessment2 = assessment2Data.response;
+    // const assessment2Data = await fetchWithErrorHandling(
+    //   `${apiUrl}/api/get_assessment`,
+    //   {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify({ valid: true, notes: notes, assessment1: assessment1, template_num: 2, id: id }),
+    //   },
+    //   'Generating Assessment 2',
+    // );
+    // const assessment2 = assessment2Data.response;
+
+    const assessment2: AssessmentData = await getAssessment({
+      valid: true,
+      notes: notes,
+      assessment1: assessment1.assessment1,
+      template_num: 2,
+      id: id,
+    });
 
     // Step 4: Generate Dialog
     let podcast_info: AssessmentData = await fetchWithErrorHandling(

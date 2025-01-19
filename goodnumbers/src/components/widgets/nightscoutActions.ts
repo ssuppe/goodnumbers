@@ -87,7 +87,7 @@ export const fetchNightscoutEntries = async (
 
 export const fetchNightscoutData = async (
   nsconfig: NightscoutConfig,
-  daysToFetch: number = 9,
+  daysToFetch: number = 7,
   entriesCount: number = 20000,
   treatmentsCount: number = 10000,
 ): Promise<NightscoutData> => {
