@@ -1,40 +1,4 @@
-'use client';
-
-function ssmlToMarkdown(ssml: string): string {
-  if (!ssml) return '';
-
-  return (
-    ssml
-      // Remove speak tags
-      .replace(/<\/?speak[^>]*>/g, '')
-
-      // Convert voice tags to character dialogue format
-      .replace(/<voice name="([^"]*)">(.*?)<\/voice>/gs, (match, voiceName, content) => {
-        return `\n\n**${voiceName}:**\n${content.trim()}\n\n`;
-      })
-
-      // Convert break/pause elements to newlines
-      .replace(/<break[^>]*>/g, '\n\n')
-
-      // Convert emphasis to italics
-      .replace(/<emphasis[^>]*>(.*?)<\/emphasis>/g, '*$1*')
-
-      // Convert prosody to plain text
-      .replace(/<prosody[^>]*>(.*?)<\/prosody>/g, '$1')
-
-      // Convert say-as to plain text
-      .replace(/<say-as[^>]*>(.*?)<\/say-as>/g, '$1')
-
-      // Add formatting for marks/bookmarks
-      .replace(/<mark name="([^"]*)"\/>/g, '\n\n### $1\n\n')
-
-      // Clean up multiple newlines
-      .replace(/\n\s*\n\s*\n/g, '\n\n')
-
-      // Clean up whitespace
-      .trim()
-  );
-}
+'use server';
 
 // app/utils/ssml.ts
 import { DOMParser, XMLSerializer, Element, Node } from '@xmldom/xmldom';
@@ -45,18 +9,49 @@ interface SSMLCheck {
   processedSsml: string;
 }
 
-function escapeSSMLText(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+/**
+ * Escapes special characters in SSML text content while preserving tags.
+ * @param ssmlString The SSML markup string to process
+ * @returns The processed SSML with special characters escaped in text nodes only
+ */
+export async function escapeSSMLText(ssmlString: string): Promise<string> {
+  // Split on XML tags using regex
+  const pattern = /(<[^>]*>)/;
+  const parts = ssmlString.split(pattern);
+
+  // Process each part - if it's not a tag, escape special characters
+  const processedParts = parts.map((part) => {
+    if (!part.startsWith('<') || !part.endsWith('>')) {
+      return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    return part;
+  });
+
+  const escapedString = processedParts.join('');
+
+  try {
+    // Parse and format properly
+    const parser = new DOMParser();
+    const serializer = new XMLSerializer();
+    const doc = parser.parseFromString(escapedString, 'text/xml');
+
+    // Check for parsing errors
+    const parseError = doc.getElementsByTagName('parsererror')[0];
+    if (parseError) {
+      console.warn(`Warning: Could not parse XML after escaping: ${parseError.textContent}`);
+      return escapedString;
+    }
+
+    return serializer.serializeToString(doc);
+  } catch (e) {
+    console.warn(`Warning: XML processing error: ${e instanceof Error ? e.message : String(e)}`);
+    return escapedString;
+  }
 }
 
-export function checkGoogleTtsSSMLFormat(ssmlString: string, escape: boolean = true): SSMLCheck {
+export async function checkGoogleTtsSSMLFormat(ssmlString: string, escape: boolean = true): Promise<SSMLCheck> {
   if (escape) {
-    ssmlString = escapeSSMLText(ssmlString);
+    ssmlString = await escapeSSMLText(ssmlString);
   }
 
   try {
@@ -196,4 +191,4 @@ export function checkGoogleTtsSSMLFormat(ssmlString: string, escape: boolean = t
   }
 }
 
-export default ssmlToMarkdown;
+// export { ssmlToMarkdown, checkGoogleTtsSSMLFormat };
