@@ -21,8 +21,8 @@ import prettier from 'prettier/standalone';
 import parserXml from '@prettier/plugin-xml';
 import { generateAssessments } from './podcastActions';
 import { setCookieCSync } from '~/utils/cookies';
-import ssmlToMarkdown from '~/utils/ssml';
 import { fetchNightscoutData } from './nightscoutActions';
+import { ssmlToMarkdown } from '~/utils/ssml-client';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;

@@ -1,11 +1,11 @@
 'use server';
 
 // app/actions/assessment.ts
-import { GoogleGenerativeAI, GenerationConfig } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerationConfig, GenerativeModel, SchemaType } from '@google/generative-ai';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { AssessmentData } from '~/types/nightscout';
-import { checkGoogleTtsSSMLFormat } from '~/utils/ssml';
+import { checkGoogleTtsSSMLFormat } from '~/utils/ssml-server';
 import { interpolate } from '~/utils/utils';
 
 // Initialize Gemini client
@@ -15,6 +15,11 @@ const loadTemplate = async (filename: string): Promise<string> => {
   const templatePath = path.join(process.cwd(), 'src', 'gemini', '_prompts', filename);
   return await fs.readFile(templatePath, 'utf-8');
 };
+
+export interface Description {
+  title: string;
+  description: string;
+}
 
 export async function getAssessment(data: AssessmentData): Promise<AssessmentData> {
   try {
@@ -49,7 +54,7 @@ export async function getAssessment(data: AssessmentData): Promise<AssessmentDat
         break;
       }
       case 2: {
-        debugger;
+        // debugger;
         if (!data.assessment1) {
           throw new Error('Assessment1 required for template 2');
         }
@@ -115,7 +120,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
     let noSsmlTries = 0;
 
     while (!isValidSsml && noSsmlTries < 3) {
-      console.log('Generating SSML');
+      console.log(`Generating SSML ${noSsmlTries} / 3`);
       let podcastSsml: string;
 
       // Debug mode handling
@@ -133,6 +138,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
       }
 
       // Check SSML validity
+      console.log(checkGoogleTtsSSMLFormat);
       const ssmlCheck = await checkGoogleTtsSSMLFormat(podcastSsml);
       isValidSsml = ssmlCheck.isCorrect;
 
@@ -184,6 +190,76 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
     }
 
     throw new Error('Failed to generate valid SSML after 3 attempts');
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Error:', error.message);
+      throw new Error(`Failed to generate podcast text: ${error.message}`);
+    }
+    throw new Error('Unknown error occurred during podcast text generation');
+  }
+}
+
+/**
+ * Generates JSON content using the provided model and schema
+ */
+async function asyncGenerateJson<T>(prompt: string, model: GenerativeModel): Promise<T> {
+  console.log('generating JSON');
+
+  const response = await model.generateContent(prompt);
+
+  // Clean up JSON response
+  const cleanJson = response.response.text().replace('```json\n', '').replace('\n```', '');
+
+  console.log('done');
+  return JSON.parse(cleanJson);
+}
+
+export async function generatePodcastDescription(data: AssessmentData): Promise<AssessmentData> {
+  console.log('Generating podcast title and description');
+
+  try {
+    // Load and interpolate template
+    const desc_template = await loadTemplate('description.txt');
+    const prompt = interpolate(desc_template, {
+      ssml_dialog: data.ssml_dialog ?? '',
+    });
+
+    const description_schema = {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          title: { type: SchemaType.STRING, nullable: false },
+          description: { type: SchemaType.STRING },
+        },
+        required: ['title', 'description'],
+      },
+    };
+
+    // Initial generation configuration
+    const generationConfig: GenerationConfig = {
+      temperature: 1,
+      topP: 0.95,
+      topK: 64,
+      maxOutputTokens: 10000,
+      responseMimeType: 'application/json',
+      responseSchema: description_schema,
+    };
+
+    let model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      generationConfig: generationConfig,
+    });
+
+    const response = await asyncGenerateJson<Description>(prompt, model);
+
+    return {
+      ...data,
+      valid: true,
+      title: response.title,
+      description: response.description,
+      timestamp: new Date().toISOString(),
+    };
   } catch (error) {
     if (error instanceof Error) {
       console.error('Error:', error.message);
