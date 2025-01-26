@@ -8,13 +8,14 @@
 
 export interface PodcastGenerateResult {
   status: string;
+  message: string;
   operation_id?: string;
   url: string;
   error?: string;
   gcs_path?: string;
   bucket_name?: string;
-  title?: string;
-  description?: string;
+  title?: string | null;
+  description?: string | null;
 }
 
 export interface AssessmentData {
@@ -132,4 +133,12 @@ export interface NightscoutProfile {
   srvModified: number;
   srvCreated: number;
   subject: string;
+}
+
+export interface JobCheckResponse {
+  name?: string;
+  done?: boolean;
+  status?: 'done' | 'error' | 'unknown' | 'processing';
+  error?: string | null; // Or the specific type if known
+  result?: string | null; // Or the specific type if known
 }

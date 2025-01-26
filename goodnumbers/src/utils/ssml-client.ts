@@ -14,7 +14,7 @@ export function ssmlToMarkdown(ssml: string): string {
       })
 
       // Convert break/pause elements to newlines
-      .replace(/<break[^>]*>/g, '\n\n')
+      // .replace(/<break[^>]*>/g, '\n\n')
 
       // Convert emphasis to italics
       .replace(/<emphasis[^>]*>(.*?)<\/emphasis>/g, '*$1*')
@@ -27,6 +27,12 @@ export function ssmlToMarkdown(ssml: string): string {
 
       // Add formatting for marks/bookmarks
       .replace(/<mark name="([^"]*)"\/>/g, '\n\n### $1\n\n')
+
+      // Convert paragraphs to double newlines
+      .replace(/<\/?p>/g, '\n\n')
+
+      // Convert sentences to single newlines
+      .replace(/<\/?s>/g, '\n')
 
       // Clean up multiple newlines
       .replace(/\n\s*\n\s*\n/g, '\n\n')

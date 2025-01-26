@@ -12,7 +12,12 @@ import dotenv from 'dotenv';
 import { AutotunePreppedData, gn_autotune_prep } from '../oref0-autotune/gn-autotune-prep';
 import { checkDawnPhenomenon, getDawnPhenomenonNotes } from '../oref0-autotune/gn-dawn-phenom';
 import { getWeekOverview } from '../oref0-autotune/gn-overview';
-import { generatePodcastDescription, generatePodcastText, getAssessment } from '~/gemini/geminiActions';
+import {
+  generatePodcastAudio,
+  generatePodcastDescription,
+  generatePodcastText,
+  getAssessment,
+} from '~/gemini/geminiActions';
 var _ = require('lodash');
 
 // Configure Winston logger
@@ -184,29 +189,12 @@ export async function generateAssessments(
     // );
 
     let podcast_info: AssessmentData = await generatePodcastText(assessment2);
+    // Step 5: Generate title and description
     let podcast_infodesc: AssessmentData = await generatePodcastDescription(podcast_info);
     logger.debug(podcast_infodesc);
-    // Step 5: Generate title and description
-    // podcast_info = await fetchWithErrorHandling(
-    //   `${apiUrl}/api/gen_podcast_description`,
-    //   {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify(podcast_info),
-    //   },
-    //   'Generating title and description',
-    // );
 
     // Step 6: Start generation of audio
-    const podcastResult: PodcastGenerateResult = await fetchWithErrorHandling(
-      `${apiUrl}/api/gen_podcast`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(podcast_info),
-      },
-      'Generating Dialog',
-    );
+    const podcastResult: PodcastGenerateResult = await generatePodcastAudio(podcast_infodesc);
 
     podcast_info.podcastResult = podcastResult;
 
