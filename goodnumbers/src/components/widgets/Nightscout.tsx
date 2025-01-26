@@ -11,7 +11,7 @@ import { compress } from 'compress-json';
 import { createApiClient } from '~/lib/api/axios';
 import { useAssessmentState } from '~/hooks/useAssessmentState';
 import { useLoadingState } from '~/hooks/useLoadingState';
-import { AssessmentData, NightscoutData } from '~/types/nightscout';
+import { AssessmentData, JobCheckResponse, NightscoutData, PodcastGenerateResult } from '~/types/nightscout';
 import 'react-h5-audio-player/lib/styles.css';
 import LazyAudioPlayer from './LazyAudioPlayer';
 import { config } from 'src/utils/env';
@@ -23,6 +23,7 @@ import { generateAssessments } from './podcastActions';
 import { setCookieCSync } from '~/utils/cookies';
 import { fetchNightscoutData } from './nightscoutActions';
 import { ssmlToMarkdown } from '~/utils/ssml-client';
+import { checkPodcastStatus } from '~/gemini/geminiActions';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
@@ -85,7 +86,7 @@ const NightscoutComponent = ({
 
     if (currentResult?.status !== 'processing') return;
 
-    const intervalId = setInterval(() => {
+    const intervalId = setInterval(async () => {
       const podcastResult = getCurrentPodcastResult();
 
       if (!podcastResult || podcastResult.status !== 'processing') {
@@ -93,29 +94,17 @@ const NightscoutComponent = ({
         return;
       }
 
-      // Use .then() instead of async/await
-      axiosInstance
-        .post(config.backendUrl + '/api/check_podcast', podcastResult)
-        .then((response) => {
-          if (assessmentData) {
-            const updatedData = {
-              ...assessmentData,
-              podcastResult: response.data,
-            };
-            updateAssessmentData(updatedData);
-          }
-
-          if (response.data.status === 'done' || response.data.status === 'error') {
-            clearInterval(intervalId);
-          }
-        })
-        .catch((error) => {
-          console.error('Error checking podcast status:', error);
-          clearInterval(intervalId);
-        });
+      // if (podcastResult.operation_id != null) {
+      var response: PodcastGenerateResult = await checkPodcastStatus(podcastResult);
+      const updatedData = {
+        ...assessmentData,
+        podcastResult: response,
+      };
+      updateAssessmentData(updatedData);
     }, 30000);
 
     return () => clearInterval(intervalId);
+    // }
   }, [assessmentData, getCurrentPodcastResult, updateAssessmentData]);
 
   // Form handlers
