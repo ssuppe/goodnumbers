@@ -16,7 +16,7 @@ export const useAssessmentState = () => {
         assessment2: getCookieC<string>('assessment2'),
         title: getCookieC<string>('title'),
         description: getCookieC<string>('description'),
-        ssml_dialog: getCookieC<string>('dialog'),
+        ssml_dialog: getCookieC<string>('ssml_dialog'),
         template_num: 0,
         timestamp: getCookieC<string>('timestamp'),
         id: getCookieC<string>('id'),
