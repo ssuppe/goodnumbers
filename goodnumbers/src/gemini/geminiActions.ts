@@ -4,9 +4,20 @@
 import { GoogleGenerativeAI, GenerationConfig, GenerativeModel, SchemaType } from '@google/generative-ai';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { AssessmentData } from '~/types/nightscout';
+import { AssessmentData, PodcastGenerateResult, JobCheckResponse } from '~/types/nightscout';
 import { checkGoogleTtsSSMLFormat } from '~/utils/ssml-server';
 import { interpolate } from '~/utils/utils';
+import { v4 as uuidv4 } from 'uuid';
+import { Storage } from '@google-cloud/storage';
+const { TextToSpeechLongAudioSynthesizeClient } = require('@google-cloud/text-to-speech').v1beta1;
+import { ClientOptions } from 'google-gax';
+const isDevelopment = process.env.NODE_ENV === 'development';
+const isDebug = process.env.DEBUG === 'false';
+const isWriteLocal = process.env.WRITE_LOCAL === 'false';
+
+const BUCKET_NAME = 'goodnumbersmain'; // Replace with your bucket name
+const GCS_PATH = 'audio-files'; // Folder in bucket to store audio files
+const POLLING_INTERVAL = 10; // seconds
 
 // Initialize Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -86,10 +97,6 @@ export async function getAssessment(data: AssessmentData): Promise<AssessmentDat
   }
 }
 
-const isDevelopment = process.env.NODE_ENV === 'development';
-const isDebug = process.env.DEBUG === 'false';
-const isWriteLocal = process.env.WRITE_LOCAL === 'false';
-
 export async function generatePodcastText(data: AssessmentData): Promise<AssessmentData> {
   console.log('Generating podcast');
 
@@ -137,8 +144,10 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
         podcastSsml = response.response.text();
       }
 
+      // Basic fixes that AI sometimes makes to SSML
+      podcastSsml = podcastSsml.replaceAll('<laughs>', '');
+
       // Check SSML validity
-      console.log(checkGoogleTtsSSMLFormat);
       const ssmlCheck = await checkGoogleTtsSSMLFormat(podcastSsml);
       isValidSsml = ssmlCheck.isCorrect;
 
@@ -209,9 +218,9 @@ async function asyncGenerateJson<T>(prompt: string, model: GenerativeModel): Pro
 
   // Clean up JSON response
   const cleanJson = response.response.text().replace('```json\n', '').replace('\n```', '');
-
+  var result = JSON.parse(cleanJson);
   console.log('done');
-  return JSON.parse(cleanJson);
+  return result[0];
 }
 
 export async function generatePodcastDescription(data: AssessmentData): Promise<AssessmentData> {
@@ -251,8 +260,8 @@ export async function generatePodcastDescription(data: AssessmentData): Promise<
       generationConfig: generationConfig,
     });
 
-    const response = await asyncGenerateJson<Description>(prompt, model);
-
+    var response: Description = await asyncGenerateJson<Description>(prompt, model);
+    response = response;
     return {
       ...data,
       valid: true,
@@ -266,5 +275,191 @@ export async function generatePodcastDescription(data: AssessmentData): Promise<
       throw new Error(`Failed to generate podcast text: ${error.message}`);
     }
     throw new Error('Unknown error occurred during podcast text generation');
+  }
+}
+
+export async function generatePodcastAudio(podcast: AssessmentData): Promise<PodcastGenerateResult> {
+  if (!podcast?.ssml_dialog) {
+    throw new Error(`Invalid dialog: ${podcast.ssml_dialog}`);
+  }
+
+  const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (!credentialsPath) {
+    throw new Error('GOOGLE_APPLICATION_CREDENTIALS environment variable not set.');
+  }
+
+  try {
+    const { title, description, ssml_dialog, id } = podcast;
+
+    // Initialize Storage
+    const storage = new Storage({
+      projectId: 'goodnumbers-446416',
+      keyFilename: credentialsPath,
+    });
+    const bucket = storage.bucket(BUCKET_NAME);
+
+    // Generate unique path
+    const timestamp = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15);
+    const fileName = `podcast_${timestamp}.wav`;
+    const gcsPath = `${GCS_PATH}/${id}/${fileName}`;
+    const outputGcsUri = `gs://${BUCKET_NAME}/${gcsPath}`;
+
+    const client = new TextToSpeechLongAudioSynthesizeClient({
+      apiEndpoint: 'texttospeech.googleapis.com',
+      credentials: JSON.parse(require('fs').readFileSync(credentialsPath, 'utf-8')),
+    });
+
+    // Start synthesis
+    const [operation] = await client.synthesizeLongAudio({
+      parent: 'projects/goodnumbers-446416/locations/global',
+      input: { ssml: ssml_dialog },
+      voice: {
+        languageCode: 'en-GB',
+        name: 'en-GB-Wavenet-B',
+      },
+      audioConfig: {
+        audioEncoding: 'LINEAR16',
+        speakingRate: 1.0,
+        pitch: 0.0,
+      },
+      outputGcsUri,
+    });
+
+    return {
+      status: 'processing',
+      operation_id: operation.name,
+      gcs_path: gcsPath,
+      bucket_name: BUCKET_NAME,
+      url: `https://storage.googleapis.com/goodnumbersmain/${gcsPath}`,
+      message: 'Audio generation started successfully',
+      title,
+      description,
+    };
+  } catch (error) {
+    console.error('Error in generatePodcastAudio:', error);
+    throw error;
+  }
+}
+
+import { updateRssFeed } from './rss';
+
+//
+async function getJobStatus(operationId: string): Promise<JobCheckResponse> {
+  const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  if (!credentialsPath) {
+    throw new Error('GOOGLE_APPLICATION_CREDENTIALS environment variable not set.');
+  }
+
+  const client = new TextToSpeechLongAudioSynthesizeClient({
+    apiEndpoint: 'texttospeech.googleapis.com',
+    credentials: JSON.parse(require('fs').readFileSync(credentialsPath, 'utf-8')),
+  });
+
+  var status: JobCheckResponse = {
+    name: operationId,
+    done: false,
+    status: 'unknown',
+    error: null,
+    result: null,
+  };
+
+  try {
+    // Create a proper GetOperationRequest object
+
+    const operationCall = await client.checkSynthesizeLongAudioProgress(operationId);
+    const operation = await operationCall.promise();
+    const operationProgress: number = operation[1]['progressPercentage'];
+    const operationInfo = operation[2];
+    console.debug('\nDebug Information:');
+    console.debug(operation);
+
+    // Initialize done to true, then update if needed
+    status.name = operationInfo.name;
+    status.done = operationInfo.done;
+
+    if (operationInfo.done) {
+      if (operationInfo.response) {
+        console.log('success');
+        status.status = 'done';
+        status.error = null;
+      } else if (operationInfo.error) {
+        // Directly check for operation.error
+        console.log('error');
+        status.status = 'error';
+        status.error = operationInfo.error.message;
+      } else {
+        console.log('else'); // This case shouldn't typically happen with the updated logic
+        status.status = 'unknown';
+        status.result = operationInfo.result; // Use operation.result directly
+      }
+    } else {
+      status.status = 'processing';
+    }
+
+    console.log(`Returning: ${JSON.stringify(status)}`);
+    return status;
+
+    // if (operation.done) {
+    //   if (operation.error) {
+    //     console.error('Long-running operation failed:', operation.error.message);
+    //   } else if (operation.response) {
+    //     const results = operation.response.results as unknown as { alternatives: { transcript: string }[] }[]; // Type casting may be needed because sometimes types in the library aren't perfect
+
+    //     // Process the results
+    //     results.forEach((result) => {
+    //       const transcript = result.alternatives[0].transcript;
+    //       console.log(`Transcript: ${transcript}`);
+    //     });
+    //   }
+    // } else {
+    //   console.log('Operation still in progress...');
+    //   // You can check again later (e.g., using setInterval)
+    // }
+  } catch (error) {
+    console.error('Error checking operation status:', error);
+    // Handle the error appropriately
+  }
+
+  return status;
+}
+
+export async function checkPodcastStatus(podcast_result: PodcastGenerateResult): Promise<PodcastGenerateResult> {
+  if (!podcast_result.operation_id) {
+    podcast_result.status = 'error';
+    podcast_result.error = `Invalid operation id: ${podcast_result.operation_id}`;
+    return podcast_result;
+  }
+
+  const status = await getJobStatus(podcast_result.operation_id);
+
+  if (status.done && !status.error) {
+    podcast_result.status = 'done';
+
+    /* Assuming this gets called and happens at least 1x.
+       This is not totall foolproof but fine for POC
+       This is the time to create/update the RSS feed
+    */
+    const basePath = podcast_result.gcs_path?.split('/').slice(0, -1).join('/');
+    const rssPath = `${basePath}/feed.xml`;
+    const pubDate = new Date(); // UTC by default
+
+    // TODO - update RSS feed
+    updateRssFeed({
+      bucketName: BUCKET_NAME,
+      gcsPath: GCS_PATH,
+      title: podcast_result.title ?? 'Goodnumbers',
+      description: podcast_result.description ?? 'Latest podcast',
+      pubDate: pubDate,
+      link: uuidv4(),
+    });
+
+    return podcast_result;
+  } else if (status.error) {
+    podcast_result.status = 'error';
+    podcast_result.error = status.error.toString();
+    return podcast_result;
+  } else {
+    podcast_result.status = 'processing';
+    return podcast_result;
   }
 }

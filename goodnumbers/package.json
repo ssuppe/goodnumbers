@@ -17,10 +17,14 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@google-cloud/speech": "^6.7.0",
+    "@google-cloud/storage": "^7.15.0",
+    "@google-cloud/text-to-speech": "^5.8.0",
     "@google/generative-ai": "^0.21.0",
     "@radix-ui/colors": "^3.0.0",
     "@radix-ui/react-progress": "^1.1.0",
     "@tabler/icons-react": "^3.22.0",
+    "@types/google-cloud__storage": "^1.7.2",
     "@types/moment-timezone": "^0.5.13",
     "@types/pako": "^2.0.3",
     "@vercel/python": "^4.3.1",
@@ -30,6 +34,7 @@
     "class-variance-authority": "^0.7.0",
     "compress-json": "^3.1.0",
     "cookie": "^1.0.0",
+    "feed": "^4.2.2",
     "gray-matter": "^4.0.3",
     "js-cookie": "^3.0.5",
     "json-stable-stringify": "^1.2.1",
@@ -45,6 +50,7 @@
     "react-syntax-highlighter": "^15.6.1",
     "react-tabs": "^6.0.2",
     "tailwind-merge": "^2.5.2",
+    "uuid": "^11.0.5",
     "winston": "^3.15.0"
   },
   "devDependencies": {
