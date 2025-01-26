@@ -11,7 +11,7 @@ import { compress } from 'compress-json';
 import { createApiClient } from '~/lib/api/axios';
 import { useAssessmentState } from '~/hooks/useAssessmentState';
 import { useLoadingState } from '~/hooks/useLoadingState';
-import { AssessmentData } from '~/types/nightscout';
+import { AssessmentData, JobCheckResponse, NightscoutData, PodcastGenerateResult } from '~/types/nightscout';
 import 'react-h5-audio-player/lib/styles.css';
 import LazyAudioPlayer from './LazyAudioPlayer';
 import { config } from 'src/utils/env';
@@ -19,9 +19,11 @@ import DebugInterfaceViewer from './DebugInterfaceViewer';
 import ReactMarkdown from 'react-markdown';
 import prettier from 'prettier/standalone';
 import parserXml from '@prettier/plugin-xml';
-import { generateAssessments } from './nightscoutActions';
+import { generateAssessments } from './podcastActions';
 import { setCookieCSync } from '~/utils/cookies';
-import ssmlToMarkdown from '~/utils/ssml';
+import { fetchNightscoutData } from './nightscoutActions';
+import { ssmlToMarkdown } from '~/utils/ssml-client';
+import { checkPodcastStatus } from '~/gemini/geminiActions';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
@@ -39,44 +41,6 @@ function createHash(url: string, token: string): Promise<string> {
 }
 
 const axiosInstance = createApiClient();
-
-// Separate data fetching logic into a plain function
-const fetchNightscoutData = (nightscout_url: string, nightscout_token: string) => {
-  const today = new Date();
-  const daysAgo = new Date(today.setDate(today.getDate() - 9));
-  const daysAgoTimestamp = daysAgo.getTime();
-
-  const entriesUrl = `${nightscout_url}/api/v1/entries/sgv.json?token=${nightscout_token}&find[date][$gte]=${daysAgoTimestamp}&count=20000`;
-  const treatmentsUrl = `${nightscout_url}/api/v1/treatments.json?token=${nightscout_token}&find[created_at][$gte]=${daysAgoTimestamp}&count=10000`;
-
-  return Promise.all([axiosInstance.get(entriesUrl), axiosInstance.get(treatmentsUrl)]).then(
-    ([entriesResponse, treatmentsResponse]) => {
-      let entriesData = entriesResponse.data
-        .filter((item: { date: number }) => item.date >= daysAgoTimestamp)
-        .map((item: { date: number; sgv: number; units: string; utcOffset: number }) => ({
-          date: item.date,
-          sgv: item.sgv,
-          units: item.units,
-          utcOffset: item.utcOffset,
-        }));
-
-      let treatmentsData = treatmentsResponse.data
-        .filter(
-          (item: { date: number; eventType: string; carbs?: number; insulin?: number }) =>
-            item.date >= daysAgoTimestamp && (item.carbs !== null || item.insulin !== null),
-        )
-        .map((item: { date: number; carbs?: number; utcOffset: number; insulin?: number; eventType: string }) => ({
-          date: item.date,
-          carbs: item.carbs,
-          insulin: item.insulin,
-          utcOffset: item.utcOffset,
-          eventType: item.eventType,
-        }));
-
-      return { entries: entriesData, treatments: treatmentsData };
-    },
-  );
-};
 
 const NightscoutComponent = ({
   header,
@@ -122,7 +86,7 @@ const NightscoutComponent = ({
 
     if (currentResult?.status !== 'processing') return;
 
-    const intervalId = setInterval(() => {
+    const intervalId = setInterval(async () => {
       const podcastResult = getCurrentPodcastResult();
 
       if (!podcastResult || podcastResult.status !== 'processing') {
@@ -130,29 +94,17 @@ const NightscoutComponent = ({
         return;
       }
 
-      // Use .then() instead of async/await
-      axiosInstance
-        .post(config.backendUrl + '/api/check_podcast', podcastResult)
-        .then((response) => {
-          if (assessmentData) {
-            const updatedData = {
-              ...assessmentData,
-              podcastResult: response.data,
-            };
-            updateAssessmentData(updatedData);
-          }
-
-          if (response.data.status === 'done' || response.data.status === 'error') {
-            clearInterval(intervalId);
-          }
-        })
-        .catch((error) => {
-          console.error('Error checking podcast status:', error);
-          clearInterval(intervalId);
-        });
+      // if (podcastResult.operation_id != null) {
+      var response: PodcastGenerateResult = await checkPodcastStatus(podcastResult);
+      const updatedData = {
+        ...assessmentData,
+        podcastResult: response,
+      };
+      updateAssessmentData(updatedData);
     }, 30000);
 
     return () => clearInterval(intervalId);
+    // }
   }, [assessmentData, getCurrentPodcastResult, updateAssessmentData]);
 
   // Form handlers
@@ -166,7 +118,7 @@ const NightscoutComponent = ({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     console.log('Form submission started'); // Add this
-
+    console.log('new');
     Cookies.set('url', formData.nightscout_url);
     Cookies.set('token', formData.nightscout_token);
 
@@ -175,12 +127,13 @@ const NightscoutComponent = ({
 
     // First handle the Nightscout data fetch
     updateProgress(25, 'Collecting Nightscout data...');
-    fetchNightscoutData(formData.nightscout_url, formData.nightscout_token)
-      .then((nightscoutData) => {
+    fetchNightscoutData({ url: formData.nightscout_url, token: formData.nightscout_token })
+      .then((nightscoutData: NightscoutData) => {
         updateProgress(50, 'Generating assessments...');
         const compressedData = {
           entries: compress(nightscoutData.entries),
           treatments: compress(nightscoutData.treatments),
+          profiles: compress(nightscoutData.profiles),
         };
 
         // Create ID for serverside saving, podcast management, etc
@@ -188,7 +141,12 @@ const NightscoutComponent = ({
         // Server action call wrapped in regular Promise
         // return generateAssessments(compressedData?.entries, compressedData?.treatments || null, formData.demo_data);
         return createHash(formData.nightscout_url, formData.nightscout_token).then((hash) => {
-          return generateAssessments(compressedData?.entries, compressedData?.treatments || null, hash);
+          return generateAssessments(
+            compressedData?.entries,
+            compressedData?.treatments || null,
+            compressedData.profiles,
+            hash,
+          );
         });
       })
       .then((data) => {

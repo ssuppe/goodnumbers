@@ -1,21 +1,21 @@
 # Patient's latest results:
 ## This week's general statistics:
-  * This week was from 2024-12-26 00:00:00 to 2025-01-02 00:00:00
-  * This week was the patient's average blood glucose was 137 mg/dl, with a coefficient of variation of 35.4%
-    * Their mean is right in the recommended target of 126-154, so they're doing a good job.  Practically speaking, they've spent 95% of their week between 40 and 234.
-  * Time in range (70-180) was 80% mg/dl.
-  * Time spent high (above 180) was 17%.This is less than the recommended percentage of 25%, which is very good.
+  * This week was from 2024-12-28 00:00:00 to 2025-01-04 00:00:00
+  * This week was the patient's average blood glucose was 132 mg/dl, with a coefficient of variation of 36.0%
+    * Their mean is right in the recommended target of 126-154, so they're doing a good job.  Practically speaking, they've spent 95% of their week between 37 and 227.
+  * Time in range (70-180) was 84% mg/dl.
+  * Time spent high (above 180) was 13%.This is less than the recommended percentage of 25%, which is very good.
   * Time spent low (below 70) was 3%.This is less than the recommended percentage of 4%, which is very good.
   * Finally, time in tight range (70-140) was
-        57%. Time in tight range is closer to what a non-diabetic's glucose levels are.
+        62%. Time in tight range is closer to what a non-diabetic's glucose levels are.
 
 ## Dawn phenomenom report
   * No dawn phenomenon detected between the hours of 4am and 9am.
 ## General morning statistics
-  * Time in range in the morning is 75.56%.
+  * Time in range in the morning is 86.90%.
             Your sleep time is when you should be aiming to get the highest time in range, since you
             are not moving, not worrying about food, exercise or stress. Aim to be as close to 100%
               possible.
-  * Your average time in range is less than 80%
-            this week, so you could definitely improve.
+  * Your average time in range was between 80% and 90% this week, which is good,
+                                          but there is always room for improvement!
 
