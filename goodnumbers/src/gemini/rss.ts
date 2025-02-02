@@ -1,20 +1,21 @@
 import { Storage } from '@google-cloud/storage';
 import { Feed } from 'feed';
 import { Buffer } from 'buffer';
+import Parser from 'rss-parser';
 
 interface UpdateRssFeedParams {
   bucketName: string;
-  gcsPath: string;
+  rssPath: string;
   title: string;
   link: string;
   description: string;
   pubDate: Date;
-  guid?: string;
+  guid: string;
 }
 
 async function updateRssFeed({
   bucketName,
-  gcsPath,
+  rssPath,
   title,
   link,
   description,
@@ -26,10 +27,10 @@ async function updateRssFeed({
     keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
   });
   const bucket = storage.bucket(bucketName);
-  const blob = bucket.file(gcsPath);
+  const blob = bucket.file(rssPath);
 
   // Create new feed
-  const feed = new Feed({
+  const newFeed = new Feed({
     id: 'http://www.foo.com',
     title: 'Goodnumbers',
     description: 'GoodNumbers is an experimental weekly personalized podcast...',
@@ -43,41 +44,43 @@ async function updateRssFeed({
     const [exists] = await blob.exists();
     if (exists) {
       const [content] = await blob.download();
-      const currentFeed = new Feed(JSON.parse(content.toString()));
+      // const currentFeed = new Feed(JSON.parse(content.toString()));
+      const parser = new Parser();
+      const currentFeed = await parser.parseString(content.toString());
 
       // Filter items newer than 10 days
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - 10);
 
       currentFeed.items
-        .filter((item) => new Date(item.date) > cutoffDate)
+        .filter((item) => item.pubDate != undefined && new Date(item.pubDate) > cutoffDate)
         .forEach((item) => {
-          feed.addItem({
-            title: item.title,
-            link: item.link,
+          newFeed.addItem({
+            title: item.title || '',
+            link: item.link || '',
             description: item.description,
-            date: new Date(item.date),
+            date: new Date(item.pubDate ?? new Date()),
             guid: item.guid,
           });
         });
     }
 
     // Add new item
-    feed.addItem({
-      title,
-      link,
-      description,
+    newFeed.addItem({
+      title: title,
+      link: link,
+      description: description,
       date: pubDate,
-      guid,
+      guid: guid,
     });
 
     // Generate RSS and upload
-    const rssContent = feed.rss2();
-    await blob.save(Buffer.from(rssContent), {
+    const rssContent = newFeed.rss2();
+    await blob.save(rssContent, {
       contentType: 'application/rss+xml',
     });
 
-    return gcsPath;
+    return rssPath;
   } catch (error) {
     console.error('Error updating RSS feed:', error);
     throw error;
