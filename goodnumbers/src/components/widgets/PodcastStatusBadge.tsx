@@ -28,7 +28,7 @@ const PodcastStatusBadge = ({ status }: PodcastStatusProps) => {
           <Loader2 className="h-4 w-4 text-blue-500" />
         </div>
         <AlertDescription className="text-blue-700">
-          Assessment complete, please wait for your podcast to be created
+          Assessment complete, please wait for your podcast to be finished. This usually only takes a minute or two.
         </AlertDescription>
       </div>
     </Alert>

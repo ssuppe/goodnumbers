@@ -9,8 +9,9 @@ import { checkGoogleTtsSSMLFormat } from '~/utils/ssml-server';
 import { interpolate } from '~/utils/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { Storage } from '@google-cloud/storage';
+import { updateRssFeed } from './rss';
+
 const { TextToSpeechLongAudioSynthesizeClient } = require('@google-cloud/text-to-speech').v1beta1;
-import { ClientOptions } from 'google-gax';
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isDebug = process.env.DEBUG === 'false';
 const isWriteLocal = process.env.WRITE_LOCAL === 'false';
@@ -319,7 +320,7 @@ export async function generatePodcastAudio(podcast: AssessmentData): Promise<Pod
       },
       audioConfig: {
         audioEncoding: 'LINEAR16',
-        speakingRate: 1.0,
+        speakingRate: 0.9,
         pitch: 0.0,
       },
       outputGcsUri,
@@ -340,8 +341,6 @@ export async function generatePodcastAudio(podcast: AssessmentData): Promise<Pod
     throw error;
   }
 }
-
-import { updateRssFeed } from './rss';
 
 //
 async function getJobStatus(operationId: string): Promise<JobCheckResponse> {
@@ -443,14 +442,14 @@ export async function checkPodcastStatus(podcast_result: PodcastGenerateResult):
     const rssPath = `${basePath}/feed.xml`;
     const pubDate = new Date(); // UTC by default
 
-    // TODO - update RSS feed
     updateRssFeed({
       bucketName: BUCKET_NAME,
-      gcsPath: GCS_PATH,
+      rssPath: rssPath,
+      link: podcast_result.url,
       title: podcast_result.title ?? 'Goodnumbers',
       description: podcast_result.description ?? 'Latest podcast',
       pubDate: pubDate,
-      link: uuidv4(),
+      guid: uuidv4(),
     });
 
     return podcast_result;
