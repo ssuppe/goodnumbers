@@ -3,12 +3,11 @@ Here is an SSML file of two healthcare professionals speaking. I want you to add
 Only use the following SSML tags:
 <break>
 <say-as>
-
 <p>
 <s>
 <prosody>
 <emphasis>
-<par>
+
 Here is the SSML dialog:
 
 ${ssml_dialog}
