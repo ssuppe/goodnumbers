@@ -24,6 +24,7 @@ import { setCookieCSync } from '~/utils/cookies';
 import { fetchNightscoutData } from './nightscoutActions';
 import { ssmlToMarkdown } from '~/utils/ssml-client';
 import { checkPodcastStatus } from '~/gemini/geminiActions';
+import PodcastStatusBadge from './PodcastStatusBadge';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
@@ -62,7 +63,7 @@ const NightscoutComponent = ({
     nightscout_url: '',
     nightscout_token: '',
     terms_accepted: false,
-    demo_data: false,
+    responsibility_accepted: false,
   });
 
   // Load saved data on mount
@@ -139,7 +140,6 @@ const NightscoutComponent = ({
         // Create ID for serverside saving, podcast management, etc
 
         // Server action call wrapped in regular Promise
-        // return generateAssessments(compressedData?.entries, compressedData?.treatments || null, formData.demo_data);
         return createHash(formData.nightscout_url, formData.nightscout_token).then((hash) => {
           return generateAssessments(
             compressedData?.entries,
@@ -185,7 +185,8 @@ const NightscoutComponent = ({
       });
   };
 
-  const isFormValid = formData.nightscout_url && formData.nightscout_token && formData.terms_accepted;
+  const isFormValid =
+    formData.nightscout_url && formData.nightscout_token && formData.terms_accepted && formData.responsibility_accepted;
 
   // Handle formatting in useEffect
   useEffect(() => {
@@ -238,31 +239,23 @@ const NightscoutComponent = ({
           </div>
         </TabPanel>
         <TabPanel>
-          <h2 className="text-xl font-bold mb-2">Dialog</h2>
-          {assessmentData?.podcastResult?.status && (
-            <h2
-              className={`text-xl font-bold mb-4 ${
-                assessmentData?.podcastResult?.status === 'done'
-                  ? 'text-green-600'
-                  : assessmentData?.podcastResult?.status === 'error'
-                    ? 'text-red-600'
-                    : 'text-black'
-              }`}
-            >
-              {assessmentData?.podcastResult?.status.charAt(0).toUpperCase() +
-                assessmentData?.podcastResult.status.slice(1)}
-            </h2>
-          )}
+          {/* StatusBadge will show processing state or error, and disappear when done */}
+          {assessmentData?.podcastResult?.status && <PodcastStatusBadge status={assessmentData.podcastResult.status} />}
+
+          {/* Audio player only shows when processing is complete and URL exists */}
           {assessmentData?.podcastResult?.status === 'done' && getCurrentPodcastResult()?.url && (
-            <LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
+            <>
+              <LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
+              <div className="prose dark:prose-invert max-w-none">
+                <ReactMarkdown>{ssmlToMarkdown(assessmentData?.ssml_dialog || '')}</ReactMarkdown>
+              </div>
+            </>
           )}
+
+          {/* Debug viewer if needed */}
           {assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
             <DebugInterfaceViewer data={assessmentData.podcastResult} />
           )}
-          <div className="prose dark:prose-invert max-w-none">
-            <ReactMarkdown>{ssmlToMarkdown(assessmentData?.ssml_dialog || '')}</ReactMarkdown>
-          </div>
-          {/* <pre className="whitespace-pre-wrap">{ssmlToMarkdown(assessmentData?.dialog || '')}</pre> */}
         </TabPanel>
       </Tabs>
     );
@@ -318,7 +311,19 @@ const NightscoutComponent = ({
               onChange={handleInputChange}
               className="mr-2"
             />
-            I understand this is experimental and does not constitute medical advice, and is entirely my responsibility
+            I understand this is experimental. The analysis might be wrong and does not constitute medical advice. All
+            data should be manually verified by you and your healthcare professions.
+          </label>
+          <label className="flex items-center mb-4">
+            <input
+              type="checkbox"
+              name="responsibility_accepted"
+              checked={formData.responsibility_accepted}
+              onChange={handleInputChange}
+              className="mr-2"
+            />
+            I am consenting to sending this data, and understand I do not have to if I do not want to. I take full
+            responsibility for the sending of this data, as well as what I do with the information that is given to me.
           </label>
           <button
             type="submit"
@@ -333,10 +338,29 @@ const NightscoutComponent = ({
       </div>
       {isClient && assessmentData && (
         <div className="mt-8 max-w-4xl mx-auto">
-          {assessmentData.timestamp && (
-            <div className="mb-4 text-gray-600 text-center">Last results generated on {assessmentData.timestamp}</div>
-          )}
-          {renderAssessmentContent()}
+          <div className={`transition-opacity duration-600 ease-in-out ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
+            {!isLoading && (
+              <>
+                {assessmentData.timestamp && (
+                  <div className="mb-4 text-gray-600 text-center">
+                    Last results generated on {assessmentData.timestamp}
+                  </div>
+                )}
+                {renderAssessmentContent()}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Optional loading message */}
+      {isClient && isLoading && (
+        <div
+          className={`mt-8 text-center text-gray-600 transition-opacity duration-600 ease-in-out ${
+            isLoading ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          Your results will appear here when we are done
         </div>
       )}
     </WidgetWrapper>
