@@ -46,6 +46,7 @@ import {
 import { GLUCOSE_RANGES } from './gn-constants';
 import { checkDawnPhenomenon, DawnAnalysis, getDawnPhenomenonNotes } from './gn-dawn-phenom';
 import { fetchNightscoutData } from '../widgets/nightscoutActions';
+import { getWeekOverview } from 'gn-overview';
 
 dotenv.config();
 

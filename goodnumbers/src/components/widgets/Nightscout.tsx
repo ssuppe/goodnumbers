@@ -129,7 +129,7 @@ const NightscoutComponent = ({
     updateProgress(25, 'Collecting Nightscout data...');
     fetchNightscoutData({ url: formData.nightscout_url, token: formData.nightscout_token })
       .then((nightscoutData: NightscoutData) => {
-        updateProgress(50, 'Generating assessments...');
+        updateProgress(40, 'Generating assessments...');
         const compressedData = {
           entries: compress(nightscoutData.entries),
           treatments: compress(nightscoutData.treatments),
