@@ -31,11 +31,6 @@ const logger = winston.createLogger({
   ],
 });
 
-interface AssessmentError extends Error {
-  step?: string;
-  details?: any;
-}
-
 async function handleFetchError(response: Response): Promise<string> {
   let errorBody;
   try {
@@ -64,11 +59,8 @@ async function fetchWithErrorHandling(url: string, options: RequestInit, step: s
     return await response.json();
   } catch (error) {
     clearTimeout(timeoutId);
-    const err = error as AssessmentError;
-    err.step = step;
-    err.details = error instanceof Error ? error.message : String(error);
-    logger.error(`Error in ${step}:`, { error: err });
-    throw err;
+    logger.error(`Error in ${step}: ${error}`);
+    throw error;
   }
 }
 
@@ -200,8 +192,7 @@ export async function generateAssessments(
 
     return podcast_info;
   } catch (error) {
-    const err = error as AssessmentError;
-    logger.error('Failed to generate assessments:', { error: err });
-    throw new Error(`Failed to generate assessments: ${err.step || 'Unknown step'} - ${err.message}`);
+    logger.error('Failed to generate assessments: ${error}');
+    throw new Error(`Failed to generate assessments: ${error}`);
   }
 }
