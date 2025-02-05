@@ -49,14 +49,13 @@ const NightscoutComponent = ({
   hasBackground = false,
   onAssessmentComplete,
 }: NightscoutComponentProps): JSX.Element => {
-  console.log('NightscoutComponent rendering'); // Add this
-
   // State management
   const { assessmentData, error: cookieError, updateAssessmentData, getCurrentPodcastResult } = useAssessmentState();
   const { isLoading, progress, progressText, error, startLoading, updateProgress, stopLoading, setLoadingError } =
     useLoadingState();
   const [isClient, setIsClient] = useState(false);
   const [formattedSSML, setFormattedSSML] = useState('');
+  const [formSubmitted, setFormSubmitted] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -176,6 +175,9 @@ const NightscoutComponent = ({
           setCookieCSync(key, value, { expires: 30 });
         });
 
+        // Set a new state to indicate successful submission
+        setFormSubmitted(true); // Add this state
+
         if (onAssessmentComplete) {
           onAssessmentComplete(dataWithTimestamp);
         }
@@ -281,64 +283,76 @@ const NightscoutComponent = ({
         </div>
       )}
 
-      <div className="flex items-stretch justify-center">
-        <form onSubmit={handleSubmit} className="card h-fit max-w-2xl mx-auto p-5 md:p-12">
-          {isLoading && (
-            <div className="mb-4">
-              <Progress value={progress} className="w-full" />
-              <p className="text-center mt-2">{progressText}</p>
-            </div>
-          )}
-          {error && <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
-          <input
-            type="text"
-            name="nightscout_url"
-            placeholder="Nightscout URL"
-            value={formData.nightscout_url}
-            onChange={handleInputChange}
-            className="w-full p-2 mb-4 border rounded"
-          />
-          <input
-            type="text"
-            name="nightscout_token"
-            placeholder="Nightscout Token"
-            value={formData.nightscout_token}
-            onChange={handleInputChange}
-            className="w-full p-2 mb-4 border rounded"
-          />
-          <label className="flex items-center mb-4">
-            <input
-              type="checkbox"
-              name="terms_accepted"
-              checked={formData.terms_accepted}
-              onChange={handleInputChange}
-              className="mr-2"
-            />
-            I understand this is experimental. The analysis might be wrong and does not constitute medical advice. All
-            data should be manually verified by you and your healthcare professions.
-          </label>
-          <label className="flex items-center mb-4">
-            <input
-              type="checkbox"
-              name="responsibility_accepted"
-              checked={formData.responsibility_accepted}
-              onChange={handleInputChange}
-              className="mr-2"
-            />
-            I am consenting to sending this data, and understand I do not have to if I do not want to. I take full
-            responsibility for the sending of this data, as well as what I do with the information that is given to me.
-          </label>
-          <button
-            type="submit"
-            disabled={!isFormValid || isLoading}
-            className={`w-full p-2 text-white rounded ${
-              isFormValid && !isLoading ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300 cursor-not-allowed'
-            }`}
-          >
-            {isLoading ? 'Creating podcast...' : 'Create podcast'}
-          </button>
-        </form>
-      </div>
+      {!formSubmitted && (
+        <div className="flex items-stretch justify-center">
+          <form onSubmit={handleSubmit} className="card h-fit max-w-2xl mx-auto p-5 md:p-12">
+            {isLoading && (
+              <div className="mb-4">
+                <Progress value={progress} className="w-full" />
+                <p className="text-center mt-2">{progressText}</p>
+              </div>
+            )}
+            {error && <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
+
+            {/* Form fields - only shown when NOT loading */}
+            {!isLoading && (
+              <>
+                {/* Nightscout URL input */}
+                <input
+                  type="text"
+                  name="nightscout_url"
+                  placeholder="Nightscout URL"
+                  value={formData.nightscout_url}
+                  onChange={handleInputChange}
+                  className="w-full p-2 mb-4 border rounded"
+                />
+                <input
+                  type="text"
+                  name="nightscout_token"
+                  placeholder="Nightscout Token"
+                  value={formData.nightscout_token}
+                  onChange={handleInputChange}
+                  className="w-full p-2 mb-4 border rounded"
+                />
+                <label className="flex items-center mb-4">
+                  <input
+                    type="checkbox"
+                    name="terms_accepted"
+                    checked={formData.terms_accepted}
+                    onChange={handleInputChange}
+                    className="mr-2"
+                  />
+                  I understand this is experimental. The analysis might be wrong and does not constitute medical advice.
+                  All data should be manually verified by you and your healthcare professions.
+                </label>
+                <label className="flex items-center mb-4">
+                  <input
+                    type="checkbox"
+                    name="responsibility_accepted"
+                    checked={formData.responsibility_accepted}
+                    onChange={handleInputChange}
+                    className="mr-2"
+                  />
+                  I am consenting to sending this data, and understand I do not have to if I do not want to. I take full
+                  responsibility for the sending of this data, as well as what I do with the information that is given
+                  to me.
+                </label>
+                {/* Submit button - only shown when not loading */}
+                <button
+                  type="submit"
+                  disabled={!isFormValid}
+                  className={`w-full p-2 text-white rounded ${
+                    isFormValid ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300 cursor-not-allowed'
+                  }`}
+                >
+                  Create podcast
+                </button>
+              </>
+            )}
+          </form>
+        </div>
+      )}
+
       {isClient && assessmentData && (
         <div className="mt-8 max-w-4xl mx-auto">
           <div className={`transition-opacity duration-600 ease-in-out ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
