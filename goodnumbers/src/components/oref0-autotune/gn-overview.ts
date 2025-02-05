@@ -1,5 +1,5 @@
 import { GLUCOSE_RANGES } from './gn-constants';
-import { analyzeTimeOfDay, AutotunePreppedData, TimeRangeAnalysisWithHours } from './gn-meal-analysis';
+import { AnalysisResult, analyzeTimeOfDay, AutotunePreppedData, FullAnalysisResult } from './gn-meal-analysis';
 
 export function getWeekOverview(
   all_prepped_glucose: AutotunePreppedData,
@@ -8,7 +8,8 @@ export function getWeekOverview(
   numDays: number,
 ) {
   var notes = '';
-  const tod_analysis: TimeRangeAnalysisWithHours = analyzeTimeOfDay(all_prepped_glucose);
+  const full_analysis: FullAnalysisResult = analyzeTimeOfDay(all_prepped_glucose);
+  const tod_analysis: AnalysisResult = full_analysis.overall;
 
   notes += `# Patient notes: ${firstDate} to ${endDate}\n`;
   notes += '\n';

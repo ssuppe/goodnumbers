@@ -139,27 +139,180 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
   return mealEvents;
 }
 
-interface TimeRangeAnalysis {
-  numReadings: number;
-  avgGlucose: number;
-  avgDeviation: number;
-  highPercentage: number;
+// interface TimeRangeAnalysis {
+//   numReadings: number;
+//   avgGlucose: number;
+//   avgDeviation: number;
+//   highPercentage: number;
+//   lowPercentage: number;
+//   inRangePercentage: number;
+//   inTargetPercentage: number; // Between TARGET_BOTTOM and TARGET_TOP (80-104)
+//   inTITRPercentage: number;
+//   mealStartsCount: number;
+//   mealInProgressCount: number;
+//   basalDeviations: number[];
+//   isfDeviations: number[];
+// }
+
+// interface TimeRangeAnalysisWithHours extends TimeRangeAnalysis {
+//   hours: TimeRangeAnalysis[];
+// }
+
+interface GlucoseReading {
+  glucose: number;
+  deviation: number;
+  date: string | Date;
+}
+
+enum GlucoseState {
+  LOW = 'LOW',
+  IN_RANGE = 'IN_RANGE',
+  IN_TITR = 'IN_TITR',
+  IN_TARGET = 'IN_TARGET',
+  HIGH = 'HIGH',
+  UNKNOWN = 'UNKNOWN',
+}
+
+interface StateCounts {
+  [GlucoseState.LOW]: number;
+  [GlucoseState.IN_RANGE]: number;
+  [GlucoseState.IN_TITR]: number;
+  [GlucoseState.IN_TARGET]: number;
+  [GlucoseState.HIGH]: number;
+  [GlucoseState.UNKNOWN]: number;
+}
+
+interface PercentageResults {
   lowPercentage: number;
   inRangePercentage: number;
-  inTargetPercentage: number; // Between TARGET_BOTTOM and TARGET_TOP (80-104)
   inTITRPercentage: number;
+  inTargetPercentage: number;
+  highPercentage: number;
+}
+
+interface AnalysisResult {
+  avgGlucose: number;
+  avgDeviation: number;
+  numReadings: number;
+  lowPercentage: number;
+  inRangePercentage: number;
+  inTITRPercentage: number;
+  inTargetPercentage: number;
+  highPercentage: number;
+}
+
+interface HourlyAnalysisResult extends AnalysisResult {
   mealStartsCount: number;
   mealInProgressCount: number;
   basalDeviations: number[];
   isfDeviations: number[];
 }
 
-interface TimeRangeAnalysisWithHours extends TimeRangeAnalysis {
-  hours: TimeRangeAnalysis[];
+interface FullAnalysisResult {
+  overall: AnalysisResult;
+  hourly: AnalysisResult[];
 }
 
-function analyzeRange(data: AutotunePreppedData): TimeRangeAnalysisWithHours {
-  // const hourlyAnalysis: HourlyAnalysis[] = Array.from({ length: 24 }, (_, hour) => ({
+// Helper function to determine glucose state
+function getGlucoseState(glucose: number): GlucoseState {
+  // Needs to go from most specific to least specific to work correctly
+  if (glucose >= GLUCOSE_RANGES.TARGET_BOTTOM && glucose <= GLUCOSE_RANGES.TARGET_TOP) return GlucoseState.IN_TARGET;
+  if (glucose >= GLUCOSE_RANGES.LOW && glucose <= GLUCOSE_RANGES.TITR_HIGH) return GlucoseState.IN_TITR;
+  if (glucose >= GLUCOSE_RANGES.LOW && glucose <= GLUCOSE_RANGES.HIGH) return GlucoseState.IN_RANGE;
+  if (glucose < GLUCOSE_RANGES.LOW) return GlucoseState.LOW;
+  if (glucose > GLUCOSE_RANGES.HIGH) return GlucoseState.HIGH;
+  return GlucoseState.UNKNOWN;
+}
+
+class GlucoseAnalysis {
+  protected numReadings: number = 0;
+  protected avgGlucose: number = 0;
+  protected avgDeviation: number = 0;
+  protected stateCounts: StateCounts = {
+    [GlucoseState.LOW]: 0,
+    [GlucoseState.IN_RANGE]: 0,
+    [GlucoseState.IN_TITR]: 0,
+    [GlucoseState.IN_TARGET]: 0,
+    [GlucoseState.HIGH]: 0,
+    [GlucoseState.UNKNOWN]: 0,
+  };
+
+  addReading(reading: GlucoseReading): void {
+    this.numReadings++;
+
+    // Update running averages
+    this.avgGlucose = (this.avgGlucose * (this.numReadings - 1) + reading.glucose) / this.numReadings;
+    this.avgDeviation = (this.avgDeviation * (this.numReadings - 1) + reading.deviation) / this.numReadings;
+
+    // Update state counts
+    const state = getGlucoseState(reading.glucose);
+    this.stateCounts[state]++;
+  }
+
+  getPercentages(): PercentageResults {
+    return {
+      lowPercentage: (this.stateCounts[GlucoseState.LOW] / this.numReadings) * 100,
+      inRangePercentage:
+        ((this.stateCounts[GlucoseState.IN_RANGE] +
+          this.stateCounts[GlucoseState.IN_TITR] +
+          this.stateCounts[GlucoseState.IN_TARGET]) /
+          this.numReadings) *
+        100,
+      inTargetPercentage: (this.stateCounts[GlucoseState.IN_TARGET] / this.numReadings) * 100,
+      inTITRPercentage:
+        ((this.stateCounts[GlucoseState.IN_TITR] + this.stateCounts[GlucoseState.IN_TARGET]) / this.numReadings) * 100,
+      highPercentage: (this.stateCounts[GlucoseState.HIGH] / this.numReadings) * 100,
+    };
+  }
+
+  getAnalysis(): AnalysisResult {
+    return {
+      ...this.getPercentages(),
+      avgGlucose: this.avgGlucose,
+      avgDeviation: this.avgDeviation,
+      numReadings: this.numReadings,
+    };
+  }
+}
+
+class HourlyGlucoseAnalysis extends GlucoseAnalysis {
+  public mealStartsCount: number = 0;
+  public mealInProgressCount: number = 0;
+  public basalDeviations: number[] = [];
+  public isfDeviations: number[] = [];
+
+  getAnalysis(): HourlyAnalysisResult {
+    return {
+      ...this.getPercentages(),
+      avgGlucose: this.avgGlucose,
+      avgDeviation: this.avgDeviation,
+      numReadings: this.numReadings,
+      mealStartsCount: this.mealStartsCount,
+      mealInProgressCount: this.mealInProgressCount,
+      basalDeviations: this.basalDeviations,
+      isfDeviations: this.isfDeviations,
+    };
+  }
+}
+
+function analyzeRange(data: AutotunePreppedData): FullAnalysisResult {
+  // const analysis: TimeRangeAnalysisWithHours = {
+  //   numReadings: 0,
+  //   avgGlucose: 0,
+  //   avgDeviation: 0,
+  //   highPercentage: 0,
+  //   lowPercentage: 0,
+  //   inRangePercentage: 0,
+  //   inTargetPercentage: 0, // Between TARGET_BOTTOM and TARGET_TOP (80-104)
+  //   inTITRPercentage: 0, // Between LOW and TITR_HIGH (70-140)
+  //   mealStartsCount: 0,
+  //   mealInProgressCount: 0,
+  //   basalDeviations: [],
+  //   isfDeviations: [],
+  //   hours: [] as TimeRangeAnalysis[],
+  // };
+
+  // analysis.hours = Array.from({ length: 24 }, (_, hour) => ({
   //   hour,
   //   numReadings: 0,
   //   avgGlucose: 0,
@@ -175,122 +328,96 @@ function analyzeRange(data: AutotunePreppedData): TimeRangeAnalysisWithHours {
   //   isfDeviations: [],
   // }));
 
-  const analysis: TimeRangeAnalysisWithHours = {
-    numReadings: 0,
-    avgGlucose: 0,
-    avgDeviation: 0,
-    highPercentage: 0,
-    lowPercentage: 0,
-    inRangePercentage: 0,
-    inTargetPercentage: 0, // Between TARGET_BOTTOM and TARGET_TOP (80-104)
-    inTITRPercentage: 0, // Between LOW and TITR_HIGH (70-140)
-    mealStartsCount: 0,
-    mealInProgressCount: 0,
-    basalDeviations: [],
-    isfDeviations: [],
-    hours: [] as TimeRangeAnalysis[],
-  };
-
-  analysis.hours = Array.from({ length: 24 }, (_, hour) => ({
-    hour,
-    numReadings: 0,
-    avgGlucose: 0,
-    avgDeviation: 0,
-    highPercentage: 0,
-    lowPercentage: 0,
-    inRangePercentage: 0,
-    inTargetPercentage: 0, // Between TARGET_BOTTOM and TARGET_TOP (80-104)
-    inTITRPercentage: 0, // Between LOW and TITR_HIGH (70-140)
-    mealStartsCount: 0,
-    mealInProgressCount: 0,
-    basalDeviations: [],
-    isfDeviations: [],
-  }));
-
   // Combine all glucose readings
   const allReadings = [...data.CSFGlucoseData, ...data.ISFGlucoseData, ...data.basalGlucoseData];
+
+  const analysis = new GlucoseAnalysis();
+  const hourlyAnalyses = Array.from({ length: 24 }, () => new HourlyGlucoseAnalysis());
 
   // Process each reading
   allReadings.forEach((reading) => {
     const hour = new Date(reading.date).getHours();
-    const hourlyAnalysis = analysis.hours[hour];
+
+    analysis.addReading(reading);
+    hourlyAnalyses[hour].addReading(reading);
 
     // Update basic statistics for the whole range
-    analysis.numReadings++;
-    hourlyAnalysis.numReadings++;
-    analysis.avgGlucose = (analysis.avgGlucose * (analysis.numReadings - 1) + reading.glucose) / analysis.numReadings;
-    hourlyAnalysis.avgGlucose =
-      (hourlyAnalysis.avgGlucose * (hourlyAnalysis.numReadings - 1) + reading.glucose) / hourlyAnalysis.numReadings;
+    // analysis.numReadings++;
+    // hourlyAnalysis.numReadings++;
+    // analysis.avgGlucose = (analysis.avgGlucose * (analysis.numReadings - 1) + reading.glucose) / analysis.numReadings;
+    // hourlyAnalysis.avgGlucose =
+    //   (hourlyAnalysis.avgGlucose * (hourlyAnalysis.numReadings - 1) + reading.glucose) / hourlyAnalysis.numReadings;
 
-    analysis.avgDeviation =
-      (analysis.avgDeviation * (analysis.numReadings - 1) + reading.deviation) / analysis.numReadings;
-    hourlyAnalysis.avgDeviation =
-      (hourlyAnalysis.avgDeviation * (hourlyAnalysis.numReadings - 1) + reading.deviation) / hourlyAnalysis.numReadings;
+    // analysis.avgDeviation =
+    //   (analysis.avgDeviation * (analysis.numReadings - 1) + reading.deviation) / analysis.numReadings;
+    // hourlyAnalysis.avgDeviation =
+    //   (hourlyAnalysis.avgDeviation * (hourlyAnalysis.numReadings - 1) + reading.deviation) / hourlyAnalysis.numReadings;
 
-    // Track high/low/in-range
-    if (reading.glucose > GLUCOSE_RANGES.HIGH) {
-      analysis.highPercentage = (analysis.highPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
-      hourlyAnalysis.highPercentage =
-        (hourlyAnalysis.highPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
-    } else {
-      // Explicitly handle in-range case for high
-      analysis.highPercentage = (analysis.highPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
-      hourlyAnalysis.highPercentage =
-        (hourlyAnalysis.highPercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
-    }
+    // // Track high/low/in-range
+    // if (reading.glucose > GLUCOSE_RANGES.HIGH) {
+    //   analysis.highPercentage = (analysis.highPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
+    //   hourlyAnalysis.highPercentage =
+    //     (hourlyAnalysis.highPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
+    // } else {
+    //   // Explicitly handle in-range case for high
+    //   analysis.highPercentage = (analysis.highPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
+    //   hourlyAnalysis.highPercentage =
+    //     (hourlyAnalysis.highPercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
+    // }
 
-    if (reading.glucose < GLUCOSE_RANGES.LOW) {
-      analysis.lowPercentage = (analysis.lowPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
-      hourlyAnalysis.lowPercentage =
-        (hourlyAnalysis.lowPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
-    } else {
-      // Explicitly handle in-range case for low
-      analysis.lowPercentage = (analysis.lowPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
-      hourlyAnalysis.lowPercentage =
-        (hourlyAnalysis.lowPercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
-    }
+    // if (reading.glucose < GLUCOSE_RANGES.LOW) {
+    //   analysis.lowPercentage = (analysis.lowPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
+    //   hourlyAnalysis.lowPercentage =
+    //     (hourlyAnalysis.lowPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
+    // } else {
+    //   // Explicitly handle in-range case for low
+    //   analysis.lowPercentage = (analysis.lowPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
+    //   hourlyAnalysis.lowPercentage =
+    //     (hourlyAnalysis.lowPercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
+    // }
 
-    // Calculate LOW to HIGH (InRange)
-    if (reading.glucose >= GLUCOSE_RANGES.LOW && reading.glucose <= GLUCOSE_RANGES.HIGH) {
-      analysis.inRangePercentage =
-        (analysis.inRangePercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
-      hourlyAnalysis.inRangePercentage =
-        (hourlyAnalysis.inRangePercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
-    } else {
-      analysis.inRangePercentage = (analysis.inRangePercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
-      hourlyAnalysis.inRangePercentage =
-        (hourlyAnalysis.inRangePercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
-    }
+    // // Calculate LOW to HIGH (InRange)
+    // if (reading.glucose >= GLUCOSE_RANGES.LOW && reading.glucose <= GLUCOSE_RANGES.HIGH) {
+    //   analysis.inRangePercentage =
+    //     (analysis.inRangePercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
+    //   hourlyAnalysis.inRangePercentage =
+    //     (hourlyAnalysis.inRangePercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
+    // } else {
+    //   analysis.inRangePercentage = (analysis.inRangePercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
+    //   hourlyAnalysis.inRangePercentage =
+    //     (hourlyAnalysis.inRangePercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
+    // }
 
     // Calculate TARGET_BOTTOM to TARGET_TOP (InTarget)
-    if (reading.glucose >= GLUCOSE_RANGES.TARGET_BOTTOM && reading.glucose <= GLUCOSE_RANGES.TARGET_TOP) {
-      analysis.inTargetPercentage =
-        (analysis.inTargetPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
-      hourlyAnalysis.inTargetPercentage =
-        (hourlyAnalysis.inTargetPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
-    } else {
-      analysis.inTargetPercentage =
-        (analysis.inTargetPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
-      hourlyAnalysis.inTargetPercentage =
-        (hourlyAnalysis.inTargetPercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
-    }
+    // if (reading.glucose >= GLUCOSE_RANGES.TARGET_BOTTOM && reading.glucose <= GLUCOSE_RANGES.TARGET_TOP) {
+    //   analysis.inTargetPercentage =
+    //     (analysis.inTargetPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
+    //   hourlyAnalysis.inTargetPercentage =
+    //     (hourlyAnalysis.inTargetPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
+    // } else {
+    //   analysis.inTargetPercentage =
+    //     (analysis.inTargetPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
+    //   hourlyAnalysis.inTargetPercentage =
+    //     (hourlyAnalysis.inTargetPercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
+    // }
 
     // Calculate LOW to TITR_HIGH (InTITR)
-    if (reading.glucose >= GLUCOSE_RANGES.LOW && reading.glucose <= GLUCOSE_RANGES.TITR_HIGH) {
-      analysis.inTITRPercentage = (analysis.inTITRPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
-      hourlyAnalysis.inTITRPercentage =
-        (hourlyAnalysis.inTITRPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
-    } else {
-      analysis.inTITRPercentage = (analysis.inTITRPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
-      hourlyAnalysis.inTITRPercentage =
-        (hourlyAnalysis.inTITRPercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
-    }
+    // if (reading.glucose >= GLUCOSE_RANGES.LOW && reading.glucose <= GLUCOSE_RANGES.TITR_HIGH) {
+    //   analysis.inTITRPercentage = (analysis.inTITRPercentage * (analysis.numReadings - 1) + 100) / analysis.numReadings;
+    //   hourlyAnalysis.inTITRPercentage =
+    //     (hourlyAnalysis.inTITRPercentage * (hourlyAnalysis.numReadings - 1) + 100) / hourlyAnalysis.numReadings;
+    // } else {
+    //   analysis.inTITRPercentage = (analysis.inTITRPercentage * (analysis.numReadings - 1) + 0) / analysis.numReadings;
+    //   hourlyAnalysis.inTITRPercentage =
+    //     (hourlyAnalysis.inTITRPercentage * (hourlyAnalysis.numReadings - 1) + 0) / hourlyAnalysis.numReadings;
+    // }
   });
+  // xxxxxxxxxxxxxxxxxxxx - need to add these to the above refactored analysis
 
   // Track meal starts and meal periods
   data.CSFGlucoseData.forEach((reading) => {
     const hour = new Date(reading.date).getHours();
-    const hourlyAnalysis = analysis.hours[hour];
+    const hourlyAnalysis = hourlyAnalyses[hour];
     if (reading.mealAbsorption === 'start') {
       hourlyAnalysis.mealStartsCount++;
     }
@@ -300,18 +427,21 @@ function analyzeRange(data: AutotunePreppedData): TimeRangeAnalysisWithHours {
   // Track deviations by type
   data.basalGlucoseData.forEach((reading) => {
     const hour = new Date(reading.date).getHours();
-    const hourlyAnalysis = analysis.hours[hour];
+    const hourlyAnalysis = hourlyAnalyses[hour];
 
     hourlyAnalysis.basalDeviations.push(Number(reading.deviation));
   });
 
   data.ISFGlucoseData.forEach((reading) => {
     const hour = new Date(reading.date).getHours();
-    const hourlyAnalysis = analysis.hours[hour];
+    const hourlyAnalysis = hourlyAnalyses[hour];
     hourlyAnalysis.isfDeviations.push(Number(reading.deviation));
   });
 
-  return analysis;
+  return {
+    overall: analysis.getAnalysis(),
+    hourly: hourlyAnalyses.map((hourAnalysis) => hourAnalysis.getAnalysis()),
+  };
 }
 
 // function generatePatternSummary(analysis: TimeRangeAnalysisWithHours, mealEvents?: MealEvent[]): DailyPatternSummary {
@@ -495,8 +625,13 @@ function analyzeRange(data: AutotunePreppedData): TimeRangeAnalysisWithHours {
 export {
   analyzeMealEvents,
   analyzeRange as analyzeTimeOfDay,
-  type TimeRangeAnalysis,
-  type TimeRangeAnalysisWithHours,
+  // type TimeRangeAnalysis,
+  // type TimeRangeAnalysisWithHours,
+  type FullAnalysisResult,
+  type AnalysisResult,
+  type HourlyAnalysisResult,
+  type GlucoseAnalysis,
+  type HourlyGlucoseAnalysis,
   type AutotunePreppedData,
   type MealEvent,
 };
