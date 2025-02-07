@@ -11,7 +11,13 @@ import { compress } from 'compress-json';
 import { createApiClient } from '~/lib/api/axios';
 import { useAssessmentState } from '~/hooks/useAssessmentState';
 import { useLoadingState } from '~/hooks/useLoadingState';
-import { AssessmentData, JobCheckResponse, NightscoutData, PodcastGenerateResult } from '~/types/nightscout';
+import {
+  AssessmentData,
+  GlucoseUnits,
+  JobCheckResponse,
+  NightscoutData,
+  PodcastGenerateResult,
+} from '~/types/nightscout';
 import 'react-h5-audio-player/lib/styles.css';
 import LazyAudioPlayer from './LazyAudioPlayer';
 import { config } from 'src/utils/env';
@@ -60,7 +66,7 @@ const NightscoutComponent = ({
   interface FormDataState {
     nightscout_url: string;
     nightscout_token: string;
-    preferred_units: 'mg/dl' | 'mmol/l'; // Union type for strict type checking
+    preferred_units: GlucoseUnits; // Union type for strict type checking
     terms_accepted: boolean;
     responsibility_accepted: boolean;
   }
@@ -90,9 +96,9 @@ const NightscoutComponent = ({
 
   // Poll for podcast status
   useEffect(() => {
-    console.log('Podcast polling effect running'); // Add this
+    if (!assessmentData) return; // Add early return
+
     const currentResult = getCurrentPodcastResult();
-    console.log('Current podcast result:', currentResult); // Add this
 
     if (currentResult?.status !== 'processing') return;
 
@@ -106,9 +112,11 @@ const NightscoutComponent = ({
 
       // if (podcastResult.operation_id != null) {
       var response: PodcastGenerateResult = await checkPodcastStatus(podcastResult);
+
       const updatedData = {
         ...assessmentData,
         podcastResult: response,
+        preferred_units: assessmentData.preferred_units, // Explicitly include this
       };
       updateAssessmentData(updatedData);
     }, 30000);
@@ -187,17 +195,18 @@ const NightscoutComponent = ({
             hour12: false,
           })
           .replace(/\//g, '-');
-
+        if (data == null) return;
         const dataWithTimestamp = {
           ...data,
           timestamp: formattedTimestamp,
+          preferred_units: data.preferred_units, // Explicitly include this
         };
 
         // Use the sync version for setting assessment data
         updateAssessmentData(dataWithTimestamp);
-        Object.entries(dataWithTimestamp).forEach(([key, value]) => {
-          setCookieCSync(key, value, { expires: 30 });
-        });
+        // Object.entries(dataWithTimestamp).forEach(([key, value]) => {
+        //   setCookieCSync(key, value, { expires: 30 });
+        // });
 
         // Set a new state to indicate successful submission
         setFormSubmitted(true); // Add this state
