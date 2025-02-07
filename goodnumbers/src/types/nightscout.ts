@@ -18,6 +18,8 @@ export interface PodcastGenerateResult {
   description?: string | null;
 }
 
+export type GlucoseUnits = 'mg/dl' | 'mmol/l';
+
 export interface AssessmentData {
   valid?: boolean | null;
   notes?: string | null;
@@ -30,6 +32,7 @@ export interface AssessmentData {
   timestamp?: string | null;
   id?: string | null;
   podcastResult?: PodcastGenerateResult | null;
+  preferred_units: GlucoseUnits;
 }
 
 export interface InitialStoredData {
