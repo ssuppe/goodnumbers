@@ -7,23 +7,35 @@ module.exports = {
   theme: {
     extend: {
       animation: {
-        'spin': 'spin 1s linear infinite',
+        spin: 'spin 1s linear infinite'
       },
       keyframes: {
         spin: {
-          '0%': { transform: 'rotate(0deg)' },
-          '100%': { transform: 'rotate(360deg)' },
+          '0%': {
+            transform: 'rotate(0deg)'
+          },
+          '100%': {
+            transform: 'rotate(360deg)'
+          }
         }
       },
       colors: {
         primary: colors.blue,
-        secondary: colors.blue,
+        secondary: colors.blue
       },
       fontFamily: {
-        sans: ['var(--font-custom)', ...defaultTheme.fontFamily.sans],
+        sans: [
+          'var(--font-custom)',
+          ...defaultTheme.fontFamily.sans
+        ]
       },
-    },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)'
+      }
+    }
   },
-  plugins: [require('@tailwindcss/typography')],
-  darkMode: 'class',
+  plugins: [require('@tailwindcss/typography'), require("tailwindcss-animate")],
+  darkMode: 'class'  // Remove duplicate
 };
