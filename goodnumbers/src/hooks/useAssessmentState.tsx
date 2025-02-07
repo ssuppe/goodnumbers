@@ -48,6 +48,7 @@ export const useAssessmentState = () => {
       setCookieCSync('title', newData.title, { expires: 30 });
       setCookieCSync('description', newData.description, { expires: 30 });
       setCookieCSync('ssml_dialog', newData.ssml_dialog, { expires: 30 });
+      setCookieCSync('units', newData.preferred_units);
       // setCookieCSync('template_num', newData.template_num, { expires: 30 });
       setCookieCSync('timestamp', newData.timestamp, { expires: 30 });
       setCookieCSync('id', newData.id, { expires: 30 });

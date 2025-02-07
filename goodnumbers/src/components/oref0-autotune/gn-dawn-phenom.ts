@@ -1,4 +1,6 @@
 import { AutotunePreppedData } from 'gn-autotune-prep';
+import { GlucoseUnits } from '../../types/nightscout';
+import { t, u } from '../../utils/text';
 
 interface DawnPatternDay {
   date: string;
@@ -259,10 +261,10 @@ function analyzeDawnPhenomenonTiming(patterns: DawnPatternDay[]): {
   if (clusters.length === 1) {
     notes = `  * Dawn phenomenon consistently starts between ${primaryCluster.startTimeRange.earliest} and ${primaryCluster.startTimeRange.latest}\n`;
   } else {
-    notes = `  * Most of the time, dawn phenomenon pattern starts around 0${primaryStartTime} (${primaryCluster.count} occurrences)\n`;
+    notes = `  * Most of the time, dawn phenomenon pattern starts around ${t(primaryStartTime)} (${primaryCluster.count} mornings)\n`;
     clusters.slice(1).forEach((cluster) => {
       if (cluster.count > 1) {
-        notes += `  * Sometimes it starts around ${formatMinutes(cluster.centerTime)}, with (${cluster.count} occurrences)\n`;
+        notes += `  * Sometimes it starts around ${t(formatMinutes(cluster.centerTime))}, with (${cluster.count} mornings)\n`;
       }
     });
   }
@@ -275,7 +277,12 @@ function analyzeDawnPhenomenonTiming(patterns: DawnPatternDay[]): {
   };
 }
 
-export function getDawnPhenomenonNotes(dawn_phenom_data: DawnAnalysis, notes: string, numDays: number) {
+export function getDawnPhenomenonNotes(
+  dawn_phenom_data: DawnAnalysis,
+  notes: string,
+  numDays: number,
+  preferred_units: GlucoseUnits,
+) {
   const patternFrequency = dawn_phenom_data.daysShowingPattern / 7; // Assuming 7 days of data
   const averageRiseSignificance = dawn_phenom_data.averageRise > 20;
   let dawnPhenomClusters: TimeCluster[],
@@ -286,19 +293,19 @@ export function getDawnPhenomenonNotes(dawn_phenom_data: DawnAnalysis, notes: st
   var notes = '';
   if (patternFrequency > 0.7 && dawn_phenom_data.averageRise > 30) {
     notes += '  * The patient has strong indication of severe dawn phenomenon.\n';
-    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${Math.round(dawn_phenom_data.averageRise)} mg/dl\n`;
+    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
     notes += timingNotes.notes;
   } else if (patternFrequency > 0.7 && dawn_phenom_data.averageRise > 20) {
     notes += '  * The patient has strong indication of strong dawn phenomenon.\n';
-    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${Math.round(dawn_phenom_data.averageRise)} mg/dl\n`;
+    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
     notes += timingNotes.notes;
   } else if (patternFrequency > 0.5 && dawn_phenom_data.averageRise > 20) {
     notes += '  * There is some indication of dawn phenomenon.\n';
-    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${Math.round(dawn_phenom_data.averageRise)} mg/dl\n`;
+    notes += `  * In ${dawn_phenom_data.daysShowingPattern} of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
     notes += timingNotes.notes;
   } else if (patternFrequency > 0.2 && dawn_phenom_data.averageRise > 20) {
     notes += '  * The patient may be experiencing dawn phenomenon.\n';
-    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${Math.round(dawn_phenom_data.averageRise)} mg/dl\n`;
+    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
     notes += timingNotes.notes;
   } else {
     notes += "  * The patient didn't have any indications of dawn phenomenon.\n";
