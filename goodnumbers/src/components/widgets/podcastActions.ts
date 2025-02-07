@@ -5,7 +5,7 @@ import winston from 'winston';
 import fs from 'fs/promises';
 import path from 'path';
 import { decompress, Compressed } from 'compress-json';
-import { AssessmentData, NightscoutData, PodcastGenerateResult } from '~/types/nightscout';
+import { AssessmentData, GlucoseUnits, NightscoutData, PodcastGenerateResult } from '~/types/nightscout';
 import { config } from '~/utils/env';
 import { ATProfileSettings, findMostActiveProfile, transformNightscoutProfileToAutotune } from './nightscoutProfile';
 import dotenv from 'dotenv';
@@ -80,6 +80,7 @@ export async function generateAssessments(
   cTreatments: Compressed,
   cProfiles: Compressed,
   id: string,
+  preferred_units: GlucoseUnits,
 ): Promise<AssessmentData | null> {
   const apiUrl = config.backendUrl;
   if (!apiUrl || apiUrl == '') {
@@ -143,7 +144,7 @@ export async function generateAssessments(
     const numDays = Math.round((new Date(endDate).getTime() - new Date(firstDate).getTime()) / (1000 * 60 * 60 * 24));
     const all_prepped_glucose = gn_autotune_prep(nsData.entries, nsData.treatments, profile_data, pumpprofile_data);
 
-    var notes = getWeekOverview(all_prepped_glucose, firstDate, endDate, numDays);
+    var notes = getWeekOverview(all_prepped_glucose, firstDate, endDate, numDays, preferred_units);
 
     ///////////////////////////////////////////////////////////////////////////
     // Dawn phenomenom
@@ -152,13 +153,14 @@ export async function generateAssessments(
     notes += '# Dawn phenomenon analysis\n';
     const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose);
 
-    notes += getDawnPhenomenonNotes(dawn_phenom_data, notes, numDays);
+    notes += getDawnPhenomenonNotes(dawn_phenom_data, notes, numDays, preferred_units);
 
     const assessment1: AssessmentData = await getAssessment({
       valid: true,
       notes: notes,
       template_num: 1,
       id: id,
+      preferred_units,
     });
 
     const assessment2: AssessmentData = await getAssessment({
@@ -167,6 +169,7 @@ export async function generateAssessments(
       assessment1: assessment1.assessment1,
       template_num: 2,
       id: id,
+      preferred_units,
     });
 
     // Step 4: Generate Dialog

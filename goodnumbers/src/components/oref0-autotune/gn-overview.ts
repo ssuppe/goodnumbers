@@ -1,3 +1,4 @@
+import { GlucoseUnits } from '../../types/nightscout';
 import { GLUCOSE_RANGES } from './gn-constants';
 import { AnalysisResult, analyzeTimeOfDay, AutotunePreppedData, FullAnalysisResult } from './gn-meal-analysis';
 
@@ -6,12 +7,14 @@ export function getWeekOverview(
   firstDate: string,
   endDate: string,
   numDays: number,
+  preferred_units: GlucoseUnits,
 ) {
   var notes = '';
   const full_analysis: FullAnalysisResult = analyzeTimeOfDay(all_prepped_glucose);
   const tod_analysis: AnalysisResult = full_analysis.overall;
 
   notes += `# Patient notes: ${firstDate} to ${endDate}\n`;
+  notes += `Please note: The patient's preferred blood glucose units are ${preferred_units}\n`;
   notes += '\n';
   notes += '## Weekly overview\n\n';
   notes += `  * This week was the patient's average blood glucose was ${Math.round(tod_analysis.avgGlucose)} mg/dl\n`;

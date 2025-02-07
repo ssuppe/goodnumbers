@@ -57,10 +57,19 @@ const NightscoutComponent = ({
   const [formattedSSML, setFormattedSSML] = useState('');
   const [formSubmitted, setFormSubmitted] = useState(false);
 
+  interface FormDataState {
+    nightscout_url: string;
+    nightscout_token: string;
+    preferred_units: 'mg/dl' | 'mmol/l'; // Union type for strict type checking
+    terms_accepted: boolean;
+    responsibility_accepted: boolean;
+  }
+
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormDataState>({
     nightscout_url: '',
     nightscout_token: '',
+    preferred_units: 'mg/dl',
     terms_accepted: false,
     responsibility_accepted: false,
   });
@@ -68,19 +77,20 @@ const NightscoutComponent = ({
   // Load saved data on mount
   useEffect(() => {
     console.log('Load saved data on mount'); // Add this
-
+    console.log(Cookies.get('url'));
+    console.log(Cookies.get('units'));
     setIsClient(true);
     setFormData((prev) => ({
       ...prev,
       nightscout_url: Cookies.get('url') || '',
       nightscout_token: Cookies.get('token') || '',
+      preferred_units: (Cookies.get('units') as 'mg/dl' | 'mmol/l') || 'mg/dl',
     }));
   }, []);
 
   // Poll for podcast status
   useEffect(() => {
     console.log('Podcast polling effect running'); // Add this
-
     const currentResult = getCurrentPodcastResult();
     console.log('Current podcast result:', currentResult); // Add this
 
@@ -108,12 +118,24 @@ const NightscoutComponent = ({
   }, [assessmentData, getCurrentPodcastResult, updateAssessmentData]);
 
   // Form handlers
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const target = e.target as HTMLInputElement | HTMLSelectElement;
+    const name = target.name;
+    const value = target.value;
+
+    if ('checked' in target) {
+      // This is an input element with a checkbox
+      setFormData((prev) => ({
+        ...prev,
+        [name]: target.checked,
+      }));
+    } else {
+      // This is a select element or non-checkbox input
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -121,6 +143,7 @@ const NightscoutComponent = ({
     console.log('new');
     Cookies.set('url', formData.nightscout_url);
     Cookies.set('token', formData.nightscout_token);
+    Cookies.set('units', formData.preferred_units); // Add this line
 
     e.preventDefault();
     startLoading('Collecting Nightscout data...');
@@ -148,6 +171,7 @@ const NightscoutComponent = ({
             compressedData?.treatments || null,
             compressedData.profiles,
             hash,
+            formData.preferred_units, // Add units preference
           );
         });
       })
@@ -314,6 +338,20 @@ const NightscoutComponent = ({
                   onChange={handleInputChange}
                   className="w-full p-2 mb-4 border rounded"
                 />
+                <div className="w-full mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Preferred glucose units
+                  </label>
+                  <select
+                    name="preferred_units"
+                    value={formData.preferred_units}
+                    onChange={handleInputChange}
+                    className="w-full p-2 border rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  >
+                    <option value="mg/dl">mg/dL</option>
+                    <option value="mmol/l">mmol/L</option>
+                  </select>
+                </div>
                 <label className="flex items-center mb-4">
                   <input
                     type="checkbox"
