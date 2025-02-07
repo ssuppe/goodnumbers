@@ -149,7 +149,7 @@ function findCommonLowTimes(
       if (analysis.basalData.count === maxCount && Math.abs(analysis.basalData.avgDeviation) > SIGNIFICANT_DEVIATION) {
         analysis.primaryCause = 'basal';
         analysis.reasoning.push(
-          `${analysis.basalData.count} lows during basal periods with average deviation of ${analysis.basalData.avgDeviation.toFixed(1)} mg/dL`,
+          `${analysis.basalData.count} lows during basal periods with average deviation of ${analysis.basalData.avgDeviation.toFixed(1)}`,
         );
         analysis.recommendations.push('Consider reducing basal rate 2-3 hours before this time');
       } else if (
@@ -158,7 +158,7 @@ function findCommonLowTimes(
       ) {
         analysis.primaryCause = 'isf';
         analysis.reasoning.push(
-          `${analysis.isfData.count} lows during ISF periods with average deviation of ${analysis.isfData.avgDeviation.toFixed(1)} mg/dL`,
+          `${analysis.isfData.count} lows during ISF periods with average deviation of ${analysis.isfData.avgDeviation.toFixed(1)}`,
         );
         analysis.recommendations.push('Consider increasing ISF (reducing insulin sensitivity)');
       } else if (analysis.mealData.count === maxCount) {

@@ -16,3 +16,14 @@ export function u(sgv: number, preferred_units: GlucoseUnits = 'mg/dl'): string 
       throw new Error(`Invalid units: ${preferred_units}`);
   }
 }
+
+export function t(timeString: string): string {
+  const [hours, minutes] = timeString.split(':').map(Number);
+  const totalMinutes = hours * 60 + minutes;
+  const roundedMinutes = Math.round(totalMinutes / 15) * 15;
+
+  const newHours = Math.floor(roundedMinutes / 60) % 24;
+  const newMinutes = roundedMinutes % 60;
+
+  return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
+}

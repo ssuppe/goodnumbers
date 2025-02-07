@@ -1,6 +1,7 @@
 import { GlucoseUnits } from '../../types/nightscout';
 import { GLUCOSE_RANGES } from './gn-constants';
 import { AnalysisResult, analyzeTimeOfDay, AutotunePreppedData, FullAnalysisResult } from './gn-meal-analysis';
+import { u } from '../../utils/text';
 
 export function getWeekOverview(
   all_prepped_glucose: AutotunePreppedData,
@@ -17,7 +18,7 @@ export function getWeekOverview(
   notes += `Please note: The patient's preferred blood glucose units are ${preferred_units}\n`;
   notes += '\n';
   notes += '## Weekly overview\n\n';
-  notes += `  * This week was the patient's average blood glucose was ${Math.round(tod_analysis.avgGlucose)} mg/dl\n`;
+  notes += `  * This week was the patient's average blood glucose was ${u(tod_analysis.avgGlucose, preferred_units)}\n`;
 
   /////////////////////////////////////////////////////////////////////////////
   // Average
@@ -28,8 +29,7 @@ export function getWeekOverview(
     notes +=
       '    * VERY GOOD control! Your average glucose is close to target range, or what we call "in tight range, showing strong diabetes management.\n';
   } else if (tod_analysis.avgGlucose >= GLUCOSE_RANGES.LOW && tod_analysis.avgGlucose <= GLUCOSE_RANGES.HIGH) {
-    notes +=
-      "    * GOOD job! While there's room for improvement, you should be proud of maintaining your average glucose below 180 mg/dl.\n";
+    notes += `    * GOOD job! While there's room for improvement, you should be proud of maintaining your average glucose below ${u(180, preferred_units)}.\n`;
   } else {
     notes +=
       '    * Your glucose levels suggest your diabetes may need attention. Please schedule a consultation with your healthcare provider to discuss adjusting your management plan.\n';
@@ -63,28 +63,22 @@ export function getWeekOverview(
       "    * This is outstanding! Your TIR is truly exceptional. However, we need to be cautious about potential overtreatment and the risk of hypoglycemia. Let's review your data for any signs of frequent or severe low glucose events. Maintaining this level of control long-term requires vigilance, but remember to prioritize safety and avoid aggressive targets that might increase hypoglycemia risk. It's essential to find a balance between excellent control and a safe, sustainable approach.";
   }
 
-  notes += `  * Time spent LOW (< ${GLUCOSE_RANGES.LOW} mg/dl) is ${Math.round(tod_analysis.lowPercentage)}%`;
+  notes += `  * Time spent LOW (< ${u(GLUCOSE_RANGES.LOW, preferred_units)}) is ${Math.round(tod_analysis.lowPercentage)}%`;
   if (Math.round(tod_analysis.lowPercentage) <= 1) {
-    notes +=
-      "    * Excellent! Your time spent below 70 mg/dL is very low, which minimizes your risk of hypoglycemia. This suggests a good balance between glucose control and avoiding lows. Let's aim to maintain this while also optimizing your time in range.";
+    notes += `    * Excellent! Your time spent below ${u(70, preferred_units)} is very low, which minimizes your risk of hypoglycemia. This suggests a good balance between glucose control and avoiding lows. Let's aim to maintain this while also optimizing your time in range.`;
   } else if (Math.round(tod_analysis.lowPercentage) >= 1 && Math.round(tod_analysis.lowPercentage) < 3) {
-    notes +=
-      "    * Good. Your time spent below 70 mg/dL is within an acceptable range. While a small amount of time below range isn't typically cause for immediate concern, we want to be vigilant and ensure it doesn't increase. We’ll continue to monitor this closely, and we can discuss strategies to further reduce your risk if necessary while striving for a higher time in range.";
+    notes += `    * Good. Your time spent below ${u(70, preferred_units)} is within an acceptable range. While a small amount of time below range isn't typically cause for immediate concern, we want to be vigilant and ensure it doesn't increase. We’ll continue to monitor this closely, and we can discuss strategies to further reduce your risk if necessary while striving for a higher time in range.`;
   } else if (Math.round(tod_analysis.lowPercentage) >= 3 && Math.round(tod_analysis.lowPercentage) < 4) {
-    notes +=
-      '    * Your time spent below 70 mg/dL is approaching the higher end of the acceptable range. Let’s analyze your CGM data to understand when these lows are occurring and identify any patterns. We may need to make small adjustments to your insulin regimen or meal plan to minimize these events while still aiming for optimal glucose control. This is bordering on the threshold for increased risk, according to the International Consensus on Time in Range (Battelino et al., 2019).';
+    notes += `    * Your time spent below ${u(70, preferred_units)} is approaching the higher end of the acceptable range. Let’s analyze your CGM data to understand when these lows are occurring and identify any patterns. We may need to make small adjustments to your insulin regimen or meal plan to minimize these events while still aiming for optimal glucose control. This is bordering on the threshold for increased risk, according to the International Consensus on Time in Range (Battelino et al., 2019).`;
   } else if (Math.round(tod_analysis.lowPercentage) >= 4 && Math.round(tod_analysis.lowPercentage) < 5) {
-    notes +=
-      "    * Your time below 70 mg/dL is now above the recommended threshold. This indicates a slightly elevated risk of hypoglycemia. It's important to address this to prevent potential complications. Let’s review your insulin doses, particularly your basal and bolus insulin, and discuss strategies like adjusting your carb ratios or pre-bolusing to reduce your risk of lows. It's crucial we work together to find a balance between achieving good glucose control and minimizing hypoglycemia. The 4% threshold is based on the work of Battelino et al. (2019), where higher percentages are associated with increased hypoglycemia risk.";
+    notes += `    * Your time below ${u(70, preferred_units)} is now above the recommended threshold. This indicates a slightly elevated risk of hypoglycemia. It's important to address this to prevent potential complications. Let’s review your insulin doses, particularly your basal and bolus insulin, and discuss strategies like adjusting your carb ratios or pre-bolusing to reduce your risk of lows. It's crucial we work together to find a balance between achieving good glucose control and minimizing hypoglycemia. The 4% threshold is based on the work of Battelino et al. (2019), where higher percentages are associated with increased hypoglycemia risk.`;
   } else if (Math.round(tod_analysis.lowPercentage) >= 5 && Math.round(tod_analysis.lowPercentage) < 10) {
-    notes +=
-      "    * Your time spent below 70 mg/dL is too high and puts you at significant risk for hypoglycemia. We need to take action to reduce this immediately. Let's carefully review your insulin regimen, meal plan, and exercise routine to identify potential triggers for these low glucose events. We might need to reduce your insulin doses or adjust your carbohydrate intake. We also need to discuss hypoglycemia awareness and ensure you have a plan for treating low blood sugar. This level warrants careful consideration and potentially more significant adjustments to therapy.";
+    notes += `    * Your time spent below ${u(70, preferred_units)} is too high and puts you at significant risk for hypoglycemia. We need to take action to reduce this immediately. Let's carefully review your insulin regimen, meal plan, and exercise routine to identify potential triggers for these low glucose events. We might need to reduce your insulin doses or adjust your carbohydrate intake. We also need to discuss hypoglycemia awareness and ensure you have a plan for treating low blood sugar. This level warrants careful consideration and potentially more significant adjustments to therapy.`;
   } else if (Math.round(tod_analysis.lowPercentage) >= 10) {
-    notes +=
-      "    * Your time spent below 70 mg/dL is far too high and indicates a serious risk of severe hypoglycemia. This requires immediate attention. We need to adjust your insulin regimen right away, likely by reducing your doses. Let's also discuss potential causes for these frequent lows, such as changes in your activity level, medication interactions, or alcohol consumption. We need to develop a comprehensive plan to address this and protect you from the dangers of severe hypoglycemia. It’s also important to review your hypoglycemia awareness and ensure you have glucagon on hand and know how to use it.” This level requires urgent action to prevent severe hypoglycemia and potential harm.";
+    notes += `    * Your time spent below ${u(70, preferred_units)} is far too high and indicates a serious risk of severe hypoglycemia. This requires immediate attention. We need to adjust your insulin regimen right away, likely by reducing your doses. Let's also discuss potential causes for these frequent lows, such as changes in your activity level, medication interactions, or alcohol consumption. We need to develop a comprehensive plan to address this and protect you from the dangers of severe hypoglycemia. It’s also important to review your hypoglycemia awareness and ensure you have glucagon on hand and know how to use it.” This level requires urgent action to prevent severe hypoglycemia and potential harm.`;
   }
 
-  notes += `  * Time spent HIGH (> ${GLUCOSE_RANGES.HIGH} mg/dl) is ${Math.round(tod_analysis.highPercentage)}%`;
+  notes += `  * Time spent HIGH (> ${u(GLUCOSE_RANGES.HIGH, preferred_units)}) is ${Math.round(tod_analysis.highPercentage)}%`;
 
   if (Math.round(tod_analysis.highPercentage) < 3) {
     notes +=
