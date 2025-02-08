@@ -1,0 +1,9 @@
+export const GLUCOSE_RANGES = {
+  VERY_LOW: 54,
+  LOW: 70,
+  TARGET_BOTTOM: 80,
+  TARGET_TOP: 104,
+  TITR_HIGH: 140,
+  HIGH: 180,
+  VERY_HIGH: 250,
+};

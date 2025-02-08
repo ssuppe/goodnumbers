@@ -9,16 +9,16 @@ import { AssessmentData, GlucoseUnits, NightscoutData, PodcastGenerateResult } f
 import { config } from '~/utils/env';
 import { ATProfileSettings, findMostActiveProfile, transformNightscoutProfileToAutotune } from './nightscoutProfile';
 import dotenv from 'dotenv';
-import { AutotunePreppedData, gn_autotune_prep } from '../oref0-autotune/gn-autotune-prep';
-import { checkDawnPhenomenon, getDawnPhenomenonNotes } from '../oref0-autotune/gn-dawn-phenom';
-import { getPatientsRange, getWeekOverview, PatientRange } from '../oref0-autotune/gn-overview';
+import { AutotunePreppedData, gn_autotune_prep } from '../../oref0-autotune/gn-autotune-prep';
+import { checkDawnPhenomenon, getDawnPhenomenonNotes } from '../../oref0-autotune/gn-dawn-phenom';
+import { getPatientsRange, getWeekOverview, PatientRange } from '../../oref0-autotune/gn-overview';
 import {
   generatePodcastAudio,
   generatePodcastDescription,
   generatePodcastText,
   getAssessment,
 } from '~/gemini/geminiActions';
-import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '../oref0-autotune/gn-meal-analysis';
+import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '../../oref0-autotune/gn-meal-analysis';
 var _ = require('lodash');
 
 // Configure Winston logger
