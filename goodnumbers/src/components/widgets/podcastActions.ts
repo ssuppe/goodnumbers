@@ -11,13 +11,14 @@ import { ATProfileSettings, findMostActiveProfile, transformNightscoutProfileToA
 import dotenv from 'dotenv';
 import { AutotunePreppedData, gn_autotune_prep } from '../oref0-autotune/gn-autotune-prep';
 import { checkDawnPhenomenon, getDawnPhenomenonNotes } from '../oref0-autotune/gn-dawn-phenom';
-import { getWeekOverview } from '../oref0-autotune/gn-overview';
+import { getPatientsRange, getWeekOverview, PatientRange } from '../oref0-autotune/gn-overview';
 import {
   generatePodcastAudio,
   generatePodcastDescription,
   generatePodcastText,
   getAssessment,
 } from '~/gemini/geminiActions';
+import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '../oref0-autotune/gn-meal-analysis';
 var _ = require('lodash');
 
 // Configure Winston logger
@@ -144,7 +145,17 @@ export async function generateAssessments(
     const numDays = Math.round((new Date(endDate).getTime() - new Date(firstDate).getTime()) / (1000 * 60 * 60 * 24));
     const all_prepped_glucose = gn_autotune_prep(nsData.entries, nsData.treatments, profile_data, pumpprofile_data);
 
-    var notes = getWeekOverview(all_prepped_glucose, firstDate, endDate, numDays, preferred_units);
+    var notes = '';
+    notes += `# Patient notes: ${firstDate} to ${endDate}\n`;
+    notes += `Please note: The patient's preferred blood glucose units are ${preferred_units}.\n`;
+    notes += '\n';
+
+    const full_analysis: FullAnalysisResult = analyzeTimeOfDay(all_prepped_glucose);
+    const patient_range: PatientRange = getPatientsRange(full_analysis.overall);
+
+    notes += '## Weekly overview\n\n';
+
+    notes += getWeekOverview(full_analysis.overall, numDays, preferred_units, patient_range);
 
     ///////////////////////////////////////////////////////////////////////////
     // Dawn phenomenom
@@ -154,6 +165,14 @@ export async function generateAssessments(
     const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose);
 
     notes += getDawnPhenomenonNotes(dawn_phenom_data, notes, numDays, preferred_units);
+
+    notes = notes
+      .replace('mg/dl', '')
+      .replace('mmol/l', '')
+      .replace('TIR', 'time in range')
+      .replace('TTIR', 'time in tight range')
+      .replace('TAR', 'time above range')
+      .replace('TBR', 'time below range');
 
     const assessment1: AssessmentData = await getAssessment({
       valid: true,

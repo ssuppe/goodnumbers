@@ -35,6 +35,19 @@ export interface AssessmentData {
   preferred_units: GlucoseUnits;
 }
 
+export enum InsightPriority {
+  ALWAYS_INCLUDE = -1,
+  CRITICAL = 0,
+  SERIOUS = 1,
+  IMPORTANT = 2,
+  RECOMMENDATION = 3,
+}
+
+export interface AssessmentInsight {
+  note: string;
+  priority: InsightPriority;
+}
+
 export interface InitialStoredData {
   notes: string | null;
   assessment1: string | null;
