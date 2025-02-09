@@ -1,4 +1,4 @@
-import { AxiosResponse } from 'axios';
+'use server';
 import { createApiClient } from '../../lib/api/axios';
 import {
   NightscoutConfig,
@@ -7,9 +7,9 @@ import {
   NightscoutProfile,
   NightscoutTreatment,
 } from '~/types/nightscout';
-import { readLocalFile, writeLocalFile } from '@/'; ///app/actions/nightscoutCache';
+import { readLocalFile, writeLocalFile } from 'app/actions/nightscoutCache';
 
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.ENV === 'development';
 const isDebug = process.env.DEBUG === 'true';
 const isWriteLocal = process.env.WRITE_LOCAL === 'true';
 

@@ -12,7 +12,7 @@ import { Storage } from '@google-cloud/storage';
 import { updateRssFeed } from './rss';
 
 const { TextToSpeechLongAudioSynthesizeClient } = require('@google-cloud/text-to-speech').v1beta1;
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env.ENV === 'development';
 const isDebug = process.env.DEBUG === 'false';
 const isWriteLocal = process.env.WRITE_LOCAL === 'false';
 
