@@ -10,6 +10,8 @@ import { interpolate } from '~/utils/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { Storage } from '@google-cloud/storage';
 import { updateRssFeed } from './rss';
+import { canReadLocal, canWriteLocal } from '~/utils/env';
+import { readLocalFile, writeLocalFile } from 'app/actions/fileCache';
 
 const { TextToSpeechLongAudioSynthesizeClient } = require('@google-cloud/text-to-speech').v1beta1;
 const isDevelopment = process.env.ENV === 'development';
@@ -128,14 +130,14 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
     let noSsmlTries = 0;
 
     while (!isValidSsml && noSsmlTries < 3) {
-      console.log(`Generating SSML ${noSsmlTries} / 3`);
+      console.log(`Generating SSML ${noSsmlTries} / 2`);
       let podcastSsml: string;
 
       // Debug mode handling
-      if (isDevelopment && isDebug) {
+      if (canReadLocal()) {
         try {
-          const debugContent = await fs.readFile(path.join(process.cwd(), '_tmp', 'pass3_output.txt'), 'utf-8');
-          podcastSsml = JSON.parse(debugContent);
+          // const debugContent = await fs.readFile(path.join(process.cwd(), '_tmp', 'pass3_output.txt'), 'utf-8');
+          podcastSsml = await readLocalFile<string>({ filename: 'pass3/text.txt', plainText: true });
         } catch {
           const response = await model.generateContent(prompt);
           podcastSsml = response.response.text();
@@ -156,8 +158,8 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
 
       if (!isValidSsml) {
         console.log(`${noSsmlTries}/3: Invalid SSML that couldn't be fixed: ${podcastSsml}`);
-        if (isDevelopment && isWriteLocal) {
-          await fs.writeFile(path.join(process.cwd(), '_tmp', 'pass3_output.txt'), JSON.stringify(podcastSsml));
+        if (canWriteLocal()) {
+          await writeLocalFile(podcastSsml, { filename: 'pass3/pass3_output.txt', plainText: true });
         }
         noSsmlTries++;
       } else {
@@ -186,8 +188,8 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
           .replace('```', '')
           .replace(/\\n/g, '\n');
 
-        if (isDevelopment && isWriteLocal) {
-          await fs.writeFile(path.join(process.cwd(), '_tmp', 'pass3_output.txt'), finalSsml);
+        if (canWriteLocal()) {
+          await writeLocalFile(podcastSsml, { filename: 'pass3/pass3_output.txt', plainText: true });
         }
 
         return {
@@ -314,16 +316,16 @@ export async function generatePodcastAudio(podcast: AssessmentData): Promise<Pod
     const [operation] = await client.synthesizeLongAudio({
       parent: 'projects/goodnumbers-446416/locations/global',
       input: { ssml: ssml_dialog },
+      audioConfig: {
+        audioEncoding: 'LINEAR16',
+        speakingRate: 0.95,
+        pitch: 0.0,
+      },
+      outputGcsUri: outputGcsUri,
       voice: {
         languageCode: 'en-GB',
         name: 'en-GB-Wavenet-B',
       },
-      audioConfig: {
-        audioEncoding: 'LINEAR16',
-        speakingRate: 0.9,
-        pitch: 0.0,
-      },
-      outputGcsUri,
     });
 
     return {
