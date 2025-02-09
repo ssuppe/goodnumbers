@@ -1,4 +1,10 @@
-import { AssessmentInsight, GlucoseUnits, InsightPriority } from '../types/nightscout';
+import {
+  AssessmentInsight,
+  filterCriticalInsights,
+  GlucoseUnits,
+  hasCriticalInsights,
+  InsightPriority,
+} from '../types/nightscout';
 import { GLUCOSE_RANGES } from './gn-constants';
 import { AnalysisResult, analyzeTimeOfDay, AutotunePreppedData, FullAnalysisResult } from './gn-meal-analysis';
 import { u } from '../utils/text';
@@ -204,11 +210,9 @@ export function getWeekOverview(
   // If there are any critical insights, let's quit now. We are unable to
   // continue as the patient as severe issues.
   ////////////////////////////////////////////////////////////////////////////
-  const criticalInsights = insights.filter(
-    (insight) => insight.priority === InsightPriority.ALWAYS_INCLUDE || insight.priority === InsightPriority.CRITICAL,
-  );
-  if (criticalInsights.length > 0) return criticalInsights;
-
+  if (hasCriticalInsights(insights)) {
+    return filterCriticalInsights(insights)!;
+  }
   ////////////////////////////////////////////////////////////////////////////
   // Cover standard TIR evaluation to baseline everyone
   ////////////////////////////////////////////////////////////////////////////
