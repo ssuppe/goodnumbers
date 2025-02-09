@@ -9,6 +9,7 @@ module.exports = {
       bodySizeLimit: '5mb',
     },
   },
+  
 };
 
 /** @type {import('next').NextConfig} */
