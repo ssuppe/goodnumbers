@@ -7,12 +7,25 @@ import {
   NightscoutProfile,
   NightscoutTreatment,
 } from '~/types/nightscout';
+import { readLocalFile, writeLocalFile } from '@/'; ///app/actions/nightscoutCache';
+
+const isDevelopment = process.env.NODE_ENV === 'development';
+const isDebug = process.env.DEBUG === 'true';
+const isWriteLocal = process.env.WRITE_LOCAL === 'true';
 
 export const fetchNightscoutProfiles = async (nsconfig: NightscoutConfig): Promise<NightscoutProfile[]> => {
+  if (isDevelopment && isDebug) {
+    return readLocalFile<NightscoutProfile[]>({ filename: 'profile.json' });
+  }
+
   const axiosInstance = createApiClient();
   const profilesUrl = `${nsconfig.url}/api/v1/profile?token=${nsconfig.token}`;
 
   const { data } = await axiosInstance.get<NightscoutProfile[]>(profilesUrl);
+
+  if (isDevelopment && isWriteLocal) {
+    await writeLocalFile(data, { filename: 'profile.json' });
+  }
 
   return data;
 };
@@ -22,6 +35,10 @@ export const fetchNightscoutTreatments = async (
   daysToFetch: number = 9,
   treatmentsCount: number = 10000,
 ): Promise<NightscoutTreatment[]> => {
+  if (isDevelopment && isDebug) {
+    return readLocalFile<NightscoutTreatment[]>({ filename: 'treatments.json' });
+  }
+
   const axiosInstance = createApiClient();
 
   const today = new Date();
@@ -34,19 +51,11 @@ export const fetchNightscoutTreatments = async (
     const treatmentsResponse = await axiosInstance.get(treatmentsUrl);
 
     const treatmentsData = treatmentsResponse.data;
-    // .filter(
-    //   (item: { date: number; eventType: string; carbs?: number; insulin?: number }) =>
-    //     item.date >= daysAgoTimestamp && (item.carbs !== null || item.insulin !== null),
-    // )
-    // .map((item: NightscoutTreatment) => ({
-    //   date: item.date,
-    //   carbs: item.carbs,
-    //   insulin: item.insulin,
-    //   utcOffset: item.utcOffset,
-    //   eventType: item.eventType,
-    //   created_at: item.created_at,
-    // })
-    // )
+
+    if (isDevelopment && isWriteLocal) {
+      await writeLocalFile(treatmentsData, { filename: 'treatments.json' });
+    }
+
     return treatmentsData;
   } catch (error: any) {
     throw new Error(`Failed to fetch Nightscout data: ${error.message}`);
@@ -58,6 +67,10 @@ export const fetchNightscoutEntries = async (
   daysToFetch: number = 9,
   entriesCount: number = 20000,
 ): Promise<NightscoutEntry[]> => {
+  // If in development mode and debug is enabled, read from local file
+  if (isDevelopment && isDebug) {
+    return readLocalFile<NightscoutEntry[]>({ filename: 'entries.json' });
+  }
   const axiosInstance = createApiClient();
 
   const today = new Date();
@@ -70,15 +83,11 @@ export const fetchNightscoutEntries = async (
     const entriesResponse = await axiosInstance.get(entriesUrl);
 
     const entriesData: NightscoutEntry[] = entriesResponse.data;
-    // .filter((item: { date: number }) => item.date >= daysAgoTimestamp)
-    // .map((item: NightscoutEntry) => ({
-    //   date: item.date,
-    //   created_at: item.date,
-    //   sgv: item.sgv,
-    //   units: item.units,
-    //   utcOffset: item.utcOffset,
-    // }));
 
+    // If in development mode and writeLocal is enabled, save to local file
+    if (isDevelopment && isWriteLocal) {
+      await writeLocalFile(entriesData, { filename: 'entries.json' });
+    }
     return entriesData;
   } catch (error: any) {
     throw new Error(`Failed to fetch Nightscout data: ${error.message}`);
@@ -92,11 +101,12 @@ export const fetchNightscoutData = async (
   treatmentsCount: number = 10000,
 ): Promise<NightscoutData> => {
   try {
-    const [entriesData, treatmentsData, profilesData] = await Promise.all([
-      fetchNightscoutEntries(nsconfig, (daysToFetch = daysToFetch), (entriesCount = entriesCount)),
-      fetchNightscoutTreatments(nsconfig, (daysToFetch = daysToFetch), (treatmentsCount = treatmentsCount)),
-      fetchNightscoutProfiles(nsconfig),
-    ]);
+    const [entriesData, treatmentsData, profilesData]: [NightscoutEntry[], NightscoutTreatment[], NightscoutProfile[]] =
+      await Promise.all([
+        fetchNightscoutEntries(nsconfig, daysToFetch, entriesCount),
+        fetchNightscoutTreatments(nsconfig, daysToFetch, treatmentsCount),
+        fetchNightscoutProfiles(nsconfig),
+      ]);
 
     const nsData: NightscoutData = { entries: entriesData, treatments: treatmentsData, profiles: profilesData };
     return nsData;

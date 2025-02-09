@@ -6,7 +6,7 @@ import sys
 
 
 # New parameters
-def generate_cgm_data(days=3, target_avg_sgv=80, variation=15, smoothing_factor=0.5, meal_rise=30, meal_times=[8, 12, 18]):
+def generate_cgm_data(days=7, target_avg_sgv=80, variation=15, smoothing_factor=0.5, meal_rise=30, meal_times=[8, 12, 18]):
     data = []
     current_time = datetime.datetime.now().timestamp() * 1000  # milliseconds
     five_minutes = 5 * 60 * 1000  # milliseconds
