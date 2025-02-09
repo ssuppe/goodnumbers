@@ -1,18 +1,17 @@
-// env.ts
-const getEnvironmentVariable = (environmentVariable: string): string => {
-  const unvalidatedEnvironmentVariable = process.env[environmentVariable];
-  if (!unvalidatedEnvironmentVariable) {
-    throw new Error(
-      `Couldn't find environment variable: ${environmentVariable}\n` +
-        `Make sure it's defined in your .env.development file and starts with NEXT_PUBLIC_ if used in client code.`,
-    );
-  }
-  return unvalidatedEnvironmentVariable;
-};
-
-export const config = {
-  backendUrl: process.env.NEXT_PUBLIC_BACKEND_URL || '',
-  // Add other environment variables here
+export const env = {
+  isDevelopment: process.env.ENV! === 'development',
+  readLocal: process.env.READ_LOCAL! === 'true',
+  writeLocal: process.env.WRITE_LOCAL! === 'true',
 } as const;
 
-export type Config = typeof config;
+export function canWriteLocal(): boolean {
+  return env.isDevelopment && env.writeLocal;
+}
+
+export function canReadLocal(): boolean {
+  return env.isDevelopment && env.readLocal;
+}
+
+let _env = {} as typeof env;
+
+_env = env;

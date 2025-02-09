@@ -5,8 +5,15 @@ import winston from 'winston';
 import fs from 'fs/promises';
 import path from 'path';
 import { decompress, Compressed } from 'compress-json';
-import { AssessmentData, GlucoseUnits, NightscoutData, PodcastGenerateResult } from '~/types/nightscout';
-import { config } from '~/utils/env';
+import {
+  AssessmentData,
+  AssessmentInsight,
+  filterCriticalInsights,
+  GlucoseUnits,
+  insightsToNotes,
+  NightscoutData,
+  PodcastGenerateResult,
+} from '~/types/nightscout';
 import { ATProfileSettings, findMostActiveProfile, transformNightscoutProfileToAutotune } from './nightscoutProfile';
 import dotenv from 'dotenv';
 import { AutotunePreppedData, gn_autotune_prep } from '../../oref0-autotune/gn-autotune-prep';
@@ -65,17 +72,6 @@ async function fetchWithErrorHandling(url: string, options: RequestInit, step: s
   }
 }
 
-async function readLocalJson(filePath: string): Promise<any> {
-  try {
-    const fullPath = path.join(process.cwd(), filePath);
-    const data = await fs.readFile(fullPath, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    logger.error(`Error reading local file: ${filePath}`, { error });
-    throw new Error(`Failed to read local file: ${filePath}`);
-  }
-}
-
 export async function generateAssessments(
   cEntries: Compressed,
   cTreatments: Compressed,
@@ -83,14 +79,6 @@ export async function generateAssessments(
   id: string,
   preferred_units: GlucoseUnits,
 ): Promise<AssessmentData | null> {
-  const apiUrl = config.backendUrl;
-  if (!apiUrl || apiUrl == '') {
-    logger.error('NEXT_PUBLIC_BACKEND_URL environment variable is not set');
-    throw new Error('NEXT_PUBLIC_BACKEND_URL environment variable is not set');
-  } else {
-    logger.info('NEXT_PUBLIC_BACKEND_URL: ' + apiUrl);
-  }
-
   const nsData: NightscoutData = {
     entries: decompress(cEntries),
     treatments: decompress(cTreatments),
@@ -154,54 +142,69 @@ export async function generateAssessments(
 
     notes += '## Weekly overview\n\n';
 
-    notes += getWeekOverview(full_analysis.overall, numDays, preferred_units, patient_range);
+    let overview_insights: AssessmentInsight[] = getWeekOverview(
+      full_analysis.overall,
+      numDays,
+      preferred_units,
+      patient_range,
+    );
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Dawn phenomenom
-    ///////////////////////////////////////////////////////////////////////////
-    notes += '\n\n';
-    notes += '# Dawn phenomenon analysis\n';
-    const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose);
+    let critical_insights: AssessmentInsight[] | null = filterCriticalInsights(overview_insights);
+    ///////////////////////////////
+    // If there are critical insights at this phase, this app shouldn't be used
+    // For now, we will return those critical insights (which also state they
+    // need to see a medical professional), and the podcast will tell them so.
+    ///////////////////////////////
+    if (critical_insights) {
+      notes += insightsToNotes(critical_insights);
+      var assessment2: AssessmentData = {
+        valid: true,
+        notes: notes,
+        assessment1: '',
+        assessment2: '',
+        id: id,
+        preferred_units,
+      };
+    } else {
+      notes += insightsToNotes(overview_insights);
 
-    notes += getDawnPhenomenonNotes(dawn_phenom_data, notes, numDays, preferred_units);
+      ///////////////////////////////////////////////////////////////////////////
+      // Dawn phenomenom
+      ///////////////////////////////////////////////////////////////////////////
+      notes += '\n\n';
+      notes += '# Dawn phenomenon analysis\n';
+      const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose);
 
-    notes = notes
-      .replace('mg/dl', '')
+      notes += getDawnPhenomenonNotes(dawn_phenom_data, notes, numDays, preferred_units);
+
+      var assessment1: AssessmentData = await getAssessment({
+        valid: true,
+        notes: notes,
+        template_num: 1,
+        id: id,
+        preferred_units,
+      });
+
+      var assessment2: AssessmentData = await getAssessment({
+        valid: true,
+        notes: notes,
+        assessment1: assessment1.assessment1,
+        template_num: 2,
+        id: id,
+        preferred_units,
+      });
+    }
+
+    let podcast_info: AssessmentData = await generatePodcastText(assessment2);
+
+    podcast_info
+      .ssml_dialog!.replace('mg/dl', '')
       .replace('mmol/l', '')
       .replace('TIR', 'time in range')
       .replace('TTIR', 'time in tight range')
       .replace('TAR', 'time above range')
       .replace('TBR', 'time below range');
 
-    const assessment1: AssessmentData = await getAssessment({
-      valid: true,
-      notes: notes,
-      template_num: 1,
-      id: id,
-      preferred_units,
-    });
-
-    const assessment2: AssessmentData = await getAssessment({
-      valid: true,
-      notes: notes,
-      assessment1: assessment1.assessment1,
-      template_num: 2,
-      id: id,
-      preferred_units,
-    });
-
-    // Step 4: Generate Dialog
-    // let podcast_info: AssessmentData = await fetchWithErrorHandling(
-    //   `${apiUrl}/api/gen_podcast_text`,
-    //   {
-    //     method: 'POST',
-    //     headers: { 'Content-Type': 'application/json' },
-    //     body: JSON.stringify({ valid: true, notes: notes, assessment1: assessment1, assessment2: assessment2, id: id }),
-    //   },
-    //   'Generating Dialog',
-    // );
-
-    let podcast_info: AssessmentData = await generatePodcastText(assessment2);
     // Step 5: Generate title and description
     let podcast_infodesc: AssessmentData = await generatePodcastDescription(podcast_info);
     logger.debug(podcast_infodesc);

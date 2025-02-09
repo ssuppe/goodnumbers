@@ -20,7 +20,6 @@ import {
 } from '~/types/nightscout';
 import 'react-h5-audio-player/lib/styles.css';
 import LazyAudioPlayer from './LazyAudioPlayer';
-import { config } from 'src/utils/env';
 import DebugInterfaceViewer from './DebugInterfaceViewer';
 import ReactMarkdown from 'react-markdown';
 import prettier from 'prettier/standalone';

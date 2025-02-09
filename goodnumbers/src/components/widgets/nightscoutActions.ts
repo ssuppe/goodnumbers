@@ -7,15 +7,13 @@ import {
   NightscoutProfile,
   NightscoutTreatment,
 } from '~/types/nightscout';
-import { readLocalFile, writeLocalFile } from 'app/actions/nightscoutCache';
+import { canReadLocal, canWriteLocal, env } from '~/utils/env';
 
-const isDevelopment = process.env.ENV === 'development';
-const isDebug = process.env.DEBUG === 'true';
-const isWriteLocal = process.env.WRITE_LOCAL === 'true';
+import { readLocalFile, writeLocalFile } from 'app/actions/fileCache';
 
 export const fetchNightscoutProfiles = async (nsconfig: NightscoutConfig): Promise<NightscoutProfile[]> => {
-  if (isDevelopment && isDebug) {
-    return readLocalFile<NightscoutProfile[]>({ filename: 'profile.json' });
+  if (canReadLocal()) {
+    return readLocalFile<NightscoutProfile[]>({ filename: 'nightscout/profile.json' });
   }
 
   const axiosInstance = createApiClient();
@@ -23,8 +21,8 @@ export const fetchNightscoutProfiles = async (nsconfig: NightscoutConfig): Promi
 
   const { data } = await axiosInstance.get<NightscoutProfile[]>(profilesUrl);
 
-  if (isDevelopment && isWriteLocal) {
-    await writeLocalFile(data, { filename: 'profile.json' });
+  if (canWriteLocal()) {
+    await writeLocalFile(data, { filename: 'nightscout/profile.json' });
   }
 
   return data;
@@ -35,8 +33,8 @@ export const fetchNightscoutTreatments = async (
   daysToFetch: number = 9,
   treatmentsCount: number = 10000,
 ): Promise<NightscoutTreatment[]> => {
-  if (isDevelopment && isDebug) {
-    return readLocalFile<NightscoutTreatment[]>({ filename: 'treatments.json' });
+  if (canReadLocal()) {
+    return readLocalFile<NightscoutTreatment[]>({ filename: 'nightscout/treatments.json' });
   }
 
   const axiosInstance = createApiClient();
@@ -52,8 +50,8 @@ export const fetchNightscoutTreatments = async (
 
     const treatmentsData = treatmentsResponse.data;
 
-    if (isDevelopment && isWriteLocal) {
-      await writeLocalFile(treatmentsData, { filename: 'treatments.json' });
+    if (canWriteLocal()) {
+      await writeLocalFile(treatmentsData, { filename: 'nightscout/treatments.json' });
     }
 
     return treatmentsData;
@@ -68,8 +66,8 @@ export const fetchNightscoutEntries = async (
   entriesCount: number = 20000,
 ): Promise<NightscoutEntry[]> => {
   // If in development mode and debug is enabled, read from local file
-  if (isDevelopment && isDebug) {
-    return readLocalFile<NightscoutEntry[]>({ filename: 'entries.json' });
+  if (canReadLocal()) {
+    return readLocalFile<NightscoutEntry[]>({ filename: 'nightscout/entries.json' });
   }
   const axiosInstance = createApiClient();
 
@@ -85,8 +83,8 @@ export const fetchNightscoutEntries = async (
     const entriesData: NightscoutEntry[] = entriesResponse.data;
 
     // If in development mode and writeLocal is enabled, save to local file
-    if (isDevelopment && isWriteLocal) {
-      await writeLocalFile(entriesData, { filename: 'entries.json' });
+    if (canWriteLocal()) {
+      await writeLocalFile(entriesData, { filename: 'nightscout/entries.json' });
     }
     return entriesData;
   } catch (error: any) {
