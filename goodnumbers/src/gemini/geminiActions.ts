@@ -56,33 +56,44 @@ export async function getAssessment(data: AssessmentData): Promise<AssessmentDat
     });
 
     const templateNum = data.template_num ?? 1;
-    let responseText = '';
+    let responseText: string | null = '';
 
     // Load appropriate template and generate response
-    switch (templateNum) {
-      case 1: {
-        const template1 = await loadTemplate('pass1.txt');
-        const prompt = interpolate(template1, { notes: data.notes });
-        const result = await model.generateContent(prompt);
-        responseText = result.response.text();
-        break;
-      }
-      case 2: {
-        // debugger;
-        if (!data.assessment1) {
-          throw new Error('Assessment1 required for template 2');
+    if (canReadLocal()) {
+      responseText = await readLocalFile({ filename: `gemini/pass${templateNum}.txt`, plainText: true });
+    }
+    if (responseText == null) {
+      switch (templateNum) {
+        case 1: {
+          const template1 = await loadTemplate('pass1.txt');
+          const prompt = interpolate(template1, { notes: data.notes });
+          const result = await model.generateContent(prompt);
+          responseText = result.response.text();
+          break;
         }
-        const template2 = await loadTemplate('pass2.txt');
-        const prompt = interpolate(template2, {
-          notes: data.notes,
-          assessment1: data.assessment1,
-        });
-        const result = await model.generateContent(prompt);
-        responseText = result.response.text();
-        break;
+        case 2: {
+          // debugger;
+          if (!data.assessment1) {
+            throw new Error('Assessment1 required for template 2');
+          }
+          const template2 = await loadTemplate('pass2.txt');
+          const prompt = interpolate(template2, {
+            notes: data.notes,
+            assessment1: data.assessment1,
+          });
+          const result = await model.generateContent(prompt);
+          responseText = result.response.text();
+          break;
+        }
+        default:
+          throw new Error(`Invalid template number: ${templateNum}`);
       }
-      default:
-        throw new Error(`Invalid template number: ${templateNum}`);
+    }
+    if (canWriteLocal()) {
+      writeLocalFile(responseText, {
+        filename: `gemini/pass${templateNum}.txt`,
+        plainText: true,
+      });
     }
 
     return {
@@ -131,35 +142,29 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
 
     while (!isValidSsml && noSsmlTries < 3) {
       console.log(`Generating SSML ${noSsmlTries} / 2`);
-      let podcastSsml: string;
+      let podcastSsml: string | null = null;
 
       // Debug mode handling
       if (canReadLocal()) {
-        try {
-          // const debugContent = await fs.readFile(path.join(process.cwd(), '_tmp', 'pass3_output.txt'), 'utf-8');
-          podcastSsml = await readLocalFile<string>({ filename: 'pass3/text.txt', plainText: true });
-        } catch {
-          const response = await model.generateContent(prompt);
-          podcastSsml = response.response.text();
-        }
-      } else {
+        podcastSsml = await readLocalFile<string>({ filename: 'gemini/pass3_step1.txt', plainText: true });
+      }
+      if (podcastSsml == null) {
         const response = await model.generateContent(prompt);
         podcastSsml = response.response.text();
       }
 
       // Basic fixes that AI sometimes makes to SSML
-      podcastSsml = podcastSsml.replaceAll('<laughs>', '');
+      podcastSsml = podcastSsml!.replaceAll('<laughs>', '');
 
       // Check SSML validity
       const ssmlCheck = await checkGoogleTtsSSMLFormat(podcastSsml);
-      isValidSsml = ssmlCheck.isCorrect;
 
       console.log(`Is valid SSML? ${ssmlCheck.isCorrect}`);
 
-      if (!isValidSsml) {
+      if (!ssmlCheck.isCorrect) {
         console.log(`${noSsmlTries}/3: Invalid SSML that couldn't be fixed: ${podcastSsml}`);
         if (canWriteLocal()) {
-          await writeLocalFile(podcastSsml, { filename: 'pass3/pass3_output.txt', plainText: true });
+          await writeLocalFile(podcastSsml, { filename: 'gemini/pass3_invalid.txt', plainText: true });
         }
         noSsmlTries++;
       } else {
@@ -180,16 +185,16 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
         const enhancedPrompt = interpolate(template4, {
           ssml_dialog: ssmlCheck.processedSsml,
         });
-
-        const enhancedResponse = await model.generateContent(enhancedPrompt);
-        const finalSsml = enhancedResponse.response
-          .text()
-          .replace('```xml', '')
-          .replace('```', '')
-          .replace(/\\n/g, '\n');
-
+        let finalSsml: string | null = '';
+        if (canReadLocal()) {
+          finalSsml = await readLocalFile({ filename: 'gemini/pass3_final.txt' });
+        }
+        if (finalSsml == null) {
+          const enhancedResponse = await model.generateContent(enhancedPrompt);
+          finalSsml = enhancedResponse.response.text().replace('```xml', '').replace('```', '').replace(/\\n/g, '\n');
+        }
         if (canWriteLocal()) {
-          await writeLocalFile(podcastSsml, { filename: 'pass3/pass3_output.txt', plainText: true });
+          await writeLocalFile(podcastSsml, { filename: 'gemini/pass3_final.txt', plainText: true });
         }
 
         return {

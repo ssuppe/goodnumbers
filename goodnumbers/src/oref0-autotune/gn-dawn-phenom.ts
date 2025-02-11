@@ -293,11 +293,11 @@ export function getDawnPhenomenonNotes(
   var notes = '';
   if (patternFrequency > 0.7 && dawn_phenom_data.averageRise > 30) {
     notes += '  * The patient has strong indication of severe dawn phenomenon.\n';
-    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
+    notes += `  * In ${dawn_phenom_data.daysShowingPattern} of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
     notes += timingNotes.notes;
   } else if (patternFrequency > 0.7 && dawn_phenom_data.averageRise > 20) {
     notes += '  * The patient has strong indication of strong dawn phenomenon.\n';
-    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
+    notes += `  * In ${dawn_phenom_data.daysShowingPattern} of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
     notes += timingNotes.notes;
   } else if (patternFrequency > 0.5 && dawn_phenom_data.averageRise > 20) {
     notes += '  * There is some indication of dawn phenomenon.\n';
@@ -305,7 +305,7 @@ export function getDawnPhenomenonNotes(
     notes += timingNotes.notes;
   } else if (patternFrequency > 0.2 && dawn_phenom_data.averageRise > 20) {
     notes += '  * The patient may be experiencing dawn phenomenon.\n';
-    notes += `  * In ${dawn_phenom_data.daysShowingPattern}% of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
+    notes += `  * In ${dawn_phenom_data.daysShowingPattern} of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
     notes += timingNotes.notes;
   } else {
     notes += "  * The patient didn't have any indications of dawn phenomenon.\n";
