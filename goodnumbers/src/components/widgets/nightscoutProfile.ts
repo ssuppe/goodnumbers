@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import { DateRange, NightscoutProfile, NSProfileSettings, TimeValue } from '~/types/nightscout';
 
 // Output interfaces - updated ISFProfile to match your needs
@@ -76,7 +77,7 @@ export function transformNightscoutProfileToAutotune(input: NSProfileSettings): 
 }
 
 // profileAnalyzer.ts
-export function findMostActiveProfile(profiles: NightscoutProfile[]): {
+export function _findMostActiveProfile(profiles: NightscoutProfile[]): {
   profile: NightscoutProfile;
   daysActive: number;
   activeProfileSettings: NSProfileSettings;
@@ -133,6 +134,36 @@ export function findMostActiveProfile(profiles: NightscoutProfile[]): {
     daysActive: mostActive.daysActive,
     activeProfileSettings: activeSettings,
   };
+}
+
+export function getBestProfile(profiles: NightscoutProfile[]): ATProfileSettings[] | null {
+  const { profile, daysActive, activeProfileSettings } = _findMostActiveProfile(profiles);
+  const activeATProfileSettings: ATProfileSettings = transformNightscoutProfileToAutotune(activeProfileSettings);
+  // Simple assignment of activeSettings to both variables, to allow the regular
+  // autotune code to work without modifications
+  const profile_data: ATProfileSettings = _.cloneDeep(activeATProfileSettings);
+  const pumpprofile_data: ATProfileSettings = _.cloneDeep(activeATProfileSettings);
+
+  // disallow impossibly low carbRatios due to bad decoding
+  // GN: Goodnumbers version of this only looks at
+  if (typeof profile_data.carb_ratio === 'undefined' || profile_data.carb_ratio < 2) {
+    if (typeof pumpprofile_data.carb_ratio === 'undefined' || pumpprofile_data.carb_ratio < 2) {
+      console.log(
+        '{ "carbs": 0, "mealCOB": 0, "reason": "carb_ratios ' +
+          profile_data.carb_ratio +
+          ' and ' +
+          pumpprofile_data.carb_ratio +
+          ' out of bounds" }',
+      );
+      console.error(
+        'Error: carb_ratios ' + profile_data.carb_ratio + ' and ' + pumpprofile_data.carb_ratio + ' out of bounds',
+      );
+      return null;
+    } else {
+      profile_data.carb_ratio = pumpprofile_data.carb_ratio;
+    }
+  }
+  return [profile_data, pumpprofile_data];
 }
 
 function averageTimeValues(timeValues: TimeValue[]): number {

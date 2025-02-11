@@ -11,7 +11,7 @@ import { canReadLocal, canWriteLocal, env } from '~/utils/env';
 
 import { readLocalFile, writeLocalFile } from 'app/actions/fileCache';
 
-export const fetchNightscoutProfiles = async (nsconfig: NightscoutConfig): Promise<NightscoutProfile[]> => {
+export const fetchNightscoutProfiles = async (nsconfig: NightscoutConfig): Promise<NightscoutProfile[] | null> => {
   if (canReadLocal()) {
     return readLocalFile<NightscoutProfile[]>({ filename: 'nightscout/profile.json' });
   }
@@ -32,7 +32,7 @@ export const fetchNightscoutTreatments = async (
   nsconfig: NightscoutConfig,
   daysToFetch: number = 9,
   treatmentsCount: number = 10000,
-): Promise<NightscoutTreatment[]> => {
+): Promise<NightscoutTreatment[] | null> => {
   if (canReadLocal()) {
     return readLocalFile<NightscoutTreatment[]>({ filename: 'nightscout/treatments.json' });
   }
@@ -64,7 +64,7 @@ export const fetchNightscoutEntries = async (
   nsconfig: NightscoutConfig,
   daysToFetch: number = 9,
   entriesCount: number = 20000,
-): Promise<NightscoutEntry[]> => {
+): Promise<NightscoutEntry[] | null> => {
   // If in development mode and debug is enabled, read from local file
   if (canReadLocal()) {
     return readLocalFile<NightscoutEntry[]>({ filename: 'nightscout/entries.json' });
@@ -99,14 +99,17 @@ export const fetchNightscoutData = async (
   treatmentsCount: number = 10000,
 ): Promise<NightscoutData> => {
   try {
-    const [entriesData, treatmentsData, profilesData]: [NightscoutEntry[], NightscoutTreatment[], NightscoutProfile[]] =
-      await Promise.all([
-        fetchNightscoutEntries(nsconfig, daysToFetch, entriesCount),
-        fetchNightscoutTreatments(nsconfig, daysToFetch, treatmentsCount),
-        fetchNightscoutProfiles(nsconfig),
-      ]);
+    const [entriesData, treatmentsData, profilesData]: [
+      NightscoutEntry[] | null,
+      NightscoutTreatment[] | null,
+      NightscoutProfile[] | null,
+    ] = await Promise.all([
+      fetchNightscoutEntries(nsconfig, daysToFetch, entriesCount),
+      fetchNightscoutTreatments(nsconfig, daysToFetch, treatmentsCount),
+      fetchNightscoutProfiles(nsconfig),
+    ]);
 
-    const nsData: NightscoutData = { entries: entriesData, treatments: treatmentsData, profiles: profilesData };
+    const nsData: NightscoutData = { entries: entriesData!, treatments: treatmentsData!, profiles: profilesData! };
     return nsData;
   } catch (error: any) {
     throw new Error(`Failed to fetch Nightscout data: ${error.message}`);

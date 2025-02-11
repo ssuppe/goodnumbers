@@ -14,9 +14,9 @@ import {
   NightscoutData,
   PodcastGenerateResult,
 } from '~/types/nightscout';
-import { ATProfileSettings, findMostActiveProfile, transformNightscoutProfileToAutotune } from './nightscoutProfile';
+import { ATProfileSettings, getBestProfile, transformNightscoutProfileToAutotune } from './nightscoutProfile';
 import dotenv from 'dotenv';
-import { AutotunePreppedData, gn_autotune_prep } from '../../oref0-autotune/gn-autotune-prep';
+import { gn_autotune_prep } from '../../oref0-autotune/gn-autotune-prep';
 import { checkDawnPhenomenon, getDawnPhenomenonNotes } from '../../oref0-autotune/gn-dawn-phenom';
 import { getPatientsRange, getWeekOverview, PatientRange } from '../../oref0-autotune/gn-overview';
 import {
@@ -94,33 +94,6 @@ export async function generateAssessments(
   // PROFILE: Autotune only uses a single profile over all days, so I will replicate here
   /////////////////////////////////////////////////////////////////////////////
 
-  const { profile, daysActive, activeProfileSettings } = findMostActiveProfile(nsData.profiles);
-  const activeATProfileSettings: ATProfileSettings = transformNightscoutProfileToAutotune(activeProfileSettings);
-  // Simple assignment of activeSettings to both variables, to allow the regular
-  // autotune code to work without modifications
-  const profile_data: ATProfileSettings = _.cloneDeep(activeATProfileSettings);
-  const pumpprofile_data: ATProfileSettings = _.cloneDeep(activeATProfileSettings);
-
-  // disallow impossibly low carbRatios due to bad decoding
-  // GN: Goodnumbers version of this only looks at
-  if (typeof profile_data.carb_ratio === 'undefined' || profile_data.carb_ratio < 2) {
-    if (typeof pumpprofile_data.carb_ratio === 'undefined' || pumpprofile_data.carb_ratio < 2) {
-      console.log(
-        '{ "carbs": 0, "mealCOB": 0, "reason": "carb_ratios ' +
-          profile_data.carb_ratio +
-          ' and ' +
-          pumpprofile_data.carb_ratio +
-          ' out of bounds" }',
-      );
-      console.error(
-        'Error: carb_ratios ' + profile_data.carb_ratio + ' and ' + pumpprofile_data.carb_ratio + ' out of bounds',
-      );
-      return null;
-    } else {
-      profile_data.carb_ratio = pumpprofile_data.carb_ratio;
-    }
-  }
-
   try {
     // Step 1: Generate Notes
     logger.info('Step 1');
@@ -130,6 +103,11 @@ export async function generateAssessments(
     const firstDate = new Date(nsData.entries[0].date).toISOString().split('T')[0];
     const endDate = new Date(nsData.entries[nsData.entries.length - 1].date).toISOString().split('T')[0];
     const numDays = Math.round((new Date(endDate).getTime() - new Date(firstDate).getTime()) / (1000 * 60 * 60 * 24));
+
+    let at_profileData: ATProfileSettings[] | null = getBestProfile(nsData.profiles);
+    let profile_data: ATProfileSettings = at_profileData![0];
+    let pumpprofile_data: ATProfileSettings = at_profileData![1];
+
     const all_prepped_glucose = gn_autotune_prep(nsData.entries, nsData.treatments, profile_data, pumpprofile_data);
 
     var notes = '';

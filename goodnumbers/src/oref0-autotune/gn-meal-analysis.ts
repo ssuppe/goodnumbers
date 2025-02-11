@@ -1,4 +1,4 @@
-import { AutotunePreppedData } from 'gn-autotune-prep';
+import { AutotunePreppedData } from './gn-autotune-prep';
 import { GLUCOSE_RANGES } from './gn-constants';
 
 // Thresholds for glucose values in mg/dL
@@ -632,6 +632,5 @@ export {
   type HourlyAnalysisResult,
   type GlucoseAnalysis,
   type HourlyGlucoseAnalysis,
-  type AutotunePreppedData,
   type MealEvent,
 };
