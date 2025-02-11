@@ -13,7 +13,7 @@ interface LocalFileOptions {
 
 export async function readLocalFile<T>(options: LocalFileOptions): Promise<T | null> {
   try {
-    const filePath = path.join(CACHE_DIR, options.filename);
+    const filePath = path.join(options.filename);
     const fileData = await readFile(filePath, 'utf-8');
     return options.plainText ? (fileData as T) : (JSON.parse(fileData) as T);
   } catch (error: any) {
@@ -24,7 +24,7 @@ export async function readLocalFile<T>(options: LocalFileOptions): Promise<T | n
 export async function writeLocalFile<T>(data: T, options: LocalFileOptions): Promise<void> {
   try {
     // Get the full directory path including any subdirectories
-    const fullPath = path.join(CACHE_DIR, options.filename);
+    const fullPath = path.join(options.filename);
     const dirPath = path.dirname(fullPath);
 
     // Create all necessary directories

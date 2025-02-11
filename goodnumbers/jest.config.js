@@ -9,7 +9,15 @@ const config = {
   ],
   // Optional: if you use path aliases in tsconfig
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1'
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^~/(.*)$': '<rootDir>/src/$1',
+    '^app/(.*)$': '<rootDir>/app/$1',
+
+  },
+  globals: {
+    'ts-jest': {
+      tsconfig: 'tsconfig.jest.json'
+    }
   },
 };
 
