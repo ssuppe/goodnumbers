@@ -6,7 +6,7 @@ import {
   InsightPriority,
 } from '../types/nightscout';
 import { GLUCOSE_RANGES } from './gn-constants';
-import { AnalysisResult, analyzeTimeOfDay, AutotunePreppedData, FullAnalysisResult } from './gn-meal-analysis';
+import { AnalysisResult } from './gn-meal-analysis';
 import { u } from '../utils/text';
 
 export interface PatientRange {

@@ -151,7 +151,7 @@ export async function generateAssessments(
       ///////////////////////////////////////////////////////////////////////////
       notes += '\n\n';
       notes += '# Dawn phenomenon analysis\n';
-      const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose);
+      const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose, patient_range);
 
       notes += getDawnPhenomenonNotes(dawn_phenom_data, notes, numDays, preferred_units);
 
