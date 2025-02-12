@@ -1,6 +1,7 @@
 import { AutotunePreppedData } from 'gn-autotune-prep';
 import { GlucoseUnits } from '../types/nightscout';
 import { t, u } from '../utils/text';
+import { PatientRange } from 'gn-overview';
 
 interface DawnPatternDay {
   date: string;
@@ -17,7 +18,6 @@ interface DawnPatternDay {
 interface DawnAnalysis {
   // Overall pattern strength
   daysShowingPattern: number;
-  //   patternStrength: 'none' | 'weak' | 'moderate' | 'strong';
 
   // Timing analysis
   typicalStartTime: string; // HH:MM format
@@ -106,11 +106,10 @@ function createClusterMetadata(timeCluster: number[], originalDates: Date[]): Ti
   };
 }
 
-function checkDawnPhenomenon(data: AutotunePreppedData): DawnAnalysis {
+function checkDawnPhenomenon(data: AutotunePreppedData, patient_range: PatientRange): DawnAnalysis {
   // Initialize our analysis result
   const analysis: DawnAnalysis = {
     daysShowingPattern: 0,
-    // patternStrength: 'none',
     typicalStartTime: '',
     typicalDuration: 0,
     averageStartGlucose: 0,
@@ -155,6 +154,7 @@ function checkDawnPhenomenon(data: AutotunePreppedData): DawnAnalysis {
       return mealDate === dateKey && mealHour >= 2 && mealHour < 8;
     });
 
+    // Only look at ranges that don't have meal activity
     if (!hasMealActivity) {
       // Look for pattern of rising glucose with positive deviations
       for (let i = 1; i < readings.length; i++) {
@@ -181,8 +181,10 @@ function checkDawnPhenomenon(data: AutotunePreppedData): DawnAnalysis {
         }
       }
 
-      // If we found a significant pattern
-      if (riseStart && riseEnd && peakReading.glucose - riseStart.glucose > 20) {
+      // If we found a significant pattern. Significant counts as rising higher
+      // then the patient's relative high threshold
+      if (riseStart && riseEnd && peakReading.glucose >= patient_range.target_high) {
+        // && peakReading.glucose - riseStart.glucose > 20) {
         const patternDay: DawnPatternDay = {
           date: dateKey,
           startTime: new Date(riseStart.date),
