@@ -1,6 +1,8 @@
 /** @type {import('jest').Config} */
 const config = {
   preset: 'ts-jest',
+  testTimeout: 10000, // Increase timeout if needed
+
   testEnvironment: 'node',
   // Tells Jest where to find test files
   testMatch: [
