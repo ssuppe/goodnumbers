@@ -251,25 +251,27 @@ class GlucoseAnalysis {
 
   getPercentages(): PercentageResults {
     return {
-      lowPercentage: (this.stateCounts[GlucoseState.LOW] / this.numReadings) * 100,
-      inRangePercentage:
+      lowPercentage: Math.round((this.stateCounts[GlucoseState.LOW] / this.numReadings) * 100),
+      inRangePercentage: Math.round(
         ((this.stateCounts[GlucoseState.IN_RANGE] +
           this.stateCounts[GlucoseState.IN_TITR] +
           this.stateCounts[GlucoseState.IN_TARGET]) /
           this.numReadings) *
-        100,
-      inTargetPercentage: (this.stateCounts[GlucoseState.IN_TARGET] / this.numReadings) * 100,
-      inTITRPercentage:
+          100,
+      ),
+      inTargetPercentage: Math.round((this.stateCounts[GlucoseState.IN_TARGET] / this.numReadings) * 100),
+      inTITRPercentage: Math.round(
         ((this.stateCounts[GlucoseState.IN_TITR] + this.stateCounts[GlucoseState.IN_TARGET]) / this.numReadings) * 100,
-      highPercentage: (this.stateCounts[GlucoseState.HIGH] / this.numReadings) * 100,
+      ),
+      highPercentage: Math.round((this.stateCounts[GlucoseState.HIGH] / this.numReadings) * 100),
     };
   }
 
   getAnalysis(): AnalysisResult {
     return {
       ...this.getPercentages(),
-      avgGlucose: this.avgGlucose,
-      avgDeviation: this.avgDeviation,
+      avgGlucose: Number(this.avgGlucose.toFixed(1)),
+      avgDeviation: Number(this.avgDeviation.toFixed(1)),
       numReadings: this.numReadings,
     };
   }
