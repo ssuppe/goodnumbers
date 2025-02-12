@@ -13,11 +13,15 @@ interface DawnPatternDay {
   totalDeviation: number;
   duration: number; // minutes
   averageBGI: number;
+  hadPriorLow: boolean;
+  priorLowTime: Date | null;
+  priorLowValue: number | null;
 }
 
 interface DawnAnalysis {
   // Overall pattern strength
   daysShowingPattern: number;
+  daysShowingPatternWithPriorLow: number;
 
   // Timing analysis
   typicalStartTime: string; // HH:MM format
@@ -126,7 +130,7 @@ function checkDawnPhenomenon(data: AutotunePreppedData, patient_range: PatientRa
     const readingTime = new Date(reading.date);
     const hour = readingTime.getHours();
 
-    if (hour >= 2 && hour < 8) {
+    if (hour >= 1 && hour < 8) {
       const dateKey = readingTime.toISOString().split('T')[0];
       if (!dailyData.has(dateKey)) {
         dailyData.set(dateKey, []);
@@ -184,7 +188,23 @@ function checkDawnPhenomenon(data: AutotunePreppedData, patient_range: PatientRa
       // If we found a significant pattern. Significant counts as rising higher
       // then the patient's relative high threshold
       if (riseStart && riseEnd && peakReading.glucose >= patient_range.target_high) {
-        // && peakReading.glucose - riseStart.glucose > 20) {
+        // Next, check there wasn't a low blood glucose beforehand
+        // Calculate the timestamp 30 minutes before rise start
+        const thirtyMinsBefore = new Date(riseStart.date);
+        thirtyMinsBefore.setMinutes(thirtyMinsBefore.getMinutes() - 30);
+
+        // Calculate our buffered low threshold
+        const bufferedLowThreshold = patient_range.target_low * 1.1;
+        // Look for readings below our buffered threshold in the 30-min window
+        const priorLowReading = readings.find((reading) => {
+          const readingTime = new Date(reading.date);
+          return (
+            readingTime >= thirtyMinsBefore &&
+            readingTime < new Date(riseStart!.date) &&
+            reading.glucose <= bufferedLowThreshold
+          );
+        });
+
         const patternDay: DawnPatternDay = {
           date: dateKey,
           startTime: new Date(riseStart.date),
@@ -195,6 +215,9 @@ function checkDawnPhenomenon(data: AutotunePreppedData, patient_range: PatientRa
           totalDeviation: readings.reduce((sum, r) => sum + Number(r.deviation), 0),
           duration: (new Date(riseEnd.date).getTime() - new Date(riseStart.date).getTime()) / (1000 * 60),
           averageBGI: readings.reduce((sum, r) => sum + Number(r.BGI), 0) / readings.length,
+          hadPriorLow: !!priorLowReading,
+          priorLowTime: priorLowReading ? new Date(priorLowReading.date) : null,
+          priorLowValue: priorLowReading ? priorLowReading.glucose : null,
         };
 
         analysis.dailyPatterns.push(patternDay);
@@ -202,10 +225,15 @@ function checkDawnPhenomenon(data: AutotunePreppedData, patient_range: PatientRa
     }
   });
 
-  // Calculate summary statistics
-  if (analysis.dailyPatterns.length > 0) {
-    analysis.daysShowingPattern = analysis.dailyPatterns.length;
+  analysis.daysShowingPattern = analysis.dailyPatterns.length;
+  analysis.daysShowingPatternWithPriorLow = analysis.dailyPatterns.filter((day) => day.hadPriorLow).length;
 
+  let dailyPatternsWithoutPriorLow: DawnPatternDay[] = analysis.dailyPatterns.filter((day) => !day.hadPriorLow);
+
+  // Calculate summary statistics
+  // How many days have a pattern of a rise
+  // Of those, how many had a low prior?
+  if (dailyPatternsWithoutPriorLow.length > 0) {
     // Calculate typical start time
     const startTimes = analysis.dailyPatterns.map((d) => d.startTime.getHours() * 60 + d.startTime.getMinutes());
     const avgStartMinutes = startTimes.reduce((sum, t) => sum + t, 0) / startTimes.length;
