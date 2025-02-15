@@ -1,5 +1,5 @@
-import { AutotunePreppedData } from 'gn-autotune-prep';
-import { GlucoseUnits } from '../types/nightscout';
+import { ATReading, AutotunePreppedData } from 'gn-autotune-prep';
+import { AssessmentInsight, GlucoseUnits, InsightPriority } from '../types/nightscout';
 import { t, u } from '../utils/text';
 import { PatientRange } from 'gn-overview';
 
@@ -20,8 +20,9 @@ interface DawnPatternDay {
 
 interface DawnAnalysis {
   // Overall pattern strength
-  daysShowingPattern: number;
-  daysShowingPatternWithPriorLow: number;
+  allDaysShowingAnyPattern: number;
+  daysShowingPatternLow: number;
+  daysShowingPatternNoLow: number;
 
   // Timing analysis
   typicalStartTime: string; // HH:MM format
@@ -113,20 +114,22 @@ function createClusterMetadata(timeCluster: number[], originalDates: Date[]): Ti
 function checkDawnPhenomenon(data: AutotunePreppedData, patient_range: PatientRange): DawnAnalysis {
   // Initialize our analysis result
   const analysis: DawnAnalysis = {
-    daysShowingPattern: 0,
+    allDaysShowingAnyPattern: 0,
     typicalStartTime: '',
     typicalDuration: 0,
     averageStartGlucose: 0,
     averagePeakGlucose: 0,
     averageRise: 0,
     dailyPatterns: [],
+    daysShowingPatternLow: 0,
+    daysShowingPatternNoLow: 0,
   };
 
   // Group basal glucose data by day
-  const dailyData = new Map<string, Array<(typeof data.basalGlucoseData)[0]>>();
+  const dailyData = new Map<string, ATReading[]>();
 
   // Only look at readings between 2 AM and 8 AM
-  data.basalGlucoseData.forEach((reading) => {
+  data.basalGlucoseData.forEach((reading: ATReading) => {
     const readingTime = new Date(reading.date);
     const hour = readingTime.getHours();
 
@@ -140,18 +143,18 @@ function checkDawnPhenomenon(data: AutotunePreppedData, patient_range: PatientRa
   });
 
   // Check each day for dawn phenomenon pattern
-  dailyData.forEach((readings, dateKey) => {
+  dailyData.forEach((readings: ATReading[], dateKey) => {
     // Sort readings by time
     readings.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     // Look for sustained rise pattern
-    let riseStart: (typeof readings)[0] | null = null;
-    let riseEnd: (typeof readings)[0] | null = null;
+    let riseStart: ATReading[0] | null = null;
+    let riseEnd: ATReading[0] | null = null;
     let peakReading = readings[0];
     let consecutiveRise = 0;
 
     // Check if we have any meal activity during this time
-    const hasMealActivity = data.CSFGlucoseData.some((meal) => {
+    const hasMealActivity = data.CSFGlucoseData.some((meal: ATReading) => {
       const mealTime = new Date(meal.date);
       const mealHour = mealTime.getHours();
       const mealDate = mealTime.toISOString().split('T')[0];
@@ -225,17 +228,16 @@ function checkDawnPhenomenon(data: AutotunePreppedData, patient_range: PatientRa
     }
   });
 
-  analysis.daysShowingPattern = analysis.dailyPatterns.length;
-  analysis.daysShowingPatternWithPriorLow = analysis.dailyPatterns.filter((day) => day.hadPriorLow).length;
-
+  analysis.allDaysShowingAnyPattern = analysis.dailyPatterns.length;
+  analysis.daysShowingPatternLow = analysis.dailyPatterns.filter((day) => day.hadPriorLow).length;
   let dailyPatternsWithoutPriorLow: DawnPatternDay[] = analysis.dailyPatterns.filter((day) => !day.hadPriorLow);
+  analysis.daysShowingPatternNoLow = dailyPatternsWithoutPriorLow.length;
 
-  // Calculate summary statistics
+  // Calculate summary statistics over only those without a prior low
   // How many days have a pattern of a rise
-  // Of those, how many had a low prior?
   if (dailyPatternsWithoutPriorLow.length > 0) {
     // Calculate typical start time
-    const startTimes = analysis.dailyPatterns.map((d) => d.startTime.getHours() * 60 + d.startTime.getMinutes());
+    const startTimes = dailyPatternsWithoutPriorLow.map((d) => d.startTime.getHours() * 60 + d.startTime.getMinutes());
     const avgStartMinutes = startTimes.reduce((sum, t) => sum + t, 0) / startTimes.length;
     const startHour = Math.floor(avgStartMinutes / 60);
     const startMinute = Math.round(avgStartMinutes % 60);
@@ -243,13 +245,13 @@ function checkDawnPhenomenon(data: AutotunePreppedData, patient_range: PatientRa
 
     // Calculate averages
     analysis.typicalDuration =
-      analysis.dailyPatterns.reduce((sum, d) => sum + d.duration, 0) / analysis.dailyPatterns.length;
+      dailyPatternsWithoutPriorLow.reduce((sum, d) => sum + d.duration, 0) / dailyPatternsWithoutPriorLow.length;
 
     analysis.averageStartGlucose =
-      analysis.dailyPatterns.reduce((sum, d) => sum + d.startGlucose, 0) / analysis.dailyPatterns.length;
+      dailyPatternsWithoutPriorLow.reduce((sum, d) => sum + d.startGlucose, 0) / dailyPatternsWithoutPriorLow.length;
 
     analysis.averagePeakGlucose =
-      analysis.dailyPatterns.reduce((sum, d) => sum + d.peakGlucose, 0) / analysis.dailyPatterns.length;
+      dailyPatternsWithoutPriorLow.reduce((sum, d) => sum + d.peakGlucose, 0) / dailyPatternsWithoutPriorLow.length;
 
     analysis.averageRise = analysis.averagePeakGlucose - analysis.averageStartGlucose;
 
@@ -312,30 +314,52 @@ export function getDawnPhenomenonNotes(
   notes: string,
   numDays: number,
   preferred_units: GlucoseUnits,
-) {
-  const patternFrequency = dawn_phenom_data.daysShowingPattern / 7; // Assuming 7 days of data
-  const averageRiseSignificance = dawn_phenom_data.averageRise > 20;
+): AssessmentInsight[] {
+  var insights: AssessmentInsight[] = [];
+  // const allRiseNumDays = dawn_phenom_data.allDaysShowingAnyPattern;
+  // const withoutPriorLowDays = dawn_phenom_data.allDaysShowingAnyPattern;
+  // -dawn_phenom_data.daysShowingPatternLow;
+
+  // const allRiseFrequency = dawn_phenom_data.allDaysShowingAnyPattern / 7; // Assuming 7 days of data
+  // const averageRiseSignificance = dawn_phenom_data.averageRise > 20;
+
+  var note: string = `${dawn_phenom_data.allDaysShowingAnyPattern} of the last 7 days the patient had rising blood glucose from 1 to 8am, which could be a sign of dawn phenomenon. `;
+
+  if (dawn_phenom_data.daysShowingPatternLow > 0) {
+    notes += `However, ${dawn_phenom_data.daysShowingPatternLow} of those days, the patient had a low blood glucose in the 30 minutes before the rise happened. Although no meals were detected, it's possible these blood glucose rises were due to the patient waking up and eating something in the middle of the night, but not recording the meal. It's understandable the patient might do this - waking up in the middle of the night to eat something is not desirable, and they probably wanted to get back to sleep as soon as possible!\n\n`;
+
+    if (dawn_phenom_data.daysShowingPatternLow / dawn_phenom_data.allDaysShowingAnyPattern > 0.75) {
+    } else {
+      notes += `In fact, they experienced lows before the rise more than 50% of the time. So it is likely that this is not dawn phenomenon, but a situation of poor glucose control in the evenings.  `;
+    }
+    notes += `But they are experiencing lows a quarter of the time, so there is a good chance that the patient is experiencing dawn phenomenon.`;
+  }
+
+  insights.push({
+    note: note,
+    priority: InsightPriority.IMPORTANT,
+  });
+
   let dawnPhenomClusters: TimeCluster[],
     timingNotes = analyzeDawnPhenomenonTiming(dawn_phenom_data.dailyPatterns);
 
   // const startTimes = dawn_phenom_data.dailyPatterns.map((d) => d.startTime.getHours() * 60 + d.startTime.getMinutes());
   // const consistentTiming = new Set(startTimes).size < 4; // Less than 4 different start times
-  var notes = '';
-  if (patternFrequency > 0.7 && dawn_phenom_data.averageRise > 30) {
+  if (allRiseFrequency > 0.7 && dawn_phenom_data.averageRise > 30) {
     notes += '  * The patient has strong indication of severe dawn phenomenon.\n';
-    notes += `  * In ${dawn_phenom_data.daysShowingPattern} of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
+    notes += `  * In ${dawn_phenom_data.allDaysShowingAnyPattern} of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
     notes += timingNotes.notes;
-  } else if (patternFrequency > 0.7 && dawn_phenom_data.averageRise > 20) {
+  } else if (allRiseFrequency > 0.7 && dawn_phenom_data.averageRise > 20) {
     notes += '  * The patient has strong indication of strong dawn phenomenon.\n';
-    notes += `  * In ${dawn_phenom_data.daysShowingPattern} of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
+    notes += `  * In ${dawn_phenom_data.allDaysShowingAnyPattern} of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
     notes += timingNotes.notes;
-  } else if (patternFrequency > 0.5 && dawn_phenom_data.averageRise > 20) {
+  } else if (allRiseFrequency > 0.5 && dawn_phenom_data.averageRise > 20) {
     notes += '  * There is some indication of dawn phenomenon.\n';
-    notes += `  * In ${dawn_phenom_data.daysShowingPattern} of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
+    notes += `  * In ${dawn_phenom_data.allDaysShowingAnyPattern} of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
     notes += timingNotes.notes;
-  } else if (patternFrequency > 0.2 && dawn_phenom_data.averageRise > 20) {
+  } else if (allRiseFrequency > 0.2 && dawn_phenom_data.averageRise > 20) {
     notes += '  * The patient may be experiencing dawn phenomenon.\n';
-    notes += `  * In ${dawn_phenom_data.daysShowingPattern} of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
+    notes += `  * In ${dawn_phenom_data.allDaysShowingAnyPattern} of the last ${numDays} mornings, the patient's blood glucose rose on average ${u(dawn_phenom_data.averageRise, preferred_units)}\n`;
     notes += timingNotes.notes;
   } else {
     notes += "  * The patient didn't have any indications of dawn phenomenon.\n";

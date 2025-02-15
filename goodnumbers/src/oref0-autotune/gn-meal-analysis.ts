@@ -1,4 +1,4 @@
-import { AutotunePreppedData } from './gn-autotune-prep';
+import { ATReading, AutotunePreppedData } from './gn-autotune-prep';
 import { GLUCOSE_RANGES } from './gn-constants';
 
 // Thresholds for glucose values in mg/dL
@@ -158,12 +158,6 @@ function analyzeMealEvents(data: AutotunePreppedData): MealEvent[] {
 //   hours: TimeRangeAnalysis[];
 // }
 
-interface GlucoseReading {
-  glucose: number;
-  deviation: number;
-  date: string | Date;
-}
-
 enum GlucoseState {
   LOW = 'LOW',
   IN_RANGE = 'IN_RANGE',
@@ -237,7 +231,7 @@ class GlucoseAnalysis {
     [GlucoseState.UNKNOWN]: 0,
   };
 
-  addReading(reading: GlucoseReading): void {
+  addReading(reading: ATReading): void {
     this.numReadings++;
 
     // Update running averages
