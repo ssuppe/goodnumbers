@@ -153,7 +153,9 @@ export async function generateAssessments(
       notes += '# Dawn phenomenon analysis\n';
       const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose, patient_range);
 
-      notes += getDawnPhenomenonNotes(dawn_phenom_data, notes, numDays, preferred_units);
+      if (dawn_phenom_data.allDaysShowingAnyPattern > 0) {
+        notes += getDawnPhenomenonNotes(dawn_phenom_data, notes, numDays, preferred_units);
+      }
 
       var assessment1: AssessmentData = await getAssessment({
         valid: true,

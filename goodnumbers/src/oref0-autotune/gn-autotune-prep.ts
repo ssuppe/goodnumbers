@@ -96,6 +96,16 @@ var moment = require('moment');
     var carb_input = inputs[4]; // 
 */
 
+export interface ATReading {
+  date: string;
+  glucose: number;
+  deviation: number;
+  BGI: number;
+  avgDelta: number;
+  mealAbsorption?: 'start' | 'end';
+  mealCarbs?: number;
+}
+
 export interface AutotunePreppedData {
   // Carb ratio related data
   CRData: Array<{
@@ -110,33 +120,13 @@ export interface AutotunePreppedData {
   }>;
 
   // Carb-sensitivity related glucose data (meal-related)
-  CSFGlucoseData: Array<{
-    date: string;
-    glucose: number;
-    deviation: number;
-    mealAbsorption?: 'start' | 'end';
-    mealCarbs?: number;
-    BGI: number;
-    avgDelta: number;
-  }>;
+  CSFGlucoseData: ATReading[];
 
   // Insulin-sensitivity related glucose data
-  ISFGlucoseData: Array<{
-    date: string;
-    glucose: number;
-    deviation: number;
-    BGI: number;
-    avgDelta: number;
-  }>;
+  ISFGlucoseData: ATReading[];
 
   // Basal-related glucose data
-  basalGlucoseData: Array<{
-    date: string;
-    glucose: number;
-    deviation: number;
-    BGI: number;
-    avgDelta: number;
-  }>;
+  basalGlucoseData: ATReading[];
 }
 
 export const gn_autotune_prep = (
