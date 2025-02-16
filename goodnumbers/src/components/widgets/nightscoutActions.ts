@@ -48,7 +48,8 @@ export const fetchNightscoutTreatments = async (
   try {
     const treatmentsResponse = await axiosInstance.get(treatmentsUrl);
 
-    const treatmentsData = treatmentsResponse.data;
+    var treatmentsData: NightscoutTreatment[] = treatmentsResponse.data;
+    treatmentsData = treatmentsData.filter((treatment) => Number(treatment.created_at) >= daysAgoTimestamp);
 
     if (canWriteLocal()) {
       await writeLocalFile(treatmentsData, { filename: 'nightscout/treatments.json' });
@@ -80,7 +81,9 @@ export const fetchNightscoutEntries = async (
   try {
     const entriesResponse = await axiosInstance.get(entriesUrl);
 
-    const entriesData: NightscoutEntry[] = entriesResponse.data;
+    var entriesData: NightscoutEntry[] = entriesResponse.data;
+
+    entriesData = entriesData.filter((entry) => entry.date >= daysAgoTimestamp);
 
     // If in development mode and writeLocal is enabled, save to local file
     if (canWriteLocal()) {
