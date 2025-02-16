@@ -17,7 +17,6 @@ import {
 import { ATProfileSettings, getBestProfile, transformNightscoutProfileToAutotune } from './nightscoutProfile';
 import dotenv from 'dotenv';
 import { gn_autotune_prep } from '../../oref0-autotune/gn-autotune-prep';
-import { checkDawnPhenomenon, getDawnPhenomenonNotes } from '../../oref0-autotune/gn-dawn-phenom';
 import { getPatientsRange, getWeekOverview, PatientRange } from '../../oref0-autotune/gn-overview';
 import {
   generatePodcastAudio,
@@ -26,6 +25,9 @@ import {
   getAssessment,
 } from '~/gemini/geminiActions';
 import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '../../oref0-autotune/gn-meal-analysis';
+import { profile } from 'console';
+import { analyzeMorningRises } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom-analysis';
+import { getDawnPhenomenonNotes } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom';
 var _ = require('lodash');
 
 // Configure Winston logger
@@ -151,10 +153,11 @@ export async function generateAssessments(
       ///////////////////////////////////////////////////////////////////////////
       notes += '\n\n';
       notes += '# Dawn phenomenon analysis\n';
-      const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose, patient_range);
+      // const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose, patient_range, profile_data);
+      const morningRiseAnalysis = analyzeMorningRises(all_prepped_glucose, patient_range);
 
-      if (dawn_phenom_data.allDaysShowingAnyPattern > 0) {
-        notes += getDawnPhenomenonNotes(dawn_phenom_data, notes, numDays, preferred_units);
+      if (morningRiseAnalysis.cleanRises.length > 0) {
+        notes += getDawnPhenomenonNotes(morningRiseAnalysis, numDays, preferred_units);
       }
 
       var assessment1: AssessmentData = await getAssessment({

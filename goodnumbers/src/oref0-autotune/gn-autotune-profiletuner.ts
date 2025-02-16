@@ -39,7 +39,7 @@ import {
   TimeRangeAnalysisWithHours,
 } from './gn-meal-analysis';
 import { GLUCOSE_RANGES } from './gn-constants';
-import { checkDawnPhenomenon } from './gn-dawn-phenom';
+import { checkDawnPhenomenon } from './gn-dawn-phenom/gn-dawn-phenom';
 
 dotenv.config();
 
