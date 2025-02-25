@@ -49,7 +49,7 @@ export const fetchNightscoutTreatments = async (
     const treatmentsResponse = await axiosInstance.get(treatmentsUrl);
 
     var treatmentsData: NightscoutTreatment[] = treatmentsResponse.data;
-    treatmentsData = treatmentsData.filter((treatment) => Number(treatment.created_at) >= daysAgoTimestamp);
+    treatmentsData = treatmentsData.filter((treatment) => Number(treatment.date) >= daysAgoTimestamp);
 
     if (canWriteLocal()) {
       await writeLocalFile(treatmentsData, { filename: 'nightscout/treatments.json' });

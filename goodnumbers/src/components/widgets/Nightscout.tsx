@@ -168,8 +168,6 @@ const NightscoutComponent = ({
           profiles: compress(nightscoutData.profiles),
         };
 
-        // Create ID for serverside saving, podcast management, etc
-
         // Server action call wrapped in regular Promise
         return createHash(formData.nightscout_url, formData.nightscout_token).then((hash) => {
           return generateAssessments(
@@ -368,7 +366,7 @@ const NightscoutComponent = ({
                     className="mr-2"
                   />
                   I understand this is experimental. The analysis might be wrong and does not constitute medical advice.
-                  All data should be manually verified by you and your healthcare professions.
+                  All data should be manually verified by you and your healthcare professionals.
                 </label>
                 <label className="flex items-center mb-4">
                   <input

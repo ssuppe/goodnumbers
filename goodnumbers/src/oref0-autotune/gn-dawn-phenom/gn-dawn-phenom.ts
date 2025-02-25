@@ -77,135 +77,164 @@ export function getDawnPhenomenonNotes(
   analysis: MorningRiseAnalysis,
   numDays: number,
   preferred_units: GlucoseUnits,
+  patient_range: PatientRange,
 ): AssessmentInsight[] {
   const insights: AssessmentInsight[] = [];
+  const totalRises = analysis.cleanRises.length + analysis.risesAfterLows.length + analysis.risesWithCarbs.length;
+  const daysWithData = analysis.daysAnalyzed || numDays;
 
-  // First summarize what we found
-  let summary = `Analysis of the last ${numDays} days shows `;
-
-  if (analysis.cleanRises.length + analysis.risesAfterLows.length + analysis.risesWithCarbs.length === 0) {
+  // 1 & 2: Check for any rises
+  if (totalRises === 0) {
     insights.push({
-      note: 'No significant early morning blood glucose rises were detected.',
+      note: `No significant early morning blood glucose rises were detected over the ${numDays} days analyzed.`,
       priority: InsightPriority.INFO,
     });
     return insights;
   }
 
-  // If we found clean rises that could be dawn phenomenon
-  if (analysis.cleanRises.length > 0) {
-    const avgRise =
-      analysis.cleanRises.reduce((sum: number, rise: MorningRise) => sum + (rise.endGlucose - rise.startGlucose), 0) /
-      analysis.cleanRises.length;
+  let summary = `We detected early morning blood glucose rises on ${totalRises} of the ${numDays} days analyzed. Let's examine these rises to understand if they might be related to dawn phenomenon.`;
 
-    summary += `${getUniqueDays(analysis.cleanRises)} mornings with blood glucose rises that could indicate dawn phenomenon. `;
-    summary += `These rises typically start around ${analysis
-      .startTimeClusters!.map((cluster) => {
-        return formatMinutes(cluster.centerTime, true);
-      })
-      .join(', ')} `;
-    summary += `with an average rise of ${u(avgRise, preferred_units)}. `;
-    if (analysis.startTimeClusters!.length >= 3) {
-      summary += `The fact that the patient's dawn blood glucose rises are spread throughout the morning across ${analysis.startTimeClusters!.length} different times implies this could be more complex. Start with trying to eliminate one at a time.`;
+  insights.push({
+    note: summary,
+    priority: InsightPriority.INFO,
+  });
+
+  // Add note about limited data
+  if (numDays <= 7) {
+    insights.push({
+      note: `Note: This analysis is based on only ${numDays} days of data. Patterns observed may not reflect long-term trends. Consider collecting more data for a more reliable assessment.`,
+      priority: InsightPriority.INFO,
+    });
+  }
+
+  // 3: Account for meal-related rises
+  if (analysis.risesWithCarbs.length > 0) {
+    insights.push({
+      note: `${analysis.risesWithCarbs.length} of these rises were associated with recorded carbohydrate intake. These rises are explained by the impact of carbohydrates, not dawn phenomenon, so we'll set them aside for now.`,
+      priority: InsightPriority.INFO,
+    });
+  }
+
+  // 4: Account for rises after lows
+  if (analysis.risesAfterLows.length > 0) {
+    let lowsInsight = `${analysis.risesAfterLows.length} rises occurred following low blood glucose events. These rises are likely a response to the low blood glucose rather than dawn phenomenon.`;
+
+    // Factors contributing to nighttime lows
+    lowsInsight += ` Factors that commonly contribute to these nighttime lows include:
+    • Evening basal insulin doses that may be higher than needed
+    • Evening/bedtime bolus insulin that may have been miscalculated
+    • Evening physical activity increasing insulin sensitivity for 6-12 hours afterward
+    • Delayed gastric emptying from high-fat evening meals leading to insulin-carb timing mismatches
+    • Alcohol consumption, which can suppress the liver's ability to release glucose
+    • Stress or illness affecting insulin sensitivity`;
+
+    insights.push({
+      note: lowsInsight,
+      priority: InsightPriority.SERIOUS,
+    });
+  }
+
+  // 5, 6, & 7: Analyze clean rises
+  if (analysis.cleanRises.length > 0) {
+    // Use simpler statistics given limited data points
+    const riseValues = analysis.cleanRises.map((rise) => rise.endGlucose - rise.startGlucose);
+    const durations = analysis.cleanRises.map((rise) => rise.duration);
+
+    // Calculate ranges and medians
+    const minRise = Math.min(...riseValues);
+    const maxRise = Math.max(...riseValues);
+    const medianRise = getMedian(riseValues);
+
+    const minDuration = Math.min(...durations);
+    const maxDuration = Math.max(...durations);
+    const medianDuration = getMedian(durations);
+
+    // Calculate average rise rate (mg/dL per hour)
+    const riseRates = analysis.cleanRises.map((rise) => ((rise.endGlucose - rise.startGlucose) / rise.duration) * 60);
+    const minRiseRate = Math.min(...riseRates);
+    const maxRiseRate = Math.max(...riseRates);
+
+    // Check for rises that cross from below target to above target
+    const risesCrossingTargetHigh = analysis.cleanRises.filter(
+      (rise) => rise.startGlucose < patient_range.target_high && rise.endGlucose > patient_range.target_high,
+    );
+
+    let riseNote = `After accounting for meals and low blood glucose recoveries, we found ${analysis.cleanRises.length} unexplained early morning rises. `;
+
+    // Categorize by time to distinguish dawn vs. feet phenomenon
+    const earlyRises = analysis.cleanRises.filter(
+      (rise) => rise.startTime.getHours() >= 1 && rise.startTime.getHours() < 3,
+    );
+    const dawnRises = analysis.cleanRises.filter(
+      (rise) => rise.startTime.getHours() >= 3 && rise.startTime.getHours() < 8,
+    );
+
+    if (earlyRises.length > 0 && dawnRises.length > 0) {
+      riseNote += `${earlyRises.length} rises began between 1-3am (sometimes called "feet phenomenon"), while ${dawnRises.length} rises occurred between 3-8am (classic dawn phenomenon window). `;
+    }
+
+    // Use more cautious language with limited data
+    if (analysis.cleanRises.length >= 3) {
+      riseNote += `This may suggest dawn phenomenon, though more data would strengthen this assessment. `;
+    } else {
+      riseNote += `With only ${analysis.cleanRises.length} instances observed, more data would be needed to confirm if this represents a consistent pattern. `;
+    }
+
+    // Time analysis - simple reporting of when rises occurred
+    const startHours = analysis.cleanRises.map((rise) => rise.startTime.getHours());
+    const uniqueHours = [...new Set(startHours)].sort((a, b) => a - b);
+    const timeRanges = uniqueHours.map((hour) => `${hour}:00-${hour}:59`).join(', ');
+
+    riseNote += `These rises were observed starting in the following hours: ${timeRanges}. `;
+    riseNote += `The duration of these rises ranged from ${Math.round(minDuration)} to ${Math.round(maxDuration)} minutes (median: ${Math.round(medianDuration)} minutes). `;
+
+    // Rate of rise assessment
+    riseNote += `The rate of rise ranged from ${minRiseRate.toFixed(1)} to ${maxRiseRate.toFixed(1)} per hour. `;
+
+    // Analyze the significance of the rise
+    if (medianRise >= 20 || risesCrossingTargetHigh.length > 0) {
+      if (risesCrossingTargetHigh.length > 0) {
+        riseNote += `On ${risesCrossingTargetHigh.length} of these days, blood glucose rose from below your target range to above ${u(patient_range.target_high, preferred_units)}. `;
+      }
+
+      riseNote += `The median rise was ${u(medianRise, preferred_units)}, with a range from ${u(minRise, preferred_units)} to ${u(maxRise, preferred_units)}. `;
+
+      // Factors contributing to dawn phenomenon
+      riseNote += `
+
+Physiological factors contributing to dawn phenomenon:
+• Increased production of growth hormone, cortisol, and adrenaline during early morning hours
+• These counter-regulatory hormones naturally increase insulin resistance
+• The liver increases glucose output while muscles and fat become less sensitive to insulin
+• For people with type 1 diabetes, there isn't sufficient insulin adaptation to counter these effects
+• Peak effect typically occurs between 4-8am but can vary based on sleep patterns
+
+Additional factors that can intensify dawn phenomenon:
+• Insufficient basal insulin coverage during overnight hours
+• Rebound hyperglycemia from overcorrection of evening lows
+• Changes in sleep patterns or poor sleep quality
+• Stress and its effect on cortisol levels
+• Gastroparesis or delayed digestion of evening meals`;
+    } else {
+      riseNote += `The median rise was ${u(medianRise, preferred_units)}, with a range from ${u(minRise, preferred_units)} to ${u(maxRise, preferred_units)}. These rises are relatively modest and stayed within target range. Mild early morning rises can be normal physiological responses due to circadian rhythms and hormone fluctuations.`;
     }
 
     insights.push({
-      note: summary,
-      priority: InsightPriority.IMPORTANT,
-    });
-  }
-
-  // If we found rises after lows
-  if (analysis.risesAfterLows.length > 0) {
-    insights.push({
-      note:
-        `On ${analysis.risesAfterLows.length} mornings, the blood glucose rise followed a low blood glucose. ` +
-        `These rises might be a response to the low rather than dawn phenomenon.`,
-      priority: InsightPriority.SERIOUS,
-    });
-  }
-
-  // If we found rises with recorded carbs
-  if (analysis.risesWithCarbs.length > 0) {
-    insights.push({
-      note: `${analysis.risesWithCarbs.length} morning rises were associated with recorded carb intake.`,
-      priority: InsightPriority.IMPORTANT,
-    });
-  }
-
-  // Add recommendations if we found clean rises
-  if (analysis.cleanRises.length >= 3) {
-    insights.push({
-      note: 'The pattern of early morning rises suggests dawn phenomenon. Consider discussing basal insulin adjustments with your healthcare provider.',
-      priority: InsightPriority.SERIOUS,
+      note: riseNote,
+      priority:
+        medianRise >= 20 || risesCrossingTargetHigh.length > 0 ? InsightPriority.IMPORTANT : InsightPriority.INFO,
     });
   }
 
   return insights;
 }
 
-// export function getDawnPhenomenonNotes(
-//   dawn_phenom_data: DawnAnalysis,
-//   notes: string,
-//   numDays: number,
-//   preferred_units: GlucoseUnits,
-// ): AssessmentInsight[] {
-//   var insights: AssessmentInsight[] = [];
+// Helper function to calculate median
+function getMedian(values: number[]): number {
+  if (values.length === 0) return 0;
 
-//   // Count patterns with high confidence
-//   const highConfidencePatterns = dawn_phenom_data.dailyPatterns.filter((p) => p.confidence > 0.8).length;
-//   const moderateConfidencePatterns = dawn_phenom_data.dailyPatterns.filter(
-//     (p) => p.confidence > 0.6 && p.confidence <= 0.8,
-//   ).length;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
 
-//   let note = `Analysis of the past ${numDays} days shows `;
-
-//   if (dawn_phenom_data.allDaysShowingAnyPattern === 0) {
-//     note += 'no significant signs of dawn phenomenon.';
-//     insights.push({
-//       note,
-//       priority: InsightPriority.INFO,
-//     });
-//     return insights;
-//   }
-
-//   // Analyze consistency of timing
-//   const timingAnalysis = analyzeDawnPhenomenonTiming(dawn_phenom_data.dailyPatterns);
-
-//   // Calculate how many patterns showed meal overlap
-//   const patternsWithMeals = dawn_phenom_data.dailyPatterns.filter((p) => p.mealsPresent).length;
-
-//   note += `${highConfidencePatterns} days with strong evidence and ${moderateConfidencePatterns} days with moderate evidence of dawn phenomenon. `;
-
-//   if (highConfidencePatterns + moderateConfidencePatterns >= 3) {
-//     note += `The typical pattern shows a glucose rise of ${u(dawn_phenom_data.averageRise, preferred_units)} `;
-//     note += `starting around ${t(dawn_phenom_data.typicalStartTime)}. `;
-
-//     if (patternsWithMeals > 0) {
-//       note += `${patternsWithMeals} of these days included early morning meals or snacks, but the pattern was still detectable through meal times. `;
-//     }
-
-//     note += timingAnalysis.notes;
-
-//     insights.push({
-//       note,
-//       priority: InsightPriority.IMPORTANT,
-//     });
-
-//     // Add specific recommendations if we have strong evidence
-//     if (highConfidencePatterns >= 3) {
-//       insights.push({
-//         note: 'Consider adjusting basal insulin rates during the early morning hours to account for dawn phenomenon. Consultation with your healthcare provider is recommended to discuss these patterns and potential treatment adjustments.',
-//         priority: InsightPriority.IMPORTANT,
-//       });
-//     }
-//   } else {
-//     note +=
-//       'While some rises in blood glucose were detected, the evidence for dawn phenomenon is not conclusive. Continue monitoring for more consistent patterns.';
-//     insights.push({
-//       note,
-//       priority: InsightPriority.IMPORTANT,
-//     });
-//   }
-
-//   return insights;
-// }
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}

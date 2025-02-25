@@ -157,7 +157,9 @@ export async function generateAssessments(
       const morningRiseAnalysis = analyzeMorningRises(all_prepped_glucose, patient_range);
 
       if (morningRiseAnalysis.cleanRises.length > 0) {
-        notes += getDawnPhenomenonNotes(morningRiseAnalysis, numDays, preferred_units);
+        let dawn_insights = getDawnPhenomenonNotes(morningRiseAnalysis, numDays, preferred_units, patient_range);
+
+        notes += insightsToNotes(dawn_insights);
       }
 
       var assessment1: AssessmentData = await getAssessment({

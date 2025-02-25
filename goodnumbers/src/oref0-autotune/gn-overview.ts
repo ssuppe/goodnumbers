@@ -221,7 +221,7 @@ export function getWeekOverview(
   /////////////////////////////////////////////////////////////////////////////
   // Establish patient relative range
   /////////////////////////////////////////////////////////////////////////////
-  note = `Before we go further, we are going to set improvement goals that make sense for where you blood sugar numbers are right now. Because your average is ${patient_range.average_name}, we are going to consider anything above ${patient_range.target_high} to be high. `;
+  note = `Before we go further, we are going to set improvement goals that make sense for where you blood sugar numbers are right now. Because your average is ${patient_range.average_name}, we are going to consider anything above ${patient_range.target_high} to be high. This is just for purposes of this analysis, and doesn't mean you are actually high - talk to your doctor if you have questions. `;
 
   if (patient_range.target_high != patient_range.very_high) {
     note += `And we'll consider ${patient_range.very_high} to be very high.\n\n`;
