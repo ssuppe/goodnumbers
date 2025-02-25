@@ -189,7 +189,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
         if (canReadLocal()) {
           finalSsml = await readLocalFile({ filename: 'gemini/pass3_final.txt' });
         }
-        if (finalSsml == null) {
+        if (finalSsml == null || finalSsml == '') {
           const enhancedResponse = await model.generateContent(enhancedPrompt);
           finalSsml = enhancedResponse.response.text().replace('```xml', '').replace('```', '').replace(/\\n/g, '\n');
         }
