@@ -62,7 +62,7 @@ export async function getAssessment(data: AssessmentData): Promise<AssessmentDat
     if (canReadLocal()) {
       responseText = await readLocalFile({ filename: `gemini/pass${templateNum}.txt`, plainText: true });
     }
-    if (responseText == null) {
+    if (responseText === null || responseText == '') {
       switch (templateNum) {
         case 1: {
           const template1 = await loadTemplate('pass1.txt');
