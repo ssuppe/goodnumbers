@@ -1,6 +1,6 @@
 import { JSDOM } from 'jsdom';
 
-export interface ValidationResult {
+export interface SSMLValidationResult {
   correctedSsml?: string;
   warnings: string[];
   error?: string;
@@ -11,15 +11,11 @@ export interface ValidationResult {
  * @param ssml The SSML string to validate and fix
  * @returns ValidationResult containing corrected SSML (if fixable), warnings, and errors
  */
-export function validateAndFixSsml(ssml: string): ValidationResult {
+export function validateAndFixSsml(ssml: string): SSMLValidationResult {
   const warnings: string[] = [];
 
-  // Pre-processing: handle XML escaping before parsing
-  // This is crucial as DOM parser will interpret unescaped entities
-  let preprocessedSsml = escapeSpecialCharacters(ssml);
-
-  // --- 1. Root <speak> Tag check & fix ---
-  preprocessedSsml = fixSpeakTags(preprocessedSsml, warnings);
+  // --- 1. Root <speak> Tag check & fix first ---
+  let preprocessedSsml = fixSpeakTags(ssml, warnings);
 
   // Early return if we couldn't fix the basic structure
   if (!preprocessedSsml) {
@@ -40,6 +36,10 @@ export function validateAndFixSsml(ssml: string): ValidationResult {
   }
 
   const document = dom.window.document;
+
+  // --- 2. Now escape special characters in text nodes only ---
+  escapeTextNodesRecursively(document.documentElement);
+
   const issues: Issue[] = [];
 
   // First pass: identify all issues without modifying the DOM
@@ -70,6 +70,27 @@ export function validateAndFixSsml(ssml: string): ValidationResult {
     correctedSsml: document.documentElement.outerHTML,
     warnings,
   };
+}
+
+/**
+ * Recursively escape special characters in text nodes only
+ */
+function escapeTextNodesRecursively(element: Element): void {
+  // Process text nodes that are direct children of this element
+  for (const node of Array.from(element.childNodes)) {
+    if (node.nodeType === 3) {
+      // Node.TEXT_NODE = 3
+      const textContent = node.textContent || '';
+      const escapedText = escapeSpecialCharacters(textContent);
+      if (textContent !== escapedText) {
+        node.textContent = escapedText;
+      }
+    } else if (node.nodeType === 1) {
+      // Node.ELEMENT_NODE = 1
+      // Recursively process child elements
+      escapeTextNodesRecursively(node as Element);
+    }
+  }
 }
 
 // Helper Types
@@ -501,7 +522,7 @@ function applyFix(issue: Issue, warnings: string[]): void {
 /**
  * Final validation of the document structure
  */
-function validateFinalStructure(document: Document): ValidationResult {
+function validateFinalStructure(document: Document): SSMLValidationResult {
   const warnings: string[] = [];
 
   // Check if root element is <speak>
