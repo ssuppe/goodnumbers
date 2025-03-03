@@ -5,13 +5,13 @@ import { GoogleGenerativeAI, GenerationConfig, GenerativeModel, SchemaType } fro
 import { promises as fs } from 'fs';
 import path from 'path';
 import { AssessmentData, PodcastGenerateResult, JobCheckResponse } from '~/types/nightscout';
-import { checkGoogleTtsSSMLFormat } from '~/utils/ssml-server';
 import { interpolate } from '~/utils/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { Storage } from '@google-cloud/storage';
 import { updateRssFeed } from './rss';
 import { canReadLocal, canWriteLocal } from '~/utils/env';
 import { readLocalFile, writeLocalFile } from 'app/actions/fileCache';
+import { SSMLValidationResult, validateAndFixSsml } from '~/utils/ssml-server';
 
 const { TextToSpeechLongAudioSynthesizeClient } = require('@google-cloud/text-to-speech').v1beta1;
 const isDevelopment = process.env.ENV === 'development';
@@ -157,22 +157,22 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
       podcastSsml = podcastSsml!.replaceAll('<laughs>', '');
 
       // Check SSML validity
-      const ssmlCheck = await checkGoogleTtsSSMLFormat(podcastSsml);
+      const ssmlCheck: SSMLValidationResult = validateAndFixSsml(podcastSsml);
+      console.log(`Has invalid SSML? ${ssmlCheck.error}`);
 
-      console.log(`Is valid SSML? ${ssmlCheck.isCorrect}`);
-
-      if (!ssmlCheck.isCorrect) {
+      if (ssmlCheck.error) {
         console.log(`${noSsmlTries}/3: Invalid SSML that couldn't be fixed: ${podcastSsml}`);
         if (canWriteLocal()) {
-          await writeLocalFile(podcastSsml, { filename: 'gemini/pass3_invalid.txt', plainText: true });
+          await writeLocalFile(ssmlCheck.correctedSsml, { filename: 'gemini/pass3_invalid.txt', plainText: true });
         }
         noSsmlTries++;
       } else {
+        isValidSsml = true;
         // Got valid SSML, enhance it with more human intonation
         const enhancedGenerationConfig: GenerationConfig = {
           temperature: 1.5,
           topP: 0.95,
-          maxOutputTokens: 8192,
+          maxOutputTokens: 128000,
         };
 
         model = genAI.getGenerativeModel({
@@ -183,7 +183,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
         // Load and interpolate template for enhancement
         const template4 = await loadTemplate('pass4.txt');
         const enhancedPrompt = interpolate(template4, {
-          ssml_dialog: ssmlCheck.processedSsml,
+          ssml_dialog: ssmlCheck.correctedSsml,
         });
         let finalSsml: string | null = '';
         if (canReadLocal()) {
