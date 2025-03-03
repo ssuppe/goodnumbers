@@ -188,7 +188,7 @@ export function getWeekOverview(
     compositeday_analysis.avgGlucose >= GLUCOSE_RANGES.LOW &&
     compositeday_analysis.avgGlucose <= GLUCOSE_RANGES.TITR_HIGH
   ) {
-    let note = `* Your average glucose is close to a nearly non-diabetic range, or what we call "in tight range", between ${u(GLUCOSE_RANGES.LOW)} and ${u(GLUCOSE_RANGES.TITR_HIGH)}.\n\nTime in tight range describes the time an individual spends in normal levels of blood glucose.`;
+    let note = `* Your average glucose is close to a nearly non-diabetic range, or what we call "in tight range", between ${u(GLUCOSE_RANGES.LOW, preferred_units)} and ${u(GLUCOSE_RANGES.TITR_HIGH, preferred_units)}.\n\nTime in tight range describes the time an individual spends in normal levels of blood glucose.`;
     insights.push({ note: note, priority: InsightPriority.IMPORTANT });
     insights.push(getLowPercentageInsight(compositeday_analysis));
   } else if (
