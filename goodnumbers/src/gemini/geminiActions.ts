@@ -157,7 +157,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
       podcastSsml = podcastSsml!.replaceAll('<laughs>', '');
 
       // Check SSML validity
-      const ssmlCheck: SSMLValidationResult = validateAndFixSsml(podcastSsml);
+      var ssmlCheck: SSMLValidationResult = validateAndFixSsml(podcastSsml);
       console.log(`Has invalid SSML? ${ssmlCheck.error}`);
 
       if (ssmlCheck.error) {
@@ -192,6 +192,8 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
         if (finalSsml == null || finalSsml == '') {
           const enhancedResponse = await model.generateContent(enhancedPrompt);
           finalSsml = enhancedResponse.response.text().replace('```xml', '').replace('```', '').replace(/\\n/g, '\n');
+          ssmlCheck = validateAndFixSsml(finalSsml);
+          finalSsml = ssmlCheck.correctedSsml!;
         }
         if (canWriteLocal()) {
           await writeLocalFile(podcastSsml, { filename: 'gemini/pass3_final.txt', plainText: true });
