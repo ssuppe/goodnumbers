@@ -28,6 +28,7 @@ import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '../../oref
 import { profile } from 'console';
 import { analyzeMorningRises } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom-analysis';
 import { getDawnPhenomenonNotes } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom';
+import { TidelineChartType, TidelineConfig } from '../charts/tideline-chart-spec';
 var _ = require('lodash');
 
 // Configure Winston logger
@@ -98,7 +99,6 @@ export async function generateAssessments(
 
   try {
     // Step 1: Generate Notes
-    logger.info('Step 1');
     ///////////////////////////////////////////////////////////////////////////
     // Meal analysis
     ///////////////////////////////////////////////////////////////////////////
@@ -112,59 +112,81 @@ export async function generateAssessments(
 
     const all_prepped_glucose = gn_autotune_prep(nsData.entries, nsData.treatments, profile_data, pumpprofile_data);
 
-    var notes = '';
-    notes += `# Patient notes: ${firstDate} to ${endDate}\n`;
-    notes += `Please note: The patient's preferred blood glucose units are ${preferred_units}.\n`;
-    notes += '\n';
+    logger.info('Step 1: Generate notes');
+    var ai_notes = '';
+    ai_notes += `# Patient notes: ${firstDate} to ${endDate}\n`;
+    ai_notes += `Please note: The patient's preferred blood glucose units are ${preferred_units}.\n`;
+    ai_notes += '\n';
 
     const full_analysis: FullAnalysisResult = analyzeTimeOfDay(all_prepped_glucose);
     const patient_range: PatientRange = getPatientsRange(full_analysis.overall);
 
-    notes += '## Weekly overview\n\n';
+    ai_notes += '## Weekly overview\n\n';
 
-    let overview_insights: AssessmentInsight[] = getWeekOverview(
-      full_analysis.overall,
-      numDays,
-      preferred_units,
-      patient_range,
-    );
+    let { ai_insights, user_insights } = getWeekOverview(full_analysis.overall, preferred_units, patient_range);
 
-    let critical_insights: AssessmentInsight[] | null = filterCriticalInsights(overview_insights);
+    let critical_insights: AssessmentInsight[] | null = filterCriticalInsights(ai_insights);
     ///////////////////////////////
     // If there are critical insights at this phase, this app shouldn't be used
     // For now, we will return those critical insights (which also state they
     // need to see a medical professional), and the podcast will tell them so.
     ///////////////////////////////
     if (critical_insights) {
-      notes += insightsToNotes(critical_insights);
+      let overview_chart: TidelineConfig = {
+        type: TidelineChartType.WEEKLY,
+        id: 'weekly-overview',
+        width: 800,
+        height: 600,
+        pools: [
+          {
+            id: 'overlaidWeeklyOverview', // Or any descriptive ID
+            weight: 1, // Adjust as needed for the pool's relative height
+            gutterWeight: 1, // Adjust gutter as needed
+            plotTypes: [
+              {
+                type: 'smbg', // Or 'cbg', 'bolus', etc., whatever data you want to overlay
+                data: 'weeklyOverviewData', //  Reference to your *entire* 7-day dataset
+                opts: {
+                  // ... plot-specific options if needed, but generally you would style overlays with CSS classes
+                },
+              },
+              // ... more plotTypes if you want to overlay different data types
+            ],
+            annotations: false, // Or true, if you need annotations for the overlaid data
+            tooltips: false, // Or true, if you need tooltips for the overlaid data
+          },
+        ],
+      };
+
+      ai_notes += insightsToNotes(critical_insights);
       var assessment2: AssessmentData = {
         valid: true,
-        notes: notes,
+        notes: ai_notes,
         assessment1: '',
         assessment2: '',
         id: id,
-        preferred_units,
+        preferred_units: preferred_units,
+        charts: [overview_chart],
       };
     } else {
-      notes += insightsToNotes(overview_insights);
-
+      ai_notes += insightsToNotes(ai_insights);
       ///////////////////////////////////////////////////////////////////////////
       // Dawn phenomenom
       ///////////////////////////////////////////////////////////////////////////
-      notes += '\n\n';
-      notes += '# Dawn phenomenon analysis\n';
-      // const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose, patient_range, profile_data);
-      const morningRiseAnalysis = analyzeMorningRises(all_prepped_glucose, patient_range);
+      // notes += '\n\n';
+      // notes += '# Dawn phenomenon analysis\n';
+      // // const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose, patient_range, profile_data);
+      // const morningRiseAnalysis = analyzeMorningRises(all_prepped_glucose, patient_range);
 
-      if (morningRiseAnalysis.cleanRises.length > 0) {
-        let dawn_insights = getDawnPhenomenonNotes(morningRiseAnalysis, numDays, preferred_units, patient_range);
+      // if (morningRiseAnalysis.cleanRises.length > 0) {
+      //   let dawn_insights = getDawnPhenomenonNotes(morningRiseAnalysis, numDays, preferred_units, patient_range);
 
-        notes += insightsToNotes(dawn_insights);
-      }
+      //   notes += insightsToNotes(dawn_insights);
+      // }
 
       var assessment1: AssessmentData = await getAssessment({
         valid: true,
-        notes: notes,
+        notes: ai_notes,
         template_num: 1,
         id: id,
         preferred_units,
@@ -172,7 +194,7 @@ export async function generateAssessments(
 
       var assessment2: AssessmentData = await getAssessment({
         valid: true,
-        notes: notes,
+        notes: ai_notes,
         assessment1: assessment1.assessment1,
         template_num: 2,
         id: id,
@@ -185,14 +207,47 @@ export async function generateAssessments(
     podcast_info
       .ssml_dialog!.replace('mg/dl', '')
       .replace('mmol/l', '')
+      .replace('mmol/L', '')
       .replace('TIR', 'time in range')
       .replace('TTIR', 'time in tight range')
       .replace('TAR', 'time above range')
-      .replace('TBR', 'time below range');
+      .replace('TBR', 'time below range')
+      .replace('ISF', 'insulin sensitivity ratio')
+      .replace('I:C', 'insulin to carb ratio');
 
     // Step 5: Generate title and description
     let podcast_infodesc: AssessmentData = await generatePodcastDescription(podcast_info);
     logger.debug(podcast_infodesc);
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Add all the charts
+    ///////////////////////////////////////////////////////////////////////////
+    let overview_chart: TidelineConfig = {
+      type: TidelineChartType.WEEKLY,
+      id: 'weekly-overview',
+      width: 800,
+      height: 600,
+      pools: [
+        {
+          id: 'overlaidWeeklyOverview', // Or any descriptive ID
+          weight: 1, // Adjust as needed for the pool's relative height
+          gutterWeight: 1, // Adjust gutter as needed
+          plotTypes: [
+            {
+              type: 'smbg', // Or 'cbg', 'bolus', etc., whatever data you want to overlay
+              data: 'weeklyOverviewData', //  Reference to your *entire* 7-day dataset
+              opts: {
+                // ... plot-specific options if needed, but generally you would style overlays with CSS classes
+              },
+            },
+            // ... more plotTypes if you want to overlay different data types
+          ],
+          annotations: false, // Or true, if you need annotations for the overlaid data
+          tooltips: false, // Or true, if you need tooltips for the overlaid data
+        },
+      ],
+    };
+    podcast_info.charts = [overview_chart];
 
     // Step 6: Start generation of audio
     const podcastResult: PodcastGenerateResult = await generatePodcastAudio(podcast_infodesc);
