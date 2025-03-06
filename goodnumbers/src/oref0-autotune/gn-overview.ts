@@ -81,31 +81,63 @@ export function getPatientsRange(compositeday_analysis: AnalysisResult): Patient
   return pr;
 }
 
-function getLowPercentageInsight(compositeday_analysis: AnalysisResult): AssessmentInsight {
-  let insight: AssessmentInsight;
-  let note: string = '';
-  note += `Medical professionals agree that diabetics should spend less than 4% of the time low. You're spending ${Math.round(compositeday_analysis.lowPercentage)}% of the time low. `;
+function getLowPercentageInsight(compositeday_analysis: AnalysisResult) {
+  const lowPercentage = Math.round(compositeday_analysis.lowPercentage); // Round once, reuse
+
+  const ai_insight = getLowPercentageAIInsight(lowPercentage);
+  const user_insight = getLowPercentageUserInsight(lowPercentage);
+
+  return { ai_insight: ai_insight, user_insight: user_insight };
+}
+
+function getLowPercentageAIInsight(lowPercentage: number): AssessmentInsight {
+  let note = `Medical professionals agree that diabetics should spend less than 4% of the time low. You're spending ${lowPercentage}% of the time low. `;
+  let priority: InsightPriority;
 
   switch (true) {
-    case compositeday_analysis.lowPercentage <= 3:
+    case lowPercentage <= 3:
       note += `This is quite good - you're well below the clinical recommendation. Staying in non-diabetic target while keeping your lows down is quite an accomplishment. Keep doing what you're doing.`;
-      insight = { note: note, priority: InsightPriority.IMPORTANT };
-
+      priority = InsightPriority.IMPORTANT;
       break;
-    case compositeday_analysis.lowPercentage <= 4:
+    case lowPercentage <= 4:
       note += `This is quite good - you're below the clinical recommendation of 4%. However, you are pretty close to it. Keep an eye on this and aim to improve it next week. `;
-      insight = { note: note, priority: InsightPriority.IMPORTANT };
+      priority = InsightPriority.IMPORTANT;
       break;
-    case compositeday_analysis.lowPercentage < 10:
+    case lowPercentage < 10:
       note += `This is quite high and this should be one of the first things you try to improve. Spending anywhere near 10% in hypoglycemia is considered significant and requires medical attention. `;
-      insight = { note: note, priority: InsightPriority.SERIOUS };
+      priority = InsightPriority.SERIOUS;
       break;
     default:
       note += `Your time spent in hypoglycemia, or low blood sugar, is quite high. Clinical best practices say anything higher than 10%  is a severe, critical risk to your health and may require emergency intervention. We cannot continue until you improve this.`;
-      insight = { note: note, priority: InsightPriority.CRITICAL };
+      priority = InsightPriority.CRITICAL;
       break;
   }
-  return insight;
+  return { note: note, priority: priority };
+}
+
+function getLowPercentageUserInsight(lowPercentage: number): AssessmentInsight {
+  let note = '';
+  let priority: InsightPriority;
+
+  switch (true) {
+    case lowPercentage <= 3:
+      note = `Time spent low (${lowPercentage}%) is well below the recommended threshold of 4%.  This indicates good control over hypoglycemia.`;
+      priority = InsightPriority.IMPORTANT;
+      break;
+    case lowPercentage <= 4:
+      note = `Time spent low (${lowPercentage}%) is within the recommended threshold of 4%.  Continue to monitor for low blood glucose events.`;
+      priority = InsightPriority.IMPORTANT;
+      break;
+    case lowPercentage < 10:
+      note = `Time spent low (${lowPercentage}%) is higher than the recommended threshold of 4% or below.  Hypoglycemia (low blood sugar) can be dangerous.  Strategies to reduce low blood sugar events should be implemented.`;
+      priority = InsightPriority.SERIOUS;
+      break;
+    default:
+      note = `Time spent low (${lowPercentage}%) is critically high, much higher than the recommended threshold of 4% or below.  Prolonged or frequent hypoglycemia is a serious health risk.  Immediate medical attention and adjustments to treatment are necessary.`;
+      priority = InsightPriority.CRITICAL;
+      break;
+  }
+  return { note: note, priority: priority };
 }
 
 function getTIRInsight(
@@ -150,68 +182,77 @@ function getTIRInsight(
 
 export function getWeekOverview(
   compositeday_analysis: AnalysisResult,
-  numDays: number,
   preferred_units: GlucoseUnits,
   patient_range: PatientRange,
-): AssessmentInsight[] {
-  const insights: AssessmentInsight[] = [];
+): { ai_insights: AssessmentInsight[]; user_insights: AssessmentInsight[] } {
+  const ai_insights: AssessmentInsight[] = [];
+  const user_insights: AssessmentInsight[] = [];
 
-  insights.push({
+  ai_insights.push({
     note: `  * This week was the patient's average blood glucose was ${u(compositeday_analysis.avgGlucose, preferred_units)}\n`,
+    priority: InsightPriority.ALWAYS_INCLUDE,
+  });
+
+  user_insights.push({
+    note: `Average weeky glucose: ${u(compositeday_analysis.avgGlucose, preferred_units)}\n`,
     priority: InsightPriority.ALWAYS_INCLUDE,
   });
 
   /////////////////////////////////////////////////////////////////////////////
   // Average, based on absolute recommendations (not patient relative ones)
   ////////////////////////////////////////////////////////////////////////////
+  let { ai_insight, user_insight } = getLowPercentageInsight(compositeday_analysis);
+
+  ai_insights.push(ai_insight);
+  user_insights.push(user_insight);
+
   if (compositeday_analysis.avgGlucose <= GLUCOSE_RANGES.LOW) {
     let note = `* Your average glucose is below normal range, which means you're spending most of your time in hypoglycemia. In fact, you're spending ${compositeday_analysis.lowPercentage}% of the time in hypoglycemia. This can cause seizures, loss of consciousness, cognitive impairment and even death. This requires urgent medical attention. You must speak to your doctor immediately about how to raise your average blood glucose. We cannot go on, we must inform the patient ASAP.`;
 
-    insights.push({ note: note, priority: InsightPriority.CRITICAL });
-    insights.push(getLowPercentageInsight(compositeday_analysis));
+    ai_insights.push({ note: note, priority: InsightPriority.CRITICAL });
+    user_insights.push({ note: note, priority: InsightPriority.CRITICAL });
   } else if (
     compositeday_analysis.avgGlucose < GLUCOSE_RANGES.TARGET_BOTTOM &&
     compositeday_analysis.avgGlucose >= GLUCOSE_RANGES.LOW
   ) {
     let note = `* Your average glucose is bordering dangerously low, between ${u(GLUCOSE_RANGES.LOW, (preferred_units = preferred_units))} and ${u(GLUCOSE_RANGES.TARGET_BOTTOM, (preferred_units = preferred_units))}. You may be thinking having a lower blood glucose is keeping you healthy, but you are more likely to have hypoglycemic episodes, which are incredibly dangerous, and can cause seizures, loss of consciousness, cognitive impairment and even death. In fact, you're spending ${compositeday_analysis.lowPercentage}% of the time in hypoglycemia. This requires urgent medical attention. You must speak to your doctor immediately about how to raise your average blood glucose. We cannot go on, we must inform the patient ASAP.`;
 
-    insights.push({ note: note, priority: InsightPriority.CRITICAL });
-    insights.push(getLowPercentageInsight(compositeday_analysis));
+    ai_insights.push({ note: note, priority: InsightPriority.CRITICAL });
+    user_insights.push({ note: note, priority: InsightPriority.CRITICAL });
   } else if (
     compositeday_analysis.avgGlucose >= GLUCOSE_RANGES.TARGET_BOTTOM &&
     compositeday_analysis.avgGlucose <= GLUCOSE_RANGES.TARGET_TOP
   ) {
     let note = `* Your average glucose is within a non-diabetic range of ${u(GLUCOSE_RANGES.TARGET_BOTTOM, preferred_units)} and ${u(GLUCOSE_RANGES.TARGET_TOP, preferred_units)}. This is a great accomplishment, but may not tell us the full picture. We need to understand how much time you're spending high and low to understand what's happening.\n`;
-    insights.push({ note: note, priority: InsightPriority.IMPORTANT });
-    insights.push(getLowPercentageInsight(compositeday_analysis));
+    ai_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
+    user_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
   } else if (
     compositeday_analysis.avgGlucose >= GLUCOSE_RANGES.LOW &&
     compositeday_analysis.avgGlucose <= GLUCOSE_RANGES.TITR_HIGH
   ) {
     let note = `* Your average glucose is close to a nearly non-diabetic range, or what we call "in tight range", between ${u(GLUCOSE_RANGES.LOW, preferred_units)} and ${u(GLUCOSE_RANGES.TITR_HIGH, preferred_units)}.\n\nTime in tight range describes the time an individual spends in normal levels of blood glucose.`;
-    insights.push({ note: note, priority: InsightPriority.IMPORTANT });
-    insights.push(getLowPercentageInsight(compositeday_analysis));
+    ai_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
+    user_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
   } else if (
     compositeday_analysis.avgGlucose >= GLUCOSE_RANGES.LOW &&
     compositeday_analysis.avgGlucose <= GLUCOSE_RANGES.HIGH
   ) {
     let note = `* Your average glucose is within the recommended range below ${u(180, preferred_units)}.\n`;
-    insights.push({ note: note, priority: InsightPriority.IMPORTANT });
-
-    insights.push(getLowPercentageInsight(compositeday_analysis));
+    ai_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
+    user_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
   } else {
     let note =
       '* Your glucose levels suggest your diabetes may need attention. Please schedule a consultation with your healthcare provider to discuss adjusting your management plan.\n';
-    insights.push({ note: note, priority: InsightPriority.IMPORTANT });
-    insights.push(getLowPercentageInsight(compositeday_analysis));
+    ai_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
+    user_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
   }
 
   /////////////////////////////////////////////////////////////////////////////
   // If there are any critical insights, let's quit now. We are unable to
   // continue as the patient as severe issues.
   ////////////////////////////////////////////////////////////////////////////
-  if (hasCriticalInsights(insights)) {
-    return filterCriticalInsights(insights)!;
+  if (hasCriticalInsights(ai_insights)) {
+    return { ai_insights: filterCriticalInsights(ai_insights)!, user_insights: filterCriticalInsights(ai_insights)! };
   }
   ////////////////////////////////////////////////////////////////////////////
   // Cover standard TIR evaluation to baseline everyone
@@ -226,7 +267,8 @@ export function getWeekOverview(
   if (patient_range.target_high != patient_range.very_high) {
     note += `And we'll consider ${patient_range.very_high} to be very high.\n\n`;
   }
-  insights.push({ note: note, priority: InsightPriority.ALWAYS_INCLUDE });
+  ai_insights.push({ note: note, priority: InsightPriority.ALWAYS_INCLUDE });
+  user_insights.push({ note: note, priority: InsightPriority.ALWAYS_INCLUDE });
 
   /////////////////////////////////////////////////////////////////////////////
   // Time in range
@@ -295,5 +337,5 @@ export function getWeekOverview(
   //   notes +=
   //     "    * Your time spent above target is too high and significantly increases your risk of long-term complications. This requires closer attention.  We need to carefully review your current management plan, including your basal and bolus insulin doses, carbohydrate ratios, and correction factors. We'll also consider additional factors that may be influencing your glucose levels, such as stress, illness, or medications. It's important to address this promptly to protect your long-term health.";
   // }
-  return insights;
+  return { ai_insights: ai_insights, user_insights: user_insights };
 }

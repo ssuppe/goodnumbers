@@ -6,6 +6,8 @@
 //   id: string;
 // }
 
+import { TidelineConfig } from '~/components/charts/tideline-chart-spec';
+
 export interface PodcastGenerateResult {
   status: string;
   message: string;
@@ -32,7 +34,8 @@ export interface AssessmentData {
   timestamp?: string | null;
   id?: string | null;
   podcastResult?: PodcastGenerateResult | null;
-  preferred_units: GlucoseUnits;
+  preferred_units: GlucoseUnits | null;
+  charts?: TidelineConfig[] | null;
 }
 
 export const hasCriticalInsights = (insights: AssessmentInsight[]): boolean => {
@@ -68,13 +71,9 @@ export interface AssessmentInsight {
   priority: InsightPriority;
 }
 
-export interface InitialStoredData {
-  notes: string | null;
-  assessment1: string | null;
-  assessment2: string | null;
-  dialog: string | null;
-  podcastResult: PodcastGenerateResult | null;
-  timestamp: string | null;
+interface TidelineChartProps {
+  config: TidelineConfig;
+  insights: AssessmentInsight[];
 }
 
 export interface NightscoutData {

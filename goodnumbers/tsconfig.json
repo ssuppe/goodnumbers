@@ -1,12 +1,14 @@
 {
   "compilerOptions": {
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "sourceMap": true,
     "target": "es2018",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "noImplicitAny": true,
+    "declaration": true,
+    "declarationDir": "./dist/types", // Output declaration files here
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
@@ -25,13 +27,16 @@
       {
         "name": "next"
       }
-    ]
+    ],
+    "typeRoots": ["./node_modules/@types", "src/types"]
   },
+
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
+    "src/types/*ts",
     "src/components/ui/progress/index.tsx",
     "jest.config.js"
   ],
