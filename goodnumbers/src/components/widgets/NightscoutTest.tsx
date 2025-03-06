@@ -25,12 +25,41 @@ import ReactMarkdown from 'react-markdown';
 import prettier from 'prettier/standalone';
 import parserXml from '@prettier/plugin-xml';
 import { generateAssessments } from './podcastActions';
-import { setCookieCSync } from '~/utils/cookies';
+import { getCookieC, setCookieCSync } from '~/utils/cookies';
 import { fetchNightscoutData } from './nightscoutActions';
 import { ssmlToMarkdown } from '~/utils/ssml-client';
 import { checkPodcastStatus } from '~/gemini/geminiActions';
 import PodcastStatusBadge from './PodcastStatusBadge';
 import TidelineChartComponent from '../charts/TideLineChart';
+import { nsEntriesToTideline } from '../charts/nightscoutToTideLine';
+
+////////////////////////////////////////////////////////////////////////////////
+// Nightscout global data
+////////////////////////////////////////////////////////////////////////////////
+// At the top of your file, outside any component
+// Define a type for your global state
+type GlobalNightscoutState = {
+  entries: any | null;
+  treatments: any | null;
+  profiles: any | null;
+};
+
+// Create the global state object
+let globalNightscoutData: GlobalNightscoutState = {
+  entries: null,
+  treatments: null,
+  profiles: null,
+};
+
+// Optional: Create accessor functions for better encapsulation
+export function getNightscoutData(): GlobalNightscoutState {
+  return { ...globalNightscoutData }; // Return a copy to prevent direct mutation
+}
+
+export function setNightscoutData(data: Partial<GlobalNightscoutState>): void {
+  globalNightscoutData = { ...globalNightscoutData, ...data };
+}
+////////////////////////////////////////////////////////////////////////////////
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
@@ -159,58 +188,18 @@ const NightscoutComponent = ({
     updateProgress(25, 'Collecting Nightscout data...');
     fetchNightscoutData({ url: formData.nightscout_url, token: formData.nightscout_token })
       .then((nightscoutData: NightscoutData) => {
-        updateProgress(
-          50,
-          "Generating assessments (this will take a few minutes). Please don't close your browser. After, we will generate the audio of the podcast.",
-        );
-        const compressedData = {
-          entries: compress(nightscoutData.entries),
-          treatments: compress(nightscoutData.treatments),
-          profiles: compress(nightscoutData.profiles),
-        };
-
-        // Server action call wrapped in regular Promise
-        return createHash(formData.nightscout_url, formData.nightscout_token).then((hash) => {
-          return generateAssessments(
-            compressedData?.entries,
-            compressedData?.treatments || null,
-            compressedData.profiles,
-            hash,
-            formData.preferred_units, // Add units preference
-          );
+        // Store the data in global variables
+        setNightscoutData({
+          entries: nightscoutData.entries,
+          treatments: nightscoutData.treatments,
+          profiles: nightscoutData.profiles,
         });
-      })
-      .then((data) => {
-        const now = new Date();
-        const formattedTimestamp = now
-          .toLocaleString('en-GB', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          })
-          .replace(/\//g, '-');
-        if (data == null) return;
-        const dataWithTimestamp = {
-          ...data,
-          timestamp: formattedTimestamp,
-          preferred_units: data.preferred_units, // Explicitly include this
-        };
 
-        // Use the sync version for setting assessment data
-        updateAssessmentData(dataWithTimestamp);
-        // Object.entries(dataWithTimestamp).forEach(([key, value]) => {
-        //   setCookieCSync(key, value, { expires: 30 });
-        // });
-
-        // Set a new state to indicate successful submission
-        setFormSubmitted(true); // Add this state
-
-        if (onAssessmentComplete) {
-          onAssessmentComplete(dataWithTimestamp);
-        }
+        let tidelineData = nsEntriesToTideline(nightscoutData.entries, formData.preferred_units);
+        console.log('NS Entries:');
+        console.log(nightscoutData.entries.slice(0, 10));
+        console.log('Tideline Data:');
+        console.log(tidelineData.slice(0, 10));
       })
       .catch((error) => {
         setLoadingError(error instanceof Error ? error.message : 'An unexpected error occurred');
@@ -243,6 +232,8 @@ const NightscoutComponent = ({
     }
   }, [assessmentData?.ssml_dialog]);
 
+  var nightscoutData = getNightscoutData();
+  var tidelineEntries = nsEntriesToTideline(nightscoutData.entries, 'mmol/l');
   // Simplified render method for assessments
   const renderAssessmentContent = () => {
     // console.log('SSML' + formattedSSML); // Add this
@@ -304,10 +295,10 @@ const NightscoutComponent = ({
               <LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
               <div className="prose dark:prose-invert max-w-none">
                 {/* Conditionally render only if assessmentData.charts exists and is truthy */}
-                {assessmentData?.charts && assessmentData.charts.length > 0 ? (
+                {assessmentData.charts != null && assessmentData.charts!.length > 0 ? (
                   assessmentData.charts.map((chartConfig, index) => (
                     <div key={`chart-${index}`}>
-                      <TidelineChartComponent config={chartConfig} data={weeklyDataPlaceholder} />
+                      <TidelineChartComponent config={chartConfig} data={tidelineEntries} />
                     </div>
                   ))
                 ) : (
