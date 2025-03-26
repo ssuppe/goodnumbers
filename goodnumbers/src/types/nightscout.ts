@@ -6,7 +6,7 @@
 //   id: string;
 // }
 
-import { TidelineConfig } from '~/components/charts/tideline-chart-spec';
+import { TidelineConfig } from '~/components/tideline/tideline-chart-spec';
 
 export interface PodcastGenerateResult {
   status: string;
