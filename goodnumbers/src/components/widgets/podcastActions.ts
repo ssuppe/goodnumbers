@@ -28,7 +28,7 @@ import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '../../oref
 import { profile } from 'console';
 import { analyzeMorningRises } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom-analysis';
 import { getDawnPhenomenonNotes } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom';
-import { TidelineChartType, TidelineConfig } from '../charts/tideline-chart-spec';
+import { TidelineChartType, TidelineConfig } from '../tideline/tideline-chart-spec';
 var _ = require('lodash');
 
 // Configure Winston logger

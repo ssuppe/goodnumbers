@@ -1,6 +1,7 @@
 {
   "name": "@onwidget/tailnext",
-  "description": "A template to make your website using Next.js + Tailwind CSS.",
+  "description": "A template to make your website using Next.js + Tailwind CSS",
+  "type": "module",
   "version": "1.0.0-beta.4",
   "private": true,
   "scripts": {
@@ -41,7 +42,7 @@
     "clsx": "^2.1.1",
     "compress-json": "^3.1.0",
     "cookie": "^1.0.0",
-    "d3": "^3.5.17",
+    "d3": "3.5.17",
     "feed": "^4.2.2",
     "gray-matter": "^4.0.3",
     "js-cookie": "^3.0.5",
@@ -62,7 +63,6 @@
     "rss-parser": "^3.13.0",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
-    "tideline": "^1.27.0",
     "uuid": "^11.0.5",
     "winston": "^3.15.0"
   },
