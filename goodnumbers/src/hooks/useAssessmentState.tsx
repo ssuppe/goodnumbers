@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
-import { TidelineConfig } from '~/components/charts/tideline-chart-spec';
+import { TidelineConfig } from '~/components/tideline/tideline-chart-spec';
 import { AssessmentData, GlucoseUnits, PodcastGenerateResult } from '~/types/nightscout';
 import { setCookieCSync, getCookieC } from '~/utils/cookies';
 

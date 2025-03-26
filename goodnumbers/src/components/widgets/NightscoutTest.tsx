@@ -1,37 +1,37 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import Headline from '../common/Headline';
-import { NightscoutProps } from '~/shared/types';
-import WidgetWrapper from '../common/WidgetWrapper';
+import Headline from '../common/Headline.jsx';
+import { NightscoutProps } from '~/shared/types.js';
+import WidgetWrapper from '../common/WidgetWrapper.jsx';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
-import Progress from '../ui/progress';
+import Progress from '../ui/progress/index.jsx';
 import Cookies from 'js-cookie';
 import { compress } from 'compress-json';
-import { createApiClient } from '~/lib/api/axios';
-import { useAssessmentState } from '~/hooks/useAssessmentState';
-import { useLoadingState } from '~/hooks/useLoadingState';
+import { createApiClient } from '~/lib/api/axios.js';
+import { useAssessmentState } from '~/hooks/useAssessmentState.jsx';
+import { useLoadingState } from '~/hooks/useLoadingState.jsx';
 import {
   AssessmentData,
   GlucoseUnits,
   JobCheckResponse,
   NightscoutData,
   PodcastGenerateResult,
-} from '~/types/nightscout';
+} from '~/types/nightscout.js';
 import 'react-h5-audio-player/lib/styles.css';
-import LazyAudioPlayer from './LazyAudioPlayer';
-import DebugInterfaceViewer from './DebugInterfaceViewer';
+import LazyAudioPlayer from './LazyAudioPlayer.jsx';
+import DebugInterfaceViewer from './DebugInterfaceViewer.jsx';
 import ReactMarkdown from 'react-markdown';
 import prettier from 'prettier/standalone';
 import parserXml from '@prettier/plugin-xml';
-import { generateAssessments } from './podcastActions';
-import { getCookieC, setCookieCSync } from '~/utils/cookies';
-import { fetchNightscoutData } from './nightscoutActions';
-import { ssmlToMarkdown } from '~/utils/ssml-client';
-import { checkPodcastStatus } from '~/gemini/geminiActions';
-import PodcastStatusBadge from './PodcastStatusBadge';
-import TidelineChartComponent from '../charts/TideLineChart';
-import { nsEntriesToTideline } from '../charts/nightscoutToTideLine';
+import { generateAssessments } from './podcastActions.js';
+import { getCookieC, setCookieCSync } from '~/utils/cookies.js';
+import { fetchNightscoutData } from './nightscoutActions.js';
+import { ssmlToMarkdown } from '~/utils/ssml-client.js';
+import { checkPodcastStatus } from '~/gemini/geminiActions.js';
+import PodcastStatusBadge from './PodcastStatusBadge.jsx';
+import { nsEntriesToTideline } from '../tideline/nightscoutToTideLine.js';
+import TidelineDailyChartWrapper from '../tideline/TidelineDailyChartWrapper.jsx';
 
 ////////////////////////////////////////////////////////////////////////////////
 // Nightscout global data
@@ -91,6 +91,7 @@ const NightscoutComponent = ({
   const [isClient, setIsClient] = useState(false);
   const [formattedSSML, setFormattedSSML] = useState('');
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [tidelineData] = useState();
 
   interface FormDataState {
     nightscout_url: string;
@@ -176,7 +177,7 @@ const NightscoutComponent = ({
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    console.log('Form submission started'); // Add this
+    console.log('Form submission started2'); // Add this
     Cookies.set('url', formData.nightscout_url);
     Cookies.set('token', formData.nightscout_token);
     Cookies.set('units', formData.preferred_units); // Add this line
@@ -194,6 +195,7 @@ const NightscoutComponent = ({
           treatments: nightscoutData.treatments,
           profiles: nightscoutData.profiles,
         });
+        debugger;
 
         let tidelineData = nsEntriesToTideline(nightscoutData.entries, formData.preferred_units);
         console.log('NS Entries:');
@@ -232,8 +234,8 @@ const NightscoutComponent = ({
     }
   }, [assessmentData?.ssml_dialog]);
 
-  var nightscoutData = getNightscoutData();
-  var tidelineEntries = nsEntriesToTideline(nightscoutData.entries, 'mmol/l');
+  // var nightscoutData = getNightscoutData();
+  // var tidelineEntries = nsEntriesToTideline(nightscoutData.entries, 'mmol/l');
   // Simplified render method for assessments
   const renderAssessmentContent = () => {
     // console.log('SSML' + formattedSSML); // Add this
@@ -298,7 +300,7 @@ const NightscoutComponent = ({
                 {assessmentData.charts != null && assessmentData.charts!.length > 0 ? (
                   assessmentData.charts.map((chartConfig, index) => (
                     <div key={`chart-${index}`}>
-                      <TidelineChartComponent config={chartConfig} data={tidelineEntries} />
+                      <TidelineDailyChartWrapper data={tidelineData} />
                     </div>
                   ))
                 ) : (
@@ -307,7 +309,6 @@ const NightscoutComponent = ({
               </div>
             </>
           )}
-
           {/* Debug viewer if needed */}
           {assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
             <DebugInterfaceViewer data={assessmentData.podcastResult} />

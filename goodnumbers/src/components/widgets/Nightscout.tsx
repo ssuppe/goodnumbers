@@ -30,7 +30,7 @@ import { fetchNightscoutData } from './nightscoutActions';
 import { ssmlToMarkdown } from '~/utils/ssml-client';
 import { checkPodcastStatus } from '~/gemini/geminiActions';
 import PodcastStatusBadge from './PodcastStatusBadge';
-import TidelineChartComponent from '../charts/TideLineChart';
+import TidelineChartComponent from '../tideline/TideLineChart';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
