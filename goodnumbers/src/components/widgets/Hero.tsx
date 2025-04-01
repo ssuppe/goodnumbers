@@ -1,6 +1,6 @@
 import Image from 'next/image';
-import { HeroProps } from '~/shared/types';
-import CTA from '../common/CTA';
+import { HeroProps } from '~/shared/types.js';
+import CTA from '../common/CTA.jsx';
 
 const Hero = ({ title, subtitle, tagline, callToAction, callToAction2, image }: HeroProps) => {
   return (

@@ -7,7 +7,6 @@ import WidgetWrapper from '../common/WidgetWrapper.jsx';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Progress from '../ui/progress/index.jsx';
 import Cookies from 'js-cookie';
-import { compress } from 'compress-json';
 import { createApiClient } from '~/lib/api/axios.js';
 import { useAssessmentState } from '~/hooks/useAssessmentState.jsx';
 import { useLoadingState } from '~/hooks/useLoadingState.jsx';
@@ -24,14 +23,12 @@ import DebugInterfaceViewer from './DebugInterfaceViewer.jsx';
 import ReactMarkdown from 'react-markdown';
 import prettier from 'prettier/standalone';
 import parserXml from '@prettier/plugin-xml';
-import { generateAssessments } from './podcastActions.js';
-import { getCookieC, setCookieCSync } from '~/utils/cookies.js';
 import { fetchNightscoutData } from './nightscoutActions.js';
 import { ssmlToMarkdown } from '~/utils/ssml-client.js';
 import { checkPodcastStatus } from '~/gemini/geminiActions.js';
 import PodcastStatusBadge from './PodcastStatusBadge.jsx';
-import { nsEntriesToTideline } from '../tideline/nightscoutToTideLine.js';
-import TidelineDailyChartWrapper from '../tideline/TidelineDailyChartWrapper.jsx';
+import { AgpChart, AgpDataPoint} from '@/components/charts/AgpWeeklyChart'; // Adjust path
+import { generateAgpData } from '../charts/AgpWeeklyChart-data.js';
 
 ////////////////////////////////////////////////////////////////////////////////
 // Nightscout global data
@@ -91,7 +88,6 @@ const NightscoutComponent = ({
   const [isClient, setIsClient] = useState(false);
   const [formattedSSML, setFormattedSSML] = useState('');
   const [formSubmitted, setFormSubmitted] = useState(false);
-  const [tidelineData] = useState();
 
   interface FormDataState {
     nightscout_url: string;
@@ -195,13 +191,6 @@ const NightscoutComponent = ({
           treatments: nightscoutData.treatments,
           profiles: nightscoutData.profiles,
         });
-        debugger;
-
-        let tidelineData = nsEntriesToTideline(nightscoutData.entries, formData.preferred_units);
-        console.log('NS Entries:');
-        console.log(nightscoutData.entries.slice(0, 10));
-        console.log('Tideline Data:');
-        console.log(tidelineData.slice(0, 10));
       })
       .catch((error) => {
         setLoadingError(error instanceof Error ? error.message : 'An unexpected error occurred');
@@ -297,10 +286,9 @@ const NightscoutComponent = ({
               <LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
               <div className="prose dark:prose-invert max-w-none">
                 {/* Conditionally render only if assessmentData.charts exists and is truthy */}
-                {assessmentData.charts != null && assessmentData.charts!.length > 0 ? (
-                  assessmentData.charts.map((chartConfig, index) => (
-                    <div key={`chart-${index}`}>
-                      <TidelineDailyChartWrapper data={tidelineData} />
+                {getNightscoutData() ? (
+                  <div key={"chart-overview"}>
+                      {<AgpChart data={generateAgpData();} units={'mg/dl'}></AgpChart>}
                     </div>
                   ))
                 ) : (

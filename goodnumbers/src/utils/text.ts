@@ -1,4 +1,4 @@
-import { GlucoseUnits } from '~/types/nightscout';
+import { GlucoseUnits } from '~/types/nightscout.js';
 
 export function u(sgv: number, preferred_units: GlucoseUnits): string {
   // Handle invalid SGV

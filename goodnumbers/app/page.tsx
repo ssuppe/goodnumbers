@@ -1,8 +1,8 @@
-import type { Metadata } from 'next';
+import type Metadata from 'next';
 
 import { SITE } from '~/config.js';
 
-import Hero from '~/components/widgets/Hero';
+import Hero from '~/components/widgets/Hero.jsx';
 
 export const metadata: Metadata = {
   title: SITE.title,
