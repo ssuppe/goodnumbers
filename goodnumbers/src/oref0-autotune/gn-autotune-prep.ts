@@ -23,13 +23,18 @@
 
 */
 
-import { NightscoutTreatment } from '../types/nightscout';
-import { NightscoutEntry } from '../components/widgets/nightscoutActions';
-import { ATProfileSettings } from '../components/widgets/nightscoutProfile';
+import { NightscoutTreatment } from '../types/nightscout.js';
+import { NightscoutEntry } from '../components/widgets/nightscoutActions.js';
+import { ATProfileSettings } from '../components/widgets/nightscoutProfile.js';
 
-var generate = require('./lib/autotune-prep');
-var _ = require('lodash');
-var moment = require('moment');
+// var generate = require('./lib/autotune-prep');
+import { generate } from './lib/autotune-prep/index.js';
+
+// var _ = require('lodash');
+import _ from 'lodash'; // Common way to import lodash
+
+// var moment = require('moment');
+import moment from 'moment';
 
 // if (!module.parent) {
 //   var argv = require('yargs')
@@ -191,6 +196,7 @@ export const gn_autotune_prep = (
   };
 
   var prepped_glucose = generate(inputs);
+  // @ts-ignore
   return prepped_glucose;
   // if (params['output-file']) {
   //   fs.writeFileSync(params['output-file'], JSON.stringify(prepped_glucose));

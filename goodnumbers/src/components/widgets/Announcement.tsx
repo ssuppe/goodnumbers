@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import { announcementData } from '~/shared/data/global.data';
+import { announcementData } from '~/shared/data/global.data.jsx';
 
 const Announcement = () => {
   const { title, callToAction, callToAction2 } = announcementData;
@@ -12,7 +12,6 @@ const Announcement = () => {
           {callToAction.icon && <callToAction.icon className="mr-1 -ml-1.5 h-5 w-5" />} {callToAction.text}
         </span>
       )}
-      
       {callToAction2 && callToAction2.text && callToAction2.href && (
         <a
           href={callToAction2.href}

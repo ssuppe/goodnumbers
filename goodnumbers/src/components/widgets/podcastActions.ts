@@ -13,22 +13,23 @@ import {
   insightsToNotes,
   NightscoutData,
   PodcastGenerateResult,
-} from '~/types/nightscout';
-import { ATProfileSettings, getBestProfile, transformNightscoutProfileToAutotune } from './nightscoutProfile';
+} from '~/types/nightscout.js';
+import { ATProfileSettings, getBestProfile, transformNightscoutProfileToAutotune } from './nightscoutProfile.js';
 import dotenv from 'dotenv';
-import { gn_autotune_prep } from '../../oref0-autotune/gn-autotune-prep';
-import { getPatientsRange, getWeekOverview, PatientRange } from '../../oref0-autotune/gn-overview';
+import { AutotunePreppedData, gn_autotune_prep } from '../../oref0-autotune/gn-autotune-prep.js';
+import { getPatientsRange, getWeekOverview, PatientRange } from '../../oref0-autotune/gn-overview.js';
 import {
   generatePodcastAudio,
   generatePodcastDescription,
   generatePodcastText,
   getAssessment,
-} from '~/gemini/geminiActions';
-import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '../../oref0-autotune/gn-meal-analysis';
+} from '~/gemini/geminiActions.js';
+import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '../../oref0-autotune/gn-meal-analysis.js';
 import { profile } from 'console';
-import { analyzeMorningRises } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom-analysis';
-import { getDawnPhenomenonNotes } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom';
-import { TidelineChartType, TidelineConfig } from '../tideline/tideline-chart-spec';
+import { analyzeMorningRises } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom-analysis.js';
+import { getDawnPhenomenonNotes } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom.js';
+import { generateAgpData } from '../charts/AgpWeeklyChart-data.js';
+import { AgpDataPoint } from '../charts/AgpWeeklyChart.jsx';
 var _ = require('lodash');
 
 // Configure Winston logger
@@ -110,7 +111,12 @@ export async function generateAssessments(
     let profile_data: ATProfileSettings = at_profileData![0];
     let pumpprofile_data: ATProfileSettings = at_profileData![1];
 
-    const all_prepped_glucose = gn_autotune_prep(nsData.entries, nsData.treatments, profile_data, pumpprofile_data);
+    const all_prepped_glucose: AutotunePreppedData = gn_autotune_prep(
+      nsData.entries,
+      nsData.treatments,
+      profile_data,
+      pumpprofile_data,
+    );
 
     logger.info('Step 1: Generate notes');
     var ai_notes = '';
@@ -125,6 +131,8 @@ export async function generateAssessments(
 
     let { ai_insights, user_insights } = getWeekOverview(full_analysis.overall, preferred_units, patient_range);
 
+    let weekly_overview_data: AgpDataPoint[] = generateAgpData(all_prepped_glucose, preferred_units);
+
     let critical_insights: AssessmentInsight[] | null = filterCriticalInsights(ai_insights);
     ///////////////////////////////
     // If there are critical insights at this phase, this app shouldn't be used
@@ -132,32 +140,6 @@ export async function generateAssessments(
     // need to see a medical professional), and the podcast will tell them so.
     ///////////////////////////////
     if (critical_insights) {
-      let overview_chart: TidelineConfig = {
-        type: TidelineChartType.WEEKLY,
-        id: 'weekly-overview',
-        width: 800,
-        height: 600,
-        pools: [
-          {
-            id: 'overlaidWeeklyOverview', // Or any descriptive ID
-            weight: 1, // Adjust as needed for the pool's relative height
-            gutterWeight: 1, // Adjust gutter as needed
-            plotTypes: [
-              {
-                type: 'smbg', // Or 'cbg', 'bolus', etc., whatever data you want to overlay
-                data: 'weeklyOverviewData', //  Reference to your *entire* 7-day dataset
-                opts: {
-                  // ... plot-specific options if needed, but generally you would style overlays with CSS classes
-                },
-              },
-              // ... more plotTypes if you want to overlay different data types
-            ],
-            annotations: false, // Or true, if you need annotations for the overlaid data
-            tooltips: false, // Or true, if you need tooltips for the overlaid data
-          },
-        ],
-      };
-
       ai_notes += insightsToNotes(critical_insights);
       var assessment2: AssessmentData = {
         valid: true,
@@ -166,7 +148,6 @@ export async function generateAssessments(
         assessment2: '',
         id: id,
         preferred_units: preferred_units,
-        charts: [overview_chart],
       };
     } else {
       ai_notes += insightsToNotes(ai_insights);
@@ -218,36 +199,6 @@ export async function generateAssessments(
     // Step 5: Generate title and description
     let podcast_infodesc: AssessmentData = await generatePodcastDescription(podcast_info);
     logger.debug(podcast_infodesc);
-
-    ///////////////////////////////////////////////////////////////////////////
-    // Add all the charts
-    ///////////////////////////////////////////////////////////////////////////
-    let overview_chart: TidelineConfig = {
-      type: TidelineChartType.WEEKLY,
-      id: 'weekly-overview',
-      width: 800,
-      height: 600,
-      pools: [
-        {
-          id: 'overlaidWeeklyOverview', // Or any descriptive ID
-          weight: 1, // Adjust as needed for the pool's relative height
-          gutterWeight: 1, // Adjust gutter as needed
-          plotTypes: [
-            {
-              type: 'smbg', // Or 'cbg', 'bolus', etc., whatever data you want to overlay
-              data: 'weeklyOverviewData', //  Reference to your *entire* 7-day dataset
-              opts: {
-                // ... plot-specific options if needed, but generally you would style overlays with CSS classes
-              },
-            },
-            // ... more plotTypes if you want to overlay different data types
-          ],
-          annotations: false, // Or true, if you need annotations for the overlaid data
-          tooltips: false, // Or true, if you need tooltips for the overlaid data
-        },
-      ],
-    };
-    podcast_info.charts = [overview_chart];
 
     // Step 6: Start generation of audio
     const podcastResult: PodcastGenerateResult = await generatePodcastAudio(podcast_infodesc);

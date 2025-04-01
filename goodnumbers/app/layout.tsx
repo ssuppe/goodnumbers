@@ -1,11 +1,11 @@
-import { Metadata } from 'next';
+import Metadata from 'next';
 
 import { SITE } from '~/config.js';
 
-import Providers from '~/components/atoms/Providers';
-import Header from '~/components/widgets/Header';
-import Announcement from '~/components/widgets/Announcement';
-import Footer2 from '~/components/widgets/Footer2';
+import Providers from '~/components/atoms/Providers.jsx';
+import Header from '~/components/widgets/Header.jsx';
+import Announcement from '~/components/widgets/Announcement.jsx';
+import Footer2 from '~/components/widgets/Footer2.jsx';
 
 import { Inter as CustomFont } from 'next/font/google';
 import '~/assets/styles/base.css';

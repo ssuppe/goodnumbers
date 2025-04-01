@@ -6,8 +6,6 @@
 //   id: string;
 // }
 
-import { TidelineConfig } from '~/components/tideline/tideline-chart-spec';
-
 export interface PodcastGenerateResult {
   status: string;
   message: string;
@@ -22,6 +20,11 @@ export interface PodcastGenerateResult {
 
 export type GlucoseUnits = 'mg/dl' | 'mmol/l';
 
+export interface Report {
+  insights: AssessmentInsight[];
+  data: any[];
+}
+
 export interface AssessmentData {
   valid?: boolean | null;
   notes?: string | null;
@@ -35,7 +38,7 @@ export interface AssessmentData {
   id?: string | null;
   podcastResult?: PodcastGenerateResult | null;
   preferred_units: GlucoseUnits | null;
-  charts?: TidelineConfig[] | null;
+  reports?: Report | null;
 }
 
 export const hasCriticalInsights = (insights: AssessmentInsight[]): boolean => {
@@ -69,11 +72,6 @@ export enum InsightPriority {
 export interface AssessmentInsight {
   note: string;
   priority: InsightPriority;
-}
-
-interface TidelineChartProps {
-  config: TidelineConfig;
-  insights: AssessmentInsight[];
 }
 
 export interface NightscoutData {
