@@ -1,5 +1,5 @@
-import { ATReading, AutotunePreppedData } from './gn-autotune-prep';
-import { GLUCOSE_RANGES } from './gn-constants';
+import { ATReading, AutotunePreppedData } from './gn-autotune-prep.js';
+import { GLUCOSE_RANGES } from './gn-constants.js';
 
 // Thresholds for glucose values in mg/dL
 
