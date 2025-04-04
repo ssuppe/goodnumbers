@@ -1,5 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
-import { announcementData } from '~/shared/data/global.data.jsx';
+import { announcementData } from '~/shared/data/global.data';
 
 const Announcement = () => {
   const { title, callToAction, callToAction2 } = announcementData;

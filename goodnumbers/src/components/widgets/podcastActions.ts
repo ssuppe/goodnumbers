@@ -13,23 +13,24 @@ import {
   insightsToNotes,
   NightscoutData,
   PodcastGenerateResult,
-} from '~/types/nightscout.js';
-import { ATProfileSettings, getBestProfile, transformNightscoutProfileToAutotune } from './nightscoutProfile.js';
+  ReportItem,
+} from '~/types/nightscout';
+import { ATProfileSettings, getBestProfile, transformNightscoutProfileToAutotune } from './nightscoutProfile';
 import dotenv from 'dotenv';
-import { AutotunePreppedData, gn_autotune_prep } from '../../oref0-autotune/gn-autotune-prep.js';
-import { getPatientsRange, getWeekOverview, PatientRange } from '../../oref0-autotune/gn-overview.js';
+import { AutotunePreppedData, gn_autotune_prep } from '../../oref0-autotune/gn-autotune-prep';
+import { getPatientsRange, getWeekOverview, PatientRange } from '../../oref0-autotune/gn-overview';
 import {
   generatePodcastAudio,
   generatePodcastDescription,
   generatePodcastText,
   getAssessment,
-} from '~/gemini/geminiActions.js';
-import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '../../oref0-autotune/gn-meal-analysis.js';
+} from '~/gemini/geminiActions';
+import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '../../oref0-autotune/gn-meal-analysis';
 import { profile } from 'console';
-import { analyzeMorningRises } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom-analysis.js';
-import { getDawnPhenomenonNotes } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom.js';
-import { generateAgpData } from '../charts/AgpWeeklyChart-data.js';
-import { AgpDataPoint } from '../charts/AgpWeeklyChart.jsx';
+import { analyzeMorningRises } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom-analysis';
+import { getDawnPhenomenonNotes } from '~/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom';
+import { generateAgpData } from '../charts/AgpWeeklyChart-data';
+import { AgpDataPoint } from '../charts/AgpWeeklyChart';
 var _ = require('lodash');
 
 // Configure Winston logger
@@ -128,10 +129,15 @@ export async function generateAssessments(
     const patient_range: PatientRange = getPatientsRange(full_analysis.overall);
 
     ai_notes += '## Weekly overview\n\n';
-
+    var weekly_overview_report: ReportItem = {
+      insights: [],
+      data: [],
+    };
     let { ai_insights, user_insights } = getWeekOverview(full_analysis.overall, preferred_units, patient_range);
 
     let weekly_overview_data: AgpDataPoint[] = generateAgpData(all_prepped_glucose, preferred_units);
+
+    weekly_overview_report.data = weekly_overview_data;
 
     let critical_insights: AssessmentInsight[] | null = filterCriticalInsights(ai_insights);
     ///////////////////////////////
@@ -140,6 +146,7 @@ export async function generateAssessments(
     // need to see a medical professional), and the podcast will tell them so.
     ///////////////////////////////
     if (critical_insights) {
+      weekly_overview_report.insights = critical_insights;
       ai_notes += insightsToNotes(critical_insights);
       var assessment2: AssessmentData = {
         valid: true,
@@ -148,6 +155,7 @@ export async function generateAssessments(
         assessment2: '',
         id: id,
         preferred_units: preferred_units,
+        report_items: [weekly_overview_report],
       };
     } else {
       ai_notes += insightsToNotes(ai_insights);
@@ -170,7 +178,8 @@ export async function generateAssessments(
         notes: ai_notes,
         template_num: 1,
         id: id,
-        preferred_units,
+        preferred_units: preferred_units,
+        report_items: [weekly_overview_report],
       });
 
       var assessment2: AssessmentData = await getAssessment({
@@ -179,11 +188,13 @@ export async function generateAssessments(
         assessment1: assessment1.assessment1,
         template_num: 2,
         id: id,
-        preferred_units,
+        preferred_units: preferred_units,
+        report_items: [weekly_overview_report],
       });
     }
 
     let podcast_info: AssessmentData = await generatePodcastText(assessment2);
+    podcast_info.report_items = [weekly_overview_report];
 
     podcast_info
       .ssml_dialog!.replace('mg/dl', '')

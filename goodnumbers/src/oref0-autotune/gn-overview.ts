@@ -4,10 +4,10 @@ import {
   GlucoseUnits,
   hasCriticalInsights,
   InsightPriority,
-} from '../types/nightscout.js';
-import { GLUCOSE_RANGES } from './gn-constants.js';
-import { AnalysisResult } from './gn-meal-analysis.js';
-import { u } from '../utils/text.js';
+} from '../types/nightscout';
+import { GLUCOSE_RANGES } from './gn-constants';
+import { AnalysisResult } from './gn-meal-analysis';
+import { u } from '../utils/text';
 
 export interface PatientRange {
   average_name: 'low' | 'in target' | 'in tight range' | 'in range' | 'high';

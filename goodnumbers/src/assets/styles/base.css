@@ -1,104 +1,128 @@
-@tailwind base;
-@tailwind components;
+/* Remove the old @import and @config lines */
+
+/* Standard Tailwind Directives */
+@import 'tailwindcss/preflight';
+
+/* @tailwind base; */
+/* @tailwind components; */
 @tailwind utilities;
 
+/* Your custom components layer - unchanged for now */
 @layer components {
   .btn {
     @apply inline-flex items-center justify-center rounded-md border border-gray-400 hover:border-gray-600 dark:border-slate-500 dark:hover:border-slate-700 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-slate-700 text-center text-base text-gray-700 dark:text-slate-300 dark:hover:text-white font-medium leading-snug shadow-md hover:shadow-none transition duration-200 ease-in focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-blue-200 py-3 px-6 md:px-8;
   }
 
-  .btn-ghost {
-    @apply border-none bg-transparent text-gray-700 dark:text-gray-400 dark:hover:text-white hover:text-gray-900 shadow-none;
-  }
-
-  .btn-primary {
-    @apply border-blue-600 dark:border-blue-700 hover:border-blue-800 dark:hover:border-blue-900 bg-blue-600 dark:bg-blue-700 hover:bg-blue-800 dark:hover:bg-blue-900 font-semibold text-white dark:text-white hover:text-white;
-  }
+  /* ... other custom components ... */
 
   .card {
+    /* Consider adjusting dark:bg-slate-900 here later if needed */
     @apply rounded-lg backdrop-blur border border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 shadow px-6 py-8 w-full;
   }
 
-  .ribbon {
-    @apply absolute top-[19px] right-[-21px] block w-full rotate-45 bg-green-700 text-center text-[10px] font-bold uppercase leading-5 text-white shadow-[0_3px_10px_-5px_rgba(0,0,0,0.3)] before:absolute before:left-0 before:top-full before:z-[-1] before:border-[3px] before:border-r-transparent before:border-b-transparent before:border-l-green-800 before:border-t-green-800 before:content-[''] after:absolute after:right-0 after:top-full after:z-[-1] after:border-[3px] after:border-l-transparent after:border-b-transparent after:border-r-green-800 after:border-t-green-800 after:content-[''];
-  }
-
-  ul {
-    list-style: circle;
-    padding-left: 2rem;
-  }
-
-  ol {
-    list-style: decimal;
-    padding-left: 2rem;
-  }
+  /* ... */
 }
 
-
-
 @layer base {
+  /* --- Light Mode Variables (Keep as is unless changing light theme) --- */
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    /* ... other light variables ... */
     --radius: 0.5rem;
   }
+
+  /* --- Dark Mode Variables --- */
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    /* --- MODIFY THESE VALUES --- */
+    --background: 217 91% 60%; /* Example: Replace with YOUR desired blue HSL */
+    --foreground: 0 0% 100%; /* Example: Pure white text */
+
+    /* --- REVIEW AND ADJUST THESE TO MATCH YOUR THEME --- */
+    --card: 220 80% 10%; /* Example: Darker blue for cards */
+    --card-foreground: 0 0% 100%; /* White text on cards */
+    --popover: 220 80% 8%; /* Example */
+    --popover-foreground: 0 0% 100%; /* Example */
+    --primary: 210 90% 75%; /* Example: Lighter blue for primary elements */
+    --primary-foreground: 217 91% 20%; /* Example: Dark blue text on primary */
+    --secondary: 217 32.6% 25%; /* Example: Muted blue */
+    --secondary-foreground: 0 0% 100%; /* Example */
+    --muted: 217 32.6% 25%; /* Example */
+    --muted-foreground: 215 20.2% 75%; /* Example: Lighter gray text */
+    --accent: 217 32.6% 35%; /* Example */
+    --accent-foreground: 0 0% 100%; /* Example */
+    --destructive: 0 62.8% 50.6%; /* Example: Red */
+    --destructive-foreground: 0 0% 100%; /* Example */
+    --border: 217 32.6% 30%; /* Example: Slightly lighter blue border */
+    --input: 217 32.6% 30%; /* Example */
+    --ring: 210 90% 75%; /* Example: Primary blue for rings */
+    /* ... Adjust chart colors if needed ... */
   }
 }
+/* -------------------------------  Fix for missing utilities  ------------------------------- */
 
+@utility border-border {
+  border-color: hsl(var(--border));
+}
 
+@theme {
+  --bg-background: hsl(var(--background));
+  --bg-foreground: hsl(var(--foreground));
+  --bg-muted: hsl(var(--muted));
+  --bg-muted-foreground: hsl(var(--muted-foreground));
+  --bg-popover: hsl(var(--popover));
+  --bg-popover-foreground: hsl(var(--popover-foreground));
+  --bg-border: hsl(var(--border));
+  --bg-input: hsl(var(--input));
+  --bg-card: hsl(var(--card));
+  --bg-card-foreground: hsl(var(--card-foreground));
+  --bg-primary: hsl(var(--primary));
+  --bg-primary-foreground: hsl(var(--primary-foreground));
+  --bg-secondary: hsl(var(--secondary));
+  --bg-secondary-foreground: hsl(var(--secondary-foreground));
+  --bg-accent: hsl(var(--accent));
+  --bg-accent-foreground: hsl(var(--accent-foreground));
+  --bg-destructive: hsl(var(--destructive));
+  --bg-destructive-foreground: hsl(var(--destructive-foreground));
+  --bg-ring: hsl(var(--ring));
+}
+
+@utility bg-* {
+  background-color: --value(--bg- *);
+}
+
+@theme {
+  --text-background: hsl(var(--background));
+  --text-foreground: hsl(var(--foreground));
+  --text-muted: hsl(var(--muted));
+  --text-muted-foreground: hsl(var(--muted-foreground));
+  --text-popover: hsl(var(--popover));
+  --text-popover-foreground: hsl(var(--popover-foreground));
+  --text-border: hsl(var(--border));
+  --text-input: hsl(var(--input));
+  --text-card: hsl(var(--card));
+  --text-card-foreground: hsl(var(--card-foreground));
+  --text-primary: hsl(var(--primary));
+  --text-primary-foreground: hsl(var(--primary-foreground));
+  --text-secondary: hsl(var(--secondary));
+  --text-secondary-foreground: hsl(var(--secondary-foreground));
+  --text-accent: hsl(var(--accent));
+  --text-accent-foreground: hsl(var(--accent-foreground));
+  --text-destructive: hsl(var(--destructive));
+  --text-destructive-foreground: hsl(var(--destructive-foreground));
+  --text-ring: hsl(var(--ring));
+}
+
+@utility text-* {
+  color: --value(--text- *);
+}
+/* ----------------------------------------------------------------------------------------------- */
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border; /* Uses the --border variable */
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground; /* Uses --background & --foreground */
   }
 }

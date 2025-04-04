@@ -30,6 +30,7 @@ import { fetchNightscoutData } from './nightscoutActions';
 import { ssmlToMarkdown } from '~/utils/ssml-client';
 import { checkPodcastStatus } from '~/gemini/geminiActions';
 import PodcastStatusBadge from './PodcastStatusBadge';
+import { AgpChart } from '../charts/AgpWeeklyChart';
 
 interface NightscoutComponentProps extends NightscoutProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
@@ -132,16 +133,10 @@ const NightscoutComponent = ({
 
     if ('checked' in target) {
       // This is an input element with a checkbox
-      setFormData((prev) => ({
-        ...prev,
-        [name]: target.checked,
-      }));
+      setFormData((prev) => ({ ...prev, [name]: target.checked }));
     } else {
       // This is a select element or non-checkbox input
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+      setFormData((prev) => ({ ...prev, [name]: value }));
     }
   };
 
@@ -158,6 +153,7 @@ const NightscoutComponent = ({
     updateProgress(25, 'Collecting Nightscout data...');
     fetchNightscoutData({ url: formData.nightscout_url, token: formData.nightscout_token })
       .then((nightscoutData: NightscoutData) => {
+        debugger;
         updateProgress(
           50,
           "Generating assessments (this will take a few minutes). Please don't close your browser. After, we will generate the audio of the podcast.",
@@ -303,12 +299,10 @@ const NightscoutComponent = ({
               <LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
               <div className="prose dark:prose-invert max-w-none">
                 {/* Conditionally render only if assessmentData.charts exists and is truthy */}
-                {assessmentData?.charts && assessmentData.charts.length > 0 ? (
-                  assessmentData.charts.map((chartConfig, index) => (
-                    <div key={`chart-${index}`}>
-                      <TidelineChartComponent config={chartConfig} data={weeklyDataPlaceholder} />
-                    </div>
-                  ))
+                {assessmentData?.report_items && assessmentData.report_items.length > 0 ? (
+                  <div key={'chart-0'}>
+                    <AgpChart data={assessmentData.report_items[0].data} units={assessmentData.preferred_units!} />
+                  </div>
                 ) : (
                   <p>No charts to display.</p>
                 )}

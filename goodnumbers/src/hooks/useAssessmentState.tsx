@@ -1,6 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
-import { TidelineConfig } from '~/components/tideline/tideline-chart-spec';
-import { AssessmentData, GlucoseUnits, PodcastGenerateResult } from '~/types/nightscout';
+import { AssessmentData, GlucoseUnits, PodcastGenerateResult, ReportItem } from '~/types/nightscout';
 import { setCookieCSync, getCookieC } from '~/utils/cookies';
 
 export const useAssessmentState = () => {
@@ -23,7 +22,7 @@ export const useAssessmentState = () => {
         id: getCookieC<string>('id'),
         podcastResult: getCookieC<PodcastGenerateResult>('podcastResult'),
         preferred_units: getCookieC<GlucoseUnits>('preferred_units'),
-        charts: getCookieC<TidelineConfig[]>('charts'),
+        report_items: getCookieC<ReportItem[]>('report_items'),
       };
 
       // Only update if we have any non-null values
@@ -56,7 +55,7 @@ export const useAssessmentState = () => {
       setCookieCSync('timestamp', newData.timestamp, { expires: 30 });
       setCookieCSync('id', newData.id, { expires: 30 });
       setCookieCSync('podcastResult', newData.podcastResult, { expires: 30 });
-      setCookieCSync('charts', newData.charts, { expires: 30 });
+      setCookieCSync('report_items', newData.report_items, { expires: 30 });
     } catch (err) {
       console.error('Error updating cookies:', err);
     }

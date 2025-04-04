@@ -1,4 +1,4 @@
-import { footerData2 } from '~/shared/data/global.data.jsx';
+import { footerData2 } from '~/shared/data/global.data';
 
 const Footer2 = () => {
   const { links, columns, socials, footNote } = footerData2;
