@@ -1,11 +1,11 @@
 import Metadata from 'next';
 
-import { SITE } from '~/config.js';
+import { SITE } from '~/config.cjs';
 
-import Providers from '~/components/atoms/Providers.jsx';
-import Header from '~/components/widgets/Header.jsx';
-import Announcement from '~/components/widgets/Announcement.jsx';
-import Footer2 from '~/components/widgets/Footer2.jsx';
+import Providers from '~/components/atoms/Providers';
+import Header from '~/components/widgets/Header';
+import Announcement from '~/components/widgets/Announcement';
+import Footer2 from '~/components/widgets/Footer2';
 
 import { Inter as CustomFont } from 'next/font/google';
 import '~/assets/styles/base.css';
@@ -16,7 +16,7 @@ export interface LayoutProps {
   children: React.ReactNode;
 }
 
-export const metadata: Metadata = {
+export const metadata = {
   title: {
     template: `%s — ${SITE.name}`,
     default: SITE.title,
@@ -26,7 +26,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps) {
   return (
-    <html lang="en" className={`motion-safe:scroll-smooth 2xl:text-[24px] ${customFont.variable} font-sans`}>
+    <html
+      lang="en"
+      className={`motion-safe:scroll-smooth 2xl:text-[24px] ${customFont.variable} font-sans`}
+      suppressHydrationWarning
+    >
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

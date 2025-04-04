@@ -15,7 +15,7 @@ import {
   YAxis,
 } from 'recharts';
 import { GlucoseUnits } from '~/types/nightscout.js';
-import { ChartConfig, ChartContainer, ChartTooltipContent } from '../ui/chart.jsx';
+import { ChartConfig, ChartContainer, ChartTooltipContent } from '../ui/chart';
 
 /**
  * Defines the structure for a single data point in the AGP chart's data array.

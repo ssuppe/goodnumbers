@@ -20,7 +20,7 @@ export interface PodcastGenerateResult {
 
 export type GlucoseUnits = 'mg/dl' | 'mmol/l';
 
-export interface Report {
+export interface ReportItem {
   insights: AssessmentInsight[];
   data: any[];
 }
@@ -38,7 +38,7 @@ export interface AssessmentData {
   id?: string | null;
   podcastResult?: PodcastGenerateResult | null;
   preferred_units: GlucoseUnits | null;
-  reports?: Report | null;
+  report_items?: ReportItem[] | null;
 }
 
 export const hasCriticalInsights = (insights: AssessmentInsight[]): boolean => {

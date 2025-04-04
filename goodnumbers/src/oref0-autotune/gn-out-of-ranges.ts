@@ -1,6 +1,6 @@
-import { ATReading } from './gn-autotune-prep.js';
-import { GLUCOSE_RANGES } from './gn-constants.js';
-import { PatientRange } from './gn-overview.js';
+import { ATReading } from './gn-autotune-prep';
+import { GLUCOSE_RANGES } from './gn-constants';
+import { PatientRange } from './gn-overview';
 
 export interface OutOfRangeEpisodes {
   low_episodes: ATReading[][];

@@ -27,7 +27,7 @@ import { fetchNightscoutData } from './nightscoutActions.js';
 import { ssmlToMarkdown } from '~/utils/ssml-client.js';
 import { checkPodcastStatus } from '~/gemini/geminiActions.js';
 import PodcastStatusBadge from './PodcastStatusBadge.jsx';
-import { AgpChart, AgpDataPoint} from '@/components/charts/AgpWeeklyChart'; // Adjust path
+import { AgpChart, AgpDataPoint } from '@/components/charts/AgpWeeklyChart'; // Adjust path
 import { generateAgpData } from '../charts/AgpWeeklyChart-data.js';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -286,11 +286,10 @@ const NightscoutComponent = ({
               <LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
               <div className="prose dark:prose-invert max-w-none">
                 {/* Conditionally render only if assessmentData.charts exists and is truthy */}
-                {getNightscoutData() ? (
-                  <div key={"chart-overview"}>
-                      {<AgpChart data={generateAgpData();} units={'mg/dl'}></AgpChart>}
-                    </div>
-                  ))
+                {assessmentData?.report_items && assessmentData.report_items.length > 0 ? (
+                  <div key={'chart-0'}>
+                    <AgpChart data={assessmentData.report_items[0].data} units={assessmentData.preferred_units!} />
+                  </div>
                 ) : (
                   <p>No charts to display.</p>
                 )}

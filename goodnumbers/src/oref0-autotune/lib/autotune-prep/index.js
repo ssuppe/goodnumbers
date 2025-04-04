@@ -1,6 +1,6 @@
 // Prep step before autotune.js can run; pulls in meal (carb) data and calls categorize.js
 
-var find_meals = require('../meal/history');
+var find_meals = require('@/oref0-autotune/lib/meal/history');
 var categorize = require('./categorize');
 
 export function generate(inputs) {
