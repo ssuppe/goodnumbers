@@ -14,7 +14,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { GlucoseUnits } from '~/types/nightscout.js';
+import { GlucoseUnits } from '@/types/nightscout';
 import { ChartConfig, ChartContainer, ChartTooltipContent } from '../ui/chart';
 
 /**

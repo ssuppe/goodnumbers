@@ -1,6 +1,5 @@
 import { Storage } from '@google-cloud/storage';
 import { Feed } from 'feed';
-import { Buffer } from 'buffer';
 import Parser from 'rss-parser';
 
 interface UpdateRssFeedParams {

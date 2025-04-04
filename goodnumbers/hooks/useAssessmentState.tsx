@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect } from 'react';
-import { AssessmentData, GlucoseUnits, PodcastGenerateResult, ReportItem } from '~/types/nightscout';
-import { setCookieCSync, getCookieC } from '~/utils/cookies';
+import { AssessmentData, GlucoseUnits, PodcastGenerateResult, ReportItem } from '@/types/nightscout';
+import { setCookieCSync, getCookieC } from '@/utils/cookies';
 
 export const useAssessmentState = () => {
   const [assessmentData, setAssessmentData] = useState<AssessmentData | null>(null);
