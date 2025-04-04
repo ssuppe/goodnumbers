@@ -2,17 +2,7 @@
 
 import winston from 'winston';
 import { decompress, Compressed } from 'compress-json';
-import {
-  AssessmentData,
-  AssessmentInsight,
-  ATProfileSettings,
-  filterCriticalInsights,
-  GlucoseUnits,
-  insightsToNotes,
-  NightscoutData,
-  PodcastGenerateResult,
-  ReportItem,
-} from '@/types/nightscout';
+
 import { getBestProfile } from '@/utils/nightscoutProfile';
 import { AutotunePreppedData, gn_autotune_prep } from '@/lib/oref0-autotune/gn-autotune-prep';
 import { getPatientsRange, getWeekOverview, PatientRange } from '@/lib/oref0-autotune/gn-overview';
@@ -23,11 +13,18 @@ import {
   getAssessment,
 } from '@/actions/gemini/geminiActions';
 import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '@/lib/oref0-autotune/gn-meal-analysis';
-import { profile } from 'console';
-import { analyzeMorningRises } from '@/lib/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom-analysis';
-import { getDawnPhenomenonNotes } from '@/lib/oref0-autotune/gn-dawn-phenom/gn-dawn-phenom';
 import { generateAgpData } from '@/components/charts/AgpWeeklyChart-data';
 import { AgpDataPoint } from '@/components/charts/AgpWeeklyChart';
+import {
+  AssessmentData,
+  AssessmentInsight,
+  ATProfileSettings,
+  GlucoseUnits,
+  NightscoutData,
+  PodcastGenerateResult,
+  ReportItem,
+} from '@/types/nightscout.d';
+import { filterCriticalInsights, insightsToNotes } from './nightscoutActions';
 var _ = require('lodash');
 
 // Configure Winston logger

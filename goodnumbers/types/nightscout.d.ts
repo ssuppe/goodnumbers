@@ -34,26 +34,6 @@ export interface AssessmentData {
   report_items?: ReportItem[] | null;
 }
 
-export const hasCriticalInsights = (insights: AssessmentInsight[]): boolean => {
-  const hasCritical = insights.some((insight) => insight.priority === InsightPriority.CRITICAL);
-  return hasCritical;
-};
-
-export const filterCriticalInsights = (insights: AssessmentInsight[]): AssessmentInsight[] | null => {
-  const hasCritical = insights.some((insight) => insight.priority === InsightPriority.CRITICAL);
-
-  return hasCritical
-    ? insights.filter(
-        (insight) =>
-          insight.priority === InsightPriority.CRITICAL || insight.priority === InsightPriority.ALWAYS_INCLUDE,
-      )
-    : null;
-};
-
-export const insightsToNotes = (insights: AssessmentInsight[]): string => {
-  return insights.map((insight) => `[${InsightPriority[insight.priority]}] ${insight.note}`).join('\n');
-};
-
 export enum InsightPriority {
   ALWAYS_INCLUDE = -1,
   CRITICAL = 0,

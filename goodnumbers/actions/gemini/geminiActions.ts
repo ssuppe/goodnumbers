@@ -1,17 +1,23 @@
 'use server';
 
 // app/actions/assessment.ts
-import { GoogleGenerativeAI, GenerationConfig, GenerativeModel, SchemaType } from '@google/generative-ai';
+import {
+  GoogleGenerativeAI,
+  GenerationConfig,
+  GenerativeModel,
+  SchemaType,
+  ResponseSchema,
+} from '@google/generative-ai';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { AssessmentData, PodcastGenerateResult, JobCheckResponse } from '~/types/nightscout';
-import { interpolate } from '~/utils/utils';
+import { AssessmentData, PodcastGenerateResult, JobCheckResponse } from '@/types/nightscout';
+import { interpolate } from '@/utils/utils';
 import { v4 as uuidv4 } from 'uuid';
 import { Storage } from '@google-cloud/storage';
 import { updateRssFeed } from './rss';
-import { canReadLocal, canWriteLocal } from '~/utils/env';
-import { readLocalFile, writeLocalFile } from 'app/actions/fileCache';
-import { SSMLValidationResult, validateAndFixSsml } from '~/utils/ssml-server';
+import { canReadLocal, canWriteLocal } from '@/utils/env';
+import { readLocalFile, writeLocalFile } from '@/utils/fileCache';
+import { SSMLValidationResult, validateAndFixSsml } from '@/utils/ssml-server';
 
 const { TextToSpeechLongAudioSynthesizeClient } = require('@google-cloud/text-to-speech').v1beta1;
 const isDevelopment = process.env.ENV === 'development';
@@ -243,7 +249,7 @@ export async function generatePodcastDescription(data: AssessmentData): Promise<
       ssml_dialog: data.ssml_dialog ?? '',
     });
 
-    const description_schema = {
+    const description_schema: ResponseSchema = {
       type: SchemaType.ARRAY,
       items: {
         type: SchemaType.OBJECT,

@@ -1,13 +1,8 @@
-import {
-  AssessmentInsight,
-  filterCriticalInsights,
-  GlucoseUnits,
-  hasCriticalInsights,
-  InsightPriority,
-} from '../types/nightscout';
+import { AssessmentInsight, GlucoseUnits, InsightPriority } from '@/types/nightscout.d';
 import { GLUCOSE_RANGES } from './gn-constants';
 import { AnalysisResult } from './gn-meal-analysis';
-import { u } from '../utils/text';
+import { u } from '@/utils/text';
+import { hasCriticalInsights, filterCriticalInsights } from '@/actions/nightscoutActions';
 
 export interface PatientRange {
   average_name: 'low' | 'in target' | 'in tight range' | 'in range' | 'high';

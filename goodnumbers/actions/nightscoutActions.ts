@@ -2,11 +2,14 @@
 import { createApiClient } from '@/lib/axios/axios';
 import {
   NightscoutConfig,
-  NightscoutData,
-  NightscoutEntry,
   NightscoutProfile,
   NightscoutTreatment,
-} from '@/types/nightscout';
+  NightscoutEntry,
+  NightscoutData,
+  AssessmentInsight,
+  InsightPriority,
+} from '@/types/nightscout.d';
+
 import { canReadLocal, canWriteLocal, env } from '@/utils/env';
 
 import { readLocalFile, writeLocalFile } from '@/utils/fileCache';
@@ -118,4 +121,23 @@ export const fetchNightscoutData = async (
     throw new Error(`Failed to fetch Nightscout data: ${error.message}`);
   }
 };
-export { type NightscoutEntry };
+
+export const hasCriticalInsights = (insights: AssessmentInsight[]): boolean => {
+  const hasCritical = insights.some((insight) => insight.priority === InsightPriority.CRITICAL);
+  return hasCritical;
+};
+
+export const filterCriticalInsights = (insights: AssessmentInsight[]): AssessmentInsight[] | null => {
+  const hasCritical = insights.some((insight) => insight.priority === InsightPriority.CRITICAL);
+
+  return hasCritical
+    ? insights.filter(
+        (insight) =>
+          insight.priority === InsightPriority.CRITICAL || insight.priority === InsightPriority.ALWAYS_INCLUDE,
+      )
+    : null;
+};
+
+export const insightsToNotes = (insights: AssessmentInsight[]): string => {
+  return insights.map((insight) => `[${InsightPriority[insight.priority]}] ${insight.note}`).join('\n');
+};
