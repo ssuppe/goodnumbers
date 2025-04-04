@@ -1,6 +1,6 @@
 import { quantile, mean } from 'd3-array';
 import { ATReading, AutotunePreppedData } from '@/lib/oref0-autotune/gn-autotune-prep.js';
-import { GlucoseUnits } from '@/types/nightscout.js';
+import { GlucoseUnits } from '@/types/nightscout';
 import { AgpDataPoint } from './AgpWeeklyChart';
 
 /**
