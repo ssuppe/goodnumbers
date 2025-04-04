@@ -5,7 +5,7 @@ import { useRef, useState } from 'react';
 import Link from 'next/link';
 // import { headerData } from '~/shared/data/global.data';
 import CTA from './CTA';
-import { useOnClickOutside } from '@/app/hooks/useOnClickOutside';
+import { useOnClickOutside } from '@/hooks/useOnClickOutside';
 import Logo from '../atoms/Logo';
 import ToggleMenu from '../atoms/ToggleMenu';
 import ToggleDarkMode from '../atoms/ToggleDarkMode';

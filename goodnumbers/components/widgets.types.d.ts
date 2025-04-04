@@ -1,3 +1,14 @@
+type Widget = {
+  id?: string;
+  /** Does it have a background? */
+  hasBackground?: boolean;
+};
+
+type BackgroundProps = {
+  children?: React.ReactNode;
+  hasBackground?: boolean;
+};
+
 type CallToActionType = {
   text?: string;
   href: string;
@@ -57,4 +68,11 @@ type FooterProps = {
   socials: Array<Link>;
   footNote?: string | ReactElement;
   theme?: string;
+};
+
+type NightscoutWidgetProps = Widget & {
+  header?: Header;
+  content?: string;
+  items?: Array<Item>;
+  // form: FormProps;
 };
