@@ -2,14 +2,14 @@
 
 import { useRef, useState } from 'react';
 import { IconRss } from '@tabler/icons-react';
-import { useOnClickOutside } from '~/hooks/useOnClickOutside.jsx';
-import ToggleDarkMode from '~/components/atoms/ToggleDarkMode.jsx';
+import { useOnClickOutside } from '~/hooks/useOnClickOutside';
+import ToggleDarkMode from '~/components/atoms/ToggleDarkMode';
 import Link from 'next/link';
-import Logo from '~/components/atoms/Logo.jsx';
-import ToggleMenu from '../atoms/ToggleMenu.jsx';
-import { headerData } from '~/shared/data/global.data.jsx';
-import CTA from '../common/CTA.jsx';
-import { CallToActionType } from '~/shared/types.js';
+import Logo from '~/components/atoms/Logo';
+import ToggleMenu from '../atoms/ToggleMenu';
+import { headerData } from '~/shared/data/global.data';
+import CTA from '../common/CTA';
+import { CallToActionType } from '~/shared/types';
 
 const Header = () => {
   const { links, actions, isSticky, showToggleTheme, showRssFeed, position } = headerData;
