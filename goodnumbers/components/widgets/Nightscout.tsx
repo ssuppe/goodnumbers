@@ -334,10 +334,14 @@ const NightscoutComponent = ({
             {isLoading && (
               <div className="mb-4">
                 <Progress value={progress} className="w-full" />
-                <p className="text-center mt-2">{progressText}</p>
+                <p className="text-center mt-2 text-gray-700 dark:text-slate-200">{progressText}</p>
               </div>
             )}
-            {error && <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
+            {error && (
+              <div className="mb-4 p-2 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-300 rounded">
+                {error}
+              </div>
+            )}
 
             {/* Form fields - only shown when NOT loading */}
             {!isLoading && (
@@ -349,7 +353,7 @@ const NightscoutComponent = ({
                   placeholder="Nightscout URL"
                   value={formData.nightscout_url}
                   onChange={handleInputChange}
-                  className="w-full p-2 mb-4 border rounded"
+                  className="w-full p-2 mb-4 border rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                 />
                 <input
                   type="text"
@@ -357,51 +361,57 @@ const NightscoutComponent = ({
                   placeholder="Nightscout Token"
                   value={formData.nightscout_token}
                   onChange={handleInputChange}
-                  className="w-full p-2 mb-4 border rounded"
+                  className="w-full p-2 mb-4 border rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                 />
                 <div className="w-full mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                     Preferred glucose units
                   </label>
                   <select
                     name="preferred_units"
                     value={formData.preferred_units}
                     onChange={handleInputChange}
-                    className="w-full p-2 border rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    className="w-full p-2 border rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                   >
                     <option value="mg/dl">mg/dL</option>
                     <option value="mmol/l">mmol/L</option>
                   </select>
                 </div>
-                <label className="flex items-center mb-4">
+                <label className="flex items-start mb-4 text-gray-800 dark:text-slate-200">
                   <input
                     type="checkbox"
                     name="terms_accepted"
                     checked={formData.terms_accepted}
                     onChange={handleInputChange}
-                    className="mr-2"
+                    className="mr-2 mt-1"
                   />
-                  I understand this is experimental. The analysis might be wrong and does not constitute medical advice.
-                  All data should be manually verified by you and your healthcare professionals.
+                  <span>
+                    I understand this is experimental. The analysis might be wrong and does not constitute medical
+                    advice. All data should be manually verified by you and your healthcare professionals.
+                  </span>
                 </label>
-                <label className="flex items-center mb-4">
+                <label className="flex items-start mb-4 text-gray-800 dark:text-slate-200">
                   <input
                     type="checkbox"
                     name="responsibility_accepted"
                     checked={formData.responsibility_accepted}
                     onChange={handleInputChange}
-                    className="mr-2"
+                    className="mr-2 mt-1"
                   />
-                  I am consenting to sending this data, and understand I do not have to if I do not want to. I take full
-                  responsibility for the sending of this data, as well as what I do with the information that is given
-                  to me.
+                  <span>
+                    I am consenting to sending this data, and understand I do not have to if I do not want to. I take
+                    full responsibility for the sending of this data, as well as what I do with the information that is
+                    given to me.
+                  </span>
                 </label>
                 {/* Submit button - only shown when not loading */}
                 <button
                   type="submit"
                   disabled={!isFormValid}
                   className={`w-full p-2 text-white rounded ${
-                    isFormValid ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-300 cursor-not-allowed'
+                    isFormValid
+                      ? 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700'
+                      : 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
                   }`}
                 >
                   Create podcast
