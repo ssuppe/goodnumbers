@@ -51,6 +51,19 @@ type AnnouncementProps = {
   callToAction2?: CallToActionType;
 };
 
+type Icon = TablerIcon;
+
+type Link = {
+  label?: string;
+  href?: string;
+  ariaLabel?: string;
+  icon?: Icon;
+};
+
+type MenuLink = Link & {
+  links?: Array<Link>;
+};
+
 type HeaderProps = {
   links?: Array<MenuLink>;
   actions?: Array<CallToActionType>;

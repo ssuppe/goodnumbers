@@ -34,6 +34,53 @@
   }
 }
 
+/* React Tabs Styling - Outside of component layer for higher precedence */
+.react-tabs__tab {
+  @apply text-gray-800 !important;
+  border-color: transparent !important;
+}
+
+.react-tabs__tab--selected {
+  background: white !important;
+  color: black !important;
+  border-color: #aaa !important;
+}
+
+.react-tabs__tab:focus::after {
+  background: white !important;
+}
+
+.react-tabs__tab-list {
+  border-color: #aaa !important;
+}
+
+.react-tabs__tab-panel {
+  @apply text-gray-800 !important;
+}
+
+/* Dark mode overrides with maximum specificity */
+.dark .react-tabs__tab {
+  @apply text-slate-200 !important;
+}
+
+.dark .react-tabs__tab--selected {
+  background-color: rgb(30 41 59) !important; /* slate-800 */
+  color: rgb(241 245 249) !important; /* slate-100 */
+  border-color: rgb(71 85 105) !important; /* slate-600 */
+}
+
+.dark .react-tabs__tab:focus::after {
+  background-color: rgb(30 41 59) !important; /* slate-800 */
+}
+
+.dark .react-tabs__tab-list {
+  border-color: rgb(71 85 105) !important; /* slate-600 */
+}
+
+.dark .react-tabs__tab-panel {
+  @apply text-slate-200 !important;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -63,18 +110,18 @@
     --radius: 0.5rem;
   }
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 212 80% 27%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted-foreground: 215 20.2% 75%;
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
@@ -97,4 +144,55 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Add default text styling for headings and paragraphs */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p {
+    @apply text-foreground;
+  }
+
+  /* Style form elements for dark mode */
+  input,
+  select,
+  textarea {
+    @apply bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 border border-gray-300 dark:border-slate-600;
+  }
+
+  /* Make sure checkbox labels are visible in dark mode */
+  label {
+    @apply text-gray-800 dark:text-slate-200;
+  }
+}
+
+/* Audio player dark mode styles */
+.dark .rhap_container {
+  background-color: rgb(30 41 59) !important; /* slate-800 */
+  box-shadow: 0 0 3px 0 rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .rhap_time,
+.dark .rhap_volume-button,
+.dark .rhap_main-controls-button,
+.dark .rhap_repeat-button {
+  color: rgb(203 213 225) !important; /* slate-300 */
+}
+
+.dark .rhap_progress-bar,
+.dark .rhap_volume-bar,
+.dark .rhap_download-progress {
+  background-color: rgb(71 85 105) !important; /* slate-600 */
+}
+
+.dark .rhap_progress-filled,
+.dark .rhap_volume-filled {
+  background-color: rgb(125 211 252) !important; /* sky-300 */
+}
+
+.dark .rhap_progress-indicator,
+.dark .rhap_volume-indicator {
+  background-color: rgb(186 230 253) !important; /* sky-200 */
 }
