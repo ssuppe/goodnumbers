@@ -32,7 +32,7 @@ const POLLING_INTERVAL = 10; // seconds
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 const loadTemplate = async (filename: string): Promise<string> => {
-  const templatePath = path.join(process.cwd(), 'src', 'gemini', '_prompts', filename);
+  const templatePath = path.join(process.cwd(), 'actions', 'gemini', '_prompts', filename);
   return await fs.readFile(templatePath, 'utf-8');
 };
 
