@@ -1,6 +1,8 @@
 import './globals.css';
 
-// import type { Metadata } from "next";
+import type { Metadata } from 'next';
+import { SITE } from '@/config.cjs';
+
 // import { Geist, Geist_Mono } from "next/font/google";
 import { Inter as CustomFont } from 'next/font/google';
 
@@ -43,6 +45,10 @@ import Footer2 from '@/components/widgets/Footer2';
 export interface LayoutProps {
   children: React.ReactNode;
 }
+
+export const metadata = {
+  title: SITE.title,
+};
 
 const customFont = CustomFont({ subsets: ['latin'], variable: '--font-custom' });
 
