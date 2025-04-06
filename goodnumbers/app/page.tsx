@@ -1,12 +1,4 @@
-import type { Metadata } from 'next';
-
-import { SITE } from '~/config.js';
-
-import Hero from '~/components/widgets/Hero';
-
-export const metadata: Metadata = {
-  title: SITE.title,
-};
+import Hero from '@/components/widgets/Hero';
 
 const heroHome = {
   title: <>Personalized podcast about your weekly diabetes numbers</>,
