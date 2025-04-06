@@ -1,41 +1,82 @@
+// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
 const defaultTheme = require('tailwindcss/defaultTheme');
+// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
 const colors = require('tailwindcss/colors');
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ['./app/**/*.{js,ts,jsx,tsx}', './src/**/*.{js,ts,jsx,tsx,md,mdx}', './app/**/*.{js,ts,jsx,tsx,mdx}'],
+  content: [
+    './app/**/*.{js,ts,jsx,tsx}',
+    './src/**/*.{js,ts,jsx,tsx,md,mdx}', // Keep if you use a src dir
+    './components/**/*.{js,ts,jsx,tsx,mdx}', // Keep if you use a components dir at root
+  ],
   theme: {
     extend: {
       animation: {
-        spin: 'spin 1s linear infinite'
+        spin: 'spin 1s linear infinite',
       },
       keyframes: {
         spin: {
           '0%': {
-            transform: 'rotate(0deg)'
+            transform: 'rotate(0deg)',
           },
           '100%': {
-            transform: 'rotate(360deg)'
-          }
-        }
+            transform: 'rotate(360deg)',
+          },
+        },
       },
       colors: {
-        primary: colors.blue,
-        secondary: colors.blue
+        primary: {
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
+        },
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
+        },
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        chart: {
+          1: 'hsl(var(--chart-1))',
+          2: 'hsl(var(--chart-2))',
+          3: 'hsl(var(--chart-3))',
+          4: 'hsl(var(--chart-4))',
+          5: 'hsl(var(--chart-5))',
+        },
       },
       fontFamily: {
-        sans: [
-          'var(--font-custom)',
-          ...defaultTheme.fontFamily.sans
-        ]
+        sans: ['var(--font-custom)', ...defaultTheme.fontFamily.sans],
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)'
-      }
-    }
+        sm: 'calc(var(--radius) - 4px)',
+      },
+    },
   },
-  plugins: [require('@tailwindcss/typography'), require("tailwindcss-animate")],
-  darkMode: 'class'  // Remove duplicate
+  plugins: [require('@tailwindcss/typography'), require('tailwindcss-animate')],
+  darkMode: ['class', 'class'],
 };
