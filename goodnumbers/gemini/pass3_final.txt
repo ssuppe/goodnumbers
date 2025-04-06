@@ -1,48 +1,20 @@
 <speak>
-<voice name="en-GB-Wavenet-B">Hello, I'm Your AI Doctor Turner, and welcome to Good Numbers.</voice>
-<voice name="en-US-Wavenet-C">And I'm Rebecca. We're so glad you're joining us!</voice>
-<voice name="en-GB-Wavenet-B">As always, a friendly reminder that this podcast is for informational purposes only and doesn't constitute medical advice.  Any changes to your diabetes management plan should be discussed with your healthcare provider.</voice>
-<voice name="en-US-Wavenet-C">Exactly.  We're here to offer insights and observations based on your data, but your doctor knows your specific situation best.</voice>
-
-<voice name="en-GB-Wavenet-B">So, Rebecca, after reviewing this week's data, what stood out to you in the first pass?</voice>
-<voice name="en-US-Wavenet-C">Well, ${assessment1}. What about your second pass, Dr. Turner?</voice>
-<voice name="en-GB-Wavenet-B">Indeed. ${assessment2}  Let's dive into those five key areas, shall we?</voice>
-<voice name="en-US-Wavenet-C">Sounds good to me! Let's start with...[Issue 1 - extracted from assessments]</voice>
-
-<voice name="en-GB-Wavenet-B">Yes, the [Issue 1].  It appears you're experiencing [explain issue and cite medical research or guidelines].  You might want to consider discussing with your doctor whether adjusting your [relevant ratio/basal rate/medication] could help address this.  Perhaps a slight adjustment during [time of day/specific circumstances] could make a difference.</voice>
-<voice name="en-US-Wavenet-C">I remember when my son was dealing with something similar. We found that [anecdote relating to the issue and its management]. Of course, every individual is different, but it might be something worth exploring with your healthcare team.</voice>
-<voice name="en-GB-Wavenet-B">Precisely. It's all about personalized care. Now, moving on to [Issue 2].</voice>
-
-<voice name="en-US-Wavenet-C">This one is interesting.  It looks like [explain Issue 2 and mention a study or research article, with a citation, about causes and best practices]. It's a bit like trying to hit a moving target, isn't it?  Finding that sweet spot can be tricky.</voice>
-<voice name="en-GB-Wavenet-B"><emphasis level="strong">Quite.</emphasis>  One strategy you could discuss with your doctor is [suggest strategy and explain its mechanism of action, citing supporting literature].</voice>
-
-<voice name="en-GB-Wavenet-B">Regarding [Issue 3], it seems you're encountering [explain Issue 3, mentioning potential causes and referring to a book, blog or credible online resource]. You might consider speaking to your healthcare team about [recommended action/strategy].</voice>
-<voice name="en-US-Wavenet-C">This reminds me of something I read in "Think Like a Pancreas". Gary Scheiner talks about [relevant concept from the book related to Issue 3]. It was a real game-changer for me. Maybe it could be helpful for you too.</voice>
-<voice name="en-GB-Wavenet-B">Excellent suggestion, Rebecca. "Think Like a Pancreas" is a valuable resource.</voice>
-
-
-<voice name="en-US-Wavenet-C">Alright, onto [Issue 4]. This can be a tough one, as it can significantly impact [area of impact]. My go-to strategy when I notice a pattern of high blood sugar readings after I eat Chinese is to order a different kind of dish that contains less cornstarch. What are your thoughts Dr Turner?</voice>
-<voice name="en-GB-Wavenet-B">Well, Rebecca.  Given that cornstarch breaks down as simple sugar in the blood stream, it's a simple, but effective approach. My only caveat would be...</voice>
-<voice name="en-US-Wavenet-C">(Interrupting) Wait, so you're saying that after trying all of these strategies, and doing all this math on insulin dosages, that ordering a new meal is really all there is to it?</voice>
-<voice name="en-GB-Wavenet-B">Well, yes, I suppose so.</voice>
-<voice name="en-US-Wavenet-C">Pffft! (Rebecca bursts out laughing)</voice>
-<voice name="en-GB-Wavenet-B">(Chuckles softly) Now, now. Where were we? Ah yes, [Issue 4].</voice>
-
-<voice name="en-US-Wavenet-C">Right, [Issue 4]. Dr. Turner, in your vast AI experience, what insights can you offer on this one?</voice>
-<voice name="en-GB-Wavenet-B">Well, as an AI, I don't have "experiences" in the same way humans do, but I can access and process vast amounts of data. Regarding [Issue 4], research suggests [explain Issue 4 with supporting data and cite source].  Perhaps discussing [specific action tailored to Issue 4] with your medical team would be beneficial.</voice>
-
-
-<voice name="en-GB-Wavenet-B">Lastly, we have [Issue 5]. It appears you’re struggling with [explain issue]. Now, I understand that some might recommend to "Listen to your body.", but I must say it might be time to schedule a visit to your healthcare provider.</voice>
-<voice name="en-US-Wavenet-C">You’re not suggesting that listening to your body is actually… nonsense, are you, Dr. Turner?</voice>
-<voice name="en-GB-Wavenet-B">Not at all, not at all. What I'm recommending is that... </voice>
-<voice name="en-US-Wavenet-C">(Interrupting) Wait. Did you just roll your eyes? I thought AIs couldn't roll their eyes.</voice>
-<voice name="en-GB-Wavenet-B">(Deadpan) My programming allows for a simulated ocular gyration expressive of mild exasperation. </voice>
-<voice name="en-US-Wavenet-C">(Laughing) Ok, Ok. I couldn't resist. Carry on, Your AI Doctor Turner. I promise not to interrupt again.</voice>
-<voice name="en-GB-Wavenet-B">(Slightly exasperated tone) As I was saying, It’s crucial to consult with your doctor on [Issue 5]. They can help personalize a plan that works for you.</voice>
-
-
-
-<voice name="en-US-Wavenet-C">That covers all five key areas. Any final thoughts, Dr. Turner?</voice>
-<voice name="en-GB-Wavenet-B">Remember, managing diabetes is a journey, not a destination. There will be ups and downs, but by analyzing your data, asking questions, and working closely with your healthcare team, you can achieve better outcomes. </voice>
-<voice name="en-US-Wavenet-C">Absolutely! And don't forget the power of community. Connecting with other people with diabetes can provide valuable support and encouragement.  See you next week on Good Numbers!</voice>
+<voice name="en-GB-Wavenet-B">Hello, I'm Your AI Doctor Turner, and welcome back to Good Numbers.</voice>
+<voice name="en-US-Wavenet-C">And I'm Rebecca.  We're excited to dive into another week of blood sugar data.</voice>
+<voice name="en-GB-Wavenet-B">As always, a friendly reminder that this podcast is for informational purposes only and isn't a substitute for advice from your own healthcare team. Any changes to your diabetes management plan should be discussed with your doctor or diabetes educator.</voice>
+<voice name="en-US-Wavenet-C">Absolutely.  So, let's take a look at this week's numbers.  First off, wow! Your average glucose is fantastic – 7.1 mmol/L. That's impressive!</voice>
+<voice name="en-GB-Wavenet-B">Indeed, Rebecca.  This patient is demonstrating exceptional control. Maintaining an average glucose in the non-diabetic range as a Type 1 diabetic requires consistent effort and attention to detail. It's a testament to your commitment to managing your diabetes effectively.</voice>
+<voice name="en-US-Wavenet-C">Definitely.  And your time below range is also excellent – only 2%.  That's a really good balance.  Keeps you safe from hypos while still aiming for those tight numbers.</voice>
+<voice name="en-GB-Wavenet-B">Precisely.  It's a delicate balancing act, but you seem to have found a sweet spot, if you'll pardon the pun.  Now, despite the excellent overall control, we can still explore some potential areas for optimization. Let's start by discussing the possibility of the dawn phenomenon.  Have you noticed any upward trend in your blood sugar levels in the early morning hours, even before breakfast?</voice>
+<voice name="en-US-Wavenet-C">Oh, the dawn phenomenon. Everyone's favorite early morning surprise.  It's so sneaky, right? It's like your liver’s got a mind of its own and decides to throw a party while you’re sleeping.  I remember when my son was first diagnosed, we couldn't figure out why his sugars would be high every morning. It turned out to be the dawn phenomenon, and adjusting his basal rate before bed made a world of difference.</voice>
+<voice name="en-GB-Wavenet-B">That’s a relatable experience, Rebecca.  The dawn phenomenon is driven by hormonal changes. Increased growth hormone and cortisol secretion overnight can contribute to elevated glucose levels in the early morning.  If you’re experiencing this, you might consider discussing adjusting your basal rates or trying a small bedtime snack with some protein and complex carbs with your doctor. Remember, even a small adjustment can sometimes significantly impact your overall control.</voice>
+<voice name="en-US-Wavenet-C">That’s some solid advice. Small changes, big impact.  Now, how about post-meal spikes?  Even with good average glucose, those spikes can sometimes sneak in.</voice>
+<voice name="en-GB-Wavenet-B">Absolutely. Even with a perfect pre-bolus and carb count, postprandial spikes can still happen. It’s the nature of the beast, unfortunately. You might want to discuss strategies like adjusting your pre-meal bolus timing with your medical team or experimenting with different food combinations to see how your body responds.</voice>
+<voice name="en-US-Wavenet-C">Talking about post-meal spikes, it reminds me of this one time…  I ate a plate of pasta that I swore had half the carbs it actually did. My sugar was higher than a kite for hours!  Lesson learned: always double-check the nutrition labels. Or, you know, maybe triple-check if it’s pasta.<break time="1s"/>  Okay, back to serious business.  Exercise can also be tricky. Have you noticed any patterns of lows during or after your workouts?</voice>
+<voice name="en-GB-Wavenet-B"> Exercise-induced hypoglycemia is a common challenge.  If you’re experiencing this, discuss adjusting your insulin dosing or carbohydrate intake around exercise with your medical team.  Regular physical activity is great for overall health, including diabetes management, but we need to make sure it's not causing unexpected lows.</voice>
+<voice name="en-US-Wavenet-C">True.  And let's not forget the stress monster. Stress can wreak havoc on blood sugar. Like that time I locked my keys in the car while my son’s low alarm was going off…my sugar went through the roof. I swear, stress and diabetes have a secret pact against us.</voice>
+<voice name="en-GB-Wavenet-B"><break time="0.5s"/>While amusing, Rebecca, it does highlight a serious point.  Stress hormones like cortisol can increase blood glucose levels. You should explore incorporating some stress management techniques like mindfulness, yoga, or even deep breathing exercises.  These can help stabilize both your blood sugar and your overall well-being. In some cases,  medication might be necessary to manage stress-induced hyperglycemia.</voice> 
+<voice name="en-US-Wavenet-C">Totally agree.  Remember, taking care of your mental health is just as important as taking care of your physical health. And sometimes, a good laugh is the best medicine…except when you're low, then it’s probably glucose tablets.</voice>
+<voice name="en-GB-Wavenet-B">  Finally, remember that diabetes management is a journey of continuous learning and adjustment. Keep analyzing your CGM data, identify patterns, and communicate openly with your healthcare team. They’re your best allies in achieving optimal control. Until next time, keep those numbers good!</voice>
+<voice name="en-US-Wavenet-C">And keep those spirits high! See you next week.</voice>
 </speak>
