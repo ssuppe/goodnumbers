@@ -175,11 +175,11 @@ function getTIRInsight(
   return insight;
 }
 
-export function getWeekOverview(
+export async function getWeekOverview(
   compositeday_analysis: AnalysisResult,
   preferred_units: GlucoseUnits,
   patient_range: PatientRange,
-): { ai_insights: AssessmentInsight[]; user_insights: AssessmentInsight[] } {
+): Promise<{ ai_insights: AssessmentInsight[]; user_insights: AssessmentInsight[] }> {
   const ai_insights: AssessmentInsight[] = [];
   const user_insights: AssessmentInsight[] = [];
 
@@ -246,8 +246,12 @@ export function getWeekOverview(
   // If there are any critical insights, let's quit now. We are unable to
   // continue as the patient as severe issues.
   ////////////////////////////////////////////////////////////////////////////
-  if (hasCriticalInsights(ai_insights)) {
-    return { ai_insights: filterCriticalInsights(ai_insights)!, user_insights: filterCriticalInsights(ai_insights)! };
+  var hasCritical: boolean = await hasCriticalInsights(ai_insights);
+  if (hasCritical) {
+    return {
+      ai_insights: await filterCriticalInsights(ai_insights)!,
+      user_insights: await filterCriticalInsights(user_insights)!,
+    };
   }
   ////////////////////////////////////////////////////////////////////////////
   // Cover standard TIR evaluation to baseline everyone

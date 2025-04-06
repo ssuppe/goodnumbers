@@ -122,22 +122,17 @@ export const fetchNightscoutData = async (
   }
 };
 
-export const hasCriticalInsights = (insights: AssessmentInsight[]): boolean => {
+export const hasCriticalInsights = async (insights: AssessmentInsight[]): Promise<boolean> => {
   const hasCritical = insights.some((insight) => insight.priority === InsightPriority.CRITICAL);
   return hasCritical;
 };
 
-export const filterCriticalInsights = (insights: AssessmentInsight[]): AssessmentInsight[] | null => {
-  const hasCritical = insights.some((insight) => insight.priority === InsightPriority.CRITICAL);
-
-  return hasCritical
-    ? insights.filter(
-        (insight) =>
-          insight.priority === InsightPriority.CRITICAL || insight.priority === InsightPriority.ALWAYS_INCLUDE,
-      )
-    : null;
+export const filterCriticalInsights = async (insights: AssessmentInsight[]): Promise<AssessmentInsight[]> => {
+  return insights.filter(
+    (insight) => insight.priority === InsightPriority.CRITICAL || insight.priority === InsightPriority.ALWAYS_INCLUDE,
+  );
 };
 
-export const insightsToNotes = (insights: AssessmentInsight[]): string => {
+export const insightsToNotes = async (insights: AssessmentInsight[]): Promise<string> => {
   return insights.map((insight) => `[${InsightPriority[insight.priority]}] ${insight.note}`).join('\n');
 };

@@ -127,13 +127,13 @@ export async function generateAssessments(
       insights: [],
       data: [],
     };
-    let { ai_insights, user_insights } = getWeekOverview(full_analysis.overall, preferred_units, patient_range);
+    let { ai_insights, user_insights } = await getWeekOverview(full_analysis.overall, preferred_units, patient_range);
 
-    let weekly_overview_data: AgpDataPoint[] = generateAgpData(all_prepped_glucose, preferred_units);
+    let weekly_overview_data: AgpDataPoint[] = await generateAgpData(all_prepped_glucose, preferred_units);
 
     weekly_overview_report.data = weekly_overview_data;
 
-    let critical_insights: AssessmentInsight[] | null = filterCriticalInsights(ai_insights);
+    let critical_insights: AssessmentInsight[] | null = await filterCriticalInsights(ai_insights);
     ///////////////////////////////
     // If there are critical insights at this phase, this app shouldn't be used
     // For now, we will return those critical insights (which also state they
@@ -141,7 +141,7 @@ export async function generateAssessments(
     ///////////////////////////////
     if (critical_insights) {
       weekly_overview_report.insights = critical_insights;
-      ai_notes += insightsToNotes(critical_insights);
+      ai_notes += await insightsToNotes(critical_insights);
       var assessment2: AssessmentData = {
         valid: true,
         notes: ai_notes,
@@ -152,7 +152,7 @@ export async function generateAssessments(
         report_items: [weekly_overview_report],
       };
     } else {
-      ai_notes += insightsToNotes(ai_insights);
+      ai_notes += await insightsToNotes(ai_insights);
       ///////////////////////////////////////////////////////////////////////////
       // Dawn phenomenom
       ///////////////////////////////////////////////////////////////////////////
