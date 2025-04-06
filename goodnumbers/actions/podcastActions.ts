@@ -24,7 +24,7 @@ import {
   PodcastGenerateResult,
   ReportItem,
 } from '@/types/nightscout.d';
-import { filterCriticalInsights, insightsToNotes } from './nightscoutActions';
+import { filterCriticalInsights, hasCriticalInsights, insightsToNotes } from './nightscoutActions';
 var _ = require('lodash');
 
 // Configure Winston logger
@@ -133,13 +133,14 @@ export async function generateAssessments(
 
     weekly_overview_report.data = weekly_overview_data;
 
-    let critical_insights: AssessmentInsight[] | null = await filterCriticalInsights(ai_insights);
     ///////////////////////////////
     // If there are critical insights at this phase, this app shouldn't be used
     // For now, we will return those critical insights (which also state they
     // need to see a medical professional), and the podcast will tell them so.
     ///////////////////////////////
-    if (critical_insights) {
+    if (await hasCriticalInsights(ai_insights)) {
+      let critical_insights: AssessmentInsight[] | null = await filterCriticalInsights(ai_insights);
+
       weekly_overview_report.insights = critical_insights;
       ai_notes += await insightsToNotes(critical_insights);
       var assessment2: AssessmentData = {
