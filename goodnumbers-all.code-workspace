@@ -27,7 +27,8 @@
     },
     "files.associations": {
       ".vercelignore": "plaintext",
-      ".gitignore": "plaintext"
+      ".gitignore": "plaintext",
+      "*.css": "tailwindcss"
     }
   },
   "extensions": {
