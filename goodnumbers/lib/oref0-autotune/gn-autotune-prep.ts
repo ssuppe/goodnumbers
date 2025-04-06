@@ -23,9 +23,7 @@
 
 */
 
-import { NightscoutTreatment } from '../types/nightscout.js';
-import { NightscoutEntry } from '../components/widgets/nightscoutActions.js';
-import { ATProfileSettings } from '../components/widgets/nightscoutProfile.js';
+import { ATProfileSettings, NightscoutEntry, NightscoutTreatment } from '@/types/nightscout';
 
 // var generate = require('./lib/autotune-prep');
 import { generate } from './lib/autotune-prep/index.js';
@@ -101,38 +99,86 @@ import moment from 'moment';
     var carb_input = inputs[4]; // 
 */
 
-export interface ATReading {
-  date: string;
+// export interface ATReading {
+//   date: string;
+//   glucose: number;
+//   deviation: number;
+//   BGI: number;
+//   avgDelta: number;
+//   mealAbsorption?: 'start' | 'end';
+//   mealCarbs?: number;
+// }
+
+// Base glucose datum interface (common properties across different categories)
+export interface GlucoseDatum {
   glucose: number;
-  deviation: number;
+  date: number;
+  dateString: string;
+  avgDelta: string | number; // It's stored as string after toFixed(2)
   BGI: number;
-  avgDelta: number;
+  deviation: string | number; // It's stored as string after toFixed(2)
+}
+
+// CSF specific glucose datum
+export interface CSFGlucoseDatum extends GlucoseDatum {
+  mealAbsorption?: 'start' | 'end';
+  mealCarbs: number;
+}
+
+// UAM specific glucose datum
+export interface UAMGlucoseDatum extends GlucoseDatum {
+  uamAbsorption?: 'start' | 'end';
+}
+
+// Unified type that represents any type of glucose datum (ATReading)
+export type ATReading = GlucoseDatum & {
   mealAbsorption?: 'start' | 'end';
   mealCarbs?: number;
+  uamAbsorption?: 'start' | 'end';
+};
+
+// Carb Ratio data
+export interface CRDatum {
+  CRInitialIOB: number;
+  CRInitialBG: number;
+  CRInitialCarbTime: Date;
+  CREndIOB: number;
+  CREndBG: number;
+  CREndTime: Date;
+  CRCarbs: number;
+  CRInsulin?: number; // Added later by the dosed function
 }
 
+// The complete output interface for categorizeBGDatums
 export interface AutotunePreppedData {
-  // Carb ratio related data
-  CRData: Array<{
-    CRInitialIOB: number;
-    CRInitialBG: number;
-    CRInitialCarbTime: Date;
-    CREndIOB: number;
-    CREndBG: number;
-    CREndTime: Date;
-    CRCarbs: number;
-    CRInsulin: number;
-  }>;
-
-  // Carb-sensitivity related glucose data (meal-related)
-  CSFGlucoseData: ATReading[];
-
-  // Insulin-sensitivity related glucose data
-  ISFGlucoseData: ATReading[];
-
-  // Basal-related glucose data
-  basalGlucoseData: ATReading[];
+  CRData: CRDatum[];
+  CSFGlucoseData: CSFGlucoseDatum[];
+  ISFGlucoseData: GlucoseDatum[];
+  basalGlucoseData: GlucoseDatum[];
 }
+
+// export interface AutotunePreppedData {
+//   // Carb ratio related data
+//   CRData: Array<{
+//     CRInitialIOB: number;
+//     CRInitialBG: number;
+//     CRInitialCarbTime: Date;
+//     CREndIOB: number;
+//     CREndBG: number;
+//     CREndTime: Date;
+//     CRCarbs: number;
+//     CRInsulin: number;
+//   }>;
+
+//   // Carb-sensitivity related glucose data (meal-related)
+//   CSFGlucoseData: ATReading[];
+
+//   // Insulin-sensitivity related glucose data
+//   ISFGlucoseData: ATReading[];
+
+//   // Basal-related glucose data
+//   basalGlucoseData: ATReading[];
+// }
 
 export const gn_autotune_prep = (
   dayEntries: NightscoutEntry[],

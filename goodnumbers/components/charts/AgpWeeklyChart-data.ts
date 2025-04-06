@@ -1,7 +1,8 @@
+'use server';
 import { quantile, mean } from 'd3-array';
-import { ATReading, AutotunePreppedData } from '@/lib/oref0-autotune/gn-autotune-prep.js';
 import { GlucoseUnits } from '@/types/nightscout';
 import { AgpDataPoint } from './AgpWeeklyChart';
+import { ATReading, AutotunePreppedData } from '@/lib/oref0-autotune/gn-autotune-prep';
 
 /**
  * Conversion factor for glucose units.
@@ -30,10 +31,10 @@ const MIN_DATA_POINTS_FOR_PERCENTILE = 5;
  * @returns An array of AgpDataPoint objects, one for each 30-minute interval of the day,
  *          sorted chronologically. Returns an empty array if input data is missing or invalid.
  */
-export function generateAgpData(
+export async function generateAgpData(
   autotuneData: AutotunePreppedData | null | undefined,
   targetUnits: GlucoseUnits,
-): AgpDataPoint[] {
+): Promise<AgpDataPoint[]> {
   if (!autotuneData) {
     console.warn('generateAgpData: Input autotuneData is null or undefined.');
     return [];
@@ -42,29 +43,37 @@ export function generateAgpData(
   // --- Step 1: Combine and Prepare Glucose Readings ---
   const allGlucoseReadings: { timestamp: Date; glucoseValue: number }[] = [];
 
-  const processReadings = (readings: ATReading[] | undefined) => {
+  const processReadings = async (readings: ATReading[] | undefined) => {
     if (!readings) return;
     for (const reading of readings) {
-      if (typeof reading.date !== 'string' || typeof reading.glucose !== 'number' || reading.glucose <= 0) {
-        // Basic validation: skip if date isn't string, glucose isn't number, or glucose is non-positive
+      // Check if date is a valid number and glucose is a valid number
+      if (typeof reading.date !== 'number' || typeof reading.glucose !== 'number' || reading.glucose <= 0) {
+        // Skip invalid readings
         continue;
       }
-      const timestamp = new Date(reading.date);
-      // Check if the date string was successfully parsed
-      if (!isNaN(timestamp.getTime())) {
-        allGlucoseReadings.push({
-          timestamp: timestamp,
-          glucoseValue: reading.glucose, // Keep in original source unit for now
-        });
-      } else {
-        console.warn(`generateAgpData: Could not parse date string: ${reading.date}`);
+
+      try {
+        // Create a Date object directly from the numeric timestamp
+        const timestamp = new Date(reading.date);
+
+        // Validate that we got a valid date (not NaN)
+        if (!isNaN(timestamp.getTime())) {
+          allGlucoseReadings.push({
+            timestamp: timestamp,
+            glucoseValue: reading.glucose, // Keep in original source unit for now
+          });
+        } else {
+          console.warn(`generateAgpData: Invalid timestamp value: ${reading.date}`);
+        }
+      } catch (error) {
+        console.warn(`generateAgpData: Error processing reading: ${error}`);
       }
     }
   };
 
-  processReadings(autotuneData.CSFGlucoseData);
-  processReadings(autotuneData.ISFGlucoseData);
-  processReadings(autotuneData.basalGlucoseData);
+  await processReadings(autotuneData.CSFGlucoseData);
+  await processReadings(autotuneData.ISFGlucoseData);
+  await processReadings(autotuneData.basalGlucoseData);
 
   if (allGlucoseReadings.length === 0) {
     console.warn('generateAgpData: No valid glucose readings found after combining data.');
