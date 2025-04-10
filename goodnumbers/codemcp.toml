@@ -1,0 +1,4 @@
+[
+allowed_commands
+]
+npm = ["install", "uninstall", "run"]
