@@ -1,7 +1,7 @@
 'use server';
 import { quantile, mean } from 'd3-array';
 import { GlucoseUnits } from '@/types/nightscout';
-import { AgpDataPoint } from './AgpWeeklyChart';
+import { AgpDataPoint } from './AgpChart';
 import { ATReading, AutotunePreppedData } from '@/lib/oref0-autotune/gn-autotune-prep';
 
 /**
@@ -127,11 +127,11 @@ export async function generateAgpData(
   for (const timeKey of timeSlotKeys) {
     const glucoseValues = timeSlotBuckets.get(timeKey) ?? []; // Get bucket, default to empty array
 
-    let p10: number | null = null;
+    let p5: number | null = null;
     let p25: number | null = null;
     let median: number | null = null;
     let p75: number | null = null;
-    let p90: number | null = null;
+    let p95: number | null = null;
     let meanValue: number | null = null;
 
     if (glucoseValues.length > 0) {
@@ -148,23 +148,23 @@ export async function generateAgpData(
 
         // d3.quantile(sortedValues, p) returns the pth quantile (0 <= p <= 1)
         // It returns undefined if the array is empty, null check handles this
-        p10 = quantile(glucoseValues, 0.1) ?? null;
+        p5 = quantile(glucoseValues, 0.05) ?? null;
         p25 = quantile(glucoseValues, 0.25) ?? null;
         median = quantile(glucoseValues, 0.5) ?? null; // Median is 50th percentile
         p75 = quantile(glucoseValues, 0.75) ?? null;
-        p90 = quantile(glucoseValues, 0.9) ?? null;
+        p95 = quantile(glucoseValues, 0.95) ?? null;
       }
     }
     // If glucoseValues.length is 0, all values remain null, which is correct.
 
     agpResultData.push({
       time: timeKey,
-      p10: p10,
+      p5: p5,
       p25: p25,
       median: median,
       mean: meanValue,
       p75: p75,
-      p90: p90,
+      p95: p95,
     });
   }
 
