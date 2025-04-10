@@ -1,4 +1,2 @@
-[
-allowed_commands
-]
+[allowed_commands]
 npm = ["install", "uninstall", "run"]
