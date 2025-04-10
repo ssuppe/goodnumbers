@@ -20,7 +20,7 @@ import { fetchNightscoutData } from '@/actions/nightscoutActions';
 import { ssmlToMarkdown } from '@/utils/ssml-client';
 import { checkPodcastStatus } from '@/actions/gemini/geminiActions';
 import PodcastStatusBadge from './PodcastStatusBadge';
-import { AgpChart } from '../charts/AgpWeeklyChart';
+import { AgpChart } from '../charts/AgpChart';
 import Headline from '../atoms/Headline';
 import WidgetWrapper from '../atoms/WidgetWrapper';
 
