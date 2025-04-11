@@ -38,6 +38,7 @@ function getEventTypeName(eventType: GlycemicEventType): string {
 /**
  * Component to display a cluster analysis with its chart and associated insights
  * Shows a summary of the cluster characteristics and plots each event
+ * Events are aligned by time of day regardless of the actual date they occurred
  */
 export function ClusterAnalysisDisplay({
   entries,
@@ -133,9 +134,9 @@ export function ClusterAnalysisDisplay({
   }, [cluster]);
 
   // Generate a cluster summary
-  const clusterSummary = `This analysis shows a cluster of ${cluster.count} ${getEventTypeName(cluster.eventType)} events 
-    that typically occur around ${minutesToTimeString(cluster.meanTime)} (between ${minutesToTimeString(cluster.startTimeRange.earliest)} 
-    and ${minutesToTimeString(cluster.startTimeRange.latest)}).`;
+  const clusterSummary = `This analysis shows a cluster of ${cluster.count} ${getEventTypeName(cluster.eventType)} events
+    that typically occur around ${minutesToTimeString(cluster.meanTime)} (between ${minutesToTimeString(cluster.startTimeRange.earliest)}
+    and ${minutesToTimeString(cluster.startTimeRange.latest)}). All events are aligned by time of day to help identify patterns.`;
 
   // Generate subtitle if not provided
   const effectiveSubtitle = subtitle || `${getEventTypeName(cluster.eventType)} Pattern Analysis`;

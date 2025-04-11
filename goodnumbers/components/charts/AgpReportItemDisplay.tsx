@@ -16,8 +16,10 @@ interface ReportItemDisplayProps {
 }
 
 /**
- * Component to display a report item with its chart and associated insights
- * Insights are displayed with icons based on their priority level
+ * Component to display a report item with its chart and associated insights.
+ * Insights are displayed with icons based on their priority level.
+ * For TimeCluster reports, events are aligned by time of day regardless of the actual date,
+ * allowing for easier identification of time-based patterns.
  */
 export function ReportItemDisplay({
   reportItem,
