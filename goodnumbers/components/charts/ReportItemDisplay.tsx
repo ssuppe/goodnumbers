@@ -123,9 +123,9 @@ export function ReportItemDisplay({
 
       {/* Insights */}
       <div className="mt-6">
-        <h4 className="text-md font-medium mb-2 text-gray-800 dark:text-gray-200">
+        {/* <h4 className="text-md font-medium mb-2 text-gray-800 dark:text-gray-200">
           Insights {reportItem.insights.length > 0 ? `(${reportItem.insights.length})` : ''}
-        </h4>
+        </h4> */}
         {reportItem.insights.length > 0 ? (
           <ul className="space-y-2" role="list" aria-label="Chart insights">
             {reportItem.insights.map(renderInsight)}
