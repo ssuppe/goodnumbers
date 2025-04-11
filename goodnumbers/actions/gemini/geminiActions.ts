@@ -278,12 +278,21 @@ export async function generatePodcastDescription(data: AssessmentData): Promise<
 
     var response: Description = await asyncGenerateJson<Description>(prompt, model);
     response = response;
+    
+    // Preserve ALL properties of the original data object
     return {
       ...data,
       valid: true,
       title: response.title,
       description: response.description,
       timestamp: new Date().toISOString(),
+      // Explicitly preserve these important fields
+      ssml_dialog: data.ssml_dialog,
+      report_items: data.report_items,
+      notes: data.notes,
+      assessment1: data.assessment1,
+      assessment2: data.assessment2,
+      preferred_units: data.preferred_units
     };
   } catch (error) {
     if (error instanceof Error) {
