@@ -25,6 +25,8 @@ import {
 } from '@/types/nightscout.d';
 import { filterCriticalInsights, hasCriticalInsights, insightsToNotes } from './nightscoutActions';
 import { AgpDataPoint } from '@/components/charts/AgpChart';
+import { detectGlycemicEvents } from '@/lib/events/detect_events';
+import { clusterGlycemicEvents } from '@/lib/events/time_clustering/time_clustering';
 var _ = require('lodash');
 
 // Configure Winston logger
@@ -109,7 +111,7 @@ export async function generateAssessments(
   try {
     // 3. ANALYSIS PHASE: Gather all insights and prepare report data
     logger.info('Step 1: Generate notes');
-    
+
     // Extract date range information
     const firstDate = new Date(nsData.entries[0].date).toISOString().split('T')[0];
     const endDate = new Date(nsData.entries[nsData.entries.length - 1].date).toISOString().split('T')[0];
@@ -144,7 +146,7 @@ export async function generateAssessments(
       insights: [],
       data: [],
     };
-    
+
     // Get insights from the weekly overview
     let { ai_insights, user_insights } = await getWeekOverview(full_analysis.overall, preferred_units, patient_range);
     let weekly_overview_data: AgpDataPoint[] = await generateAgpData(all_prepped_glucose, preferred_units);
@@ -162,11 +164,11 @@ export async function generateAssessments(
     if (await hasCriticalInsights(ai_insights)) {
       logger.info('Critical insights detected - using simplified assessment path');
       let critical_insights: AssessmentInsight[] | null = await filterCriticalInsights(ai_insights);
-      
+
       // Update assessment data with critical insights
       weekly_overview_report.insights = critical_insights;
       const criticalNotes = await insightsToNotes(critical_insights);
-      
+
       // Return final assessment with critical insights
       return {
         ...currentAssessmentData,
@@ -179,7 +181,12 @@ export async function generateAssessments(
     // Add user insights to the report
     ai_notes += await insightsToNotes(ai_insights);
     weekly_overview_report.insights = user_insights;
-    
+
+    // OTHER INSIGHTS
+    // First, let's find high and low clusters
+    var events = detectGlycemicEvents(all_prepped_glucose);
+    var clusters = clusterGlycemicEvents(events, 30);
+
     // Update current state with full notes
     currentAssessmentData = {
       ...currentAssessmentData,
@@ -194,23 +201,23 @@ export async function generateAssessments(
       ...currentAssessmentData,
       template_num: 1,
     });
-    
+
     logger.info('Step 3: Generate assessment 2');
     // Pass 2: Get second assessment (preserving all fields)
     const assessmentWithPass2 = await getAssessment({
       ...assessmentWithPass1,
       template_num: 2,
     });
-    
+
     logger.info('Step 4: Generate podcast text');
     // Generate podcast text (preserving all fields)
     const assessmentWithPodcastText = await generatePodcastText(assessmentWithPass2);
-    
+
     // Clean up the SSML with explicit state preservation
     const assessmentWithCleanSsml = {
       ...assessmentWithPodcastText,
-      ssml_dialog: assessmentWithPodcastText.ssml_dialog!
-        .replace('mg/dl', '')
+      ssml_dialog: assessmentWithPodcastText
+        .ssml_dialog!.replace('mg/dl', '')
         .replace('mmol/l', '')
         .replace('mmol/L', '')
         .replace('TIR', 'time in range')
@@ -220,21 +227,21 @@ export async function generateAssessments(
         .replace('ISF', 'insulin sensitivity ratio')
         .replace('I:C', 'insulin to carb ratio'),
       // Ensure report_items is preserved (in case it was lost)
-      report_items: assessmentWithPodcastText.report_items || [weekly_overview_report]
+      report_items: assessmentWithPodcastText.report_items || [weekly_overview_report],
     };
 
     logger.info('Step 5: Generate podcast description');
     // Generate podcast description (preserving all fields)
     const assessmentWithDescription = await generatePodcastDescription(assessmentWithCleanSsml);
-    
+
     logger.info('Step 6: Generate podcast audio');
     // Generate audio
     const podcastResult: PodcastGenerateResult = await generatePodcastAudio(assessmentWithDescription);
 
     // 7. FINAL STATE ASSEMBLY: Create the final return object with all required fields
     const finalAssessmentData: AssessmentData = {
-      ...assessmentWithDescription,    // Base: include all fields from previous state
-      podcastResult: podcastResult,    // Add: new podcast result
+      ...assessmentWithDescription, // Base: include all fields from previous state
+      podcastResult: podcastResult, // Add: new podcast result
       // Explicitly list critical fields to ensure they're present
       report_items: assessmentWithDescription.report_items || assessmentWithCleanSsml.report_items,
       ssml_dialog: assessmentWithDescription.ssml_dialog || assessmentWithCleanSsml.ssml_dialog,
