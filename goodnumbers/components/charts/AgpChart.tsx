@@ -54,12 +54,12 @@ export interface AgpChartProps {
  * over a 24-hour period, aggregated into 30-minute intervals.
  * Includes an interactive tooltip showing detailed stats for the hovered time slot.
  */
-export function AgpChart({ 
-  data, 
-  units, 
-  patientLowGoal, 
-  patientHighGoal, 
-  title = "Weekly overview (Ambulatory Glucose Profile)" 
+export function AgpChart({
+  data,
+  units,
+  patientLowGoal,
+  patientHighGoal,
+  title = "Weekly overview (Ambulatory Glucose Profile)"
 }: AgpChartProps) {
   // Provide a fallback message if data is not available
   if (!data || data.length === 0) {
@@ -86,10 +86,31 @@ export function AgpChart({
   // Extract series data, handling null values
   const medianData = data.map(item => item.median ?? '-');
   const meanData = data.map(item => item.mean ?? '-');
-  const p5Data = data.map(item => item.p5 ?? '-');
-  const p25Data = data.map(item => item.p25 ?? '-');
-  const p75Data = data.map(item => item.p75 ?? '-');
-  const p95Data = data.map(item => item.p95 ?? '-');
+
+  // Create data arrays for the confidence bands
+  const p5_95Data = data.map(item => {
+    const p5 = item.p5 ?? null;
+    const p95 = item.p95 ?? null;
+    
+    // We need both values to create a valid band
+    if (p5 === null || p95 === null) {
+      return [item.time, null, null];
+    }
+    
+    return [item.time, p5, p95];
+  });
+  
+  const p25_75Data = data.map(item => {
+    const p25 = item.p25 ?? null;
+    const p75 = item.p75 ?? null;
+    
+    // We need both values to create a valid band
+    if (p25 === null || p75 === null) {
+      return [item.time, null, null];
+    }
+    
+    return [item.time, p25, p75];
+  });
 
   // Clinical target ranges (always shown)
   const clinicalLow = units === 'mmol/l' ? 3.9 : 70;
@@ -169,14 +190,14 @@ export function AgpChart({
         // Get the data point for the current time
         const index = params[0].dataIndex;
         const point = data[index];
-        
+
         // Format the tooltip content
         let content = `<div style="font-weight: bold; margin-bottom: 5px;">Time: ${point.time}</div>`;
         content += `<div>Median: ${formatValue(point.median)} ${units}</div>`;
         content += `<div>Average: ${formatValue(point.mean)} ${units}</div>`;
         content += `<div>25th-75th: [${formatValue(point.p25)} - ${formatValue(point.p75)}] ${units}</div>`;
         content += `<div>5th-95th: [${formatValue(point.p5)} - ${formatValue(point.p95)}] ${units}</div>`;
-        
+
         return content;
       }
     },
@@ -221,68 +242,96 @@ export function AgpChart({
       }
     },
     series: [
-      // 5th-95th percentile area (wider band, lighter color)
+      // 5th-95th percentile band (wider band, lighter color)
       {
-        name: '5th-95th Percentile',
-        type: 'line',
-        stack: 'confidence-band',
-        symbol: 'none',
-        lineStyle: {
-          opacity: 0
+        name: '5th-95th Percentile Band',
+        type: 'custom',
+        renderItem: function(params: any, api: any) {
+          const xValue = api.value(0);
+          if (xValue == null) return;
+          
+          const lowerValue = api.value(1);
+          const upperValue = api.value(2);
+          
+          // Skip if any value is missing
+          if (lowerValue == null || upperValue == null) {
+            return;
+          }
+          
+          const xStart = params.coordSys.x;
+          const xSize = params.coordSys.width;
+          const xStep = xSize / timeData.length;
+          
+          const x = api.coord([api.value(0), 0])[0];
+          const y0 = api.coord([0, lowerValue])[1];
+          const y1 = api.coord([0, upperValue])[1];
+          
+          // Create polygon shape for the band
+          return {
+            type: 'polygon',
+            shape: {
+              points: [
+                [x - xStep/2, y0],
+                [x - xStep/2, y1],
+                [x + xStep/2, y1],
+                [x + xStep/2, y0]
+              ]
+            },
+            style: {
+              fill: 'rgba(120, 140, 180, 0.25)',
+              stroke: 'none'
+            }
+          };
         },
-        areaStyle: {
-          color: 'rgba(120, 140, 180, 0.25)'
-        },
-        data: p95Data,
-        z: 1
-      },
-      {
-        name: '5th Percentile',
-        type: 'line',
-        stack: 'confidence-band',
-        symbol: 'none',
-        lineStyle: {
-          opacity: 0
-        },
-        areaStyle: {
-          color: 'rgba(255, 255, 255, 0)', // Transparent
-          origin: 'start'
-        },
-        data: p5Data,
+        data: p5_95Data,
         z: 1
       },
       
-      // 25th-75th percentile area (narrower band, darker color)
+      // 25th-75th percentile band (narrower band, darker color)
       {
-        name: '25th-75th Percentile',
-        type: 'line',
-        stack: 'confidence-band-inner',
-        symbol: 'none',
-        lineStyle: {
-          opacity: 0
+        name: '25th-75th Percentile Band',
+        type: 'custom',
+        renderItem: function(params: any, api: any) {
+          const xValue = api.value(0);
+          if (xValue == null) return;
+          
+          const lowerValue = api.value(1);
+          const upperValue = api.value(2);
+          
+          // Skip if any value is missing
+          if (lowerValue == null || upperValue == null) {
+            return;
+          }
+          
+          const xStart = params.coordSys.x;
+          const xSize = params.coordSys.width;
+          const xStep = xSize / timeData.length;
+          
+          const x = api.coord([api.value(0), 0])[0];
+          const y0 = api.coord([0, lowerValue])[1];
+          const y1 = api.coord([0, upperValue])[1];
+          
+          // Create polygon shape for the band
+          return {
+            type: 'polygon',
+            shape: {
+              points: [
+                [x - xStep/2, y0],
+                [x - xStep/2, y1],
+                [x + xStep/2, y1],
+                [x + xStep/2, y0]
+              ]
+            },
+            style: {
+              fill: 'rgba(90, 110, 150, 0.35)',
+              stroke: 'none'
+            }
+          };
         },
-        areaStyle: {
-          color: 'rgba(90, 110, 150, 0.35)'
-        },
-        data: p75Data,
+        data: p25_75Data,
         z: 2
       },
-      {
-        name: '25th Percentile',
-        type: 'line',
-        stack: 'confidence-band-inner',
-        symbol: 'none',
-        lineStyle: {
-          opacity: 0
-        },
-        areaStyle: {
-          color: 'rgba(255, 255, 255, 0)', // Transparent
-          origin: 'start'
-        },
-        data: p25Data,
-        z: 2
-      },
-      
+
       // Mean line (less prominent)
       {
         name: 'Mean',
@@ -296,7 +345,7 @@ export function AgpChart({
         data: meanData,
         z: 3
       },
-      
+
       // Median line (most prominent)
       {
         name: 'Median',
@@ -321,8 +370,8 @@ export function AgpChart({
 
   return (
     <div className="w-full h-[400px] p-4 border rounded-lg shadow-sm bg-card text-card-foreground">
-      <ReactECharts 
-        option={options} 
+      <ReactECharts
+        option={options}
         style={{ height: '100%', width: '100%' }}
         opts={{ renderer: 'svg' }} // Using SVG renderer for better quality
       />
