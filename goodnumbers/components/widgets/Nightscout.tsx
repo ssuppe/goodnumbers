@@ -68,7 +68,7 @@ const NightscoutComponent = ({
   const { isLoading, progress, progressText, error, startLoading, updateProgress, stopLoading, setLoadingError } =
     useLoadingState();
   const { formData, handleInputChange, error: formError } = useFormState();
-  
+
   const [isClient, setIsClient] = useState(false);
   const [formattedSSML, setFormattedSSML] = useState('');
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -88,7 +88,7 @@ const NightscoutComponent = ({
       });
     }
   }, [assessmentData, debugMode]);
-  
+
   // Monitor URL for debug parameter changes
   useEffect(() => {
     // Initial check for debug mode
@@ -113,7 +113,7 @@ const NightscoutComponent = ({
   useEffect(() => {
     setIsClient(true);
   }, []);
-  
+
   // Poll for podcast status
   useEffect(() => {
     if (!assessmentData) return;
@@ -147,7 +147,7 @@ const NightscoutComponent = ({
     if (debugMode) {
       console.log('Form submission started');
     }
-    
+
     e.preventDefault();
     startLoading('Collecting Nightscout data...');
 
@@ -352,7 +352,7 @@ const NightscoutComponent = ({
             </div>
           )}
 
-          {debugMode && assessmentData?.report_items && <DebugInterfaceViewer data={assessmentData.report_items} />}
+          {debugMode && assessmentData && <DebugInterfaceViewer data={assessmentData} />}
 
           {/* Add raw data visualization for debugging */}
           {debugMode && (

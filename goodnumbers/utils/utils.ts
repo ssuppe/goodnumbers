@@ -32,9 +32,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Conversion factor for glucose units.
+ */
+export const MG_DL_PER_MMOL_L = 18.0182; // Use a precise factor
+
 function convertSVGToPreferredUnits(svg: number, preferred_units: GlucoseUnits): number {
   if (preferred_units == 'mg/dl') {
     return svg;
   }
-  return svg / 18.018;
+  return svg / MG_DL_PER_MMOL_L;
 }

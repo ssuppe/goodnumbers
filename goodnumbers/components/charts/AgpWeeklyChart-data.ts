@@ -5,11 +5,6 @@ import { AgpDataPoint } from './AgpChart';
 import { ATReading, AutotunePreppedData } from '@/lib/oref0-autotune/gn-autotune-prep';
 
 /**
- * Conversion factor for glucose units.
- */
-const MG_DL_PER_MMOL_L = 18.0182; // Use a precise factor
-
-/**
  * **CRITICAL ASSUMPTION:** The unit of the 'glucose' field in the source ATReading data.
  * Change this if your source data is in mmol/L.
  */
@@ -27,7 +22,7 @@ const MIN_DATA_POINTS_FOR_PERCENTILE = 5;
  * suitable for an Ambulatory Glucose Profile (AGP) chart.
  *
  * @param autotuneData - The input data containing glucose readings across different categories.
- * @param targetUnits - The desired units ('mg/dl' or 'mmol/l') for the output AGP data.
+ * @param targetUnits - The desired units ('mg/dl' or 'mmol/L') for the output AGP data.
  * @returns An array of AgpDataPoint objects, one for each 30-minute interval of the day,
  *          sorted chronologically. Returns an empty array if input data is missing or invalid.
  */
@@ -104,9 +99,9 @@ export async function generateAgpData(
 
     // Unit Conversion
     let convertedGlucoseValue = reading.glucoseValue;
-    if (SOURCE_GLUCOSE_UNIT === 'mg/dl' && targetUnits === 'mmol/l') {
+    if (SOURCE_GLUCOSE_UNIT === 'mg/dl' && targetUnits === 'mmol/L') {
       convertedGlucoseValue /= MG_DL_PER_MMOL_L;
-    } else if (SOURCE_GLUCOSE_UNIT === 'mmol/l' && targetUnits === 'mg/dl') {
+    } else if (SOURCE_GLUCOSE_UNIT === 'mmol/L' && targetUnits === 'mg/dl') {
       convertedGlucoseValue *= MG_DL_PER_MMOL_L;
     }
     // else: units match, no conversion needed
@@ -188,6 +183,6 @@ const agpDataMgdl = generateAgpData(exampleAutotuneData, 'mg/dl');
 console.log("AGP Data (mg/dL):", agpDataMgdl);
 
 // Generate AGP data in mmol/L
-const agpDataMmol = generateAgpData(exampleAutotuneData, 'mmol/l');
+const agpDataMmol = generateAgpData(exampleAutotuneData, 'mmol/L');
 console.log("AGP Data (mmol/L):", agpDataMmol);
 */
