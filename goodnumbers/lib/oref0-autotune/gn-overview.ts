@@ -73,6 +73,7 @@ export function getPatientsRange(compositeday_analysis: AnalysisResult): Patient
     pr.target_high = GLUCOSE_RANGES.HIGH;
     pr.very_high = GLUCOSE_RANGES.HIGH;
   }
+
   return pr;
 }
 

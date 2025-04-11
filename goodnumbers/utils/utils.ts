@@ -1,3 +1,4 @@
+import { GlucoseUnits } from '@/types/nightscout';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -29,4 +30,11 @@ export function interpolate(template: string, params: Record<string, string | nu
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+function convertSVGToPreferredUnits(svg: number, preferred_units: GlucoseUnits): number {
+  if (preferred_units == 'mg/dl') {
+    return svg;
+  }
+  return svg / 18.018;
 }

@@ -10,7 +10,7 @@ export interface PodcastGenerateResult {
   description?: string | null;
 }
 
-export type GlucoseUnits = 'mg/dl' | 'mmol/l';
+export type GlucoseUnits = 'mg/dl' | 'mmol/L';
 
 export interface ReportItem {
   insights: AssessmentInsight[];
