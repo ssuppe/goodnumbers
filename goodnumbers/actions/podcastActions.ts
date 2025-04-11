@@ -230,7 +230,8 @@ export async function generateAssessments(
       podcastResult: podcastResult, // Add podcast result
       report_items: podcast_info.report_items, // Ensure report_items are included
       ssml_dialog: podcast_info.ssml_dialog, // Ensure ssml_dialog is included
-      preferred_units: podcast_info.preferred_units // Ensure preferred_units is included
+      preferred_units: podcast_info.preferred_units, // Ensure preferred_units is included
+      patient_range: patient_range // Include patient_range
     };
 
     return finalPodcastInfo;

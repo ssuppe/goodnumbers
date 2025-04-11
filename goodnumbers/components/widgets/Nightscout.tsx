@@ -23,7 +23,7 @@ import PodcastStatusBadge from './PodcastStatusBadge';
 import { AgpChart } from '../charts/AgpChart';
 import Headline from '../atoms/Headline';
 import WidgetWrapper from '../atoms/WidgetWrapper';
-import { getCookieC } from '@/utils/cookies';
+import { getCookieC, setCookieC } from '@/utils/cookies';
 
 // Function to check if debug mode is enabled via URL parameter
 function isDebugMode(): boolean {
@@ -126,17 +126,11 @@ const NightscoutComponent = ({
 
   // Load saved data on mount
   useEffect(() => {
-    if (debugMode) {
-      console.log('Load saved data on mount');
-      console.log('URL cookie:', Cookies.get('url'));
-      console.log('Units cookie:', Cookies.get('units'));
-    }
-
     setIsClient(true);
     setFormData((prev) => ({
       ...prev,
-      nightscout_url: Cookies.get('url') || '',
-      nightscout_token: Cookies.get('token') || '',
+      nightscout_url: getCookieC<string>('url') || '',
+      nightscout_token: getCookieC<string>('token') || '',
       preferred_units: getCookieC<GlucoseUnits>('units') || 'mg/dl',
     }));
   }, [debugMode]);
@@ -178,7 +172,7 @@ const NightscoutComponent = ({
     const name = target.name;
     const value = target.value;
 
-    if ('checked' in target) {
+    if (target.type === 'checkbox') {
       // This is an input element with a checkbox
       setFormData((prev) => ({ ...prev, [name]: target.checked }));
     } else {
@@ -188,12 +182,13 @@ const NightscoutComponent = ({
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    // debugger;
     if (debugMode) {
       console.log('Form submission started');
     }
-    Cookies.set('url', formData.nightscout_url);
-    Cookies.set('token', formData.nightscout_token);
-    Cookies.set('units', formData.preferred_units); // Add this line
+    setCookieC<string>('url', formData.nightscout_url);
+    setCookieC<string>('token', formData.nightscout_token);
+    setCookieC<GlucoseUnits>('units', formData.preferred_units); // Add this line
 
     e.preventDefault();
     startLoading('Collecting Nightscout data...');
