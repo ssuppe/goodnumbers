@@ -50,7 +50,7 @@
 //    * Should contain exactly 48 points for a full 24-hour cycle (one per 30 mins).
 //    */
 //   data: AgpDataPoint[];
-//   /** Specifies the units ('mg/dl' or 'mmol/l') for the glucose values in the `data` array. */
+//   /** Specifies the units ('mg/dl' or 'mmol/L') for the glucose values in the `data` array. */
 //   units: GlucoseUnits;
 //   /** An optional title to display above the chart. */
 //   title?: string;
@@ -122,7 +122,7 @@
 //       return 'N/A'; // Display for missing data points
 //     }
 //     // Show 1 decimal place for mmol/L, 0 for mg/dL
-//     const fixedDecimals = units === 'mmol/l' ? 1 : 0;
+//     const fixedDecimals = units === 'mmol/L' ? 1 : 0;
 //     return value.toFixed(fixedDecimals);
 //   };
 
