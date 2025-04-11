@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Progress from '../atoms/progress';
-import Cookies from 'js-cookie';
 import { compress } from 'compress-json';
 import { createApiClient } from '@/lib/axios/axios';
 import { useAssessmentState } from '@/hooks/useAssessmentState';
 import { useLoadingState } from '@/hooks/useLoadingState';
+import { useFormState } from '@/hooks/useFormState';
 import { AssessmentData, GlucoseUnits, NightscoutData, PodcastGenerateResult } from '@/types/nightscout';
 import 'react-h5-audio-player/lib/styles.css';
 import LazyAudioPlayer from './LazyAudioPlayer';
@@ -24,7 +24,6 @@ import { AgpChart } from '../charts/AgpChart';
 import { ReportItemDisplay } from '../charts/ReportItemDisplay';
 import Headline from '../atoms/Headline';
 import WidgetWrapper from '../atoms/WidgetWrapper';
-import { getCookieC, setCookieC } from '@/utils/cookies';
 
 // Function to check if debug mode is enabled via URL parameter
 function isDebugMode(): boolean {
@@ -64,10 +63,12 @@ const NightscoutComponent = ({
   hasBackground = false,
   onAssessmentComplete,
 }: NightscoutComponentProps): JSX.Element => {
-  // State management
-  const { assessmentData, error: cookieError, updateAssessmentData, getCurrentPodcastResult } = useAssessmentState();
+  // State management with our new hooks
+  const { assessmentData, error: storageError, updateAssessmentData, getCurrentPodcastResult } = useAssessmentState();
   const { isLoading, progress, progressText, error, startLoading, updateProgress, stopLoading, setLoadingError } =
     useLoadingState();
+  const { formData, handleInputChange, error: formError } = useFormState();
+  
   const [isClient, setIsClient] = useState(false);
   const [formattedSSML, setFormattedSSML] = useState('');
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -87,24 +88,7 @@ const NightscoutComponent = ({
       });
     }
   }, [assessmentData, debugMode]);
-
-  interface FormDataState {
-    nightscout_url: string;
-    nightscout_token: string;
-    preferred_units: GlucoseUnits; // Union type for strict type checking
-    terms_accepted: boolean;
-    responsibility_accepted: boolean;
-  }
-
-  // Form state
-  const [formData, setFormData] = useState<FormDataState>({
-    nightscout_url: '',
-    nightscout_token: '',
-    preferred_units: 'mg/dl',
-    terms_accepted: false,
-    responsibility_accepted: false,
-  });
-
+  
   // Monitor URL for debug parameter changes
   useEffect(() => {
     // Initial check for debug mode
@@ -125,20 +109,14 @@ const NightscoutComponent = ({
     };
   }, []);
 
-  // Load saved data on mount
+  // Client-side initialization
   useEffect(() => {
     setIsClient(true);
-    setFormData((prev) => ({
-      ...prev,
-      nightscout_url: getCookieC<string>('url') || '',
-      nightscout_token: getCookieC<string>('token') || '',
-      preferred_units: getCookieC<GlucoseUnits>('preferred_units') || 'mg/dl',
-    }));
-  }, [debugMode]);
-
+  }, []);
+  
   // Poll for podcast status
   useEffect(() => {
-    if (!assessmentData) return; // Add early return
+    if (!assessmentData) return;
 
     const currentResult = getCurrentPodcastResult();
 
@@ -152,8 +130,7 @@ const NightscoutComponent = ({
         return;
       }
 
-      // if (podcastResult.operation_id != null) {
-      var response: PodcastGenerateResult = await checkPodcastStatus(podcastResult);
+      const response: PodcastGenerateResult = await checkPodcastStatus(podcastResult);
 
       const updatedData = {
         ...assessmentData,
@@ -164,33 +141,13 @@ const NightscoutComponent = ({
     }, 30000);
 
     return () => clearInterval(intervalId);
-    // }
   }, [assessmentData, getCurrentPodcastResult, updateAssessmentData]);
 
-  // Form handlers
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const target = e.target as HTMLInputElement | HTMLSelectElement;
-    const name = target.name;
-    const value = target.value;
-
-    if (target.type === 'checkbox') {
-      // This is an input element with a checkbox
-      setFormData((prev) => ({ ...prev, [name]: target.checked }));
-    } else {
-      // This is a select element or non-checkbox input
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    // debugger;
     if (debugMode) {
       console.log('Form submission started');
     }
-    setCookieC<string>('url', formData.nightscout_url);
-    setCookieC<string>('token', formData.nightscout_token);
-    setCookieC<GlucoseUnits>('preferred_units', formData.preferred_units); // Add this line
-
+    
     e.preventDefault();
     startLoading('Collecting Nightscout data...');
 
@@ -241,14 +198,11 @@ const NightscoutComponent = ({
           preferred_units: data.preferred_units, // Explicitly include this
         };
 
-        // Use the sync version for setting assessment data
+        // Update assessment data (which will save to localStorage)
         updateAssessmentData(dataWithTimestamp);
-        // Object.entries(dataWithTimestamp).forEach(([key, value]) => {
-        //   setCookieCSync(key, value, { expires: 30 });
-        // });
 
         // Set a new state to indicate successful submission
-        setFormSubmitted(true); // Add this state
+        setFormSubmitted(true);
 
         if (onAssessmentComplete) {
           onAssessmentComplete(dataWithTimestamp);
@@ -459,9 +413,15 @@ const NightscoutComponent = ({
         </div>
       )}
 
-      {cookieError && (
+      {storageError && (
         <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
-          Error loading saved data: {cookieError}
+          Error loading saved data: {storageError}
+        </div>
+      )}
+
+      {formError && (
+        <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
+          Error loading form data: {formError}
         </div>
       )}
 
@@ -511,7 +471,7 @@ const NightscoutComponent = ({
                     className="w-full p-2 border rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                   >
                     <option value="mg/dl">mg/dL</option>
-                    <option value="mmol/l">mmol/L</option>
+                    <option value="mmol/L">mmol/L</option>
                   </select>
                 </div>
                 <label className="flex items-start mb-4 text-gray-800 dark:text-slate-200">
