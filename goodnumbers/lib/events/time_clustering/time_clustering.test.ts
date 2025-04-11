@@ -1,13 +1,13 @@
-import { 
-  timestampToMinutesOfDay, 
-  minutesToTimeString, 
-  circularTimeDistance, 
-  calculateClusterCenterTime, 
-  calculateTimeRange, 
+import {
+  timestampToMinutesOfDay,
+  minutesToTimeString,
+  circularTimeDistance,
+  calculateClusterCenterTime,
+  calculateTimeRange,
   clusterGlycemicEvents,
-  analyzeGlycemicEventTimes
+  analyzeGlycemicEventTimes,
 } from './time_clustering';
-import { GlycemicEvent, GlycemicEventType } from './detect_events';
+import { GlycemicEvent, GlycemicEventType } from '../detect_events';
 
 describe('Time Clustering Utils', () => {
   // Sample timestamps for testing
@@ -26,7 +26,7 @@ describe('Time Clustering Utils', () => {
     start_timestamp: startTime,
     end_timestamp: endTime,
     duration_minutes: 15, // Arbitrary value for testing
-    extreme_bg_mgdl: 65,  // Arbitrary value for testing
+    extreme_bg_mgdl: 65, // Arbitrary value for testing
   });
 
   describe('timestampToMinutesOfDay', () => {
@@ -106,16 +106,16 @@ describe('Time Clustering Utils', () => {
         createEvent(GlycemicEventType.HYPOGLYCEMIA, timestamps.elevenThirtyPM, timestamps.elevenThirtyPM), // 23:30 = 1410 mins
         createEvent(GlycemicEventType.HYPOGLYCEMIA, timestamps.twelveFifteenAM, timestamps.twelveFifteenAM), // 00:15 = 15 mins
       ];
-      
+
       // Should be around 11:52 PM or 00:08 AM depending on exact implementation
       // The main point is it should be close to midnight, not around noon
       const result = calculateClusterCenterTime(events);
-      
+
       // Verify it's within a reasonable range (close to midnight)
-      const isNearMidnight = 
+      const isNearMidnight =
         (result >= 1380 && result <= 1440) || // 11:00 PM to midnight
-        (result >= 0 && result <= 60);        // midnight to 1:00 AM
-      
+        (result >= 0 && result <= 60); // midnight to 1:00 AM
+
       expect(isNearMidnight).toBeTruthy();
     });
   });
@@ -143,9 +143,9 @@ describe('Time Clustering Utils', () => {
         createEvent(GlycemicEventType.HYPOGLYCEMIA, timestamps.elevenThirtyPM, timestamps.elevenThirtyPM), // 23:30
         createEvent(GlycemicEventType.HYPOGLYCEMIA, timestamps.twelveFifteenAM, timestamps.twelveFifteenAM), // 00:15
       ];
-      
+
       const result = calculateTimeRange(events);
-      
+
       // The range should be 11:30 PM to 12:15 AM, not 12:15 AM to 11:30 PM
       // This is 45 minutes, not 23 hours and 15 minutes
       expect(result).toEqual({ earliest: 1410, latest: 15 });
@@ -158,12 +158,10 @@ describe('Time Clustering Utils', () => {
     });
 
     it('should create single cluster for single event', () => {
-      const events = [
-        createEvent(GlycemicEventType.HYPOGLYCEMIA, timestamps.oneAM, timestamps.oneAM)
-      ];
-      
+      const events = [createEvent(GlycemicEventType.HYPOGLYCEMIA, timestamps.oneAM, timestamps.oneAM)];
+
       const clusters = clusterGlycemicEvents(events, 30);
-      
+
       expect(clusters.length).toBe(1);
       expect(clusters[0].count).toBe(1);
       expect(clusters[0].meanTime).toBe(60); // 1:00 AM
@@ -174,10 +172,10 @@ describe('Time Clustering Utils', () => {
         createEvent(GlycemicEventType.HYPOGLYCEMIA, '2023-05-01T01:00:00Z', '2023-05-01T01:15:00Z'),
         createEvent(GlycemicEventType.HYPOGLYCEMIA, '2023-05-01T01:25:00Z', '2023-05-01T01:40:00Z'),
       ];
-      
+
       // With 30 minute threshold, these should be clustered
       const clusters = clusterGlycemicEvents(events, 30);
-      
+
       expect(clusters.length).toBe(1);
       expect(clusters[0].count).toBe(2);
     });
@@ -187,10 +185,10 @@ describe('Time Clustering Utils', () => {
         createEvent(GlycemicEventType.HYPOGLYCEMIA, '2023-05-01T01:00:00Z', '2023-05-01T01:15:00Z'),
         createEvent(GlycemicEventType.HYPOGLYCEMIA, '2023-05-01T01:45:00Z', '2023-05-01T02:00:00Z'),
       ];
-      
+
       // With 30 minute threshold, these should be separate clusters
       const clusters = clusterGlycemicEvents(events, 30);
-      
+
       expect(clusters.length).toBe(2);
       expect(clusters[0].count).toBe(1);
       expect(clusters[1].count).toBe(1);
@@ -201,10 +199,10 @@ describe('Time Clustering Utils', () => {
         createEvent(GlycemicEventType.HYPOGLYCEMIA, timestamps.elevenThirtyPM, timestamps.elevenThirtyPM), // 23:30
         createEvent(GlycemicEventType.HYPOGLYCEMIA, timestamps.twelveFifteenAM, timestamps.twelveFifteenAM), // 00:15
       ];
-      
+
       // With 60 minute threshold, these should cluster despite being on different sides of midnight
       const clusters = clusterGlycemicEvents(events, 60);
-      
+
       expect(clusters.length).toBe(1);
       expect(clusters[0].count).toBe(2);
     });
@@ -214,10 +212,10 @@ describe('Time Clustering Utils', () => {
         createEvent(GlycemicEventType.HYPOGLYCEMIA, '2023-05-01T01:00:00Z', '2023-05-01T01:15:00Z'),
         createEvent(GlycemicEventType.HYPERGLYCEMIA, '2023-05-01T01:05:00Z', '2023-05-01T01:20:00Z'),
       ];
-      
+
       // Despite close times, these should be separate clusters due to different event types
       const clusters = clusterGlycemicEvents(events, 30);
-      
+
       expect(clusters.length).toBe(2);
       expect(clusters[0].eventType).not.toBe(clusters[1].eventType);
     });
@@ -229,19 +227,19 @@ describe('Time Clustering Utils', () => {
         // Cluster 1: 2 events
         createEvent(GlycemicEventType.HYPOGLYCEMIA, '2023-05-01T01:00:00Z', '2023-05-01T01:15:00Z'),
         createEvent(GlycemicEventType.HYPOGLYCEMIA, '2023-05-01T01:20:00Z', '2023-05-01T01:35:00Z'),
-        
+
         // Cluster 2: 1 event
         createEvent(GlycemicEventType.HYPOGLYCEMIA, '2023-05-01T15:00:00Z', '2023-05-01T15:15:00Z'),
-        
+
         // Cluster 3: 3 events
         createEvent(GlycemicEventType.HYPERGLYCEMIA, '2023-05-01T19:00:00Z', '2023-05-01T19:15:00Z'),
         createEvent(GlycemicEventType.HYPERGLYCEMIA, '2023-05-01T19:15:00Z', '2023-05-01T19:30:00Z'),
         createEvent(GlycemicEventType.HYPERGLYCEMIA, '2023-05-01T19:25:00Z', '2023-05-01T19:40:00Z'),
       ];
-      
+
       // With minEventsPerCluster = 2, should return 2 clusters (clusters 1 and 3)
       const clusters = analyzeGlycemicEventTimes(events, { minEventsPerCluster: 2 });
-      
+
       expect(clusters.length).toBe(2);
       expect(clusters[0].count).toBeGreaterThanOrEqual(2);
       expect(clusters[1].count).toBeGreaterThanOrEqual(2);
@@ -252,10 +250,10 @@ describe('Time Clustering Utils', () => {
         createEvent(GlycemicEventType.HYPOGLYCEMIA, '2023-05-01T01:00:00Z', '2023-05-01T01:15:00Z'),
         createEvent(GlycemicEventType.HYPOGLYCEMIA, '2023-05-01T01:20:00Z', '2023-05-01T01:35:00Z'),
       ];
-      
+
       // Should use default proximityThreshold of 30
       const clusters = analyzeGlycemicEventTimes(events);
-      
+
       expect(clusters.length).toBe(1);
       expect(clusters[0].count).toBe(2);
     });
