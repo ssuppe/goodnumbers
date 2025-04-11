@@ -33,11 +33,7 @@ export interface GlycemicEvent {
  */
 export function mergeGlucoseData(data: AutotunePreppedData): GlucoseDatum[] {
   // Combine all glucose data sources
-  const combinedData: GlucoseDatum[] = [
-    ...data.CSFGlucoseData,
-    ...data.ISFGlucoseData,
-    ...data.basalGlucoseData,
-  ];
+  const combinedData: GlucoseDatum[] = [...data.CSFGlucoseData, ...data.ISFGlucoseData, ...data.basalGlucoseData];
 
   // Sort by timestamp
   return combinedData.sort((a, b) => {
@@ -65,14 +61,9 @@ function calculateDurationMinutes(startTime: string, endTime: string): number {
  * @param isHypo - Boolean indicating if looking for minimum (true) or maximum (false)
  * @returns The extreme value (minimum for hypo, maximum for hyper)
  */
-function findExtremeBg(
-  data: GlucoseDatum[],
-  startIndex: number,
-  endIndex: number,
-  isHypo: boolean
-): number {
+function findExtremeBg(data: GlucoseDatum[], startIndex: number, endIndex: number, isHypo: boolean): number {
   let extremeValue = isHypo ? Number.MAX_VALUE : Number.MIN_VALUE;
-  
+
   for (let i = startIndex; i <= endIndex; i++) {
     const bg = data[i].glucose;
     if (isHypo) {
@@ -81,7 +72,7 @@ function findExtremeBg(
       extremeValue = Math.max(extremeValue, bg);
     }
   }
-  
+
   return extremeValue;
 }
 
@@ -93,22 +84,21 @@ function findExtremeBg(
 export function detectGlycemicEvents(data: AutotunePreppedData): GlycemicEvent[] {
   const mergedData = mergeGlucoseData(data);
   const events: GlycemicEvent[] = [];
-  
+
   // Minimum consecutive readings required to classify an event (assuming 5-minute intervals)
   const MIN_CONSECUTIVE_READINGS = 3;
-  
+
   let currentEventType: GlycemicEventType | null = null;
   let eventStartIndex = -1;
   let consecutiveCount = 0;
-  
+
   // Iterate through the merged data to detect events
   for (let i = 0; i < mergedData.length; i++) {
     const bg = mergedData[i].glucose;
-    
+
     // Check for severe hypoglycemia
     if (bg <= GLYCEMIC_THRESHOLDS.SEVERE_HYPO_THRESHOLD) {
-      if (currentEventType === null || 
-          currentEventType === GlycemicEventType.HYPOGLYCEMIA) {
+      if (currentEventType === null || currentEventType === GlycemicEventType.HYPOGLYCEMIA) {
         // Start a new event or upgrade from hypoglycemia
         if (currentEventType === GlycemicEventType.HYPOGLYCEMIA) {
           // Don't reset the start index or consecutive count as we're upgrading an existing event
@@ -169,18 +159,18 @@ export function detectGlycemicEvents(data: AutotunePreppedData): GlycemicEvent[]
             end_timestamp: mergedData[endIndex].dateString,
             duration_minutes: calculateDurationMinutes(
               mergedData[eventStartIndex].dateString,
-              mergedData[endIndex].dateString
+              mergedData[endIndex].dateString,
             ),
             extreme_bg_mgdl: findExtremeBg(
               mergedData,
               eventStartIndex,
               endIndex,
-              currentEventType !== GlycemicEventType.HYPERGLYCEMIA
+              currentEventType !== GlycemicEventType.HYPERGLYCEMIA,
             ),
           };
           events.push(event);
         }
-        
+
         // Start new hyperglycemia event
         eventStartIndex = i;
         consecutiveCount = 1;
@@ -198,25 +188,25 @@ export function detectGlycemicEvents(data: AutotunePreppedData): GlycemicEvent[]
           end_timestamp: mergedData[endIndex].dateString,
           duration_minutes: calculateDurationMinutes(
             mergedData[eventStartIndex].dateString,
-            mergedData[endIndex].dateString
+            mergedData[endIndex].dateString,
           ),
           extreme_bg_mgdl: findExtremeBg(
             mergedData,
             eventStartIndex,
             endIndex,
-            currentEventType !== GlycemicEventType.HYPERGLYCEMIA
+            currentEventType !== GlycemicEventType.HYPERGLYCEMIA,
           ),
         };
         events.push(event);
       }
-      
+
       // Reset tracking variables
       currentEventType = null;
       eventStartIndex = -1;
       consecutiveCount = 0;
     }
   }
-  
+
   // Check if there's an ongoing event at the end of the data
   if (currentEventType !== null && consecutiveCount >= MIN_CONSECUTIVE_READINGS) {
     const endIndex = mergedData.length - 1;
@@ -226,17 +216,17 @@ export function detectGlycemicEvents(data: AutotunePreppedData): GlycemicEvent[]
       end_timestamp: mergedData[endIndex].dateString,
       duration_minutes: calculateDurationMinutes(
         mergedData[eventStartIndex].dateString,
-        mergedData[endIndex].dateString
+        mergedData[endIndex].dateString,
       ),
       extreme_bg_mgdl: findExtremeBg(
         mergedData,
         eventStartIndex,
         endIndex,
-        currentEventType !== GlycemicEventType.HYPERGLYCEMIA
+        currentEventType !== GlycemicEventType.HYPERGLYCEMIA,
       ),
     };
     events.push(event);
   }
-  
+
   return events;
 }
