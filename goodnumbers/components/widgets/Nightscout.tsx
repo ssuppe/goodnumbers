@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Progress from '../atoms/progress';
-import { compress } from 'compress-json';
+import { compress, decompress } from 'compress-json';
 import { createApiClient } from '@/lib/axios/axios';
 import { useAssessmentState } from '@/hooks/useAssessmentState';
 import { useLoadingState } from '@/hooks/useLoadingState';
@@ -20,7 +20,8 @@ import { fetchNightscoutData } from '@/actions/nightscoutActions';
 import { ssmlToMarkdown } from '@/utils/ssml-client';
 import { checkPodcastStatus } from '@/actions/gemini/geminiActions';
 import PodcastStatusBadge from './PodcastStatusBadge';
-import { ReportItemDisplay } from '../charts/ReportItemDisplay';
+import { ReportItemDisplay } from '../charts/AgpReportItemDisplay';
+import { ClusterReportRenderer } from '../report/ClusterReportRenderer';
 import Headline from '../atoms/Headline';
 import WidgetWrapper from '../atoms/WidgetWrapper';
 
@@ -167,8 +168,15 @@ const NightscoutComponent = ({
           profiles: compress(nightscoutData.profiles),
         };
 
-        // Server action call wrapped in regular Promise
+        // Store the compressed entries in localStorage for future reference by cluster visualization
         return createHash(formData.nightscout_url, formData.nightscout_token).then((hash) => {
+          // Save entries data separately with the hash as reference
+          const entriesStorageKey = `goodnumbers-nightscout-entries-${hash}`;
+          localStorage.setItem(entriesStorageKey, JSON.stringify({ 
+            entries: compressedData.entries,
+            timestamp: new Date().toISOString()
+          }));
+
           return generateAssessments(
             compressedData?.entries,
             compressedData?.treatments || null,
@@ -338,16 +346,42 @@ const NightscoutComponent = ({
                 </>
               )}
 
-              {assessmentData.report_items.map((reportItem, index) => (
-                <ReportItemDisplay
-                  key={`report-item-${index}`}
-                  reportItem={reportItem}
-                  units={assessmentData.preferred_units || 'mg/dl'}
-                  patientLowGoal={assessmentData.patient_range?.target_low}
-                  patientHighGoal={assessmentData.patient_range?.target_high}
-                  title={index === 0 ? 'Weekly Overview' : `Chart ${index + 1}`}
-                />
-              ))}
+              {assessmentData.report_items.map((reportItem, index) => {
+                // Check if this is a cluster report item (looking for TimeCluster structure or compressed cluster)
+                const isClusterReport = 
+                  reportItem.data && 
+                  reportItem.data.length > 0 && 
+                  reportItem.data[0] && 
+                  (
+                    // Compressed cluster format
+                    ('compressedCluster' in reportItem.data[0] && 'dataReference' in reportItem.data[0]) ||
+                    // Legacy direct cluster format
+                    ('events' in reportItem.data[0] && 'meanTime' in reportItem.data[0])
+                  );
+
+                if (isClusterReport) {
+                  return (
+                    <ClusterReportRenderer
+                      key={`cluster-report-${index}`}
+                      reportItem={reportItem}
+                      units={assessmentData.preferred_units || 'mg/dl'}
+                      patientLowGoal={assessmentData.patient_range?.target_low}
+                      patientHighGoal={assessmentData.patient_range?.target_high}
+                    />
+                  );
+                } else {
+                  return (
+                    <ReportItemDisplay
+                      key={`report-item-${index}`}
+                      reportItem={reportItem}
+                      units={assessmentData.preferred_units || 'mg/dl'}
+                      patientLowGoal={assessmentData.patient_range?.target_low}
+                      patientHighGoal={assessmentData.patient_range?.target_high}
+                      title={index === 0 ? 'Weekly Overview' : `Chart ${index + 1}`}
+                    />
+                  );
+                }
+              })}
             </div>
           ) : (
             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800">

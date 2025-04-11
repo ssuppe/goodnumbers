@@ -1,7 +1,7 @@
 'use server';
 
 import winston from 'winston';
-import { decompress, Compressed } from 'compress-json';
+import { decompress, Compressed, compress } from 'compress-json';
 
 import { getBestProfile } from '@/utils/nightscoutProfile';
 import { AutotunePreppedData, gn_autotune_prep } from '@/lib/oref0-autotune/gn-autotune-prep';
@@ -26,7 +26,7 @@ import {
 import { filterCriticalInsights, hasCriticalInsights, insightsToNotes } from './nightscoutActions';
 import { AgpDataPoint } from '@/components/charts/AgpChart';
 import { detectGlycemicEvents } from '@/lib/events/detect_events';
-import { clusterGlycemicEvents } from '@/lib/events/time_clustering/time_clustering';
+import { clusterGlycemicEvents, minutesToTimeString } from '@/lib/events/time_clustering/time_clustering';
 var _ = require('lodash');
 
 // Configure Winston logger
@@ -136,10 +136,6 @@ export async function generateAssessments(
     ai_notes += `Please note: The patient's preferred blood glucose units are ${preferred_units}.\n`;
     ai_notes += '\n';
 
-    // Analyze the data
-    const full_analysis: FullAnalysisResult = analyzeTimeOfDay(all_prepped_glucose);
-    const patient_range: PatientRange = getPatientsRange(full_analysis.overall);
-
     // Weekly overview section
     ai_notes += '## Weekly overview\n\n';
     var weekly_overview_report: ReportItem = {
@@ -148,6 +144,10 @@ export async function generateAssessments(
     };
 
     // Get insights from the weekly overview
+    // Analyze the data
+    // TODO: This analyzeTimeOfDay seems like overkill now (hourly analysis)
+    const full_analysis: FullAnalysisResult = analyzeTimeOfDay(all_prepped_glucose);
+    const patient_range: PatientRange = getPatientsRange(full_analysis.overall);
     let { ai_insights, user_insights } = await getWeekOverview(full_analysis.overall, preferred_units, patient_range);
     let weekly_overview_data: AgpDataPoint[] = await generateAgpData(all_prepped_glucose, preferred_units);
     weekly_overview_report.data = weekly_overview_data;
@@ -185,14 +185,55 @@ export async function generateAssessments(
     // OTHER INSIGHTS
     // First, let's find high and low clusters
     var events = detectGlycemicEvents(all_prepped_glucose);
-    var clusters = clusterGlycemicEvents(events, 30);
+    var clusters = clusterGlycemicEvents(events, 60);
 
-    // Update current state with full notes
-    currentAssessmentData = {
-      ...currentAssessmentData,
-      notes: ai_notes,
-      report_items: [weekly_overview_report],
-    };
+    // Check if we have any clusters to analyze
+    if (clusters.length > 0) {
+      // Find the most significant cluster to analyze (one with most events)
+      const significantCluster = clusters.reduce((prev, current) => 
+        (prev.count > current.count) ? prev : current
+      );
+
+      // Compress the cluster data for storage efficiency
+      const compressedCluster = compress(significantCluster);
+
+      // Create a compressed data package that includes:
+      // 1. The compressed cluster data
+      // 2. A reference to the original entries data (already compressed)
+      const clusterAnalysisData = {
+        compressedCluster: compressedCluster,
+        // This is a reference to tell the client which entries to use
+        dataReference: {
+          type: 'nightscout-entries',
+          id: id  // The hash ID used for storage
+        }
+      };
+
+      // Create a report item for this cluster
+      const clusterAnalysisReport: ReportItem = {
+        insights: [], // Will be populated later by AI
+        data: [clusterAnalysisData], // Pass the compressed data
+      };
+
+      // Add notes about the cluster
+      ai_notes += '\n\n## Glycemic Pattern Analysis\n\n';
+      ai_notes += `A pattern of ${significantCluster.count} ${significantCluster.eventType.toLowerCase()} events was detected `;
+      ai_notes += `typically occurring around ${minutesToTimeString(significantCluster.meanTime)}.\n`;
+
+      // Update current state with full notes and both report items
+      currentAssessmentData = {
+        ...currentAssessmentData,
+        notes: ai_notes,
+        report_items: [weekly_overview_report, clusterAnalysisReport],
+      };
+    } else {
+      // No clusters found - update with just the weekly report
+      currentAssessmentData = {
+        ...currentAssessmentData,
+        notes: ai_notes,
+        report_items: [weekly_overview_report],
+      };
+    }
 
     // 6. TRANSFORMATION CHAIN: Apply transformations while explicitly preserving state
     logger.info('Step 2: Generate assessment 1');
