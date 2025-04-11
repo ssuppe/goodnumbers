@@ -54,6 +54,17 @@ const NightscoutComponent = ({
   const [isClient, setIsClient] = useState(false);
   const [formattedSSML, setFormattedSSML] = useState('');
   const [formSubmitted, setFormSubmitted] = useState(false);
+  
+  // Debug assessment data at component level
+  console.log('Nightscout component assessment data:', {
+    hasAssessmentData: Boolean(assessmentData),
+    hasDialog: Boolean(assessmentData?.ssml_dialog),
+    dialogLength: assessmentData?.ssml_dialog?.length || 0,
+    hasReportItems: Boolean(assessmentData?.report_items),
+    reportItemsCount: assessmentData?.report_items?.length || 0,
+    hasChartData: Boolean(assessmentData?.report_items?.[0]?.data),
+    chartDataPointsCount: assessmentData?.report_items?.[0]?.data?.length || 0
+  });
 
   interface FormDataState {
     nightscout_url: string;
@@ -75,8 +86,9 @@ const NightscoutComponent = ({
   // Load saved data on mount
   useEffect(() => {
     console.log('Load saved data on mount'); // Add this
-    console.log(Cookies.get('url'));
-    console.log(Cookies.get('units'));
+    console.log('URL cookie:', Cookies.get('url'));
+    console.log('Units cookie:', Cookies.get('units'));
+    
     setIsClient(true);
     setFormData((prev) => ({
       ...prev,
@@ -212,6 +224,11 @@ const NightscoutComponent = ({
 
   // Handle formatting in useEffect
   useEffect(() => {
+    console.log(
+      'SSML dialog in Nightscout component:',
+      assessmentData?.ssml_dialog ? `Present (length: ${assessmentData.ssml_dialog.length})` : 'Not present',
+    );
+
     try {
       prettier
         .format(assessmentData?.ssml_dialog || '', {
@@ -220,19 +237,31 @@ const NightscoutComponent = ({
           xmlWhitespaceSensitivity: 'ignore',
         })
         .then((formatted) => {
+          console.log('SSML formatted successfully, length:', formatted.length);
           setFormattedSSML(formatted);
         })
         .catch((e) => {
+          console.error('Error formatting SSML:', e);
           setFormattedSSML(assessmentData?.ssml_dialog || '');
         });
     } catch (e) {
+      console.error('Exception in SSML formatting:', e);
       setFormattedSSML(assessmentData?.ssml_dialog || '');
     }
   }, [assessmentData?.ssml_dialog]);
 
   // Simplified render method for assessments
   const renderAssessmentContent = () => {
-    // console.log('SSML' + formattedSSML); // Add this
+    console.log('Rendering assessment content', {
+      hasSsmlDialog: Boolean(assessmentData?.ssml_dialog),
+      ssmlDialogLength: assessmentData?.ssml_dialog?.length || 0,
+      hasFormattedSSML: Boolean(formattedSSML),
+      formattedSSMLLength: formattedSSML?.length || 0,
+      hasReportItems: Boolean(assessmentData?.report_items),
+      reportItemsCount: assessmentData?.report_items?.length || 0,
+      hasChartData: Boolean(assessmentData?.report_items?.[0]?.data),
+      chartDataPointsCount: assessmentData?.report_items?.[0]?.data?.length || 0
+    });
 
     return (
       <Tabs defaultIndex={4}>
@@ -268,39 +297,69 @@ const NightscoutComponent = ({
           {/* Audio player only shows when processing is complete and URL exists */}
           {assessmentData?.podcastResult?.status === 'done' && getCurrentPodcastResult()?.url && (
             <>
+              <h2 className="text-xl font-bold mb-2">Podcast</h2>
               <LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
-              <div className="prose dark:prose-invert max-w-none">
-                <ReactMarkdown>{ssmlToMarkdown(assessmentData?.ssml_dialog || '')}</ReactMarkdown>
+
+              <div className="my-4">
+                <h2 className="text-xl font-bold mb-2">Transcript</h2>
+                <div className="prose dark:prose-invert max-w-none">
+                  {assessmentData?.ssml_dialog ? (
+                    <ReactMarkdown>{ssmlToMarkdown(assessmentData.ssml_dialog)}</ReactMarkdown>
+                  ) : (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800">
+                      <p className="font-medium">No transcript available</p>
+                      <p className="text-sm mt-1">The SSML dialog data may not have been properly saved.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}
 
           {/* Debug viewer if needed */}
-
           {assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
             <DebugInterfaceViewer data={assessmentData.podcastResult} />
           )}
         </TabPanel>
         <TabPanel>
-          {/* StatusBadge will show processing state or error, and disappear when done */}
-          <h1>Charts</h1>
+          <h2 className="text-xl font-bold mb-2">Charts</h2>
           {assessmentData?.podcastResult?.status && <PodcastStatusBadge status={assessmentData.podcastResult.status} />}
-          {/* Audio player only shows when processing is complete and URL exists */}
-          {assessmentData?.podcastResult?.status === 'done' && getCurrentPodcastResult()?.url && (
-            <>
-              <LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
-              <div className="prose dark:prose-invert max-w-none">
-                {/* Conditionally render only if assessmentData.charts exists and is truthy */}
-                {assessmentData?.report_items && assessmentData.report_items.length > 0 ? (
-                  <div key={'chart-0'}>
-                    <AgpChart data={assessmentData.report_items[0].data} units={assessmentData.preferred_units!} />
-                  </div>
-                ) : (
-                  <p>No charts to display.</p>
-                )}
-              </div>
-            </>
+          
+          {/* Debug information for chart data */}
+          <div className="mb-4 p-2 bg-gray-100 dark:bg-gray-800 rounded text-sm">
+            <div>Report Items: {assessmentData?.report_items ? `${assessmentData.report_items.length} items` : 'None'}</div>
+            <div>Chart Data Points: {assessmentData?.report_items?.[0]?.data ? `${assessmentData.report_items[0].data.length} points` : 'None'}</div>
+            <div>Preferred Units: {assessmentData?.preferred_units || 'Not set'}</div>
+          </div>
+          
+          {assessmentData?.report_items && 
+           assessmentData.report_items.length > 0 && 
+           assessmentData.report_items[0]?.data && 
+           assessmentData.report_items[0].data.length > 0 ? (
+            <div className="mt-4" key={'chart-0'}>
+              <AgpChart 
+                data={assessmentData.report_items[0].data} 
+                units={assessmentData.preferred_units || 'mg/dl'} 
+              />
+            </div>
+          ) : (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800">
+              <p className="font-medium">No chart data available</p>
+              <p className="text-sm mt-1">The chart data may not have been properly saved or is missing.</p>
+            </div>
           )}
+          
+          {/* Add raw data visualization for debugging */}
+          <div className="mt-6">
+            <details className="border rounded-md p-2 bg-gray-50 dark:bg-gray-800">
+              <summary className="font-medium cursor-pointer">Show Raw Chart Data (Debug)</summary>
+              <pre className="mt-2 p-3 bg-gray-100 dark:bg-gray-900 rounded-md overflow-auto max-h-96 text-xs">
+                {assessmentData?.report_items && assessmentData.report_items.length > 0 ? 
+                  JSON.stringify(assessmentData.report_items[0], null, 2).substring(0, 1000) + '...' : 
+                  'No chart data available'}
+              </pre>
+            </details>
+          </div>
 
           {/* Debug viewer if needed */}
           {assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
