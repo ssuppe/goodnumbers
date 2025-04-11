@@ -20,7 +20,6 @@ import { fetchNightscoutData } from '@/actions/nightscoutActions';
 import { ssmlToMarkdown } from '@/utils/ssml-client';
 import { checkPodcastStatus } from '@/actions/gemini/geminiActions';
 import PodcastStatusBadge from './PodcastStatusBadge';
-import { AgpChart } from '../charts/AgpChart';
 import { ReportItemDisplay } from '../charts/ReportItemDisplay';
 import Headline from '../atoms/Headline';
 import WidgetWrapper from '../atoms/WidgetWrapper';
@@ -329,11 +328,16 @@ const NightscoutComponent = ({
           )}
         </TabPanel>
         <TabPanel>
-          <h2 className="text-xl font-bold mb-2">Charts</h2>
           {assessmentData?.podcastResult?.status && <PodcastStatusBadge status={assessmentData.podcastResult.status} />}
 
           {assessmentData?.report_items && assessmentData.report_items.length > 0 ? (
             <div className="mt-4">
+              {assessmentData?.podcastResult?.status === 'done' && getCurrentPodcastResult()?.url && (
+                <>
+                  <LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
+                </>
+              )}
+
               {assessmentData.report_items.map((reportItem, index) => (
                 <ReportItemDisplay
                   key={`report-item-${index}`}
@@ -341,7 +345,7 @@ const NightscoutComponent = ({
                   units={assessmentData.preferred_units || 'mg/dl'}
                   patientLowGoal={assessmentData.patient_range?.target_low}
                   patientHighGoal={assessmentData.patient_range?.target_high}
-                  title={index === 0 ? 'Weekly Glucose Patterns' : `Chart ${index + 1}`}
+                  title={index === 0 ? 'Weekly Overview' : `Chart ${index + 1}`}
                 />
               ))}
             </div>
