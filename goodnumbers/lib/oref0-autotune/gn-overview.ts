@@ -136,6 +136,121 @@ function getLowPercentageUserInsight(lowPercentage: number): AssessmentInsight {
   return { note: note, priority: priority };
 }
 
+/**
+ * Calculate the Glucose Management Indicator (GMI) based on average glucose.
+ * Formula: 3.31 + (0.02392 × mean glucose in mg/dL)
+ * @param avgGlucose Average glucose in mg/dL
+ * @returns GMI value as a percentage
+ */
+function calculateGMI(avgGlucose: number): number {
+  return 3.31 + (0.02392 * avgGlucose);
+}
+
+/**
+ * Generate AI (clinically oriented) insight for GMI value
+ * @param gmi Calculated GMI value
+ * @returns AssessmentInsight object
+ */
+function getGMIAIInsight(gmi: number): AssessmentInsight {
+  let note = `* The patient's estimated Glucose Management Indicator (GMI) based on this week's data is ${gmi.toFixed(1)}%. Note that GMI is typically calculated using 2-3 weeks of data, so this value should be considered an approximation based on limited data and not used for definitive clinical decisions. `;
+  let priority: InsightPriority;
+
+  switch (true) {
+    case gmi < 6.5:
+      note += `This GMI is within the target range recommended by the American Diabetes Association for most adults with type 1 diabetes (less than 7.0%). However, it's important to assess this alongside Time in Range and time spent in hypoglycemia to ensure the patient isn't experiencing frequent lows to achieve this number.`;
+      priority = InsightPriority.IMPORTANT;
+      break;
+    case gmi >= 6.5 && gmi < 7.0:
+      note += `This GMI is within the target range recommended by the American Diabetes Association for most adults with type 1 diabetes (less than 7.0%). This indicates relatively good glycemic control.`;
+      priority = InsightPriority.IMPORTANT;
+      break;
+    case gmi >= 7.0 && gmi < 8.0:
+      note += `This GMI is slightly above the general target of less than 7.0% recommended by the American Diabetes Association for most adults with type 1 diabetes. Consider adjustments to improve overall glycemic control, while being mindful of hypoglycemia risk.`;
+      priority = InsightPriority.IMPORTANT;
+      break;
+    case gmi >= 8.0 && gmi < 9.0:
+      note += `This GMI is significantly above the general target range. The patient may have a higher risk of long-term complications. A comprehensive review of the diabetes management plan is recommended.`;
+      priority = InsightPriority.SERIOUS;
+      break;
+    default: // >= 9.0
+      note += `This GMI is well above target range and indicates poor glycemic control. The patient is at significant risk for diabetes-related complications. An urgent review of the diabetes management approach is strongly recommended.`;
+      priority = InsightPriority.SERIOUS;
+      break;
+  }
+  
+  return { note: note, priority: priority };
+}
+
+/**
+ * Generate patient-friendly insight for GMI value
+ * @param gmi Calculated GMI value
+ * @returns AssessmentInsight object
+ */
+function getGMIUserInsight(gmi: number): AssessmentInsight {
+  let note = `Your estimated Glucose Management Indicator (GMI) based on this week's data is ${gmi.toFixed(1)}%. GMI is similar to an A1C test but calculated from your CGM data. While GMI typically uses 2-3 weeks of data, this estimate is based only on your past week, so it should be viewed as a general indicator rather than a substitute for lab-measured A1C. `;
+  let priority: InsightPriority;
+
+  switch (true) {
+    case gmi < 6.5:
+      note += `This is below the general target of 7.0% for adults with type 1 diabetes, which is excellent. However, we should also look at your Time in Range and time spent low to make sure you're not having too many low blood sugars to achieve this number.`;
+      priority = InsightPriority.IMPORTANT;
+      break;
+    case gmi >= 6.5 && gmi < 7.0:
+      note += `This is within the generally recommended target of less than 7.0% for adults with type 1 diabetes. Great job maintaining this level of control!`;
+      priority = InsightPriority.IMPORTANT;
+      break;
+    case gmi >= 7.0 && gmi < 8.0:
+      note += `This is a bit above the general target of less than 7.0%. Small adjustments to your diabetes management plan may help bring this down, while still being careful to avoid low blood sugars.`;
+      priority = InsightPriority.IMPORTANT;
+      break;
+    case gmi >= 8.0 && gmi < 9.0:
+      note += `This is above the recommended target range. Higher GMI values are associated with an increased risk of long-term diabetes complications. Let's work together with your healthcare provider to identify strategies to improve your blood sugar control.`;
+      priority = InsightPriority.SERIOUS;
+      break;
+    default: // >= 9.0
+      note += `This is well above the recommended target range. It's important to work closely with your healthcare provider to make adjustments to your diabetes management plan to help lower your average blood sugars and reduce your risk of complications.`;
+      priority = InsightPriority.SERIOUS;
+      break;
+  }
+  
+  return { note: note, priority: priority };
+}
+
+/**
+ * Generate insights that correlate GMI with Time in Range to provide context
+ * @param gmi Calculated GMI value
+ * @param timeInRange Percentage of time in range
+ * @returns Object with AI and user insights
+ */
+function getGMIvsTimeInRangeInsight(gmi: number, timeInRange: number): { ai_insight: AssessmentInsight; user_insight: AssessmentInsight } {
+  let ai_note = '';
+  let user_note = '';
+  let priority: InsightPriority;
+  
+  if (gmi < 7.0 && timeInRange < 70) {
+    ai_note = `* The patient's GMI (${gmi.toFixed(1)}%) suggests good control, but the Time in Range (${timeInRange}%) is below target. This combination may indicate glycemic variability or frequent hypoglycemia compensating for hyperglycemia. It's important to investigate patterns of highs and lows rather than focusing solely on average values.`;
+    user_note = `Your GMI looks good at ${gmi.toFixed(1)}%, but your Time in Range is lower than target at ${timeInRange}%. This could mean you're having some very high and some very low readings that are averaging out to a good GMI number. Reducing these swings would be beneficial for your overall diabetes management.`;
+    priority = InsightPriority.SERIOUS;
+  } else if (gmi >= 7.0 && timeInRange >= 70) {
+    ai_note = `* The patient's GMI (${gmi.toFixed(1)}%) is above target, yet Time in Range (${timeInRange}%) is good. This suggests periods of significant hyperglycemia without corresponding lows that may be elevating the overall average without drastically reducing Time in Range.`;
+    user_note = `Your Time in Range looks good at ${timeInRange}%, but your GMI is higher than target at ${gmi.toFixed(1)}%. This might mean you're having some periods of very high blood sugar that are affecting your overall average. Focusing on reducing these high periods could help improve your long-term outcomes.`;
+    priority = InsightPriority.IMPORTANT;
+  } else if (gmi < 7.0 && timeInRange >= 70) {
+    ai_note = `* The patient shows excellent glycemic control with a GMI of ${gmi.toFixed(1)}% and Time in Range of ${timeInRange}%. This combination suggests stable glucose values with minimal extreme highs or lows.`;
+    user_note = `Great job! Both your GMI (${gmi.toFixed(1)}%) and Time in Range (${timeInRange}%) are meeting targets, indicating good overall diabetes management with stable glucose levels.`;
+    priority = InsightPriority.IMPORTANT;
+  } else {
+    ai_note = `* Both the patient's GMI (${gmi.toFixed(1)}%) and Time in Range (${timeInRange}%) indicate opportunities for improved glycemic control. This likely represents significant periods of hyperglycemia that should be addressed to reduce long-term complication risk.`;
+    user_note = `Both your GMI (${gmi.toFixed(1)}%) and Time in Range (${timeInRange}%) suggest there's room to improve your blood sugar management. Working with your healthcare provider to adjust your treatment plan could help bring these numbers closer to target ranges.`;
+    priority = InsightPriority.SERIOUS;
+  }
+  
+  return {
+    ai_insight: { note: ai_note, priority: priority },
+    user_insight: { note: user_note, priority: priority }
+  };
+}
+
 function getTIRInsight(
   compositeday_analysis: AnalysisResult,
   preferred_units: GlucoseUnits,
@@ -193,6 +308,34 @@ export async function getWeekOverview(
     note: `Average weeky glucose: ${u(compositeday_analysis.avgGlucose, preferred_units)}\n`,
     priority: InsightPriority.ALWAYS_INCLUDE,
   });
+  
+  // Calculate GMI based on average glucose
+  const gmi = calculateGMI(compositeday_analysis.avgGlucose);
+  
+  // Add GMI basic information to insights
+  ai_insights.push({
+    note: `  * The patient's estimated Glucose Management Indicator (GMI) is ${gmi.toFixed(1)}%\n`,
+    priority: InsightPriority.ALWAYS_INCLUDE,
+  });
+
+  user_insights.push({
+    note: `Estimated GMI: ${gmi.toFixed(1)}%\n`,
+    priority: InsightPriority.ALWAYS_INCLUDE,
+  });
+  
+  // Add detailed GMI insights
+  const gmiAIInsight = getGMIAIInsight(gmi);
+  const gmiUserInsight = getGMIUserInsight(gmi);
+  
+  ai_insights.push(gmiAIInsight);
+  user_insights.push(gmiUserInsight);
+  
+  // Add correlation insights between GMI and Time in Range
+  const { ai_insight: gmiTirAIInsight, user_insight: gmiTirUserInsight } = 
+    getGMIvsTimeInRangeInsight(gmi, compositeday_analysis.inRangePercentage);
+  
+  ai_insights.push(gmiTirAIInsight);
+  user_insights.push(gmiTirUserInsight);
 
   /////////////////////////////////////////////////////////////////////////////
   // Average, based on absolute recommendations (not patient relative ones)
