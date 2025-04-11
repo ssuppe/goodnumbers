@@ -4,6 +4,7 @@ import * as React from 'react';
 import { GlucoseUnits } from '@/types/nightscout';
 import ReactECharts from 'echarts-for-react';
 import * as echarts from 'echarts/core';
+import { MG_DL_PER_MMOL_L } from './AgpWeeklyChart-data';
 
 /**
  * Defines the structure for a single data point in the AGP chart's data array.
@@ -38,7 +39,7 @@ export interface AgpChartProps {
    * Should contain exactly 48 points for a full 24-hour cycle (one per 30 mins).
    */
   data: AgpDataPoint[];
-  /** Specifies the units ('mg/dl' or 'mmol/l') for the glucose values in the `data` array. */
+  /** Specifies the units ('mg/dl' or 'mmol/L') for the glucose values in the `data` array. */
   units: GlucoseUnits;
   /** Optional patient-specific low threshold */
   patientLowGoal?: number;
@@ -81,8 +82,12 @@ export function AgpChart({
   };
 
   // Clinical target ranges (always shown)
-  const clinicalLow = units === 'mmol/L' ? 3.9 : 70;
-  const clinicalHigh = units === 'mmol/L' ? 10 : 180;
+  // debugger;
+  const clinicalLow = units == 'mmol/L' ? 3.9 : 70;
+  const clinicalHigh = units == 'mmol/L' ? 10 : 180;
+
+  patientLowGoal = patientLowGoal && units == 'mmol/L' ? patientLowGoal / MG_DL_PER_MMOL_L : patientLowGoal;
+  patientHighGoal = patientHighGoal && units == 'mmol/L' ? patientHighGoal / MG_DL_PER_MMOL_L : patientHighGoal;
 
   // Prepare data for ECharts
   const timeData = data.map((item) => item.time);

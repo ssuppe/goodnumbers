@@ -9,7 +9,7 @@ export function u(sgv: number, preferred_units: GlucoseUnits): string {
   switch (preferred_units) {
     case 'mg/dl':
       return `${Math.round(sgv)}`;
-    case 'mmol/l':
+    case 'mmol/L':
       return `${(Math.round((sgv / 18) * 10) / 10).toFixed(1)}`;
     default:
       // This should never happen due to TypeScript, but best to be safe

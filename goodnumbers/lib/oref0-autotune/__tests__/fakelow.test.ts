@@ -52,7 +52,7 @@ describe('Fake Dawn Phenomenon', () => {
 
         const morningRiseAnalysis = analyzeMorningRises(all_prepped_glucose, patient_range);
 
-        var notes = getDawnPhenomenonNotes(morningRiseAnalysis, 7, 'mmol/l');
+        var notes = getDawnPhenomenonNotes(morningRiseAnalysis, 7, 'mmol/L');
 
         console.log('exit');
 
