@@ -78,34 +78,49 @@ export async function generateAssessments(
   id: string,
   preferred_units: GlucoseUnits,
 ): Promise<AssessmentData | null> {
+  // 1. INITIALIZATION: Create a complete initial state object with all required fields
+  // This ensures we have a well-formed object throughout the entire process
+  const initialAssessmentData: AssessmentData = {
+    valid: true,
+    notes: '',
+    assessment1: '',
+    assessment2: '',
+    title: '',
+    description: '',
+    ssml_dialog: '',
+    id: id,
+    preferred_units: preferred_units,
+    report_items: [],
+    patient_range: null,
+    podcastResult: null,
+  };
+
+  // 2. DATA PREPARATION: Decompress and prepare Nightscout data
   const nsData: NightscoutData = {
     entries: decompress(cEntries),
     treatments: decompress(cTreatments),
     profiles: decompress(cProfiles),
   };
 
-  //////////////////////////////////////////////////////////////////////////////
   // Sort nsData entries and treatments
   nsData.entries.sort((a, b) => a.date - b.date);
   nsData.treatments.sort((a, b) => a.date - b.date);
 
-  //////////////////////////////////////////////////////////////////////////////
-  // PROFILE: Autotune only uses a single profile over all days, so I will replicate here
-  /////////////////////////////////////////////////////////////////////////////
-
   try {
-    // Step 1: Generate Notes
-    ///////////////////////////////////////////////////////////////////////////
-    // Meal analysis
-    ///////////////////////////////////////////////////////////////////////////
+    // 3. ANALYSIS PHASE: Gather all insights and prepare report data
+    logger.info('Step 1: Generate notes');
+    
+    // Extract date range information
     const firstDate = new Date(nsData.entries[0].date).toISOString().split('T')[0];
     const endDate = new Date(nsData.entries[nsData.entries.length - 1].date).toISOString().split('T')[0];
     const numDays = Math.round((new Date(endDate).getTime() - new Date(firstDate).getTime()) / (1000 * 60 * 60 * 24));
 
+    // Get profile data
     let at_profileData: ATProfileSettings[] | null = getBestProfile(nsData.profiles);
     let profile_data: ATProfileSettings = at_profileData![0];
     let pumpprofile_data: ATProfileSettings = at_profileData![1];
 
+    // Prepare glucose data for analysis
     const all_prepped_glucose: AutotunePreppedData = gn_autotune_prep(
       nsData.entries,
       nsData.treatments,
@@ -113,127 +128,124 @@ export async function generateAssessments(
       pumpprofile_data,
     );
 
-    logger.info('Step 1: Generate notes');
+    // Generate AI notes for the report
     var ai_notes = '';
     ai_notes += `# Patient notes: ${firstDate} to ${endDate}\n`;
     ai_notes += `Please note: The patient's preferred blood glucose units are ${preferred_units}.\n`;
     ai_notes += '\n';
 
+    // Analyze the data
     const full_analysis: FullAnalysisResult = analyzeTimeOfDay(all_prepped_glucose);
     const patient_range: PatientRange = getPatientsRange(full_analysis.overall);
 
+    // Weekly overview section
     ai_notes += '## Weekly overview\n\n';
     var weekly_overview_report: ReportItem = {
       insights: [],
       data: [],
     };
+    
+    // Get insights from the weekly overview
     let { ai_insights, user_insights } = await getWeekOverview(full_analysis.overall, preferred_units, patient_range);
-
     let weekly_overview_data: AgpDataPoint[] = await generateAgpData(all_prepped_glucose, preferred_units);
-
     weekly_overview_report.data = weekly_overview_data;
 
-    ///////////////////////////////
-    // If there are critical insights at this phase, this app shouldn't be used
-    // For now, we will return those critical insights (which also state they
-    // need to see a medical professional), and the podcast will tell them so.
-    ///////////////////////////////
-    if (await hasCriticalInsights(ai_insights)) {
-      let critical_insights: AssessmentInsight[] | null = await filterCriticalInsights(ai_insights);
-
-      weekly_overview_report.insights = critical_insights;
-      ai_notes += await insightsToNotes(critical_insights);
-      var assessment2: AssessmentData = {
-        valid: true,
-        notes: ai_notes,
-        assessment1: '',
-        assessment2: '',
-        id: id,
-        preferred_units: preferred_units,
-        report_items: [weekly_overview_report],
-      };
-    } else {
-      ai_notes += await insightsToNotes(ai_insights);
-      weekly_overview_report.insights = user_insights;
-      ///////////////////////////////////////////////////////////////////////////
-      // Dawn phenomenom
-      ///////////////////////////////////////////////////////////////////////////
-      // notes += '\n\n';
-      // notes += '# Dawn phenomenon analysis\n';
-      // // const dawn_phenom_data = checkDawnPhenomenon(all_prepped_glucose, patient_range, profile_data);
-      // const morningRiseAnalysis = analyzeMorningRises(all_prepped_glucose, patient_range);
-
-      // if (morningRiseAnalysis.cleanRises.length > 0) {
-      //   let dawn_insights = getDawnPhenomenonNotes(morningRiseAnalysis, numDays, preferred_units, patient_range);
-
-      //   notes += insightsToNotes(dawn_insights);
-      // }
-
-      var assessment1: AssessmentData = await getAssessment({
-        valid: true,
-        notes: ai_notes,
-        template_num: 1,
-        id: id,
-        preferred_units: preferred_units,
-        report_items: [weekly_overview_report],
-      });
-
-      var assessment2: AssessmentData = await getAssessment({
-        valid: true,
-        notes: ai_notes,
-        assessment1: assessment1.assessment1,
-        template_num: 2,
-        id: id,
-        preferred_units: preferred_units,
-        report_items: [weekly_overview_report],
-      });
-    }
-
-    let podcast_info: AssessmentData = await generatePodcastText(assessment2);
-
-    // Make sure report_items is properly assigned
-    podcast_info.report_items = [weekly_overview_report];
-
-    podcast_info.ssml_dialog = podcast_info
-      .ssml_dialog!.replace('mg/dl', '')
-      .replace('mmol/l', '')
-      .replace('mmol/L', '')
-      .replace('TIR', 'time in range')
-      .replace('TTIR', 'time in tight range')
-      .replace('TAR', 'time above range')
-      .replace('TBR', 'time below range')
-      .replace('ISF', 'insulin sensitivity ratio')
-      .replace('I:C', 'insulin to carb ratio');
-
-    // Step 5: Generate title and description
-    let podcast_infodesc: AssessmentData = await generatePodcastDescription(podcast_info);
-
-    // Ensure we don't lose the report_items when getting description
-    if (!podcast_infodesc.report_items && podcast_info.report_items) {
-      podcast_infodesc.report_items = podcast_info.report_items;
-    }
-
-    // Ensure we don't lose the ssml_dialog when getting description
-    if (!podcast_infodesc.ssml_dialog && podcast_info.ssml_dialog) {
-      podcast_infodesc.ssml_dialog = podcast_info.ssml_dialog;
-    }
-
-    // Step 6: Start generation of audio
-    const podcastResult: PodcastGenerateResult = await generatePodcastAudio(podcast_infodesc);
-
-    // Create our final return object, ensuring nothing is lost
-    const finalPodcastInfo: AssessmentData = {
-      ...podcast_infodesc, // Include title and description
-      podcastResult: podcastResult, // Add podcast result
-      report_items: podcast_info.report_items, // Ensure report_items are included
-      ssml_dialog: podcast_info.ssml_dialog, // Ensure ssml_dialog is included
-      preferred_units: podcast_info.preferred_units, // Ensure preferred_units is included
-      patient_range: patient_range, // Include patient_range
+    // 4. BUILD BASE STATE: Update initialAssessmentData with analysis results
+    let currentAssessmentData: AssessmentData = {
+      ...initialAssessmentData,
+      notes: ai_notes,
+      report_items: [weekly_overview_report],
+      patient_range: patient_range,
     };
 
-    return finalPodcastInfo;
+    // 5. CRITICAL PATH CHECK: Handle critical insights separately
+    if (await hasCriticalInsights(ai_insights)) {
+      logger.info('Critical insights detected - using simplified assessment path');
+      let critical_insights: AssessmentInsight[] | null = await filterCriticalInsights(ai_insights);
+      
+      // Update assessment data with critical insights
+      weekly_overview_report.insights = critical_insights;
+      const criticalNotes = await insightsToNotes(critical_insights);
+      
+      // Return final assessment with critical insights
+      return {
+        ...currentAssessmentData,
+        notes: currentAssessmentData.notes + criticalNotes,
+        report_items: [weekly_overview_report],
+      };
+    }
+
+    // STANDARD PATH: No critical insights detected
+    // Add user insights to the report
+    ai_notes += await insightsToNotes(ai_insights);
+    weekly_overview_report.insights = user_insights;
+    
+    // Update current state with full notes
+    currentAssessmentData = {
+      ...currentAssessmentData,
+      notes: ai_notes,
+      report_items: [weekly_overview_report],
+    };
+
+    // 6. TRANSFORMATION CHAIN: Apply transformations while explicitly preserving state
+    logger.info('Step 2: Generate assessment 1');
+    // Pass 1: Get first assessment (preserving all fields)
+    const assessmentWithPass1 = await getAssessment({
+      ...currentAssessmentData,
+      template_num: 1,
+    });
+    
+    logger.info('Step 3: Generate assessment 2');
+    // Pass 2: Get second assessment (preserving all fields)
+    const assessmentWithPass2 = await getAssessment({
+      ...assessmentWithPass1,
+      template_num: 2,
+    });
+    
+    logger.info('Step 4: Generate podcast text');
+    // Generate podcast text (preserving all fields)
+    const assessmentWithPodcastText = await generatePodcastText(assessmentWithPass2);
+    
+    // Clean up the SSML with explicit state preservation
+    const assessmentWithCleanSsml = {
+      ...assessmentWithPodcastText,
+      ssml_dialog: assessmentWithPodcastText.ssml_dialog!
+        .replace('mg/dl', '')
+        .replace('mmol/l', '')
+        .replace('mmol/L', '')
+        .replace('TIR', 'time in range')
+        .replace('TTIR', 'time in tight range')
+        .replace('TAR', 'time above range')
+        .replace('TBR', 'time below range')
+        .replace('ISF', 'insulin sensitivity ratio')
+        .replace('I:C', 'insulin to carb ratio'),
+      // Ensure report_items is preserved (in case it was lost)
+      report_items: assessmentWithPodcastText.report_items || [weekly_overview_report]
+    };
+
+    logger.info('Step 5: Generate podcast description');
+    // Generate podcast description (preserving all fields)
+    const assessmentWithDescription = await generatePodcastDescription(assessmentWithCleanSsml);
+    
+    logger.info('Step 6: Generate podcast audio');
+    // Generate audio
+    const podcastResult: PodcastGenerateResult = await generatePodcastAudio(assessmentWithDescription);
+
+    // 7. FINAL STATE ASSEMBLY: Create the final return object with all required fields
+    const finalAssessmentData: AssessmentData = {
+      ...assessmentWithDescription,    // Base: include all fields from previous state
+      podcastResult: podcastResult,    // Add: new podcast result
+      // Explicitly list critical fields to ensure they're present
+      report_items: assessmentWithDescription.report_items || assessmentWithCleanSsml.report_items,
+      ssml_dialog: assessmentWithDescription.ssml_dialog || assessmentWithCleanSsml.ssml_dialog,
+      preferred_units: preferred_units,
+      patient_range: patient_range,
+    };
+
+    return finalAssessmentData;
   } catch (error) {
-    logger.error('Failed to generate assessments: ${error}');
+    // Improved error message with template literals fixed
+    logger.error(`Failed to generate assessments: ${error}`);
     throw new Error(`Failed to generate assessments: ${error}`);
   }
 }
