@@ -114,9 +114,9 @@ export interface GlucoseDatum {
   glucose: number;
   date: number;
   dateString: string;
-  avgDelta: string | number; // It's stored as string after toFixed(2)
+  avgDelta: number;
   BGI: number;
-  deviation: string | number; // It's stored as string after toFixed(2)
+  deviation: number;
 }
 
 // CSF specific glucose datum
