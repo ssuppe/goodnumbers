@@ -132,7 +132,7 @@ const NightscoutComponent = ({
       ...prev,
       nightscout_url: getCookieC<string>('url') || '',
       nightscout_token: getCookieC<string>('token') || '',
-      preferred_units: getCookieC<GlucoseUnits>('units') || 'mg/dl',
+      preferred_units: getCookieC<GlucoseUnits>('preferred_units') || 'mg/dl',
     }));
   }, [debugMode]);
 
@@ -189,7 +189,7 @@ const NightscoutComponent = ({
     }
     setCookieC<string>('url', formData.nightscout_url);
     setCookieC<string>('token', formData.nightscout_token);
-    setCookieC<GlucoseUnits>('units', formData.preferred_units); // Add this line
+    setCookieC<GlucoseUnits>('preferred_units', formData.preferred_units); // Add this line
 
     e.preventDefault();
     startLoading('Collecting Nightscout data...');
@@ -387,7 +387,7 @@ const NightscoutComponent = ({
                   units={assessmentData.preferred_units || 'mg/dl'}
                   patientLowGoal={assessmentData.patient_range?.target_low}
                   patientHighGoal={assessmentData.patient_range?.target_high}
-                  title={index === 0 ? "Weekly Glucose Patterns" : `Chart ${index + 1}`}
+                  title={index === 0 ? 'Weekly Glucose Patterns' : `Chart ${index + 1}`}
                 />
               ))}
             </div>
@@ -398,14 +398,18 @@ const NightscoutComponent = ({
             </div>
           )}
 
+          {debugMode && assessmentData?.report_items && <DebugInterfaceViewer data={assessmentData.report_items} />}
+
           {/* Add raw data visualization for debugging */}
           {debugMode && (
             <div className="mt-6">
               {/* Debug information for chart data */}
               <div className="mb-4 p-2 bg-gray-100 dark:bg-gray-800 rounded text-sm">
                 <div>
-                  Report Items: {assessmentData?.report_items ? `${assessmentData.report_items.length} items` : 'None'}
+                  Report Item count:{' '}
+                  {assessmentData?.report_items ? `${assessmentData.report_items.length} items` : 'None'}
                 </div>
+                <div>Report Items: {JSON.stringify(assessmentData?.report_items)}</div>
                 <div>
                   Chart Data Points:{' '}
                   {assessmentData?.report_items?.[0]?.data

@@ -154,6 +154,7 @@ export async function generateAssessments(
       };
     } else {
       ai_notes += await insightsToNotes(ai_insights);
+      weekly_overview_report.insights = user_insights;
       ///////////////////////////////////////////////////////////////////////////
       // Dawn phenomenom
       ///////////////////////////////////////////////////////////////////////////
@@ -193,10 +194,6 @@ export async function generateAssessments(
     // Make sure report_items is properly assigned
     podcast_info.report_items = [weekly_overview_report];
 
-
-
-
-
     podcast_info.ssml_dialog = podcast_info
       .ssml_dialog!.replace('mg/dl', '')
       .replace('mmol/l', '')
@@ -231,7 +228,7 @@ export async function generateAssessments(
       report_items: podcast_info.report_items, // Ensure report_items are included
       ssml_dialog: podcast_info.ssml_dialog, // Ensure ssml_dialog is included
       preferred_units: podcast_info.preferred_units, // Ensure preferred_units is included
-      patient_range: patient_range // Include patient_range
+      patient_range: patient_range, // Include patient_range
     };
 
     return finalPodcastInfo;

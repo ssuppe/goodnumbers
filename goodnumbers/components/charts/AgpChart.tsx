@@ -59,7 +59,7 @@ export function AgpChart({
   units,
   patientLowGoal,
   patientHighGoal,
-  title = "Weekly overview (Ambulatory Glucose Profile)"
+  title = 'Weekly overview (Ambulatory Glucose Profile)',
 }: AgpChartProps) {
   // Provide a fallback message if data is not available
   if (!data || data.length === 0) {
@@ -76,51 +76,51 @@ export function AgpChart({
       return 'N/A'; // Display for missing data points
     }
     // Show 1 decimal place for mmol/L, 0 for mg/dL
-    const fixedDecimals = units === 'mmol/l' ? 1 : 0;
+    const fixedDecimals = units === 'mmol/L' ? 1 : 0;
     return value.toFixed(fixedDecimals);
   };
 
   // Clinical target ranges (always shown)
-  const clinicalLow = units === 'mmol/l' ? 3.9 : 70;
-  const clinicalHigh = units === 'mmol/l' ? 10 : 180;
+  const clinicalLow = units === 'mmol/L' ? 3.9 : 70;
+  const clinicalHigh = units === 'mmol/L' ? 10 : 180;
 
   // Prepare data for ECharts
-  const timeData = data.map(item => item.time);
-  
+  const timeData = data.map((item) => item.time);
+
   // Extract series data, handling null values
-  const medianData = data.map(item => item.median ?? '-');
-  const meanData = data.map(item => item.mean ?? '-');
-  
+  const medianData = data.map((item) => item.median ?? '-');
+  const meanData = data.map((item) => item.mean ?? '-');
+
   // Create horizontal line series data - same value for all timepoints
   const clinicalLowData = timeData.map(() => clinicalLow);
   const clinicalHighData = timeData.map(() => clinicalHigh);
-  
+
   // Patient goal data if provided
   const patientLowGoalData = patientLowGoal !== undefined ? timeData.map(() => patientLowGoal) : [];
   const patientHighGoalData = patientHighGoal !== undefined ? timeData.map(() => patientHighGoal) : [];
 
   // Create data arrays for the confidence bands
-  const p5_95Data = data.map(item => {
+  const p5_95Data = data.map((item) => {
     const p5 = item.p5 ?? null;
     const p95 = item.p95 ?? null;
-    
+
     // We need both values to create a valid band
     if (p5 === null || p95 === null) {
       return [item.time, null, null];
     }
-    
+
     return [item.time, p5, p95];
   });
-  
-  const p25_75Data = data.map(item => {
+
+  const p25_75Data = data.map((item) => {
     const p25 = item.p25 ?? null;
     const p75 = item.p75 ?? null;
-    
+
     // We need both values to create a valid band
     if (p25 === null || p75 === null) {
       return [item.time, null, null];
     }
-    
+
     return [item.time, p25, p75];
   });
 
@@ -131,8 +131,8 @@ export function AgpChart({
       left: 'center',
       textStyle: {
         fontWeight: 'normal',
-        fontSize: 16
-      }
+        fontSize: 16,
+      },
     },
     tooltip: {
       trigger: 'axis',
@@ -149,30 +149,30 @@ export function AgpChart({
         content += `<div>5th-95th: [${formatValue(point.p5)} - ${formatValue(point.p95)}] ${units}</div>`;
 
         return content;
-      }
+      },
     },
     grid: {
       left: '3%',
       right: '4%',
       bottom: '3%',
-      containLabel: true
+      containLabel: true,
     },
     xAxis: {
       type: 'category',
       boundaryGap: false,
       data: timeData,
       axisLine: {
-        show: false
+        show: false,
       },
       axisTick: {
-        show: false
+        show: false,
       },
       axisLabel: {
         interval: function (index: number, value: string) {
           // Show every 2 hours (4 labels)
           return value.endsWith(':00') && parseInt(value.split(':')[0]) % 2 === 0;
-        }
-      }
+        },
+      },
     },
     yAxis: {
       type: 'value',
@@ -180,106 +180,106 @@ export function AgpChart({
       nameLocation: 'middle',
       nameGap: 50,
       axisLine: {
-        show: false
+        show: false,
       },
       axisTick: {
-        show: false
+        show: false,
       },
       splitLine: {
         lineStyle: {
-          type: 'dashed'
-        }
-      }
+          type: 'dashed',
+        },
+      },
     },
     series: [
       // 5th-95th percentile band (wider band, lighter color)
       {
         name: '5th-95th Percentile Band',
         type: 'custom',
-        renderItem: function(params: any, api: any) {
+        renderItem: function (params: any, api: any) {
           const xValue = api.value(0);
           if (xValue == null) return;
-          
+
           const lowerValue = api.value(1);
           const upperValue = api.value(2);
-          
+
           // Skip if any value is missing
           if (lowerValue == null || upperValue == null) {
             return;
           }
-          
+
           const xStart = params.coordSys.x;
           const xSize = params.coordSys.width;
           const xStep = xSize / timeData.length;
-          
+
           const x = api.coord([api.value(0), 0])[0];
           const y0 = api.coord([0, lowerValue])[1];
           const y1 = api.coord([0, upperValue])[1];
-          
+
           // Create polygon shape for the band
           return {
             type: 'polygon',
             shape: {
               points: [
-                [x - xStep/2, y0],
-                [x - xStep/2, y1],
-                [x + xStep/2, y1],
-                [x + xStep/2, y0]
-              ]
+                [x - xStep / 2, y0],
+                [x - xStep / 2, y1],
+                [x + xStep / 2, y1],
+                [x + xStep / 2, y0],
+              ],
             },
             style: {
               fill: 'rgba(120, 140, 180, 0.25)',
-              stroke: 'none'
-            }
+              stroke: 'none',
+            },
           };
         },
         data: p5_95Data,
-        z: 1
+        z: 1,
       },
-      
+
       // 25th-75th percentile band (narrower band, darker color)
       {
         name: '25th-75th Percentile Band',
         type: 'custom',
-        renderItem: function(params: any, api: any) {
+        renderItem: function (params: any, api: any) {
           const xValue = api.value(0);
           if (xValue == null) return;
-          
+
           const lowerValue = api.value(1);
           const upperValue = api.value(2);
-          
+
           // Skip if any value is missing
           if (lowerValue == null || upperValue == null) {
             return;
           }
-          
+
           const xStart = params.coordSys.x;
           const xSize = params.coordSys.width;
           const xStep = xSize / timeData.length;
-          
+
           const x = api.coord([api.value(0), 0])[0];
           const y0 = api.coord([0, lowerValue])[1];
           const y1 = api.coord([0, upperValue])[1];
-          
+
           // Create polygon shape for the band
           return {
             type: 'polygon',
             shape: {
               points: [
-                [x - xStep/2, y0],
-                [x - xStep/2, y1],
-                [x + xStep/2, y1],
-                [x + xStep/2, y0]
-              ]
+                [x - xStep / 2, y0],
+                [x - xStep / 2, y1],
+                [x + xStep / 2, y1],
+                [x + xStep / 2, y0],
+              ],
             },
             style: {
               fill: 'rgba(90, 110, 150, 0.35)',
-              stroke: 'none'
-            }
+              stroke: 'none',
+            },
           };
         },
         data: p25_75Data,
-        z: 2
+        z: 2,
       },
 
       // Mean line (less prominent)
@@ -290,10 +290,10 @@ export function AgpChart({
         lineStyle: {
           width: 1.5,
           type: 'dashed', // Dashed line for mean
-          color: 'rgba(70, 90, 130, 0.8)'
+          color: 'rgba(70, 90, 130, 0.8)',
         },
         data: meanData,
-        z: 3
+        z: 3,
       },
 
       // Median line (most prominent)
@@ -302,16 +302,16 @@ export function AgpChart({
         type: 'line',
         symbol: 'none',
         emphasis: {
-          focus: 'series'
+          focus: 'series',
         },
         lineStyle: {
           width: 2,
-          color: 'rgb(70, 90, 130)'
+          color: 'rgb(70, 90, 130)',
         },
         data: medianData,
-        z: 4
+        z: 4,
       },
-      
+
       // Clinical low threshold line
       {
         name: 'Clinical Low',
@@ -320,20 +320,20 @@ export function AgpChart({
         lineStyle: {
           width: 1,
           type: 'dashed',
-          color: '#ff4d4f'
+          color: '#ff4d4f',
         },
         data: clinicalLowData,
         z: 0,
         tooltip: {
-          show: false
+          show: false,
         },
         label: {
           show: true,
           position: 'end',
-          formatter: 'Low'
-        }
+          formatter: 'Low',
+        },
       },
-      
+
       // Clinical high threshold line
       {
         name: 'Clinical High',
@@ -342,62 +342,70 @@ export function AgpChart({
         lineStyle: {
           width: 1,
           type: 'dashed',
-          color: '#ff4d4f'
+          color: '#ff4d4f',
         },
         data: clinicalHighData,
         z: 0,
         tooltip: {
-          show: false
+          show: false,
         },
         label: {
           show: true,
           position: 'end',
-          formatter: 'High'
-        }
+          formatter: 'High',
+        },
       },
-      
+
       // Patient low goal line (if provided)
-      ...(patientLowGoalData.length > 0 ? [{
-        name: 'Patient Low Goal',
-        type: 'line',
-        symbol: 'none',
-        lineStyle: {
-          width: 1,
-          color: '#52c41a'
-        },
-        data: patientLowGoalData,
-        z: 0,
-        tooltip: {
-          show: false
-        },
-        label: {
-          show: true,
-          position: 'end',
-          formatter: 'Target Low'
-        }
-      }] : []),
-      
+      ...(patientLowGoalData.length > 0
+        ? [
+            {
+              name: 'Patient Low Goal',
+              type: 'line',
+              symbol: 'none',
+              lineStyle: {
+                width: 1,
+                color: '#52c41a',
+              },
+              data: patientLowGoalData,
+              z: 0,
+              tooltip: {
+                show: false,
+              },
+              label: {
+                show: true,
+                position: 'end',
+                formatter: 'Target Low',
+              },
+            },
+          ]
+        : []),
+
       // Patient high goal line (if provided)
-      ...(patientHighGoalData.length > 0 ? [{
-        name: 'Patient High Goal',
-        type: 'line',
-        symbol: 'none',
-        lineStyle: {
-          width: 1,
-          color: '#52c41a'
-        },
-        data: patientHighGoalData,
-        z: 0,
-        tooltip: {
-          show: false
-        },
-        label: {
-          show: true,
-          position: 'end',
-          formatter: 'Target High'
-        }
-      }] : [])
-    ]
+      ...(patientHighGoalData.length > 0
+        ? [
+            {
+              name: 'Patient High Goal',
+              type: 'line',
+              symbol: 'none',
+              lineStyle: {
+                width: 1,
+                color: '#52c41a',
+              },
+              data: patientHighGoalData,
+              z: 0,
+              tooltip: {
+                show: false,
+              },
+              label: {
+                show: true,
+                position: 'end',
+                formatter: 'Target High',
+              },
+            },
+          ]
+        : []),
+    ],
   };
 
   return (
