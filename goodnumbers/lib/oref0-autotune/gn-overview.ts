@@ -3,6 +3,15 @@ import { GLUCOSE_RANGES } from './gn-constants';
 import { AnalysisResult } from './gn-meal-analysis';
 import { u } from '@/utils/text';
 import { hasCriticalInsights, filterCriticalInsights } from '@/actions/nightscoutActions';
+import {
+  createBasicStatsInsight,
+  createBasicGMIStatsInsight,
+  createAvgGlucoseInsight,
+  createLowPercentageInsight,
+  createGMIInsight,
+  createGMIvsTimeInRangeInsight,
+  createTimeInRangeInsight
+} from '../insights';
 
 export interface PatientRange {
   average_name: 'low' | 'in target' | 'in tight range' | 'in range' | 'high';
@@ -77,220 +86,6 @@ export function getPatientsRange(compositeday_analysis: AnalysisResult): Patient
   return pr;
 }
 
-function getLowPercentageInsight(compositeday_analysis: AnalysisResult) {
-  const lowPercentage = Math.round(compositeday_analysis.lowPercentage); // Round once, reuse
-
-  const ai_insight = getLowPercentageAIInsight(lowPercentage);
-  const user_insight = getLowPercentageUserInsight(lowPercentage);
-
-  return { ai_insight: ai_insight, user_insight: user_insight };
-}
-
-function getLowPercentageAIInsight(lowPercentage: number): AssessmentInsight {
-  let note = `Medical professionals agree that diabetics should spend less than 4% of the time low. You're spending ${lowPercentage}% of the time low. `;
-  let priority: InsightPriority;
-
-  switch (true) {
-    case lowPercentage <= 3:
-      note += `This is quite good - you're well below the clinical recommendation. Staying in non-diabetic target while keeping your lows down is quite an accomplishment. Keep doing what you're doing.`;
-      priority = InsightPriority.IMPORTANT;
-      break;
-    case lowPercentage <= 4:
-      note += `This is quite good - you're below the clinical recommendation of 4%. However, you are pretty close to it. Keep an eye on this and aim to improve it next week. `;
-      priority = InsightPriority.IMPORTANT;
-      break;
-    case lowPercentage < 10:
-      note += `This is quite high and this should be one of the first things you try to improve. Spending anywhere near 10% in hypoglycemia is considered significant and requires medical attention. `;
-      priority = InsightPriority.SERIOUS;
-      break;
-    default:
-      note += `Your time spent in hypoglycemia, or low blood sugar, is quite high. Clinical best practices say anything higher than 10%  is a severe, critical risk to your health and may require emergency intervention. We cannot continue until you improve this.`;
-      priority = InsightPriority.CRITICAL;
-      break;
-  }
-  return { note: note, priority: priority };
-}
-
-function getLowPercentageUserInsight(lowPercentage: number): AssessmentInsight {
-  let note = '';
-  let priority: InsightPriority;
-
-  switch (true) {
-    case lowPercentage <= 3:
-      note = `Time spent low (${lowPercentage}%) is well below the recommended threshold of 4%.  This indicates good control over hypoglycemia.`;
-      priority = InsightPriority.IMPORTANT;
-      break;
-    case lowPercentage <= 4:
-      note = `Time spent low (${lowPercentage}%) is within the recommended threshold of 4%.  Continue to monitor for low blood glucose events.`;
-      priority = InsightPriority.IMPORTANT;
-      break;
-    case lowPercentage < 10:
-      note = `Time spent low (${lowPercentage}%) is higher than the recommended threshold of 4% or below.  Hypoglycemia (low blood sugar) can be dangerous.  Strategies to reduce low blood sugar events should be implemented.`;
-      priority = InsightPriority.SERIOUS;
-      break;
-    default:
-      note = `Time spent low (${lowPercentage}%) is critically high, much higher than the recommended threshold of 4% or below.  Prolonged or frequent hypoglycemia is a serious health risk.  Immediate medical attention and adjustments to treatment are necessary.`;
-      priority = InsightPriority.CRITICAL;
-      break;
-  }
-  return { note: note, priority: priority };
-}
-
-/**
- * Calculate the Glucose Management Indicator (GMI) based on average glucose.
- * Formula: 3.31 + (0.02392 × mean glucose in mg/dL)
- * @param avgGlucose Average glucose in mg/dL
- * @returns GMI value as a percentage
- */
-function calculateGMI(avgGlucose: number): number {
-  return 3.31 + (0.02392 * avgGlucose);
-}
-
-/**
- * Generate AI (clinically oriented) insight for GMI value
- * @param gmi Calculated GMI value
- * @returns AssessmentInsight object
- */
-function getGMIAIInsight(gmi: number): AssessmentInsight {
-  let note = `* The patient's estimated Glucose Management Indicator (GMI) based on this week's data is ${gmi.toFixed(1)}%. Note that GMI is typically calculated using 2-3 weeks of data, so this value should be considered an approximation based on limited data and not used for definitive clinical decisions. `;
-  let priority: InsightPriority;
-
-  switch (true) {
-    case gmi < 6.5:
-      note += `This GMI is within the target range recommended by the American Diabetes Association for most adults with type 1 diabetes (less than 7.0%). However, it's important to assess this alongside Time in Range and time spent in hypoglycemia to ensure the patient isn't experiencing frequent lows to achieve this number.`;
-      priority = InsightPriority.IMPORTANT;
-      break;
-    case gmi >= 6.5 && gmi < 7.0:
-      note += `This GMI is within the target range recommended by the American Diabetes Association for most adults with type 1 diabetes (less than 7.0%). This indicates relatively good glycemic control.`;
-      priority = InsightPriority.IMPORTANT;
-      break;
-    case gmi >= 7.0 && gmi < 8.0:
-      note += `This GMI is slightly above the general target of less than 7.0% recommended by the American Diabetes Association for most adults with type 1 diabetes. Consider adjustments to improve overall glycemic control, while being mindful of hypoglycemia risk.`;
-      priority = InsightPriority.IMPORTANT;
-      break;
-    case gmi >= 8.0 && gmi < 9.0:
-      note += `This GMI is significantly above the general target range. The patient may have a higher risk of long-term complications. A comprehensive review of the diabetes management plan is recommended.`;
-      priority = InsightPriority.SERIOUS;
-      break;
-    default: // >= 9.0
-      note += `This GMI is well above target range and indicates poor glycemic control. The patient is at significant risk for diabetes-related complications. An urgent review of the diabetes management approach is strongly recommended.`;
-      priority = InsightPriority.SERIOUS;
-      break;
-  }
-  
-  return { note: note, priority: priority };
-}
-
-/**
- * Generate patient-friendly insight for GMI value
- * @param gmi Calculated GMI value
- * @returns AssessmentInsight object
- */
-function getGMIUserInsight(gmi: number): AssessmentInsight {
-  let note = `Your estimated Glucose Management Indicator (GMI) based on this week's data is ${gmi.toFixed(1)}%. GMI is similar to an A1C test but calculated from your CGM data. While GMI typically uses 2-3 weeks of data, this estimate is based only on your past week, so it should be viewed as a general indicator rather than a substitute for lab-measured A1C. `;
-  let priority: InsightPriority;
-
-  switch (true) {
-    case gmi < 6.5:
-      note += `This is below the general target of 7.0% for adults with type 1 diabetes, which is excellent. However, we should also look at your Time in Range and time spent low to make sure you're not having too many low blood sugars to achieve this number.`;
-      priority = InsightPriority.IMPORTANT;
-      break;
-    case gmi >= 6.5 && gmi < 7.0:
-      note += `This is within the generally recommended target of less than 7.0% for adults with type 1 diabetes. Great job maintaining this level of control!`;
-      priority = InsightPriority.IMPORTANT;
-      break;
-    case gmi >= 7.0 && gmi < 8.0:
-      note += `This is a bit above the general target of less than 7.0%. Small adjustments to your diabetes management plan may help bring this down, while still being careful to avoid low blood sugars.`;
-      priority = InsightPriority.IMPORTANT;
-      break;
-    case gmi >= 8.0 && gmi < 9.0:
-      note += `This is above the recommended target range. Higher GMI values are associated with an increased risk of long-term diabetes complications. Let's work together with your healthcare provider to identify strategies to improve your blood sugar control.`;
-      priority = InsightPriority.SERIOUS;
-      break;
-    default: // >= 9.0
-      note += `This is well above the recommended target range. It's important to work closely with your healthcare provider to make adjustments to your diabetes management plan to help lower your average blood sugars and reduce your risk of complications.`;
-      priority = InsightPriority.SERIOUS;
-      break;
-  }
-  
-  return { note: note, priority: priority };
-}
-
-/**
- * Generate insights that correlate GMI with Time in Range to provide context
- * @param gmi Calculated GMI value
- * @param timeInRange Percentage of time in range
- * @returns Object with AI and user insights
- */
-function getGMIvsTimeInRangeInsight(gmi: number, timeInRange: number): { ai_insight: AssessmentInsight; user_insight: AssessmentInsight } {
-  let ai_note = '';
-  let user_note = '';
-  let priority: InsightPriority;
-  
-  if (gmi < 7.0 && timeInRange < 70) {
-    ai_note = `* The patient's GMI (${gmi.toFixed(1)}%) suggests good control, but the Time in Range (${timeInRange}%) is below target. This combination may indicate glycemic variability or frequent hypoglycemia compensating for hyperglycemia. It's important to investigate patterns of highs and lows rather than focusing solely on average values.`;
-    user_note = `Your GMI looks good at ${gmi.toFixed(1)}%, but your Time in Range is lower than target at ${timeInRange}%. This could mean you're having some very high and some very low readings that are averaging out to a good GMI number. Reducing these swings would be beneficial for your overall diabetes management.`;
-    priority = InsightPriority.SERIOUS;
-  } else if (gmi >= 7.0 && timeInRange >= 70) {
-    ai_note = `* The patient's GMI (${gmi.toFixed(1)}%) is above target, yet Time in Range (${timeInRange}%) is good. This suggests periods of significant hyperglycemia without corresponding lows that may be elevating the overall average without drastically reducing Time in Range.`;
-    user_note = `Your Time in Range looks good at ${timeInRange}%, but your GMI is higher than target at ${gmi.toFixed(1)}%. This might mean you're having some periods of very high blood sugar that are affecting your overall average. Focusing on reducing these high periods could help improve your long-term outcomes.`;
-    priority = InsightPriority.IMPORTANT;
-  } else if (gmi < 7.0 && timeInRange >= 70) {
-    ai_note = `* The patient shows excellent glycemic control with a GMI of ${gmi.toFixed(1)}% and Time in Range of ${timeInRange}%. This combination suggests stable glucose values with minimal extreme highs or lows.`;
-    user_note = `Great job! Both your GMI (${gmi.toFixed(1)}%) and Time in Range (${timeInRange}%) are meeting targets, indicating good overall diabetes management with stable glucose levels.`;
-    priority = InsightPriority.IMPORTANT;
-  } else {
-    ai_note = `* Both the patient's GMI (${gmi.toFixed(1)}%) and Time in Range (${timeInRange}%) indicate opportunities for improved glycemic control. This likely represents significant periods of hyperglycemia that should be addressed to reduce long-term complication risk.`;
-    user_note = `Both your GMI (${gmi.toFixed(1)}%) and Time in Range (${timeInRange}%) suggest there's room to improve your blood sugar management. Working with your healthcare provider to adjust your treatment plan could help bring these numbers closer to target ranges.`;
-    priority = InsightPriority.SERIOUS;
-  }
-  
-  return {
-    ai_insight: { note: ai_note, priority: priority },
-    user_insight: { note: user_note, priority: priority }
-  };
-}
-
-function getTIRInsight(
-  compositeday_analysis: AnalysisResult,
-  preferred_units: GlucoseUnits,
-  num_days: number,
-): AssessmentInsight {
-  let insight: AssessmentInsight;
-  let note: string = '';
-  note += `Medical professionals agree that diabetics should be between ${u(70, preferred_units)} and ${u(180, preferred_units)} 70% of the time. You spent this week in range ${compositeday_analysis.inRangePercentage}% of the time, or about ${Math.round(compositeday_analysis.inRangePercentage / 100) * num_days} days.`;
-
-  switch (true) {
-    case compositeday_analysis.inRangePercentage <= 50:
-      note += `Your blood sugars are spending a significant amount of time outside the target range. This increases your risk of long-term complications, and indicates you need to talk to a medical professional about your insulin regime, diet, and other approaches.`;
-      insight = { note: note, priority: InsightPriority.IMPORTANT };
-
-      break;
-    case compositeday_analysis.inRangePercentage > 50 && compositeday_analysis.inRangePercentage <= 60:
-      note += `Your Time in Range is OK but not great, but we still have some work to do to reach our goal of over 70%. You are still at risk of long-term complications, and should speak to a medical professional about how to improve your insulin regime, diet and other appraoches `;
-      insight = { note: note, priority: InsightPriority.IMPORTANT };
-      break;
-    case compositeday_analysis.inRangePercentage > 60 && compositeday_analysis.inRangePercentage <= 70:
-      note += `You're getting closer to the target! Your Time in Range is now in the 60-70% range, which is good progress. We're aiming for over 70%, so let's see if we can fine-tune things a bit more.`;
-      insight = { note: note, priority: InsightPriority.IMPORTANT };
-      break;
-    case compositeday_analysis.inRangePercentage > 70 && compositeday_analysis.inRangePercentage <= 80:
-      note += `Congratulations! You've reached our Time in Range goal of over 70%. This is a great accomplishment and shows your hard work is paying off. `;
-      insight = { note: note, priority: InsightPriority.IMPORTANT };
-      break;
-    case compositeday_analysis.inRangePercentage > 80 && compositeday_analysis.inRangePercentage <= 90:
-      note += `Your blood sugar control is excellent! You're spending a very high percentage of time in range. This significantly reduces your risk of long-term complications. `;
-      insight = { note: note, priority: InsightPriority.IMPORTANT };
-      break;
-
-    default:
-      note += `Your blood sugar control is outstanding! You're spending almost all of your time in range. This is truly remarkable. While this level of control is impressive, we need to be very careful about low blood sugars. Also, you should consider if this is causing you a lot of stress, anxiety or burnout.`;
-      insight = { note: note, priority: InsightPriority.IMPORTANT };
-      break;
-  }
-  return insight;
-}
-
 export async function getWeekOverview(
   compositeday_analysis: AnalysisResult,
   preferred_units: GlucoseUnits,
@@ -299,92 +94,35 @@ export async function getWeekOverview(
   const ai_insights: AssessmentInsight[] = [];
   const user_insights: AssessmentInsight[] = [];
 
-  ai_insights.push({
-    note: `  * This week was the patient's average blood glucose was ${u(compositeday_analysis.avgGlucose, preferred_units)}\n`,
-    priority: InsightPriority.ALWAYS_INCLUDE,
-  });
+  // Use the basic stats insight generator
+  const basicStatsInsight = createBasicStatsInsight(compositeday_analysis, preferred_units);
+  ai_insights.push(basicStatsInsight.getAIInsight());
+  user_insights.push(basicStatsInsight.getUserInsight());
 
-  user_insights.push({
-    note: `Average weeky glucose: ${u(compositeday_analysis.avgGlucose, preferred_units)}\n`,
-    priority: InsightPriority.ALWAYS_INCLUDE,
-  });
-  
-  // Calculate GMI based on average glucose
-  const gmi = calculateGMI(compositeday_analysis.avgGlucose);
-  
-  // Add GMI basic information to insights
-  ai_insights.push({
-    note: `  * The patient's estimated Glucose Management Indicator (GMI) is ${gmi.toFixed(1)}%\n`,
-    priority: InsightPriority.ALWAYS_INCLUDE,
-  });
+  // Use the average glucose insight generator
+  const avgGlucoseInsight = createAvgGlucoseInsight(compositeday_analysis, preferred_units);
+  ai_insights.push(avgGlucoseInsight.getAIInsight());
+  user_insights.push(avgGlucoseInsight.getUserInsight());
 
-  user_insights.push({
-    note: `Estimated GMI: ${gmi.toFixed(1)}%\n`,
-    priority: InsightPriority.ALWAYS_INCLUDE,
-  });
-  
-  // Add detailed GMI insights
-  const gmiAIInsight = getGMIAIInsight(gmi);
-  const gmiUserInsight = getGMIUserInsight(gmi);
-  
-  ai_insights.push(gmiAIInsight);
-  user_insights.push(gmiUserInsight);
-  
-  // Add correlation insights between GMI and Time in Range
-  const { ai_insight: gmiTirAIInsight, user_insight: gmiTirUserInsight } = 
-    getGMIvsTimeInRangeInsight(gmi, compositeday_analysis.inRangePercentage);
-  
-  ai_insights.push(gmiTirAIInsight);
-  user_insights.push(gmiTirUserInsight);
+  // Use the low percentage insight generator
+  const lowPercentageInsight = createLowPercentageInsight(compositeday_analysis);
+  ai_insights.push(lowPercentageInsight.getAIInsight());
+  user_insights.push(lowPercentageInsight.getUserInsight());
 
-  /////////////////////////////////////////////////////////////////////////////
-  // Average, based on absolute recommendations (not patient relative ones)
-  ////////////////////////////////////////////////////////////////////////////
-  let { ai_insight, user_insight } = getLowPercentageInsight(compositeday_analysis);
+  // Use the basic GMI stats insight generator
+  const basicGMIStatsInsight = createBasicGMIStatsInsight(compositeday_analysis);
+  ai_insights.push(basicGMIStatsInsight.getAIInsight());
+  user_insights.push(basicGMIStatsInsight.getUserInsight());
 
-  ai_insights.push(ai_insight);
-  user_insights.push(user_insight);
+  // Use the GMI insight generator for detailed GMI insights
+  const gmiInsight = createGMIInsight(compositeday_analysis);
+  ai_insights.push(gmiInsight.getAIInsight());
+  user_insights.push(gmiInsight.getUserInsight());
 
-  if (compositeday_analysis.avgGlucose <= GLUCOSE_RANGES.LOW) {
-    let note = `* Your average glucose is below normal range, which means you're spending most of your time in hypoglycemia. In fact, you're spending ${compositeday_analysis.lowPercentage}% of the time in hypoglycemia. This can cause seizures, loss of consciousness, cognitive impairment and even death. This requires urgent medical attention. You must speak to your doctor immediately about how to raise your average blood glucose. We cannot go on, we must inform the patient ASAP.`;
-
-    ai_insights.push({ note: note, priority: InsightPriority.CRITICAL });
-    user_insights.push({ note: note, priority: InsightPriority.CRITICAL });
-  } else if (
-    compositeday_analysis.avgGlucose < GLUCOSE_RANGES.TARGET_BOTTOM &&
-    compositeday_analysis.avgGlucose >= GLUCOSE_RANGES.LOW
-  ) {
-    let note = `* Your average glucose is bordering dangerously low, between ${u(GLUCOSE_RANGES.LOW, (preferred_units = preferred_units))} and ${u(GLUCOSE_RANGES.TARGET_BOTTOM, (preferred_units = preferred_units))}. You may be thinking having a lower blood glucose is keeping you healthy, but you are more likely to have hypoglycemic episodes, which are incredibly dangerous, and can cause seizures, loss of consciousness, cognitive impairment and even death. In fact, you're spending ${compositeday_analysis.lowPercentage}% of the time in hypoglycemia. This requires urgent medical attention. You must speak to your doctor immediately about how to raise your average blood glucose. We cannot go on, we must inform the patient ASAP.`;
-
-    ai_insights.push({ note: note, priority: InsightPriority.CRITICAL });
-    user_insights.push({ note: note, priority: InsightPriority.CRITICAL });
-  } else if (
-    compositeday_analysis.avgGlucose >= GLUCOSE_RANGES.TARGET_BOTTOM &&
-    compositeday_analysis.avgGlucose <= GLUCOSE_RANGES.TARGET_TOP
-  ) {
-    let note = `* Your average glucose is within a non-diabetic range of ${u(GLUCOSE_RANGES.TARGET_BOTTOM, preferred_units)} and ${u(GLUCOSE_RANGES.TARGET_TOP, preferred_units)}. This is a great accomplishment, but may not tell us the full picture. We need to understand how much time you're spending high and low to understand what's happening.\n`;
-    ai_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
-    user_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
-  } else if (
-    compositeday_analysis.avgGlucose >= GLUCOSE_RANGES.LOW &&
-    compositeday_analysis.avgGlucose <= GLUCOSE_RANGES.TITR_HIGH
-  ) {
-    let note = `* Your average glucose is close to a nearly non-diabetic range, or what we call "in tight range", between ${u(GLUCOSE_RANGES.LOW, preferred_units)} and ${u(GLUCOSE_RANGES.TITR_HIGH, preferred_units)}.\n\nTime in tight range describes the time an individual spends in normal levels of blood glucose.`;
-    ai_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
-    user_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
-  } else if (
-    compositeday_analysis.avgGlucose >= GLUCOSE_RANGES.LOW &&
-    compositeday_analysis.avgGlucose <= GLUCOSE_RANGES.HIGH
-  ) {
-    let note = `* Your average glucose is within the recommended range below ${u(180, preferred_units)}.\n`;
-    ai_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
-    user_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
-  } else {
-    let note =
-      '* Your glucose levels suggest your diabetes may need attention. Please schedule a consultation with your healthcare provider to discuss adjusting your management plan.\n';
-    ai_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
-    user_insights.push({ note: note, priority: InsightPriority.IMPORTANT });
-  }
+  // Use the GMI vs Time in Range correlation insight generator
+  const gmiVsTirInsight = createGMIvsTimeInRangeInsight(compositeday_analysis);
+  ai_insights.push(gmiVsTirInsight.getAIInsight());
+  user_insights.push(gmiVsTirInsight.getUserInsight());
 
   /////////////////////////////////////////////////////////////////////////////
   // If there are any critical insights, let's quit now. We are unable to
@@ -397,88 +135,27 @@ export async function getWeekOverview(
       user_insights: await filterCriticalInsights(user_insights)!,
     };
   }
+  
   ////////////////////////////////////////////////////////////////////////////
   // Cover standard TIR evaluation to baseline everyone
   ////////////////////////////////////////////////////////////////////////////
-  let note = '';
+  // Use the Time in Range insight generator (if we have info on how many days of data)
+  const num_days = 7; // Assuming a week of data, adjust as needed
+  const timeInRangeInsight = createTimeInRangeInsight(compositeday_analysis, preferred_units, num_days);
+  ai_insights.push(timeInRangeInsight.getAIInsight());
+  user_insights.push(timeInRangeInsight.getUserInsight());
 
   /////////////////////////////////////////////////////////////////////////////
   // Establish patient relative range
   /////////////////////////////////////////////////////////////////////////////
-  note = `Before we go further, we are going to set improvement goals that make sense for where you blood sugar numbers are right now. Because your average is ${patient_range.average_name}, we are going to consider anything above ${patient_range.target_high} to be high. This is just for purposes of this analysis, and doesn't mean you are actually high - talk to your doctor if you have questions. `;
+  let note = `Before we go further, we are going to set improvement goals that make sense for where you blood sugar numbers are right now. Because your average is ${patient_range.average_name}, we are going to consider anything above ${u(patient_range.target_high, preferred_units)} to be high. This is just for purposes of this analysis, and doesn't mean you are actually high - talk to your doctor if you have questions. `;
 
   if (patient_range.target_high != patient_range.very_high) {
-    note += `And we'll consider ${patient_range.very_high} to be very high.\n\n`;
+    note += `And we'll consider ${u(patient_range.very_high, preferred_units)} to be very high.\n\n`;
   }
+  
   ai_insights.push({ note: note, priority: InsightPriority.ALWAYS_INCLUDE });
   user_insights.push({ note: note, priority: InsightPriority.ALWAYS_INCLUDE });
 
-  /////////////////////////////////////////////////////////////////////////////
-  // Time in range
-  /////////////////////////////////////////////////////////////////////////////
-  // notes +=
-  //   '  * We need to look at time in range. Aververage glucose, diabetics need to have a lot of time in range, and ideally slow changes in rising and falling blood sugars. These are good indicators of diabetes control and whether the patient may need to overreact to changes.\n';
-
-  // notes += `  * The patient's time in range is ${Math.round(compositeday_analysis.inRangePercentage)}%.`;
-  // notes += `  * Practically speaking, the patient spent ${Math.round((compositeday_analysis.inRangePercentage / 100.0) * numDays)} days of the last ${numDays} in range.`;
-  // if (Math.round(compositeday_analysis.inRangePercentage) < 50) {
-  //   notes +=
-  //     "    * This TIR indicates significant glucose variability and puts you at a higher risk for both short-term and long-term complications. We need to identify the underlying causes of these fluctuations. Let's review your insulin regimen, medication adherence, diet, exercise habits, and any other factors that might be contributing to these swings. It’s crucial we work together to improve this to at least 70%, the minimum recommended by the American Diabetes Association (ADA) (1).\n";
-  // } else if (
-  //   Math.round(compositeday_analysis.inRangePercentage) >= 50 &&
-  //   Math.round(compositeday_analysis.inRangePercentage) < 60
-  // ) {
-  //   notes +=
-  //     "    * Your Time in Range is showing some improvement, but we're still below the recommended target of 70% and need to make more progress to reduce your risk of complications. A TIR between 50-60% suggests that your glucose levels are fluctuating significantly, and we need to understand why. Let's carefully review your current diabetes management plan, including your insulin regimen, medication adherence, meal patterns, exercise habits, and stress levels. We may need to adjust your insulin doses, refine your carbohydrate counting, or explore other strategies to stabilize your glucose levels and increase your time spent in the target range. We'll work together to identify any patterns in your CGM data and make personalized adjustments to help you reach that 70% goal and improve your overall diabetes management.";
-  // } else if (
-  //   Math.round(compositeday_analysis.inRangePercentage) >= 60 &&
-  //   Math.round(compositeday_analysis.inRangePercentage) < 70
-  // ) {
-  //   notes +=
-  //     "    * Your TIR is improving, but it's still below the recommended target of 70%. While this is a step in the right direction, we want to aim higher. Let's fine-tune your current management plan. We can discuss strategies like adjusting your basal insulin, refining your carb counting and bolusing, or incorporating more frequent blood glucose monitoring to identify trends and make necessary adjustments. International consensus guidelines recommend aiming for at least 70%";
-  // } else if (
-  //   Math.round(compositeday_analysis.inRangePercentage) >= 70 &&
-  //   Math.round(compositeday_analysis.inRangePercentage) < 80
-  // ) {
-  //   notes +=
-  //     "    * Great job! You've reached the recommended TIR target of 70%, which significantly reduces your risk of complications. However, we can still strive for further improvement. Let’s analyze your CGM data for patterns and identify any remaining areas of variability. Even small improvements can make a big difference in your long-term health.";
-  // } else if (
-  //   Math.round(compositeday_analysis.inRangePercentage) >= 80 &&
-  //   Math.round(compositeday_analysis.inRangePercentage) < 90
-  // ) {
-  //   notes +=
-  //     "    * Excellent work! Your TIR is fantastic and demonstrates excellent glucose control. This level of control significantly minimizes your risk of long-term complications. Let's maintain this momentum. We'll continue to monitor your data and make any necessary adjustments to ensure you stay within this optimal range. Be mindful of potential burnout and ensure your diabetes management plan is sustainable.";
-  // } else if (Math.round(compositeday_analysis.inRangePercentage) >= 90) {
-  //   notes +=
-  //     "    * This is outstanding! Your TIR is truly exceptional. However, we need to be cautious about potential overtreatment and the risk of hypoglycemia. Let's review your data for any signs of frequent or severe low glucose events. Maintaining this level of control long-term requires vigilance, but remember to prioritize safety and avoid aggressive targets that might increase hypoglycemia risk. It's essential to find a balance between excellent control and a safe, sustainable approach.";
-  // }
-
-  // notes += `  * Time spent HIGH (> ${u(GLUCOSE_RANGES.HIGH, preferred_units)}) is ${Math.round(compositeday_analysis.highPercentage)}%`;
-
-  // if (Math.round(compositeday_analysis.highPercentage) < 3) {
-  //   notes +=
-  //     "    * Excellent! Your time spent above target is minimal, indicating good glucose control. Let's aim to maintain this while also optimizing your time in range.";
-  // } else if (
-  //   Math.round(compositeday_analysis.highPercentage) >= 3 &&
-  //   Math.round(compositeday_analysis.highPercentage) < 5
-  // ) {
-  //   notes +=
-  //     "    * Good. Your time spent above target is slightly elevated.  Let's examine your CGM data to identify patterns and potential causes for these highs. We may need to make small adjustments to your insulin regimen, meal plan, or exercise routine.  We'll work together to fine-tune your approach while maintaining a balance to avoid lows.";
-  // } else if (
-  //   Math.round(compositeday_analysis.highPercentage) >= 5 &&
-  //   Math.round(compositeday_analysis.highPercentage) < 7
-  // ) {
-  //   notes +=
-  //     "    * Your time spent above target is moderately high. This could increase your risk of long-term complications.  Let's review your CGM data in detail. We may need to adjust your insulin doses, particularly your bolus insulin or correction factors, or refine your carbohydrate counting.  We’ll also consider other factors that might be contributing to these highs, such as stress or illness.";
-  // } else if (
-  //   Math.round(compositeday_analysis.highPercentage) >= 7 &&
-  //   Math.round(compositeday_analysis.highPercentage) < 10
-  // ) {
-  //   notes +=
-  //     "    * Your time spent above target is getting high and needs to be addressed to minimize long-term risks. Let’s review your insulin regimen, medication adherence, meal timings and composition, and exercise routine to pinpoint contributing factors.  We'll likely need to adjust your insulin doses or explore other management strategies.";
-  // } else if (Math.round(compositeday_analysis.highPercentage) >= 10) {
-  //   notes +=
-  //     "    * Your time spent above target is too high and significantly increases your risk of long-term complications. This requires closer attention.  We need to carefully review your current management plan, including your basal and bolus insulin doses, carbohydrate ratios, and correction factors. We'll also consider additional factors that may be influencing your glucose levels, such as stress, illness, or medications. It's important to address this promptly to protect your long-term health.";
-  // }
-  return { ai_insights: ai_insights, user_insights: user_insights };
+  return { ai_insights, user_insights };
 }
