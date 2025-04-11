@@ -3,6 +3,7 @@ import { quantile, mean } from 'd3-array';
 import { GlucoseUnits } from '@/types/nightscout';
 import { AgpDataPoint } from './AgpChart';
 import { ATReading, AutotunePreppedData } from '@/lib/oref0-autotune/gn-autotune-prep';
+import { MG_DL_PER_MMOL_L } from '@/utils/utils';
 
 /**
  * **CRITICAL ASSUMPTION:** The unit of the 'glucose' field in the source ATReading data.

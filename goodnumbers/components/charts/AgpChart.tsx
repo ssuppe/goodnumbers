@@ -4,7 +4,7 @@ import * as React from 'react';
 import { GlucoseUnits } from '@/types/nightscout';
 import ReactECharts from 'echarts-for-react';
 import * as echarts from 'echarts/core';
-import { MG_DL_PER_MMOL_L } from './AgpWeeklyChart-data';
+import { MG_DL_PER_MMOL_L } from '@/utils/utils';
 
 /**
  * Defines the structure for a single data point in the AGP chart's data array.
