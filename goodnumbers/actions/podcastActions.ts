@@ -14,7 +14,6 @@ import {
 } from '@/actions/gemini/geminiActions';
 import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '@/lib/oref0-autotune/gn-meal-analysis';
 import { generateAgpData } from '@/components/charts/AgpWeeklyChart-data';
-import { AgpDataPoint } from '@/components/charts/AgpWeeklyChart';
 import {
   AssessmentData,
   AssessmentInsight,
@@ -25,6 +24,7 @@ import {
   ReportItem,
 } from '@/types/nightscout.d';
 import { filterCriticalInsights, hasCriticalInsights, insightsToNotes } from './nightscoutActions';
+import { AgpDataPoint } from '@/components/charts/AgpChart';
 var _ = require('lodash');
 
 // Configure Winston logger
@@ -189,24 +189,13 @@ export async function generateAssessments(
     }
 
     let podcast_info: AssessmentData = await generatePodcastText(assessment2);
-    
+
     // Make sure report_items is properly assigned
     podcast_info.report_items = [weekly_overview_report];
-    
-    // Debug logging for report_items
-    console.log('Report items data before processing:', 
-      podcast_info.report_items ? 
-      `Present (${podcast_info.report_items.length} items, first item has ${podcast_info.report_items[0].data?.length || 0} data points)` : 
-      'Not present');
-    
-    // Check if data is properly structured
-    if (podcast_info.report_items && podcast_info.report_items.length > 0) {
-      console.log('First report item insights:', podcast_info.report_items[0].insights ? 
-        `${podcast_info.report_items[0].insights.length} insights` : 'No insights');
-      console.log('First report item data sample:', podcast_info.report_items[0].data ? 
-        `Sample of first data point: ${JSON.stringify(podcast_info.report_items[0].data[0], null, 2).substring(0, 100)}...` : 
-        'No data');
-    }
+
+
+
+
 
     podcast_info.ssml_dialog = podcast_info
       .ssml_dialog!.replace('mg/dl', '')
@@ -218,35 +207,17 @@ export async function generateAssessments(
       .replace('TBR', 'time below range')
       .replace('ISF', 'insulin sensitivity ratio')
       .replace('I:C', 'insulin to carb ratio');
-    
-    console.log('Fixed SSML Dialog:', podcast_info.ssml_dialog?.substring(0, 100));
-    
-    // Debug podcast_info before generatePodcastDescription
-    console.log('podcast_info before generatePodcastDescription:', {
-      hasReportItems: Boolean(podcast_info.report_items) && podcast_info.report_items.length > 0,
-      hasSsmlDialog: Boolean(podcast_info.ssml_dialog),
-    });
 
     // Step 5: Generate title and description
     let podcast_infodesc: AssessmentData = await generatePodcastDescription(podcast_info);
-    
-    // Debug podcast_infodesc after generatePodcastDescription
-    console.log('podcast_infodesc after generatePodcastDescription:', {
-      hasReportItems: Boolean(podcast_infodesc.report_items) && podcast_infodesc.report_items.length > 0,
-      hasSsmlDialog: Boolean(podcast_infodesc.ssml_dialog),
-    });
-    
-    logger.debug(podcast_infodesc);
-    
+
     // Ensure we don't lose the report_items when getting description
     if (!podcast_infodesc.report_items && podcast_info.report_items) {
-      console.log('Preserving report_items that were missing in podcast_infodesc');
       podcast_infodesc.report_items = podcast_info.report_items;
     }
-    
+
     // Ensure we don't lose the ssml_dialog when getting description
     if (!podcast_infodesc.ssml_dialog && podcast_info.ssml_dialog) {
-      console.log('Preserving ssml_dialog that was missing in podcast_infodesc');
       podcast_infodesc.ssml_dialog = podcast_info.ssml_dialog;
     }
 
@@ -255,19 +226,12 @@ export async function generateAssessments(
 
     // Create our final return object, ensuring nothing is lost
     const finalPodcastInfo: AssessmentData = {
-      ...podcast_infodesc,                // Include title and description
-      podcastResult: podcastResult,       // Add podcast result
+      ...podcast_infodesc, // Include title and description
+      podcastResult: podcastResult, // Add podcast result
       report_items: podcast_info.report_items, // Ensure report_items are included
-      ssml_dialog: podcast_info.ssml_dialog    // Ensure ssml_dialog is included
+      ssml_dialog: podcast_info.ssml_dialog, // Ensure ssml_dialog is included
+      preferred_units: podcast_info.preferred_units // Ensure preferred_units is included
     };
-    
-    console.log('Final podcast info check:', {
-      hasTitle: Boolean(finalPodcastInfo.title),
-      hasDescription: Boolean(finalPodcastInfo.description), 
-      hasPodcastResult: Boolean(finalPodcastInfo.podcastResult),
-      hasReportItems: Boolean(finalPodcastInfo.report_items) && finalPodcastInfo.report_items.length > 0,
-      hasSsmlDialog: Boolean(finalPodcastInfo.ssml_dialog)
-    });
 
     return finalPodcastInfo;
   } catch (error) {

@@ -23,6 +23,7 @@ import PodcastStatusBadge from './PodcastStatusBadge';
 import { AgpChart } from '../charts/AgpChart';
 import Headline from '../atoms/Headline';
 import WidgetWrapper from '../atoms/WidgetWrapper';
+import { getCookieC } from '@/utils/cookies';
 
 // Function to check if debug mode is enabled via URL parameter
 function isDebugMode(): boolean {
@@ -108,21 +109,21 @@ const NightscoutComponent = ({
     // Initial check for debug mode
     const isDebug = isDebugMode();
     setDebugMode(isDebug);
-    
+
     // Function to handle URL changes
     const handleUrlChange = () => {
       setDebugMode(isDebugMode());
     };
-    
+
     // Add popstate event listener to detect URL changes
     window.addEventListener('popstate', handleUrlChange);
-    
+
     // Cleanup listener on unmount
     return () => {
       window.removeEventListener('popstate', handleUrlChange);
     };
   }, []);
-  
+
   // Load saved data on mount
   useEffect(() => {
     if (debugMode) {
@@ -136,7 +137,7 @@ const NightscoutComponent = ({
       ...prev,
       nightscout_url: Cookies.get('url') || '',
       nightscout_token: Cookies.get('token') || '',
-      preferred_units: (Cookies.get('units') as 'mg/dl' | 'mmol/l') || 'mg/dl',
+      preferred_units: getCookieC<GlucoseUnits>('units') || 'mg/dl',
     }));
   }, [debugMode]);
 
@@ -386,7 +387,12 @@ const NightscoutComponent = ({
           assessmentData.report_items[0]?.data &&
           assessmentData.report_items[0].data.length > 0 ? (
             <div className="mt-4" key={'chart-0'}>
-              <AgpChart data={assessmentData.report_items[0].data} units={assessmentData.preferred_units || 'mg/dl'} />
+              <AgpChart
+                data={assessmentData.report_items[0].data}
+                units={assessmentData.preferred_units || 'mg/dl'}
+                // patientLowGoal={assessmentData.patient_range.target_low}
+                // patientHighGoal={assessmentData.patient_range.target_high}
+              />
             </div>
           ) : (
             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800">
@@ -434,7 +440,7 @@ const NightscoutComponent = ({
 
   const renderDebugViewer = () => {
     if (!debugMode) return null;
-    
+
     const viewerData = assessmentData?.podcastResult;
     if (!viewerData) return null;
 
@@ -444,7 +450,7 @@ const NightscoutComponent = ({
   return (
     <WidgetWrapper id={id || ''} hasBackground={hasBackground} containerClass="max-w-7xl mx-auto">
       {header && <Headline header={header} titleClass="text-3xl sm:text-5xl" />}
-      
+
       {/* Debug mode indicator */}
       {debugMode && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 mb-4 text-sm">
