@@ -21,6 +21,7 @@ import { ssmlToMarkdown } from '@/utils/ssml-client';
 import { checkPodcastStatus } from '@/actions/gemini/geminiActions';
 import PodcastStatusBadge from './PodcastStatusBadge';
 import { AgpChart } from '../charts/AgpChart';
+import { ReportItemDisplay } from '../charts/ReportItemDisplay';
 import Headline from '../atoms/Headline';
 import WidgetWrapper from '../atoms/WidgetWrapper';
 import { getCookieC, setCookieC } from '@/utils/cookies';
@@ -377,17 +378,18 @@ const NightscoutComponent = ({
           <h2 className="text-xl font-bold mb-2">Charts</h2>
           {assessmentData?.podcastResult?.status && <PodcastStatusBadge status={assessmentData.podcastResult.status} />}
 
-          {assessmentData?.report_items &&
-          assessmentData.report_items.length > 0 &&
-          assessmentData.report_items[0]?.data &&
-          assessmentData.report_items[0].data.length > 0 ? (
-            <div className="mt-4" key={'chart-0'}>
-              <AgpChart
-                data={assessmentData.report_items[0].data}
-                units={assessmentData.preferred_units || 'mg/dl'}
-                // patientLowGoal={assessmentData.patient_range.target_low}
-                // patientHighGoal={assessmentData.patient_range.target_high}
-              />
+          {assessmentData?.report_items && assessmentData.report_items.length > 0 ? (
+            <div className="mt-4">
+              {assessmentData.report_items.map((reportItem, index) => (
+                <ReportItemDisplay
+                  key={`report-item-${index}`}
+                  reportItem={reportItem}
+                  units={assessmentData.preferred_units || 'mg/dl'}
+                  patientLowGoal={assessmentData.patient_range?.target_low}
+                  patientHighGoal={assessmentData.patient_range?.target_high}
+                  title={index === 0 ? "Weekly Glucose Patterns" : `Chart ${index + 1}`}
+                />
+              ))}
             </div>
           ) : (
             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800">
