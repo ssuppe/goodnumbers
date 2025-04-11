@@ -32,6 +32,7 @@ export interface AssessmentData {
   podcastResult?: PodcastGenerateResult | null;
   preferred_units: GlucoseUnits | null;
   report_items?: ReportItem[] | null;
+  patient_range?: PatientRange | null;
 }
 
 export enum InsightPriority {
