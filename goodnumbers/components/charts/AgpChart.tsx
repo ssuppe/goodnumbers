@@ -80,12 +80,24 @@ export function AgpChart({
     return value.toFixed(fixedDecimals);
   };
 
+  // Clinical target ranges (always shown)
+  const clinicalLow = units === 'mmol/l' ? 3.9 : 70;
+  const clinicalHigh = units === 'mmol/l' ? 10 : 180;
+
   // Prepare data for ECharts
   const timeData = data.map(item => item.time);
   
   // Extract series data, handling null values
   const medianData = data.map(item => item.median ?? '-');
   const meanData = data.map(item => item.mean ?? '-');
+  
+  // Create horizontal line series data - same value for all timepoints
+  const clinicalLowData = timeData.map(() => clinicalLow);
+  const clinicalHighData = timeData.map(() => clinicalHigh);
+  
+  // Patient goal data if provided
+  const patientLowGoalData = patientLowGoal !== undefined ? timeData.map(() => patientLowGoal) : [];
+  const patientHighGoalData = patientHighGoal !== undefined ? timeData.map(() => patientHighGoal) : [];
 
   // Create data arrays for the confidence bands
   const p5_95Data = data.map(item => {
@@ -111,68 +123,6 @@ export function AgpChart({
     
     return [item.time, p25, p75];
   });
-
-  // Clinical target ranges (always shown)
-  const clinicalLow = units === 'mmol/l' ? 3.9 : 70;
-  const clinicalHigh = units === 'mmol/l' ? 10 : 180;
-
-  // Prepare markLines for target ranges
-  const markLines = [
-    {
-      name: 'Clinical Ranges',
-      symbol: 'none',
-      lineStyle: {
-        color: '#ff4d4f',
-        type: 'dashed',
-        width: 1
-      },
-      label: {
-        formatter: '{b}',
-        position: 'insideEndTop'
-      },
-      data: [
-        [
-          { name: 'Low', yAxis: clinicalLow, x: '5%' },
-          { name: '', yAxis: clinicalLow, x: '95%' }
-        ],
-        [
-          { name: 'High', yAxis: clinicalHigh, x: '5%' },
-          { name: '', yAxis: clinicalHigh, x: '95%' }
-        ]
-      ]
-    }
-  ];
-
-  // Add patient goal ranges if provided
-  if (patientLowGoal !== undefined || patientHighGoal !== undefined) {
-    markLines.push({
-      name: 'Patient Goals',
-      symbol: 'none',
-      lineStyle: {
-        color: '#52c41a',
-        type: 'solid',
-        width: 1
-      },
-      label: {
-        formatter: '{b}',
-        position: 'insideEndTop'
-      },
-      data: [
-        ...(patientLowGoal !== undefined ? [
-          [
-            { name: 'Target Low', yAxis: patientLowGoal, x: '5%' },
-            { name: '', yAxis: patientLowGoal, x: '95%' }
-          ]
-        ] : []),
-        ...(patientHighGoal !== undefined ? [
-          [
-            { name: 'Target High', yAxis: patientHighGoal, x: '5%' },
-            { name: '', yAxis: patientHighGoal, x: '95%' }
-          ]
-        ] : [])
-      ]
-    });
-  }
 
   // ECharts configuration
   const options = {
@@ -360,12 +310,94 @@ export function AgpChart({
         },
         data: medianData,
         z: 4
-      }
-    ],
-    markLine: {
-      silent: true,
-      data: markLines
-    }
+      },
+      
+      // Clinical low threshold line
+      {
+        name: 'Clinical Low',
+        type: 'line',
+        symbol: 'none',
+        lineStyle: {
+          width: 1,
+          type: 'dashed',
+          color: '#ff4d4f'
+        },
+        data: clinicalLowData,
+        z: 0,
+        tooltip: {
+          show: false
+        },
+        label: {
+          show: true,
+          position: 'end',
+          formatter: 'Low'
+        }
+      },
+      
+      // Clinical high threshold line
+      {
+        name: 'Clinical High',
+        type: 'line',
+        symbol: 'none',
+        lineStyle: {
+          width: 1,
+          type: 'dashed',
+          color: '#ff4d4f'
+        },
+        data: clinicalHighData,
+        z: 0,
+        tooltip: {
+          show: false
+        },
+        label: {
+          show: true,
+          position: 'end',
+          formatter: 'High'
+        }
+      },
+      
+      // Patient low goal line (if provided)
+      ...(patientLowGoalData.length > 0 ? [{
+        name: 'Patient Low Goal',
+        type: 'line',
+        symbol: 'none',
+        lineStyle: {
+          width: 1,
+          color: '#52c41a'
+        },
+        data: patientLowGoalData,
+        z: 0,
+        tooltip: {
+          show: false
+        },
+        label: {
+          show: true,
+          position: 'end',
+          formatter: 'Target Low'
+        }
+      }] : []),
+      
+      // Patient high goal line (if provided)
+      ...(patientHighGoalData.length > 0 ? [{
+        name: 'Patient High Goal',
+        type: 'line',
+        symbol: 'none',
+        lineStyle: {
+          width: 1,
+          color: '#52c41a'
+        },
+        data: patientHighGoalData,
+        z: 0,
+        tooltip: {
+          show: false
+        },
+        label: {
+          show: true,
+          position: 'end',
+          formatter: 'Target High'
+        }
+      }] : [])
+    ]
   };
 
   return (
