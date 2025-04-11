@@ -24,6 +24,21 @@ import { AgpChart } from '../charts/AgpChart';
 import Headline from '../atoms/Headline';
 import WidgetWrapper from '../atoms/WidgetWrapper';
 
+// Function to check if debug mode is enabled via URL parameter
+function isDebugMode(): boolean {
+  if (typeof window !== 'undefined') {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('debug') === '1';
+    } catch (e) {
+      // If there's an error parsing URL params, default to false
+      console.error('Error checking debug mode:', e);
+      return false;
+    }
+  }
+  return false;
+}
+
 interface NightscoutComponentProps extends NightscoutWidgetProps {
   onAssessmentComplete?: (data: AssessmentData) => void;
 }
@@ -54,17 +69,22 @@ const NightscoutComponent = ({
   const [isClient, setIsClient] = useState(false);
   const [formattedSSML, setFormattedSSML] = useState('');
   const [formSubmitted, setFormSubmitted] = useState(false);
-  
+  const [debugMode, setDebugMode] = useState(false);
+
   // Debug assessment data at component level
-  console.log('Nightscout component assessment data:', {
-    hasAssessmentData: Boolean(assessmentData),
-    hasDialog: Boolean(assessmentData?.ssml_dialog),
-    dialogLength: assessmentData?.ssml_dialog?.length || 0,
-    hasReportItems: Boolean(assessmentData?.report_items),
-    reportItemsCount: assessmentData?.report_items?.length || 0,
-    hasChartData: Boolean(assessmentData?.report_items?.[0]?.data),
-    chartDataPointsCount: assessmentData?.report_items?.[0]?.data?.length || 0
-  });
+  useEffect(() => {
+    if (debugMode && assessmentData) {
+      console.log('Nightscout component assessment data:', {
+        hasAssessmentData: Boolean(assessmentData),
+        hasDialog: Boolean(assessmentData?.ssml_dialog),
+        dialogLength: assessmentData?.ssml_dialog?.length || 0,
+        hasReportItems: Boolean(assessmentData?.report_items),
+        reportItemsCount: assessmentData?.report_items?.length || 0,
+        hasChartData: Boolean(assessmentData?.report_items?.[0]?.data),
+        chartDataPointsCount: assessmentData?.report_items?.[0]?.data?.length || 0,
+      });
+    }
+  }, [assessmentData, debugMode]);
 
   interface FormDataState {
     nightscout_url: string;
@@ -83,12 +103,34 @@ const NightscoutComponent = ({
     responsibility_accepted: false,
   });
 
+  // Monitor URL for debug parameter changes
+  useEffect(() => {
+    // Initial check for debug mode
+    const isDebug = isDebugMode();
+    setDebugMode(isDebug);
+    
+    // Function to handle URL changes
+    const handleUrlChange = () => {
+      setDebugMode(isDebugMode());
+    };
+    
+    // Add popstate event listener to detect URL changes
+    window.addEventListener('popstate', handleUrlChange);
+    
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+    };
+  }, []);
+  
   // Load saved data on mount
   useEffect(() => {
-    console.log('Load saved data on mount'); // Add this
-    console.log('URL cookie:', Cookies.get('url'));
-    console.log('Units cookie:', Cookies.get('units'));
-    
+    if (debugMode) {
+      console.log('Load saved data on mount');
+      console.log('URL cookie:', Cookies.get('url'));
+      console.log('Units cookie:', Cookies.get('units'));
+    }
+
     setIsClient(true);
     setFormData((prev) => ({
       ...prev,
@@ -96,7 +138,7 @@ const NightscoutComponent = ({
       nightscout_token: Cookies.get('token') || '',
       preferred_units: (Cookies.get('units') as 'mg/dl' | 'mmol/l') || 'mg/dl',
     }));
-  }, []);
+  }, [debugMode]);
 
   // Poll for podcast status
   useEffect(() => {
@@ -145,7 +187,9 @@ const NightscoutComponent = ({
   };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    console.log('Form submission started'); // Add this
+    if (debugMode) {
+      console.log('Form submission started');
+    }
     Cookies.set('url', formData.nightscout_url);
     Cookies.set('token', formData.nightscout_token);
     Cookies.set('units', formData.preferred_units); // Add this line
@@ -157,7 +201,9 @@ const NightscoutComponent = ({
     updateProgress(25, 'Collecting Nightscout data...');
     fetchNightscoutData({ url: formData.nightscout_url, token: formData.nightscout_token })
       .then((nightscoutData: NightscoutData) => {
-        debugger;
+        if (debugMode) {
+          debugger; // Only trigger debugger in debug mode
+        }
         updateProgress(
           50,
           "Generating assessments (this will take a few minutes). Please don't close your browser. After, we will generate the audio of the podcast.",
@@ -224,10 +270,12 @@ const NightscoutComponent = ({
 
   // Handle formatting in useEffect
   useEffect(() => {
-    console.log(
-      'SSML dialog in Nightscout component:',
-      assessmentData?.ssml_dialog ? `Present (length: ${assessmentData.ssml_dialog.length})` : 'Not present',
-    );
+    if (debugMode) {
+      console.log(
+        'SSML dialog in Nightscout component:',
+        assessmentData?.ssml_dialog ? `Present (length: ${assessmentData.ssml_dialog.length})` : 'Not present',
+      );
+    }
 
     try {
       prettier
@@ -237,31 +285,39 @@ const NightscoutComponent = ({
           xmlWhitespaceSensitivity: 'ignore',
         })
         .then((formatted) => {
-          console.log('SSML formatted successfully, length:', formatted.length);
+          if (debugMode) {
+            console.log('SSML formatted successfully, length:', formatted.length);
+          }
           setFormattedSSML(formatted);
         })
         .catch((e) => {
-          console.error('Error formatting SSML:', e);
+          if (debugMode) {
+            console.error('Error formatting SSML:', e);
+          }
           setFormattedSSML(assessmentData?.ssml_dialog || '');
         });
     } catch (e) {
-      console.error('Exception in SSML formatting:', e);
+      if (debugMode) {
+        console.error('Exception in SSML formatting:', e);
+      }
       setFormattedSSML(assessmentData?.ssml_dialog || '');
     }
-  }, [assessmentData?.ssml_dialog]);
+  }, [assessmentData?.ssml_dialog, debugMode]);
 
   // Simplified render method for assessments
   const renderAssessmentContent = () => {
-    console.log('Rendering assessment content', {
-      hasSsmlDialog: Boolean(assessmentData?.ssml_dialog),
-      ssmlDialogLength: assessmentData?.ssml_dialog?.length || 0,
-      hasFormattedSSML: Boolean(formattedSSML),
-      formattedSSMLLength: formattedSSML?.length || 0,
-      hasReportItems: Boolean(assessmentData?.report_items),
-      reportItemsCount: assessmentData?.report_items?.length || 0,
-      hasChartData: Boolean(assessmentData?.report_items?.[0]?.data),
-      chartDataPointsCount: assessmentData?.report_items?.[0]?.data?.length || 0
-    });
+    if (debugMode) {
+      console.log('Rendering assessment content', {
+        hasSsmlDialog: Boolean(assessmentData?.ssml_dialog),
+        ssmlDialogLength: assessmentData?.ssml_dialog?.length || 0,
+        hasFormattedSSML: Boolean(formattedSSML),
+        formattedSSMLLength: formattedSSML?.length || 0,
+        hasReportItems: Boolean(assessmentData?.report_items),
+        reportItemsCount: assessmentData?.report_items?.length || 0,
+        hasChartData: Boolean(assessmentData?.report_items?.[0]?.data),
+        chartDataPointsCount: assessmentData?.report_items?.[0]?.data?.length || 0,
+      });
+    }
 
     return (
       <Tabs defaultIndex={4}>
@@ -317,30 +373,20 @@ const NightscoutComponent = ({
           )}
 
           {/* Debug viewer if needed */}
-          {assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
+          {debugMode && assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
             <DebugInterfaceViewer data={assessmentData.podcastResult} />
           )}
         </TabPanel>
         <TabPanel>
           <h2 className="text-xl font-bold mb-2">Charts</h2>
           {assessmentData?.podcastResult?.status && <PodcastStatusBadge status={assessmentData.podcastResult.status} />}
-          
-          {/* Debug information for chart data */}
-          <div className="mb-4 p-2 bg-gray-100 dark:bg-gray-800 rounded text-sm">
-            <div>Report Items: {assessmentData?.report_items ? `${assessmentData.report_items.length} items` : 'None'}</div>
-            <div>Chart Data Points: {assessmentData?.report_items?.[0]?.data ? `${assessmentData.report_items[0].data.length} points` : 'None'}</div>
-            <div>Preferred Units: {assessmentData?.preferred_units || 'Not set'}</div>
-          </div>
-          
-          {assessmentData?.report_items && 
-           assessmentData.report_items.length > 0 && 
-           assessmentData.report_items[0]?.data && 
-           assessmentData.report_items[0].data.length > 0 ? (
+
+          {assessmentData?.report_items &&
+          assessmentData.report_items.length > 0 &&
+          assessmentData.report_items[0]?.data &&
+          assessmentData.report_items[0].data.length > 0 ? (
             <div className="mt-4" key={'chart-0'}>
-              <AgpChart 
-                data={assessmentData.report_items[0].data} 
-                units={assessmentData.preferred_units || 'mg/dl'} 
-              />
+              <AgpChart data={assessmentData.report_items[0].data} units={assessmentData.preferred_units || 'mg/dl'} />
             </div>
           ) : (
             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800">
@@ -348,21 +394,37 @@ const NightscoutComponent = ({
               <p className="text-sm mt-1">The chart data may not have been properly saved or is missing.</p>
             </div>
           )}
-          
+
           {/* Add raw data visualization for debugging */}
-          <div className="mt-6">
-            <details className="border rounded-md p-2 bg-gray-50 dark:bg-gray-800">
-              <summary className="font-medium cursor-pointer">Show Raw Chart Data (Debug)</summary>
-              <pre className="mt-2 p-3 bg-gray-100 dark:bg-gray-900 rounded-md overflow-auto max-h-96 text-xs">
-                {assessmentData?.report_items && assessmentData.report_items.length > 0 ? 
-                  JSON.stringify(assessmentData.report_items[0], null, 2).substring(0, 1000) + '...' : 
-                  'No chart data available'}
-              </pre>
-            </details>
-          </div>
+          {debugMode && (
+            <div className="mt-6">
+              {/* Debug information for chart data */}
+              <div className="mb-4 p-2 bg-gray-100 dark:bg-gray-800 rounded text-sm">
+                <div>
+                  Report Items: {assessmentData?.report_items ? `${assessmentData.report_items.length} items` : 'None'}
+                </div>
+                <div>
+                  Chart Data Points:{' '}
+                  {assessmentData?.report_items?.[0]?.data
+                    ? `${assessmentData.report_items[0].data.length} points`
+                    : 'None'}
+                </div>
+                <div>Preferred Units: {assessmentData?.preferred_units || 'Not set'}</div>
+              </div>
+
+              <details className="border rounded-md p-2 bg-gray-50 dark:bg-gray-800">
+                <summary className="font-medium cursor-pointer">Show Raw Chart Data (Debug)</summary>
+                <pre className="mt-2 p-3 bg-gray-100 dark:bg-gray-900 rounded-md overflow-auto max-h-96 text-xs">
+                  {assessmentData?.report_items && assessmentData.report_items.length > 0
+                    ? JSON.stringify(assessmentData.report_items[0], null, 2).substring(0, 1000) + '...'
+                    : 'No chart data available'}
+                </pre>
+              </details>
+            </div>
+          )}
 
           {/* Debug viewer if needed */}
-          {assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
+          {debugMode && assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
             <DebugInterfaceViewer data={assessmentData.podcastResult} />
           )}
         </TabPanel>
@@ -371,6 +433,8 @@ const NightscoutComponent = ({
   };
 
   const renderDebugViewer = () => {
+    if (!debugMode) return null;
+    
     const viewerData = assessmentData?.podcastResult;
     if (!viewerData) return null;
 
@@ -380,6 +444,13 @@ const NightscoutComponent = ({
   return (
     <WidgetWrapper id={id || ''} hasBackground={hasBackground} containerClass="max-w-7xl mx-auto">
       {header && <Headline header={header} titleClass="text-3xl sm:text-5xl" />}
+      
+      {/* Debug mode indicator */}
+      {debugMode && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-2 mb-4 text-sm">
+          Debug Mode Active
+        </div>
+      )}
 
       {cookieError && (
         <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
