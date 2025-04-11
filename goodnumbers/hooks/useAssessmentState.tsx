@@ -1,6 +1,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { AssessmentData, GlucoseUnits, PodcastGenerateResult, ReportItem } from '@/types/nightscout';
 import { setCookieCSync, getCookieC } from '@/utils/cookies';
+import { PatientRange } from '@/lib/oref0-autotune/gn-overview';
 
 export const useAssessmentState = () => {
   const [assessmentData, setAssessmentData] = useState<AssessmentData | null>(null);
@@ -9,15 +10,6 @@ export const useAssessmentState = () => {
   // Load cookies after mount
   useEffect(() => {
     try {
-      const ssmlDialog = getCookieC<string>('ssml_dialog');
-      console.log('Loading ssml_dialog from cookie:', ssmlDialog ? 'Found (length: ' + ssmlDialog.length + ')' : 'Not found');
-      
-      const reportItems = getCookieC<ReportItem[]>('report_items');
-      console.log('Loading report_items from cookie:', 
-        reportItems ? 
-        `Found (${reportItems.length} items, first item has ${reportItems[0]?.data?.length || 0} data points)` : 
-        'Not found');
-      
       const cookieData: AssessmentData = {
         valid: getCookieC<boolean>('valid'),
         notes: getCookieC<string>('notes'),
@@ -25,22 +17,23 @@ export const useAssessmentState = () => {
         assessment2: getCookieC<string>('assessment2'),
         title: getCookieC<string>('title'),
         description: getCookieC<string>('description'),
-        ssml_dialog: ssmlDialog,
+        ssml_dialog: getCookieC<string>('ssml_dialog'),
         template_num: 0,
         timestamp: getCookieC<string>('timestamp'),
         id: getCookieC<string>('id'),
         podcastResult: getCookieC<PodcastGenerateResult>('podcastResult'),
         preferred_units: getCookieC<GlucoseUnits>('preferred_units'),
-        report_items: reportItems,
+        report_items: getCookieC<ReportItem[]>('report_items'),
+        patient_range: getCookieC<PatientRange>('patient_range'),
       };
 
       // Only update if we have any non-null values
       if (Object.values(cookieData).some((value) => value !== null)) {
         console.log('Setting assessment data with ssml_dialog:', cookieData.ssml_dialog ? 'Present' : 'Not present');
-        console.log('Setting assessment data with report_items:', 
-          cookieData.report_items ? 
-          `Present (${cookieData.report_items.length} items)` : 
-          'Not present');
+        console.log(
+          'Setting assessment data with report_items:',
+          cookieData.report_items ? `Present (${cookieData.report_items.length} items)` : 'Not present',
+        );
         setAssessmentData(cookieData as AssessmentData);
       }
 
@@ -56,18 +49,10 @@ export const useAssessmentState = () => {
     setAssessmentData(newData);
 
     // Log SSML dialog before saving
-    console.log('Saving ssml_dialog to cookie:', newData.ssml_dialog ? 'Present (length: ' + newData.ssml_dialog.length + ')' : 'Not present');
-    
-    // Log report_items before saving
-    console.log('Saving report_items to cookie:', 
-      newData.report_items ? 
-      `Present (${newData.report_items.length} items, first item has ${newData.report_items[0]?.data?.length || 0} data points)` : 
-      'Not present');
-    
-    if (newData.report_items && newData.report_items.length > 0 && newData.report_items[0]?.data) {
-      console.log('First report item data sample:', 
-        JSON.stringify(newData.report_items[0].data[0], null, 2).substring(0, 100) + '...');
-    }
+    console.log(
+      'Saving ssml_dialog to cookie:',
+      newData.ssml_dialog ? 'Present (length: ' + newData.ssml_dialog.length + ')' : 'Not present',
+    );
 
     // Use synchronous cookie updates
     try {
@@ -84,18 +69,7 @@ export const useAssessmentState = () => {
       setCookieCSync('id', newData.id, { expires: 30 });
       setCookieCSync('podcastResult', newData.podcastResult, { expires: 30 });
       setCookieCSync('report_items', newData.report_items, { expires: 30 });
-      
-      // Verify it was saved correctly
-      setTimeout(() => {
-        const savedSsml = getCookieC<string>('ssml_dialog');
-        console.log('Verified ssml_dialog cookie:', savedSsml ? 'Successfully saved (length: ' + savedSsml.length + ')' : 'Failed to save');
-        
-        const savedReportItems = getCookieC<ReportItem[]>('report_items');
-        console.log('Verified report_items cookie:', 
-          savedReportItems ? 
-          `Successfully saved (${savedReportItems.length} items, first item has ${savedReportItems[0]?.data?.length || 0} data points)` : 
-          'Failed to save');
-      }, 100);
+      setCookieCSync('patient_range', newData.patient_range, { expires: 30 });
     } catch (err) {
       console.error('Error updating cookies:', err);
     }
