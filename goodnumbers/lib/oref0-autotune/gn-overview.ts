@@ -10,7 +10,7 @@ import {
   createLowPercentageInsight,
   createGMIInsight,
   createGMIvsTimeInRangeInsight,
-  createTimeInRangeInsight
+  createTimeInRangeInsight,
 } from '../insights';
 
 export interface PatientRange {
@@ -135,7 +135,7 @@ export async function getWeekOverview(
       user_insights: await filterCriticalInsights(user_insights)!,
     };
   }
-  
+
   ////////////////////////////////////////////////////////////////////////////
   // Cover standard TIR evaluation to baseline everyone
   ////////////////////////////////////////////////////////////////////////////
@@ -153,7 +153,7 @@ export async function getWeekOverview(
   if (patient_range.target_high != patient_range.very_high) {
     note += `And we'll consider ${u(patient_range.very_high, preferred_units)} to be very high.\n\n`;
   }
-  
+
   ai_insights.push({ note: note, priority: InsightPriority.ALWAYS_INCLUDE });
   user_insights.push({ note: note, priority: InsightPriority.ALWAYS_INCLUDE });
 
