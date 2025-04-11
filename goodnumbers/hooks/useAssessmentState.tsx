@@ -1,46 +1,32 @@
 import { useCallback, useState, useEffect } from 'react';
-import { AssessmentData, GlucoseUnits, PodcastGenerateResult, ReportItem } from '@/types/nightscout';
-import { setCookieCSync, getCookieC } from '@/utils/cookies';
-import { PatientRange } from '@/lib/oref0-autotune/gn-overview';
+import { AssessmentData, PodcastGenerateResult } from '@/types/nightscout';
+import { 
+  saveAssessmentData, 
+  loadAssessmentData
+} from '@/utils/assessmentStorage';
 
 export const useAssessmentState = () => {
   const [assessmentData, setAssessmentData] = useState<AssessmentData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load cookies after mount
+  // Load assessment data from localStorage after mount
   useEffect(() => {
     try {
-      const cookieData: AssessmentData = {
-        valid: getCookieC<boolean>('valid'),
-        notes: getCookieC<string>('notes'),
-        assessment1: getCookieC<string>('assessment1'),
-        assessment2: getCookieC<string>('assessment2'),
-        title: getCookieC<string>('title'),
-        description: getCookieC<string>('description'),
-        ssml_dialog: getCookieC<string>('ssml_dialog'),
-        template_num: 0,
-        timestamp: getCookieC<string>('timestamp'),
-        id: getCookieC<string>('id'),
-        podcastResult: getCookieC<PodcastGenerateResult>('podcastResult'),
-        preferred_units: getCookieC<GlucoseUnits>('preferred_units'),
-        report_items: getCookieC<ReportItem[]>('report_items'),
-        patient_range: getCookieC<PatientRange>('patient_range'),
-      };
-
-      // Only update if we have any non-null values
-      if (Object.values(cookieData).some((value) => value !== null)) {
-        console.log('Setting assessment data with ssml_dialog:', cookieData.ssml_dialog ? 'Present' : 'Not present');
+      const storedData = loadAssessmentData();
+      
+      if (storedData) {
+        console.log('Setting assessment data with ssml_dialog:', storedData.ssml_dialog ? 'Present' : 'Not present');
         console.log(
           'Setting assessment data with report_items:',
-          cookieData.report_items ? `Present (${cookieData.report_items.length} items)` : 'Not present',
+          storedData.report_items ? `Present (${storedData.report_items.length} items)` : 'Not present',
         );
-        setAssessmentData(cookieData as AssessmentData);
+        setAssessmentData(storedData);
       }
 
       setError(null);
     } catch (err) {
-      console.error('Error loading cookie data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load cookie data');
+      console.error('Error loading assessment data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load assessment data');
     }
   }, []);
 
@@ -50,28 +36,15 @@ export const useAssessmentState = () => {
 
     // Log SSML dialog before saving
     console.log(
-      'Saving ssml_dialog to cookie:',
+      'Saving ssml_dialog:',
       newData.ssml_dialog ? 'Present (length: ' + newData.ssml_dialog.length + ')' : 'Not present',
     );
 
-    // Use synchronous cookie updates
+    // Synchronously save all assessment data at once
     try {
-      setCookieCSync('valid', newData.valid, { expires: 30 });
-      setCookieCSync('notes', newData.notes, { expires: 30 });
-      setCookieCSync('assessment1', newData.assessment1, { expires: 30 });
-      setCookieCSync('assessment2', newData.assessment2, { expires: 30 });
-      setCookieCSync('title', newData.title, { expires: 30 });
-      setCookieCSync('description', newData.description, { expires: 30 });
-      setCookieCSync('ssml_dialog', newData.ssml_dialog, { expires: 30 });
-      setCookieCSync('preferred_units', newData.preferred_units);
-      // setCookieCSync('template_num', newData.template_num, { expires: 30 });
-      setCookieCSync('timestamp', newData.timestamp, { expires: 30 });
-      setCookieCSync('id', newData.id, { expires: 30 });
-      setCookieCSync('podcastResult', newData.podcastResult, { expires: 30 });
-      setCookieCSync('report_items', newData.report_items, { expires: 30 });
-      setCookieCSync('patient_range', newData.patient_range, { expires: 30 });
+      saveAssessmentData(newData);
     } catch (err) {
-      console.error('Error updating cookies:', err);
+      console.error('Error saving assessment data:', err);
     }
   }, []);
 
@@ -87,11 +60,11 @@ export const useAssessmentState = () => {
       // Update state immediately
       setAssessmentData(updatedData);
 
-      // Use synchronous cookie update
+      // Save the complete assessment data
       try {
-        setCookieCSync('podcastResult', newPodcastResult, { expires: 30 });
+        saveAssessmentData(updatedData);
       } catch (err) {
-        console.error('Error updating podcast result cookie:', err);
+        console.error('Error updating podcast result in assessment data:', err);
       }
     },
     [assessmentData],
