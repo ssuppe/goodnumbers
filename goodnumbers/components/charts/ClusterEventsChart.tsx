@@ -46,10 +46,10 @@ function processEntries(entries: NightscoutEntry[]): { dateString: string; gluco
   if (!entries || entries.length === 0) {
     return [];
   }
-  
+
   // Sort entries by date
   const sortedEntries = [...entries].sort((a, b) => a.date - b.date);
-  
+
   // Transform to simplified format
   return sortedEntries.map(entry => ({
     dateString: new Date(entry.date).toISOString(),
@@ -63,10 +63,10 @@ function processEntries(entries: NightscoutEntry[]): { dateString: string; gluco
 function getEventColor(index: number): string {
   // Array of distinct colors for different events
   const colors = [
-    '#5470c6', '#91cc75', '#fac858', '#ee6666', 
+    '#5470c6', '#91cc75', '#fac858', '#ee6666',
     '#73c0de', '#3ba272', '#fc8452', '#9a60b4'
   ];
-  
+
   return colors[index % colors.length];
 }
 
@@ -112,8 +112,8 @@ function subtractMinutes(dateString: string, minutes: number): Date {
 
 /**
  * Renders a chart showing multiple glycemic events from a time cluster.
- * Each event is displayed as a separate line, with appropriate highlighting
- * for the event duration and annotations for event boundaries.
+ * All events are normalized to show on the same time axis regardless of date.
+ * This makes it easier to identify patterns that occur at similar times across different days.
  */
 export function ClusterEventsChart({
   cluster,
@@ -133,7 +133,7 @@ export function ClusterEventsChart({
     });
     return processed;
   }, [entries]);
-  
+
   // Helper function to format glucose values
   const formatValue = (value: number | null): string => {
     if (value === null || typeof value === 'undefined') {
@@ -145,74 +145,164 @@ export function ClusterEventsChart({
 
   // Calculate time window for the chart
   const getTimeWindowData = React.useMemo(() => {
-    // Find earliest start time from events
-    const earliestStartTime = cluster.events.reduce((earliest, event) => {
-      const currentDate = new Date(event.start_timestamp);
-      return earliest === null || currentDate < earliest ? currentDate : earliest;
-    }, null as Date | null);
+    // Use a common reference date (today) to normalize all events
+    const referenceDate = new Date();
+    referenceDate.setHours(0, 0, 0, 0); // Set to midnight
 
-    // Find latest end time from events
-    const latestEndTime = cluster.events.reduce((latest, event) => {
-      const currentDate = new Date(event.end_timestamp);
-      return latest === null || currentDate > latest ? currentDate : latest;
-    }, null as Date | null);
+    // Function to normalize a timestamp to reference date while preserving time
+    const normalizeToReferenceDate = (timestamp: string): Date => {
+      const originalDate = new Date(timestamp);
+      const normalizedDate = new Date(referenceDate);
+      normalizedDate.setHours(
+        originalDate.getHours(),
+        originalDate.getMinutes(),
+        originalDate.getSeconds(),
+        originalDate.getMilliseconds()
+      );
+      return normalizedDate;
+    };
 
-    if (!earliestStartTime || !latestEndTime || processedEntries.length === 0) {
-      return { windowStartTime: new Date(), windowEndTime: new Date(), series: [] };
+    // Find earliest and latest time (by time of day, not actual date)
+    let earliestTimeOfDay = 24 * 60; // Minutes from midnight (max possible)
+    let latestTimeOfDay = 0; // Minutes from midnight (min possible)
+
+    cluster.events.forEach(event => {
+      const startDate = new Date(event.start_timestamp);
+      const endDate = new Date(event.end_timestamp);
+      
+      const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+      const endMinutes = endDate.getHours() * 60 + endDate.getMinutes();
+      
+      earliestTimeOfDay = Math.min(earliestTimeOfDay, startMinutes);
+      latestTimeOfDay = Math.max(latestTimeOfDay, endMinutes);
+    });
+
+    // Add buffer on both sides (60 minutes before, 30 minutes after)
+    const bufferBeforeMinutes = 60;
+    const bufferAfterMinutes = 30;
+    
+    // Convert to Date objects
+    const windowStartTime = new Date(referenceDate);
+    windowStartTime.setMinutes(Math.max(0, earliestTimeOfDay - bufferBeforeMinutes));
+    
+    const windowEndTime = new Date(referenceDate);
+    // Handle case where end time might go into next day
+    if (latestTimeOfDay + bufferAfterMinutes >= 24 * 60) {
+      windowEndTime.setDate(windowEndTime.getDate() + 1);
+      windowEndTime.setMinutes((latestTimeOfDay + bufferAfterMinutes) % (24 * 60));
+    } else {
+      windowEndTime.setMinutes(latestTimeOfDay + bufferAfterMinutes);
     }
 
-    // Start time is 60 mins before earliest event
-    const windowStartTime = new Date(earliestStartTime.getTime() - 60 * 60 * 1000);
-    
-    // End time is 30 mins after latest event
-    const windowEndTime = new Date(latestEndTime.getTime() + 30 * 60 * 1000);
+    if (processedEntries.length === 0) {
+      return { windowStartTime, windowEndTime, series: [], referenceDate };
+    }
 
     // Generate series data for each event
     const series = cluster.events.map((event, index) => {
-      // Get all glucose readings in our extended time window
-      const eventStartTime = subtractMinutes(event.start_timestamp, 60);
-      const eventEndTime = addMinutes(event.end_timestamp, 30);
+      // Normalize event timestamps to reference date
+      const normalizedStartTime = normalizeToReferenceDate(event.start_timestamp);
+      const normalizedEndTime = normalizeToReferenceDate(event.end_timestamp);
       
+      // Convert extreme glucose value to correct units if needed
+      const extremeGlucoseValue = units === 'mmol/L' ? 
+        event.extreme_bg_mgdl / MG_DL_PER_MMOL_L : event.extreme_bg_mgdl;
+      
+      // Original dates for display in tooltips
+      const originalStartDate = new Date(event.start_timestamp);
+      const dateStr = originalStartDate.toLocaleDateString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      });
+
+      // Get all glucose readings in the relevant time window for this event
+      const eventStartTime = new Date(event.start_timestamp);
+      const eventEndTime = new Date(event.end_timestamp);
+      
+      // Buffer times for data before and after event
+      const bufferStartTime = new Date(eventStartTime);
+      bufferStartTime.setMinutes(eventStartTime.getMinutes() - bufferBeforeMinutes);
+      
+      const bufferEndTime = new Date(eventEndTime);
+      bufferEndTime.setMinutes(eventEndTime.getMinutes() + bufferAfterMinutes);
+
       // Filter glucose readings for this event's time window
       const eventGlucoseData = processedEntries.filter(g => {
         const readingTime = new Date(g.dateString);
-        return readingTime >= eventStartTime && readingTime <= eventEndTime;
+        return readingTime >= bufferStartTime && readingTime <= bufferEndTime;
       });
 
       // Sort by time
-      eventGlucoseData.sort((a, b) => 
+      eventGlucoseData.sort((a, b) =>
         new Date(a.dateString).getTime() - new Date(b.dateString).getTime()
       );
 
-      // Create data points for chart
-      const eventData = eventGlucoseData.map(g => ({
-        value: [g.dateString, g.glucose],
-        // Add custom data for tooltip
-        duration: event.duration_minutes,
-        extreme: event.extreme_bg_mgdl,
-        eventType: event.event_type,
-        isInEventRange: new Date(g.dateString) >= new Date(event.start_timestamp) && 
-                      new Date(g.dateString) <= new Date(event.end_timestamp)
-      }));
+      // Create normalized data points for chart
+      const eventData = eventGlucoseData.map(g => {
+        const originalTime = new Date(g.dateString);
+        // Create normalized time (same reference date but keep original time)
+        const normalizedTime = normalizeToReferenceDate(g.dateString);
+        
+        // Convert glucose values to the correct units if needed
+        const glucoseValue = units === 'mmol/L' ? 
+          g.glucose / MG_DL_PER_MMOL_L : g.glucose;
+        
+        return {
+          // Use normalized time for X-axis and correctly converted glucose value
+          value: [normalizedTime.toISOString(), glucoseValue],
+          // Original data for tooltip and other references
+          originalTime: originalTime,
+          originalDateString: g.dateString,
+          originalGlucose: g.glucose, // Original value in mg/dL
+          glucoseInUserUnits: glucoseValue, // Converted to user's preferred units
+          originalDateStr: originalTime.toLocaleDateString(undefined, {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+          }),
+          duration: event.duration_minutes,
+          extreme: extremeGlucoseValue,  // Use converted value
+          extremeOriginal: event.extreme_bg_mgdl,  // Store original for reference
+          eventType: event.event_type,
+          // Check if point is within event time range (using original times)
+          isInEventRange: originalTime >= eventStartTime && originalTime <= eventEndTime
+        };
+      });
 
       // Create the series config
       return {
-        name: `Event ${index + 1} (${formatTime(event.start_timestamp)})`,
+        name: `Event ${index + 1} (${formatTime(event.start_timestamp)}, ${dateStr})`,
         type: 'line',
         smooth: true,
         symbol: 'circle',
         symbolSize: (val: any) => {
-          // Make points larger within the actual event time range
-          return val[2]?.isInEventRange ? 8 : 4;
+          // Make points larger within the actual event time range, and larger overall
+          return val[2]?.isInEventRange ? 10 : 6;
         },
         lineStyle: {
-          width: 2,
+          width: 3, // Thicker lines for better visibility
           color: getEventColor(index),
+        },
+        emphasis: {
+          // Highlight effect when hovering
+          focus: 'series',
+          lineStyle: {
+            width: 6, // Even thicker on hover
+            shadowBlur: 10,
+            shadowColor: getEventColor(index)
+          },
+          itemStyle: {
+            borderWidth: 3,
+            borderColor: getEventColor(index)
+          },
+          // Apply stronger effect with z-index change to bring the series to front
+          z: 100
         },
         itemStyle: {
           color: (params: any) => {
             // Color points differently within the event time range
-            return params.data.isInEventRange ? 
+            return params.data.isInEventRange ?
               getEventColor(index) : 'rgba(128, 128, 128, 0.5)';
           }
         },
@@ -220,36 +310,23 @@ export function ClusterEventsChart({
         markArea: {
           itemStyle: {
             color: getEventTypeColor(event.event_type),
-            borderWidth: 1,
-            borderType: 'dashed',
-            borderColor: getEventColor(index),
+            borderWidth: 0, // Remove border
+            borderColor: 'transparent', // Make border transparent
           },
           data: [[
-            { 
+            {
               name: `Event ${index + 1}`,
-              xAxis: event.start_timestamp 
+              xAxis: normalizedStartTime.toISOString()
             },
-            { 
-              xAxis: event.end_timestamp 
+            {
+              xAxis: normalizedEndTime.toISOString()
             }
           ]]
         },
-        // Add markers for event start and end
-        markPoint: {
-          symbol: 'pin',
-          symbolSize: 40,
-          itemStyle: {
-            color: getEventColor(index)
-          },
-          data: [
-            { name: 'Start', value: formatTime(event.start_timestamp), xAxis: event.start_timestamp, yAxis: event.extreme_bg_mgdl },
-            { name: 'End', value: formatTime(event.end_timestamp), xAxis: event.end_timestamp, yAxis: event.extreme_bg_mgdl }
-          ]
-        }
       };
     });
 
-    return { windowStartTime, windowEndTime, series };
+    return { windowStartTime, windowEndTime, series, referenceDate };
   }, [cluster, processedEntries]);
 
   // Clinical target ranges (always shown)
@@ -257,10 +334,10 @@ export function ClusterEventsChart({
   const clinicalHigh = units === 'mmol/L' ? 10 : 180;
 
   // Convert patient goals if needed
-  const adjustedPatientLowGoal = patientLowGoal && units === 'mmol/L' ? 
+  const adjustedPatientLowGoal = patientLowGoal && units === 'mmol/L' ?
     patientLowGoal / MG_DL_PER_MMOL_L : patientLowGoal;
-    
-  const adjustedPatientHighGoal = patientHighGoal && units === 'mmol/L' ? 
+
+  const adjustedPatientHighGoal = patientHighGoal && units === 'mmol/L' ?
     patientHighGoal / MG_DL_PER_MMOL_L : patientHighGoal;
 
   // Check if we have valid data to display
@@ -272,65 +349,69 @@ export function ClusterEventsChart({
     );
   }
 
+  // Add a subtitle explaining the time alignment
+  const subtitle = 'Events from different days aligned by time of day';
+
   // ECharts configuration
   const options = {
     title: {
       text: title,
+      subtext: subtitle,
       left: 'center',
       textStyle: {
         fontWeight: 'normal',
         fontSize: 16,
       },
+      subtextStyle: {
+        fontSize: 12,
+        color: '#888',
+      }
     },
     tooltip: {
       trigger: 'axis',
       formatter: function (params: any) {
         const firstItem = params[0];
         if (!firstItem) return '';
-        
-        // Get the time from the first data point
-        const time = new Date(firstItem.value[0]);
-        const formattedTime = time.toLocaleString([], {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
+
+        // Get the time from the normalized data point
+        const normalizedTime = new Date(firstItem.value[0]);
+        const formattedTime = normalizedTime.toLocaleTimeString([], {
           hour: '2-digit',
-          minute: '2-digit'
+          minute: '2-digit',
+          hour12: true
         });
 
-        // Build tooltip content
-        let content = `<div style="font-weight: bold; margin-bottom: 5px;">${formattedTime}</div>`;
-        
-        // Add each event's glucose value
+        // Build tooltip content - simplified version
+        let content = `<div style="font-weight: bold; margin-bottom: 8px;">Time: ${formattedTime}</div>`;
+
+        // Add each event's glucose value - simplified format
         params.forEach((param: any) => {
           if (param.data && param.seriesName) {
-            const glucose = param.data.value[1];
-            const isInEventRange = param.data.isInEventRange;
+            const glucose = param.data.glucoseInUserUnits || param.data.value[1];
+            // Extract just the event number from the full series name
+            const eventNumber = param.seriesName.match(/Event (\d+)/)[1];
             
-            // Highlight if this point is within event range
-            const style = isInEventRange ? 
-              'font-weight: bold; text-decoration: underline;' : '';
-            
-            content += `<div style="${style}">
-              <span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:${param.color};"></span>
-              ${param.seriesName}: ${formatValue(glucose)} ${units}
-              ${isInEventRange ? ' (event in progress)' : ''}
+            content += `<div style="margin-bottom: 4px;">
+              <span style="display:inline-block;margin-right:6px;border-radius:10px;width:8px;height:8px;background-color:${param.color};"></span>
+              Event ${eventNumber}, ${formatValue(glucose)} ${units}
             </div>`;
           }
         });
-        
+
         return content;
       },
     },
     grid: {
       left: '3%',
       right: '4%',
-      bottom: '3%',
+      bottom: '20%',  // Increase bottom margin to make room for both axis labels and legend
       containLabel: true,
     },
     xAxis: {
       type: 'time',
       boundaryGap: false,
+      min: getTimeWindowData.windowStartTime.toISOString(),
+      max: getTimeWindowData.windowEndTime.toISOString(),
       axisLine: {
         show: false,
       },
@@ -343,6 +424,14 @@ export function ClusterEventsChart({
           return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
       },
+      axisPointer: {
+        label: {
+          formatter: function (params: any) {
+            const date = new Date(params.value);
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }
+        }
+      }
     },
     yAxis: {
       type: 'value',
@@ -364,7 +453,7 @@ export function ClusterEventsChart({
     series: [
       // Add each event series
       ...getTimeWindowData.series,
-      
+
       // Clinical low threshold line
       {
         name: 'Clinical Low',
@@ -394,7 +483,7 @@ export function ClusterEventsChart({
           show: false,
         }
       },
-      
+
       // Clinical high threshold line
       {
         name: 'Clinical High',
@@ -424,7 +513,7 @@ export function ClusterEventsChart({
           show: false,
         }
       },
-      
+
       // Patient low goal line (if provided)
       ...(adjustedPatientLowGoal ? [
         {
@@ -455,7 +544,7 @@ export function ClusterEventsChart({
           }
         }
       ] : []),
-      
+
       // Patient high goal line (if provided)
       ...(adjustedPatientHighGoal ? [
         {
@@ -487,16 +576,39 @@ export function ClusterEventsChart({
         }
       ] : []),
     ],
+    // Add special chart configuration for highlighting the hovered series
     legend: {
       type: 'scroll',
       orient: 'horizontal',
-      bottom: 10,
-      data: getTimeWindowData.series.map(s => s.name)
+      bottom: 35,  // Move the legend further down to avoid overlapping with x-axis labels
+      data: getTimeWindowData.series.map(s => s.name),
+      selectedMode: 'single', // Allow selecting only one series
+    },
+    // When user hovers over a series, highlight it and dim others
+    // This uses the native echarts behavior for this effect
+    highlightPolicy: 'visual',
+    emphasis: {
+      focus: 'series',
+      scale: true, // Scale up the emphasized series
+      blurScope: 'global', // Blur everything else
+    },
+    universalTransition: true, // Enables transitions
+    blur: {
+      // Style for non-highlighted series
+      lineStyle: {
+        color: '#CCCCCC',
+        width: 1,
+        opacity: 0.2,
+      },
+      itemStyle: {
+        color: '#CCCCCC',
+        opacity: 0.2,
+      }
     },
   };
 
   return (
-    <div className="w-full h-[400px] p-4 border rounded-lg shadow-sm bg-card text-card-foreground">
+    <div className="w-full h-[450px] p-4 border rounded-lg shadow-sm bg-card text-card-foreground">
       <ReactECharts
         option={options}
         style={{ height: '100%', width: '100%' }}
