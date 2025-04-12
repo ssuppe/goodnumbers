@@ -32,7 +32,8 @@ function processEntries(entries: NightscoutEntry[]): { dateString: string; gluco
 }
 
 function getEventColor(index: number): string {
-  const colors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272', '#fc8452', '#9a60b4'];
+  // Higher contrast color palette with better accessibility
+  const colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f'];
   return colors[index % colors.length];
 }
 
@@ -165,17 +166,24 @@ export function ClusterEventsChart({
         type: 'line',
         smooth: false,
         symbol: 'circle',
-        symbolSize: (val: any, params: any) => (params.data.isInEventRange ? 8 : 5),
-        lineStyle: { width: 2.5, color: getEventColor(index) },
+        symbolSize: (val: any, params: any) => (params.data.isInEventRange ? 10 : 6),
+        lineStyle: { 
+          width: 3, 
+          color: getEventColor(index),
+          type: 'solid'
+        },
         emphasis: {
           focus: 'series',
           lineStyle: { width: 5 },
-          itemStyle: { borderWidth: 2, borderColor: '#FFF' },
-          z: 10,
+          itemStyle: { 
+            borderWidth: 3, 
+            borderColor: '#FFFFFF'
+          },
+          z: 20,
         },
         itemStyle: {
-          color: (params: any) => (params.data.isInEventRange ? getEventColor(index) : 'rgba(128, 128, 128, 0.5)'),
-          opacity: (params: any) => (params.data.isInEventRange ? 1 : 0.7),
+          color: (params: any) => (params.data.isInEventRange ? getEventColor(index) : 'rgba(170, 170, 170, 0.5)'),
+          opacity: (params: any) => (params.data.isInEventRange ? 1 : 0.6)
         },
         data: eventData,
         id: `event-line-${index}`,
@@ -215,11 +223,20 @@ export function ClusterEventsChart({
       text: title,
       subtext: subtitle,
       left: 'center',
-      textStyle: { fontWeight: 'normal', fontSize: 16 },
-      subtextStyle: { fontSize: 12, color: '#888' },
+      textStyle: { fontWeight: 'bold', fontSize: 18 },
+      subtextStyle: { fontSize: 13, color: '#666', fontWeight: 'normal' },
+      padding: [10, 0, 15, 0]
     },
     tooltip: {
       trigger: 'item',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderColor: '#ddd',
+      borderWidth: 1,
+      padding: 12,
+      textStyle: {
+        fontSize: 13,
+        lineHeight: 20
+      },
       formatter: (params: any) => {
         if (!params || !params.data) return '';
         if (!params?.value?.[0]) return '';
@@ -248,11 +265,13 @@ export function ClusterEventsChart({
         const match = params.seriesName.match(/Event (\d+)/);
         const eventLabel = match ? `Event ${match[1]}` : params.seriesName;
         
-        let content = `<div style="font-weight: bold; margin-bottom: 8px;">Time: ${formattedTime}</div>${dateInfo}`;
-        content += `<div style="margin-bottom: 4px;"><span style="display:inline-block;margin-right:6px;border-radius:10px;width:8px;height:8px;background-color:${params.color};"></span>${eventLabel}: ${formatValue(glucoseValue)} ${units}</div>`;
+        let content = `<div style="font-weight: bold; margin-bottom: 10px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 6px;">Time: ${formattedTime}</div>${dateInfo}`;
+        content += `<div style="margin-bottom: 6px;"><span style="display:inline-block;margin-right:8px;border-radius:10px;width:10px;height:10px;background-color:${params.color};"></span><span style="font-weight: 500;">${eventLabel}:</span> <span style="margin-left: 5px; font-weight: bold;">${formatValue(glucoseValue)} ${units}</span></div>`;
         content += `${eventTypeInfo}${durationInfo}`;
+        
         return content;
       },
+      extraCssText: 'box-shadow: 0 3px 14px rgba(0,0,0,0.15); border-radius: 6px;'
     },
     grid: { left: '3%', right: '4%', bottom: '20%', containLabel: true },
     xAxis: {
@@ -277,9 +296,20 @@ export function ClusterEventsChart({
       name: `Glucose (${units})`,
       nameLocation: 'middle',
       nameGap: 50,
+      nameTextStyle: { 
+        fontSize: 14,
+        fontWeight: 'bold',
+        padding: [0, 0, 15, 0]
+      },
       axisLine: { show: false },
       axisTick: { show: false },
-      splitLine: { lineStyle: { type: 'dashed' } },
+      splitLine: { 
+        show: true,
+        lineStyle: { 
+          type: 'dashed',
+          opacity: 0.6 
+        } 
+      },
     },
     series: [
       /* Series generated in getTimeWindowData are used here */ ...getTimeWindowData.series,
@@ -290,8 +320,16 @@ export function ClusterEventsChart({
         tooltip: { show: false },
         markLine: {
           silent: true,
-          lineStyle: { color: '#ff4d4f', type: 'dashed', width: 1 },
-          label: { show: true, position: 'end', formatter: 'Low' },
+          lineStyle: { color: '#ff4d4f', type: 'dashed', width: 2 },
+          label: { 
+            show: true, 
+            position: 'end', 
+            formatter: 'Low',
+            fontSize: 12,
+            fontWeight: 'bold',
+            backgroundColor: '#fff',
+            padding: [3, 6]
+          },
           data: [{ yAxis: clinicalLow }],
         },
       },
@@ -302,8 +340,16 @@ export function ClusterEventsChart({
         tooltip: { show: false },
         markLine: {
           silent: true,
-          lineStyle: { color: '#ff4d4f', type: 'dashed', width: 1 },
-          label: { show: true, position: 'end', formatter: 'High' },
+          lineStyle: { color: '#ff4d4f', type: 'dashed', width: 2 },
+          label: { 
+            show: true, 
+            position: 'end', 
+            formatter: 'High',
+            fontSize: 12,
+            fontWeight: 'bold',
+            backgroundColor: '#fff',
+            padding: [3, 6]
+          },
           data: [{ yAxis: clinicalHigh }],
         },
       },
@@ -343,7 +389,12 @@ export function ClusterEventsChart({
     legend: {
       type: 'scroll',
       orient: 'horizontal',
-      bottom: 35,
+      bottom: 10,
+      padding: [10, 20],
+      itemGap: 20,
+      textStyle: {
+        fontSize: 12
+      },
       // Only include line series in the legend, not background series
       data: getTimeWindowData.series
         .filter((s) => s.name && !s.name.includes('Background'))
@@ -357,7 +408,7 @@ export function ClusterEventsChart({
           },
           {} as Record<string, boolean>,
         ),
-      selectedMode: 'multiple',
+      selectedMode: 'multiple'
     },
     // Controls what series are highlighted when hovering
     highlightPolicy: 'self',
