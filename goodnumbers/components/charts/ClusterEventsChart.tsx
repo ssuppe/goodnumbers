@@ -219,29 +219,38 @@ export function ClusterEventsChart({
       subtextStyle: { fontSize: 12, color: '#888' },
     },
     tooltip: {
-      trigger: 'axis',
-      formatter: (params: any[]) => {
-        if (!params || params.length === 0) return '';
-        const firstItem = params[0];
-        if (!firstItem?.value?.[0]) return '';
-        const normalizedTime = new Date(firstItem.value[0]);
+      trigger: 'item',
+      formatter: (params: any) => {
+        if (!params || !params.data) return '';
+        if (!params?.value?.[0]) return '';
+        const normalizedTime = new Date(params.value[0]);
         const formattedTime = normalizedTime.toLocaleTimeString([], {
           hour: '2-digit',
           minute: '2-digit',
           hour12: true,
         });
-        let content = `<div style="font-weight: bold; margin-bottom: 8px;">Time: ${formattedTime}</div>`;
-        params.forEach((param) => {
-          if (param.seriesName && !param.seriesName.includes('Background') && param.data) {
-            const glucoseValue =
-              param.data.glucoseInUserUnits ?? (Array.isArray(param.data.value) ? param.data.value[1] : null);
-            if (glucoseValue !== null && typeof glucoseValue !== 'undefined') {
-              const match = param.seriesName.match(/Event (\d+)/);
-              const eventLabel = match ? `Event ${match[1]}` : param.seriesName;
-              content += `<div style="margin-bottom: 4px;"><span style="display:inline-block;margin-right:6px;border-radius:10px;width:8px;height:8px;background-color:${param.color};"></span>${eventLabel}: ${formatValue(glucoseValue)} ${units}</div>`;
-            }
-          }
-        });
+        
+        // Get the original date if available
+        const dateInfo = params.data.originalDateStr ? 
+          `<div style="margin-bottom: 4px;">Date: ${params.data.originalDateStr}</div>` : '';
+          
+        // Include event type and duration if available
+        const eventTypeInfo = params.data.eventType ? 
+          `<div style="margin-bottom: 4px;">Type: ${params.data.eventType}</div>` : '';
+        const durationInfo = params.data.duration ? 
+          `<div style="margin-bottom: 4px;">Duration: ${params.data.duration} min</div>` : '';
+        
+        const glucoseValue = params.data.glucoseInUserUnits ?? 
+          (Array.isArray(params.data.value) ? params.data.value[1] : null);
+          
+        if (glucoseValue === null || typeof glucoseValue === 'undefined') return '';
+        
+        const match = params.seriesName.match(/Event (\d+)/);
+        const eventLabel = match ? `Event ${match[1]}` : params.seriesName;
+        
+        let content = `<div style="font-weight: bold; margin-bottom: 8px;">Time: ${formattedTime}</div>${dateInfo}`;
+        content += `<div style="margin-bottom: 4px;"><span style="display:inline-block;margin-right:6px;border-radius:10px;width:8px;height:8px;background-color:${params.color};"></span>${eventLabel}: ${formatValue(glucoseValue)} ${units}</div>`;
+        content += `${eventTypeInfo}${durationInfo}`;
         return content;
       },
     },
