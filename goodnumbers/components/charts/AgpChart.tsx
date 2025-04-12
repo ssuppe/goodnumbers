@@ -159,8 +159,47 @@ export function AgpChart({
     grid: {
       left: '3%',
       right: '4%',
-      bottom: '3%',
+      bottom: '35px', // Increase bottom margin to make room for legend
       containLabel: true,
+    },
+    // When user hovers over a series, highlight it and dim others
+    highlightPolicy: 'visual',
+    emphasis: {
+      focus: 'series',
+      scale: false, // Don't scale up the emphasized series
+    },
+    blur: {
+      // Style for non-highlighted series - keep them visible but more subtle
+      lineStyle: {
+        opacity: 0.4, // Higher opacity to keep non-hovered lines visible
+        width: 1,
+      },
+      areaStyle: {
+        opacity: 0.3, // Higher opacity for areas
+      },
+    },
+    legend: {
+      show: true,
+      type: 'scroll',
+      orient: 'horizontal',
+      bottom: 0,
+      data: [
+        'Median', 
+        'Mean', 
+        '25th-75th Percentile Band', 
+        '5th-95th Percentile Band'
+      ],
+      selected: {
+        // Ensure all items are selected by default
+        'Median': true,
+        'Mean': true,
+        '25th-75th Percentile Band': true,
+        '5th-95th Percentile Band': true
+      },
+      selectedMode: 'multiple', // Allow multiple selection
+      textStyle: {
+        fontSize: 12,
+      },
     },
     xAxis: {
       type: 'category',
@@ -232,11 +271,28 @@ export function AgpChart({
                 [x + xStep / 2, y0],
               ],
             },
-            style: {
+            style: api.style({
               fill: 'rgba(120, 140, 180, 0.25)',
               stroke: 'none',
+            }),
+            emphasis: {
+              style: {
+                fill: 'rgba(120, 140, 180, 0.5)',
+                stroke: 'rgba(100, 120, 160, 0.8)',
+                lineWidth: 1,
+              }
             },
+            blur: {
+              style: {
+                fill: 'rgba(200, 200, 200, 0.1)',
+                stroke: 'none',
+              }
+            }
           };
+        },
+        emphasis: {
+          focus: 'series',
+          z: 10
         },
         data: p5_95Data,
         z: 1,
@@ -277,11 +333,28 @@ export function AgpChart({
                 [x + xStep / 2, y0],
               ],
             },
-            style: {
+            style: api.style({
               fill: 'rgba(90, 110, 150, 0.35)',
               stroke: 'none',
+            }),
+            emphasis: {
+              style: {
+                fill: 'rgba(90, 110, 150, 0.6)',
+                stroke: 'rgba(70, 90, 130, 0.8)',
+                lineWidth: 1,
+              }
             },
+            blur: {
+              style: {
+                fill: 'rgba(180, 180, 180, 0.1)',
+                stroke: 'none',
+              }
+            }
           };
+        },
+        emphasis: {
+          focus: 'series',
+          z: 20
         },
         data: p25_75Data,
         z: 2,
@@ -293,9 +366,20 @@ export function AgpChart({
         type: 'line',
         symbol: 'none',
         lineStyle: {
-          width: 1.5,
+          width: 1, // Slightly thinner by default
           type: 'dashed', // Dashed line for mean
           color: 'rgba(70, 90, 130, 0.8)',
+        },
+        emphasis: {
+          // Highlight effect when hovering
+          focus: 'series',
+          lineStyle: {
+            width: 4, // Thicker on hover
+            type: 'dashed',
+            color: 'rgba(70, 90, 130, 1)',
+          },
+          // Apply stronger effect with z-index change to bring the series to front
+          z: 30
         },
         data: meanData,
         z: 3,
@@ -308,9 +392,15 @@ export function AgpChart({
         symbol: 'none',
         emphasis: {
           focus: 'series',
+          lineStyle: {
+            width: 5, // Even thicker on hover
+            color: 'rgb(70, 90, 130)',
+          },
+          // Apply stronger effect with z-index change to bring the series to front
+          z: 40
         },
         lineStyle: {
-          width: 2,
+          width: 1.5, // Slightly thinner by default
           color: 'rgb(70, 90, 130)',
         },
         data: medianData,
@@ -326,6 +416,23 @@ export function AgpChart({
           width: 1,
           type: 'dashed',
           color: '#ff4d4f',
+        },
+        emphasis: {
+          // Never highlight threshold lines on hover
+          disabled: true,
+          // Keep them visible but slightly transparent when other elements are hovered
+          lineStyle: {
+            width: 1,
+            type: 'dashed',
+            color: 'rgba(255, 77, 79, 0.6)',
+          },
+        },
+        blur: {
+          lineStyle: {
+            width: 1,
+            type: 'dashed',
+            color: 'rgba(255, 77, 79, 0.4)',
+          },
         },
         data: clinicalLowData,
         z: 0,
@@ -349,6 +456,23 @@ export function AgpChart({
           type: 'dashed',
           color: '#ff4d4f',
         },
+        emphasis: {
+          // Never highlight threshold lines on hover
+          disabled: true,
+          // Keep them visible but slightly transparent when other elements are hovered
+          lineStyle: {
+            width: 1,
+            type: 'dashed',
+            color: 'rgba(255, 77, 79, 0.6)',
+          },
+        },
+        blur: {
+          lineStyle: {
+            width: 1,
+            type: 'dashed',
+            color: 'rgba(255, 77, 79, 0.4)',
+          },
+        },
         data: clinicalHighData,
         z: 0,
         tooltip: {
@@ -371,6 +495,21 @@ export function AgpChart({
               lineStyle: {
                 width: 1,
                 color: '#52c41a',
+              },
+              emphasis: {
+                // Never highlight goal lines on hover
+                disabled: true,
+                // Keep them visible but slightly transparent when other elements are hovered
+                lineStyle: {
+                  width: 1,
+                  color: 'rgba(82, 196, 26, 0.6)',
+                },
+              },
+              blur: {
+                lineStyle: {
+                  width: 1,
+                  color: 'rgba(82, 196, 26, 0.4)',
+                },
               },
               data: patientLowGoalData,
               z: 0,
@@ -397,6 +536,21 @@ export function AgpChart({
                 width: 1,
                 color: '#52c41a',
               },
+              emphasis: {
+                // Never highlight goal lines on hover
+                disabled: true,
+                // Keep them visible but slightly transparent when other elements are hovered
+                lineStyle: {
+                  width: 1,
+                  color: 'rgba(82, 196, 26, 0.6)',
+                },
+              },
+              blur: {
+                lineStyle: {
+                  width: 1,
+                  color: 'rgba(82, 196, 26, 0.4)',
+                },
+              },
               data: patientHighGoalData,
               z: 0,
               tooltip: {
@@ -414,7 +568,7 @@ export function AgpChart({
   };
 
   return (
-    <div className="w-full h-[400px] p-4 border rounded-lg shadow-sm bg-card text-card-foreground">
+    <div className="w-full h-[450px] p-4 border rounded-lg shadow-sm bg-card text-card-foreground">
       <ReactECharts
         option={options}
         style={{ height: '100%', width: '100%' }}
