@@ -198,8 +198,8 @@ export function ClusterEventsChart({
       return { windowStartTime, windowEndTime, series: [], referenceDate };
     }
 
-    // Generate series data for each event
-    const series = cluster.events.map((event, index) => {
+    // Generate both line series and background series
+    const lineSeries = cluster.events.map((event, index) => {
       // Normalize event timestamps to reference date
       const normalizedStartTime = normalizeToReferenceDate(event.start_timestamp);
       const normalizedEndTime = normalizeToReferenceDate(event.end_timestamp);
@@ -274,7 +274,7 @@ export function ClusterEventsChart({
       return {
         name: `Event ${index + 1} (${formatTime(event.start_timestamp)}, ${dateStr})`,
         type: 'line',
-        smooth: true,
+        smooth: false, // Disable smoothing for crisper lines
         symbol: 'circle',
         symbolSize: (val: any) => {
           // Make points larger within the actual event time range, and larger overall
@@ -286,11 +286,10 @@ export function ClusterEventsChart({
         },
         emphasis: {
           // Highlight effect when hovering
-          focus: 'series',
+          focus: 'self', // Only focus this series (to keep others visible)
           lineStyle: {
             width: 6, // Even thicker on hover
-            shadowBlur: 10,
-            shadowColor: getEventColor(index)
+            color: getEventColor(index)
           },
           itemStyle: {
             borderWidth: 3,
@@ -307,26 +306,63 @@ export function ClusterEventsChart({
           }
         },
         data: eventData,
-        markArea: {
-          itemStyle: {
-            color: getEventTypeColor(event.event_type),
-            borderWidth: 0, // Remove border
-            borderColor: 'transparent', // Make border transparent
-          },
-          data: [[
-            {
-              name: `Event ${index + 1}`,
-              xAxis: normalizedStartTime.toISOString()
-            },
-            {
-              xAxis: normalizedEndTime.toISOString()
-            }
-          ]]
-        },
       };
     });
 
-    return { windowStartTime, windowEndTime, series, referenceDate };
+    // Create background series for each event
+    const backgroundSeries = cluster.events.map((event, index) => {
+      // Normalize event timestamps to reference date
+      const normalizedStartTime = normalizeToReferenceDate(event.start_timestamp);
+      const normalizedEndTime = normalizeToReferenceDate(event.end_timestamp);
+
+      // Create a background area that will only show when highlighted by the event handler
+      return {
+        name: `Event ${index + 1} Background`,
+        type: 'line', // Simple line series
+        showSymbol: false, // No symbols
+        silent: true, // Don't capture mouse events
+        zlevel: -1, // Behind all other elements
+        lineStyle: {
+          opacity: 0, // Invisible line
+          width: 0,
+        },
+        data: [[normalizedStartTime.toISOString(), 0], [normalizedEndTime.toISOString(), 0]], // Just for the x-axis range
+        markArea: {
+          silent: true,
+          itemStyle: {
+            color: getEventTypeColor(event.event_type),
+            opacity: 0, // Start invisible
+          },
+          // When highlighted via event handler
+          emphasis: {
+            itemStyle: {
+              color: getEventTypeColor(event.event_type),
+              opacity: 0.35, // Only visible when highlighted
+            }
+          },
+          data: [[
+            { xAxis: normalizedStartTime.toISOString() },
+            { xAxis: normalizedEndTime.toISOString() }
+          ]]
+        },
+        tooltip: {
+          show: false, // No tooltip
+        }
+      };
+    });
+
+    // Modify the line series to include IDs for linking
+    const updatedLineSeries = lineSeries.map((series, index) => ({
+      ...series,
+      id: `event-${index}`, // Add ID for linking with background
+    }));
+
+    return { 
+      windowStartTime, 
+      windowEndTime, 
+      series: [...updatedLineSeries, ...backgroundSeries],
+      referenceDate 
+    };
   }, [cluster, processedEntries]);
 
   // Clinical target ranges (always shown)
@@ -386,10 +422,18 @@ export function ClusterEventsChart({
 
         // Add each event's glucose value - simplified format
         params.forEach((param: any) => {
-          if (param.data && param.seriesName) {
-            const glucose = param.data.glucoseInUserUnits || param.data.value[1];
+          if (param.data && param.seriesName && !param.seriesName.includes('Background')) {
+            // Skip background series
+            const glucose = param.data.glucoseInUserUnits || 
+              (param.data.value && Array.isArray(param.data.value) ? param.data.value[1] : null);
+            
+            if (glucose === null) return; // Skip if no glucose value
+            
             // Extract just the event number from the full series name
-            const eventNumber = param.seriesName.match(/Event (\d+)/)[1];
+            const match = param.seriesName.match(/Event (\d+)/);
+            if (!match) return; // Skip if no match
+            
+            const eventNumber = match[1];
             
             content += `<div style="margin-bottom: 4px;">
               <span style="display:inline-block;margin-right:6px;border-radius:10px;width:8px;height:8px;background-color:${param.color};"></span>
@@ -581,28 +625,41 @@ export function ClusterEventsChart({
       type: 'scroll',
       orient: 'horizontal',
       bottom: 35,  // Move the legend further down to avoid overlapping with x-axis labels
-      data: getTimeWindowData.series.map(s => s.name),
-      selectedMode: 'single', // Allow selecting only one series
+      data: getTimeWindowData.series
+        .filter(s => !s.name.includes('Background')) // Only show line series in legend
+        .map(s => s.name),
+      selected: getTimeWindowData.series
+        .filter(s => !s.name.includes('Background'))
+        .reduce((acc, series) => {
+          // Set all events to be selected by default
+          acc[series.name] = true;
+          return acc;
+        }, {} as Record<string, boolean>),
+      selectedMode: 'multiple', // Allow multiple or single selection
     },
     // When user hovers over a series, highlight it and dim others
     // This uses the native echarts behavior for this effect
     highlightPolicy: 'visual',
     emphasis: {
-      focus: 'series',
-      scale: true, // Scale up the emphasized series
-      blurScope: 'global', // Blur everything else
+      focus: 'self', // Only focus the hovered element, don't blur others
+      scale: false, // No scaling effect
     },
-    universalTransition: true, // Enables transitions
+    // Remove animation and transitions
+    animation: false,
     blur: {
-      // Style for non-highlighted series
+      // Style for non-highlighted series - make them visible
       lineStyle: {
-        color: '#CCCCCC',
+        color: '#DDDDDD', // Light gray with no transparency
         width: 1,
-        opacity: 0.2,
+        opacity: 0.7, // Higher opacity for better visibility
       },
       itemStyle: {
-        color: '#CCCCCC',
-        opacity: 0.2,
+        color: '#DDDDDD', // Light gray with no transparency 
+        opacity: 0.7, // Higher opacity for better visibility
+      },
+      // Don't affect the markArea opacity with blur
+      areaStyle: {
+        opacity: 1 // Keep the original opacity for markArea
       }
     },
   };
@@ -612,7 +669,53 @@ export function ClusterEventsChart({
       <ReactECharts
         option={options}
         style={{ height: '100%', width: '100%' }}
-        opts={{ renderer: 'svg' }} // Using SVG renderer for better quality
+        opts={{ renderer: 'svg' }} // Using SVG renderer for crisp lines
+        onEvents={{
+          // Listen for mouseover events on series
+          'mouseover': (params: any) => {
+            // Update the chart when hovering over a line series (not background)
+            if (params.seriesName && !params.seriesName.includes('Background')) {
+              // Extract the event index
+              const match = params.seriesName.match(/Event (\d+)/);
+              if (match) {
+                const eventIndex = parseInt(match[1]) - 1;
+                // Create background for just this event
+                const echartsInstance = (params.event as any).target;
+                
+                // First downplay all background series
+                for (let i = 0; i < cluster.events.length; i++) {
+                  echartsInstance.dispatchAction({
+                    type: 'downplay',
+                    seriesIndex: getTimeWindowData.series.findIndex(
+                      s => s.name === `Event ${i+1} Background`
+                    )
+                  });
+                }
+                
+                // Then highlight only the one we want
+                echartsInstance.dispatchAction({
+                  type: 'highlight',
+                  seriesIndex: getTimeWindowData.series.findIndex(
+                    s => s.name === `Event ${eventIndex+1} Background`
+                  )
+                });
+              }
+            }
+          },
+          // Handle mouseout to reset
+          'mouseout': (params: any) => {
+            const echartsInstance = (params.event as any).target;
+            // Hide all backgrounds when not hovering
+            for (let i = 0; i < cluster.events.length; i++) {
+              echartsInstance.dispatchAction({
+                type: 'downplay',
+                seriesIndex: getTimeWindowData.series.findIndex(
+                  s => s.name === `Event ${i+1} Background`
+                )
+              });
+            }
+          }
+        }}
       />
     </div>
   );
