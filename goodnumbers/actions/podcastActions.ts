@@ -189,19 +189,30 @@ export async function generateAssessments(
 
     // Check if we have any clusters to analyze
     if (clusters.length > 0) {
-      // Sort clusters by count in descending order
-      const sortedClusters = [...clusters].sort((a, b) => b.count - a.count);
+      // Filter out clusters with only one event, then sort by count in descending order
+      // With a secondary sort by time of day (meanTime) in ascending order
+      const significantClusters = clusters.filter(cluster => cluster.count >= 2)
+        .sort((a, b) => {
+          // Primary sort: by count in descending order
+          if (b.count !== a.count) {
+            return b.count - a.count;
+          }
+          // Secondary sort: by meanTime in ascending order
+          return a.meanTime - b.meanTime;
+        });
       
-      // Add header for glycemic patterns section
-      ai_notes += '\n\n## Glycemic Pattern Analysis\n\n';
-      
-      // Initialize array to store all report items
-      const allReportItems: ReportItem[] = [weekly_overview_report];
-      
-      // Process each cluster in descending order by size
-      for (let i = 0; i < sortedClusters.length; i++) {
-        const cluster = sortedClusters[i];
+      // Only proceed if we have significant clusters (with 2+ events)
+      if (significantClusters.length > 0) {
+        // Add header for glycemic patterns section
+        ai_notes += '\n\n## Glycemic Pattern Analysis\n\n';
         
+        // Initialize array to store all report items
+        const allReportItems: ReportItem[] = [weekly_overview_report];
+        
+        // Process each significant cluster in descending order by size
+        for (let i = 0; i < significantClusters.length; i++) {
+          const cluster = significantClusters[i];
+          
         // Compress the cluster data for storage efficiency
         const compressedCluster = compress(cluster);
 
@@ -229,12 +240,20 @@ export async function generateAssessments(
         allReportItems.push(clusterAnalysisReport);
       }
 
-      // Update current state with full notes and all report items
-      currentAssessmentData = {
-        ...currentAssessmentData,
-        notes: ai_notes,
-        report_items: allReportItems,
-      };
+        // Update current state with full notes and all report items
+        currentAssessmentData = {
+          ...currentAssessmentData,
+          notes: ai_notes,
+          report_items: allReportItems,
+        };
+      } else {
+        // No significant clusters found (all had only 1 event) - update with just the weekly report
+        currentAssessmentData = {
+          ...currentAssessmentData,
+          notes: ai_notes,
+          report_items: [weekly_overview_report],
+        };
+      }
     } else {
       // No clusters found - update with just the weekly report
       currentAssessmentData = {
