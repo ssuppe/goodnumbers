@@ -189,42 +189,51 @@ export async function generateAssessments(
 
     // Check if we have any clusters to analyze
     if (clusters.length > 0) {
-      // Find the most significant cluster to analyze (one with most events)
-      const significantCluster = clusters.reduce((prev, current) => 
-        (prev.count > current.count) ? prev : current
-      );
-
-      // Compress the cluster data for storage efficiency
-      const compressedCluster = compress(significantCluster);
-
-      // Create a compressed data package that includes:
-      // 1. The compressed cluster data
-      // 2. A reference to the original entries data (already compressed)
-      const clusterAnalysisData = {
-        compressedCluster: compressedCluster,
-        // This is a reference to tell the client which entries to use
-        dataReference: {
-          type: 'nightscout-entries',
-          id: id  // The hash ID used for storage
-        }
-      };
-
-      // Create a report item for this cluster
-      const clusterAnalysisReport: ReportItem = {
-        insights: [], // Will be populated later by AI
-        data: [clusterAnalysisData], // Pass the compressed data
-      };
-
-      // Add notes about the cluster
+      // Sort clusters by count in descending order
+      const sortedClusters = [...clusters].sort((a, b) => b.count - a.count);
+      
+      // Add header for glycemic patterns section
       ai_notes += '\n\n## Glycemic Pattern Analysis\n\n';
-      ai_notes += `A pattern of ${significantCluster.count} ${significantCluster.eventType.toLowerCase()} events was detected `;
-      ai_notes += `typically occurring around ${minutesToTimeString(significantCluster.meanTime)}.\n`;
+      
+      // Initialize array to store all report items
+      const allReportItems: ReportItem[] = [weekly_overview_report];
+      
+      // Process each cluster in descending order by size
+      for (let i = 0; i < sortedClusters.length; i++) {
+        const cluster = sortedClusters[i];
+        
+        // Compress the cluster data for storage efficiency
+        const compressedCluster = compress(cluster);
 
-      // Update current state with full notes and both report items
+        // Create a compressed data package for this cluster
+        const clusterAnalysisData = {
+          compressedCluster: compressedCluster,
+          // Reference to tell the client which entries to use
+          dataReference: {
+            type: 'nightscout-entries',
+            id: id  // The hash ID used for storage
+          }
+        };
+
+        // Create a report item for this cluster
+        const clusterAnalysisReport: ReportItem = {
+          insights: [], // Will be populated later by AI
+          data: [clusterAnalysisData], // Pass the compressed data
+        };
+        
+        // Add notes about this cluster
+        ai_notes += `Pattern ${i+1}: ${cluster.count} ${cluster.eventType.toLowerCase()} events detected `;
+        ai_notes += `typically occurring around ${minutesToTimeString(cluster.meanTime)}.\n`;
+        
+        // Add this cluster's report item to the collection
+        allReportItems.push(clusterAnalysisReport);
+      }
+
+      // Update current state with full notes and all report items
       currentAssessmentData = {
         ...currentAssessmentData,
         notes: ai_notes,
-        report_items: [weekly_overview_report, clusterAnalysisReport],
+        report_items: allReportItems,
       };
     } else {
       // No clusters found - update with just the weekly report
