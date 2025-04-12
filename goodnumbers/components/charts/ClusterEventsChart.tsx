@@ -53,7 +53,7 @@ export function ClusterEventsChart({
   title = 'Glycemic Event Cluster Analysis',
 }: ClusterEventsChartProps) {
   const chartRef = useRef<ReactECharts>(null);
-  
+
   // Effect to refresh chart when needed
   React.useEffect(() => {
     const chart = chartRef.current?.getEchartsInstance();
@@ -167,23 +167,23 @@ export function ClusterEventsChart({
         smooth: false,
         symbol: 'circle',
         symbolSize: (val: any, params: any) => (params.data.isInEventRange ? 10 : 6),
-        lineStyle: { 
-          width: 3, 
+        lineStyle: {
+          width: 3,
           color: getEventColor(index),
-          type: 'solid'
+          type: 'solid',
         },
         emphasis: {
           focus: 'series',
           lineStyle: { width: 5 },
-          itemStyle: { 
-            borderWidth: 3, 
-            borderColor: '#FFFFFF'
+          itemStyle: {
+            borderWidth: 3,
+            borderColor: '#FFFFFF',
           },
           z: 20,
         },
         itemStyle: {
           color: (params: any) => (params.data.isInEventRange ? getEventColor(index) : 'rgba(170, 170, 170, 0.5)'),
-          opacity: (params: any) => (params.data.isInEventRange ? 1 : 0.6)
+          opacity: (params: any) => (params.data.isInEventRange ? 1 : 0.6),
         },
         data: eventData,
         id: `event-line-${index}`,
@@ -191,12 +191,12 @@ export function ClusterEventsChart({
     });
 
     const allSeries = [...lineSeries];
-    
-    return { 
-      windowStartTime, 
-      windowEndTime, 
-      series: allSeries, 
-      referenceDate
+
+    return {
+      windowStartTime,
+      windowEndTime,
+      series: allSeries,
+      referenceDate,
     };
   }, [cluster, processedEntries, units]);
 
@@ -215,17 +215,16 @@ export function ClusterEventsChart({
     );
   }
 
-  const subtitle = 'Events from different days aligned by time of day';
   const options = {
     // --- Basic chart options (title, tooltip, grid, axes, legend, interaction, blur) ---
     // ... (Keep these sections largely the same as your previous correct version) ...
     title: {
-      text: title,
-      subtext: subtitle,
+      text: null,
+      subtext: null,
       left: 'center',
       textStyle: { fontWeight: 'bold', fontSize: 18 },
       subtextStyle: { fontSize: 13, color: '#666', fontWeight: 'normal' },
-      padding: [10, 0, 15, 0]
+      padding: [10, 0, 15, 0],
     },
     tooltip: {
       trigger: 'item',
@@ -235,7 +234,7 @@ export function ClusterEventsChart({
       padding: 12,
       textStyle: {
         fontSize: 13,
-        lineHeight: 20
+        lineHeight: 20,
       },
       formatter: (params: any) => {
         if (!params || !params.data) return '';
@@ -246,32 +245,35 @@ export function ClusterEventsChart({
           minute: '2-digit',
           hour12: true,
         });
-        
+
         // Get the original date if available
-        const dateInfo = params.data.originalDateStr ? 
-          `<div style="margin-bottom: 4px;">Date: ${params.data.originalDateStr}</div>` : '';
-          
+        const dateInfo = params.data.originalDateStr
+          ? `<div style="margin-bottom: 4px;">Date: ${params.data.originalDateStr}</div>`
+          : '';
+
         // Include event type and duration if available
-        const eventTypeInfo = params.data.eventType ? 
-          `<div style="margin-bottom: 4px;">Type: ${params.data.eventType}</div>` : '';
-        const durationInfo = params.data.duration ? 
-          `<div style="margin-bottom: 4px;">Duration: ${params.data.duration} min</div>` : '';
-        
-        const glucoseValue = params.data.glucoseInUserUnits ?? 
-          (Array.isArray(params.data.value) ? params.data.value[1] : null);
-          
+        const eventTypeInfo = params.data.eventType
+          ? `<div style="margin-bottom: 4px;">Type: ${params.data.eventType}</div>`
+          : '';
+        const durationInfo = params.data.duration
+          ? `<div style="margin-bottom: 4px;">Duration: ${params.data.duration} min</div>`
+          : '';
+
+        const glucoseValue =
+          params.data.glucoseInUserUnits ?? (Array.isArray(params.data.value) ? params.data.value[1] : null);
+
         if (glucoseValue === null || typeof glucoseValue === 'undefined') return '';
-        
+
         const match = params.seriesName.match(/Event (\d+)/);
         const eventLabel = match ? `Event ${match[1]}` : params.seriesName;
-        
+
         let content = `<div style="font-weight: bold; margin-bottom: 10px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 6px;">Time: ${formattedTime}</div>${dateInfo}`;
         content += `<div style="margin-bottom: 6px;"><span style="display:inline-block;margin-right:8px;border-radius:10px;width:10px;height:10px;background-color:${params.color};"></span><span style="font-weight: 500;">${eventLabel}:</span> <span style="margin-left: 5px; font-weight: bold;">${formatValue(glucoseValue)} ${units}</span></div>`;
         content += `${eventTypeInfo}${durationInfo}`;
-        
+
         return content;
       },
-      extraCssText: 'box-shadow: 0 3px 14px rgba(0,0,0,0.15); border-radius: 6px;'
+      extraCssText: 'box-shadow: 0 3px 14px rgba(0,0,0,0.15); border-radius: 6px;',
     },
     grid: { left: '3%', right: '4%', bottom: '20%', containLabel: true },
     xAxis: {
@@ -283,6 +285,10 @@ export function ClusterEventsChart({
       axisTick: { show: false },
       axisLabel: {
         formatter: (value: number) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        textStyle: {
+          fontSize: 16,
+          lineHeight: 20,
+        },
       },
       axisPointer: {
         label: {
@@ -296,19 +302,19 @@ export function ClusterEventsChart({
       name: `Glucose (${units})`,
       nameLocation: 'middle',
       nameGap: 50,
-      nameTextStyle: { 
+      nameTextStyle: {
         fontSize: 14,
         fontWeight: 'bold',
-        padding: [0, 0, 15, 0]
+        padding: [0, 0, 15, 0],
       },
       axisLine: { show: false },
       axisTick: { show: false },
-      splitLine: { 
+      splitLine: {
         show: true,
-        lineStyle: { 
+        lineStyle: {
           type: 'dashed',
-          opacity: 0.6 
-        } 
+          opacity: 0.6,
+        },
       },
     },
     series: [
@@ -321,14 +327,14 @@ export function ClusterEventsChart({
         markLine: {
           silent: true,
           lineStyle: { color: '#ff4d4f', type: 'dashed', width: 2 },
-          label: { 
-            show: true, 
-            position: 'end', 
+          label: {
+            show: true,
+            position: 'end',
             formatter: 'Low',
             fontSize: 12,
             fontWeight: 'bold',
             backgroundColor: '#fff',
-            padding: [3, 6]
+            padding: [3, 6],
           },
           data: [{ yAxis: clinicalLow }],
         },
@@ -341,14 +347,14 @@ export function ClusterEventsChart({
         markLine: {
           silent: true,
           lineStyle: { color: '#ff4d4f', type: 'dashed', width: 2 },
-          label: { 
-            show: true, 
-            position: 'end', 
+          label: {
+            show: true,
+            position: 'end',
             formatter: 'High',
             fontSize: 12,
             fontWeight: 'bold',
             backgroundColor: '#fff',
-            padding: [3, 6]
+            padding: [3, 6],
           },
           data: [{ yAxis: clinicalHigh }],
         },
@@ -393,12 +399,10 @@ export function ClusterEventsChart({
       padding: [10, 20],
       itemGap: 20,
       textStyle: {
-        fontSize: 12
+        fontSize: 12,
       },
       // Only include line series in the legend, not background series
-      data: getTimeWindowData.series
-        .filter((s) => s.name && !s.name.includes('Background'))
-        .map((s) => s.name!),
+      data: getTimeWindowData.series.filter((s) => s.name && !s.name.includes('Background')).map((s) => s.name!),
       selected: getTimeWindowData.series
         .filter((s) => s.name && !s.name.includes('Background'))
         .reduce(
@@ -408,23 +412,23 @@ export function ClusterEventsChart({
           },
           {} as Record<string, boolean>,
         ),
-      selectedMode: 'multiple'
+      selectedMode: 'multiple',
     },
     // Controls what series are highlighted when hovering
     highlightPolicy: 'self',
     // Global emphasis settings - only affect line series
-    emphasis: { 
-      focus: 'self', 
-      scale: false
+    emphasis: {
+      focus: 'self',
+      scale: false,
     },
     // Turn off all animations
     animation: false,
     animationDuration: 0,
     animationEasing: 'linear',
     // Define how non-emphasized series appear
-    blur: { 
-      lineStyle: { color: '#DDDDDD', width: 1, opacity: 0.6 }, 
-      itemStyle: { color: '#DDDDDD', opacity: 0.6 } 
+    blur: {
+      lineStyle: { color: '#DDDDDD', width: 1, opacity: 0.6 },
+      itemStyle: { color: '#DDDDDD', opacity: 0.6 },
     },
   };
 

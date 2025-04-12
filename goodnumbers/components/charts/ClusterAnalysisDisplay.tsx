@@ -3,7 +3,14 @@
 import React from 'react';
 import { AssessmentInsight, GlucoseUnits, InsightPriority, NightscoutEntry } from '@/types/nightscout.d';
 import { ClusterEventsChart } from './ClusterEventsChart';
-import { IconAlertCircle, IconAlertTriangle, IconInfoCircle, IconBulb, IconClock, IconRepeat } from '@tabler/icons-react';
+import {
+  IconAlertCircle,
+  IconAlertTriangle,
+  IconInfoCircle,
+  IconBulb,
+  IconClock,
+  IconRepeat,
+} from '@tabler/icons-react';
 import { TimeCluster, minutesToTimeString } from '@/lib/events/time_clustering/time_clustering';
 import { GlycemicEventType } from '@/lib/events/detect_events';
 
@@ -23,7 +30,7 @@ interface ClusterAnalysisDisplayProps {
  * Helper function to get a friendly name for event type
  */
 function getEventTypeName(eventType: GlycemicEventType): string {
-  switch(eventType) {
+  switch (eventType) {
     case GlycemicEventType.HYPERGLYCEMIA:
       return 'High Glucose';
     case GlycemicEventType.HYPOGLYCEMIA:
@@ -122,21 +129,21 @@ export function ClusterAnalysisDisplay({
       meanTime: minutesToTimeString(cluster.meanTime),
       timeRange: {
         earliest: minutesToTimeString(cluster.startTimeRange.earliest),
-        latest: minutesToTimeString(cluster.startTimeRange.latest)
+        latest: minutesToTimeString(cluster.startTimeRange.latest),
       },
-      events: cluster.events.map(e => ({
+      events: cluster.events.map((e) => ({
         start: e.start_timestamp,
         end: e.end_timestamp,
         duration: e.duration_minutes,
-        extreme: e.extreme_bg_mgdl
-      }))
+        extreme: e.extreme_bg_mgdl,
+      })),
     });
   }, [cluster]);
 
   // Generate a cluster summary
-  const clusterSummary = `This analysis shows a cluster of ${cluster.count} ${getEventTypeName(cluster.eventType)} events
-    that typically occur around ${minutesToTimeString(cluster.meanTime)} (between ${minutesToTimeString(cluster.startTimeRange.earliest)}
-    and ${minutesToTimeString(cluster.startTimeRange.latest)}). All events are aligned by time of day to help identify patterns.`;
+  const clusterSummary = `${cluster.count} ${getEventTypeName(cluster.eventType)} events
+    typically occur around ${minutesToTimeString(cluster.meanTime)} (between ${minutesToTimeString(cluster.startTimeRange.earliest)}
+    and ${minutesToTimeString(cluster.startTimeRange.latest)})`;
 
   // Generate subtitle if not provided
   const effectiveSubtitle = subtitle || `${getEventTypeName(cluster.eventType)} Pattern Analysis`;
@@ -147,7 +154,9 @@ export function ClusterAnalysisDisplay({
       {title && <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>}
 
       {/* Subtitle */}
-      {effectiveSubtitle && <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">{effectiveSubtitle}</h3>}
+      {effectiveSubtitle && (
+        <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">{effectiveSubtitle}</h3>
+      )}
 
       {/* Cluster summary section */}
       <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
@@ -155,7 +164,7 @@ export function ClusterAnalysisDisplay({
           <div className="flex items-center">
             <IconClock className="w-5 h-5 mr-2 text-blue-500" />
             <span>
-              <strong>Mean Time:</strong> {minutesToTimeString(cluster.meanTime)}
+              <strong>Time of Day:</strong> {minutesToTimeString(cluster.meanTime)}
             </span>
           </div>
           <div className="flex items-center">
