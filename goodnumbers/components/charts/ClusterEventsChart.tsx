@@ -36,20 +36,6 @@ function getEventColor(index: number): string {
   return colors[index % colors.length];
 }
 
-function getEventTypeColor(eventType: GlycemicEventType): string {
-  // Using brighter, more distinct colors for testing visibility
-  switch (eventType) {
-    case GlycemicEventType.HYPERGLYCEMIA:
-      return 'rgba(255, 100, 100, 0.2)'; // Brighter Reddish base color
-    case GlycemicEventType.HYPOGLYCEMIA:
-      return 'rgba(100, 255, 100, 0.2)'; // Brighter Greenish base color (adjust if needed)
-    case GlycemicEventType.SEVERE_HYPOGLYCEMIA:
-      return 'rgba(100, 100, 255, 0.2)'; // Brighter Bluish base color
-    default:
-      return 'rgba(150, 150, 150, 0.2)'; // Gray fallback
-  }
-}
-
 function formatTime(dateString: string): string {
   const date = new Date(dateString);
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -66,6 +52,14 @@ export function ClusterEventsChart({
   title = 'Glycemic Event Cluster Analysis',
 }: ClusterEventsChartProps) {
   const chartRef = useRef<ReactECharts>(null);
+  
+  // Effect to refresh chart when needed
+  React.useEffect(() => {
+    const chart = chartRef.current?.getEchartsInstance();
+    if (chart) {
+      chart.resize();
+    }
+  }, [cluster, entries, units]);
 
   const processedEntries = useMemo(() => processEntries(entries), [entries]);
 
@@ -188,40 +182,14 @@ export function ClusterEventsChart({
       };
     });
 
-    const backgroundSeries = cluster.events.map((event, index) => {
-      const normalizedStartTime = normalizeToReferenceDate(event.start_timestamp);
-      const normalizedEndTime = normalizeToReferenceDate(event.end_timestamp);
-      return {
-        name: `Event ${index + 1} Background`,
-        type: 'line',
-        showSymbol: false,
-        silent: true,
-        zlevel: -1,
-        lineStyle: { opacity: 0 },
-        // Set focus: 'none' to prevent this series from being affected by hover
-        emphasis: { focus: 'none', scale: false },
-        // Set blur: 'none' to prevent this series from being blurred when others are highlighted
-        blur: { scale: false },
-        data: [
-          [normalizedStartTime.toISOString(), 0],
-          [normalizedEndTime.toISOString(), 0],
-        ],
-        markArea: {
-          silent: true,
-          itemStyle: {
-            color: getEventTypeColor(event.event_type),
-            // Always show background with medium opacity
-            opacity: 0.35,
-          },
-          data: [[{ xAxis: normalizedStartTime.toISOString() }, { xAxis: normalizedEndTime.toISOString() }]],
-        },
-        tooltip: { show: false },
-        id: `event-background-${index}`,
-      };
-    });
-
-    const allSeries = [...lineSeries, ...backgroundSeries];
-    return { windowStartTime, windowEndTime, series: allSeries, referenceDate };
+    const allSeries = [...lineSeries];
+    
+    return { 
+      windowStartTime, 
+      windowEndTime, 
+      series: allSeries, 
+      referenceDate
+    };
   }, [cluster, processedEntries, units]);
 
   const clinicalLow = units === 'mmol/L' ? 3.9 : 70;
@@ -368,7 +336,9 @@ export function ClusterEventsChart({
       orient: 'horizontal',
       bottom: 35,
       // Only include line series in the legend, not background series
-      data: getTimeWindowData.series.filter((s) => s.name && !s.name.includes('Background')).map((s) => s.name!),
+      data: getTimeWindowData.series
+        .filter((s) => s.name && !s.name.includes('Background'))
+        .map((s) => s.name!),
       selected: getTimeWindowData.series
         .filter((s) => s.name && !s.name.includes('Background'))
         .reduce(
@@ -379,33 +349,32 @@ export function ClusterEventsChart({
           {} as Record<string, boolean>,
         ),
       selectedMode: 'multiple',
-      // Prevent the legend from triggering highlight/blur effects
-      emphasis: { selectorLabel: { opacity: 1 } },
     },
     // Controls what series are highlighted when hovering
-    highlightPolicy: 'series',
-    // Global emphasis settings - only affect line series, not backgrounds (due to per-series settings)
-    emphasis: { focus: 'series', scale: false },
+    highlightPolicy: 'self',
+    // Global emphasis settings - only affect line series
+    emphasis: { 
+      focus: 'self', 
+      scale: false
+    },
     // Turn off all animations
     animation: false,
     animationDuration: 0,
     animationEasing: 'linear',
-    // Define how non-emphasized series appear (only applies to line series)
-    blur: { lineStyle: { color: '#DDDDDD', width: 1, opacity: 0.6 }, itemStyle: { color: '#DDDDDD', opacity: 0.6 } },
+    // Define how non-emphasized series appear
+    blur: { 
+      lineStyle: { color: '#DDDDDD', width: 1, opacity: 0.6 }, 
+      itemStyle: { color: '#DDDDDD', opacity: 0.6 } 
+    },
   };
 
   return (
-    <div className="w-full h-[450px] p-4 border rounded-lg shadow-sm bg-card text-card-foreground">
+    <div className="w-full h-[450px] p-4 border rounded-lg shadow-sm bg-card text-card-foreground relative">
       <ReactECharts
         ref={chartRef}
         option={options}
         style={{ height: '100%', width: '100%' }}
         opts={{ renderer: 'svg' }}
-        // Event handlers removed - all backgrounds now shown with fixed opacity
-        onEvents={{
-          // No event handlers needed for now
-          // Line hover behavior is handled automatically by ECharts
-        }}
       />
     </div>
   );
