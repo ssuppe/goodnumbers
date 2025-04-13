@@ -17,99 +17,140 @@ import { Storage } from '@google-cloud/storage';
 import { updateRssFeed } from './rss';
 import { canReadLocal, canWriteLocal } from '@/utils/env';
 import { readLocalFile, writeLocalFile } from '@/utils/fileCache';
-import { SSMLValidationResult, validateAndFixSsml } from '@/utils/ssml-server';
+import { SSMLValidationResult, validateAndFixSsml } from '@/utils/ssml-server'; // Assuming this path is correct
 
 const { TextToSpeechLongAudioSynthesizeClient } = require('@google-cloud/text-to-speech').v1beta1;
-const isDevelopment = process.env.ENV === 'development';
-const isDebug = process.env.DEBUG === 'false';
-const isWriteLocal = process.env.WRITE_LOCAL === 'false';
 
 const BUCKET_NAME = 'goodnumbersmain'; // Replace with your bucket name
 const GCS_PATH = 'audio-files'; // Folder in bucket to store audio files
-const POLLING_INTERVAL = 10; // seconds
 
 // Initialize Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
+/**
+ * Loads a text template file from the specified path.
+ * @param filename The name of the template file within the prompts directory.
+ * @returns The content of the template file as a string.
+ */
 const loadTemplate = async (filename: string): Promise<string> => {
   const templatePath = path.join(process.cwd(), 'actions', 'gemini', '_prompts', filename);
-  return await fs.readFile(templatePath, 'utf-8');
+  try {
+    return await fs.readFile(templatePath, 'utf-8');
+  } catch (error) {
+    console.error(`Error loading template ${filename}:`, error);
+    throw new Error(`Failed to load template: ${filename}`);
+  }
 };
 
+// Interface for Description (used in generatePodcastDescription)
 export interface Description {
   title: string;
   description: string;
 }
 
+/**
+ * Generates assessment text based on notes and previous assessments.
+ * Uses Gemini AI and templates. Supports local caching.
+ * @param data Input AssessmentData containing notes and potentially previous assessments.
+ * @returns Updated AssessmentData with the new assessment text.
+ */
 export async function getAssessment(data: AssessmentData): Promise<AssessmentData> {
+  console.log(`Generating assessment using template ${data.template_num ?? 1}`);
   try {
     if (!data.notes) {
-      throw new Error('Notes are required');
+      throw new Error('Notes are required for assessment generation.');
     }
-
-    // Configure Gemini model
-    const generationConfig: GenerationConfig = {
-      temperature: 1.0,
-      topP: 0.95,
-      topK: 64,
-      maxOutputTokens: 32000,
-      responseMimeType: 'text/plain',
-    };
-
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-pro',
-      generationConfig,
-    });
 
     const templateNum = data.template_num ?? 1;
-    let responseText: string | null = '';
+    let responseText: string | null = null; // Initialize responseText
 
-    // Load appropriate template and generate response
+    // Attempt to read from local cache first if enabled
     if (canReadLocal()) {
-      responseText = await readLocalFile({ filename: `gemini/pass${templateNum}.txt`, plainText: true });
+      try {
+        responseText = await readLocalFile({ filename: `gemini/pass${templateNum}.txt`, plainText: true });
+        if (responseText) {
+          console.log(`Assessment template ${templateNum} read from local cache.`);
+        }
+      } catch (cacheError) {
+        console.warn(`Local cache read failed for pass${templateNum}.txt, proceeding with generation.`);
+        // Ignore cache read error and proceed to generate
+      }
     }
-    if (responseText === null || responseText == '') {
+
+    // Generate content if not found in cache
+    if (responseText === null || responseText === '') {
+      console.log(`Generating assessment content for template ${templateNum}...`);
+      // Configure Gemini model
+      const generationConfig: GenerationConfig = {
+        temperature: 1.0,
+        topP: 0.95,
+        topK: 64,
+        maxOutputTokens: 32000,
+        responseMimeType: 'text/plain',
+      };
+
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-1.5-pro',
+        generationConfig,
+      });
+
+      let prompt: string;
       switch (templateNum) {
         case 1: {
           const template1 = await loadTemplate('pass1.txt');
-          const prompt = interpolate(template1, { notes: data.notes });
-          const result = await model.generateContent(prompt);
-          responseText = result.response.text();
+          prompt = interpolate(template1, { notes: data.notes });
           break;
         }
         case 2: {
-          // debugger;
           if (!data.assessment1) {
-            throw new Error('Assessment1 required for template 2');
+            throw new Error('Assessment 1 is required for template 2.');
           }
           const template2 = await loadTemplate('pass2.txt');
-          const prompt = interpolate(template2, {
+          prompt = interpolate(template2, {
             notes: data.notes,
             assessment1: data.assessment1,
           });
-          const result = await model.generateContent(prompt);
-          responseText = result.response.text();
           break;
         }
         default:
           throw new Error(`Invalid template number: ${templateNum}`);
       }
-    }
-    if (canWriteLocal()) {
-      writeLocalFile(responseText, {
-        filename: `gemini/pass${templateNum}.txt`,
-        plainText: true,
-      });
+
+      const result = await model.generateContent(prompt);
+      responseText = result.response.text();
+      console.log(`Assessment content generated for template ${templateNum}.`);
+
+      // Write to local cache if enabled
+      if (canWriteLocal() && responseText) {
+        try {
+          await writeLocalFile(responseText, {
+            filename: `gemini/pass${templateNum}.txt`,
+            plainText: true,
+          });
+          console.log(`Assessment template ${templateNum} written to local cache.`);
+        } catch (cacheWriteError) {
+          console.error(`Failed to write assessment template ${templateNum} to local cache:`, cacheWriteError);
+          // Continue execution even if cache write fails
+        }
+      }
     }
 
+    // Ensure responseText is not null before returning
+    if (responseText === null) {
+      throw new Error('Failed to obtain assessment text.');
+    }
+
+    // Return updated data, preserving existing fields
     return {
       ...data,
-      valid: true,
+      valid: true, // Mark as valid since we successfully got text
       assessment1: templateNum === 1 ? responseText : data.assessment1,
       assessment2: templateNum === 2 ? responseText : data.assessment2,
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
+    console.error('Error during assessment generation:', error);
+    // Re-throw a more specific error
     if (error instanceof Error) {
       throw new Error(`Assessment generation failed: ${error.message}`);
     }
@@ -117,105 +158,252 @@ export async function getAssessment(data: AssessmentData): Promise<AssessmentDat
   }
 }
 
+/**
+ * Generates podcast SSML dialog using Gemini AI, templates, and SSML validation/fixing.
+ * Includes a retry mechanism for initial SSML generation and an enhancement step.
+ * @param data Input AssessmentData containing notes and assessments.
+ * @returns Updated AssessmentData with the final, validated SSML dialog.
+ */
 export async function generatePodcastText(data: AssessmentData): Promise<AssessmentData> {
-  console.log('Generating podcast');
-  var finalSsml: string | null;
+  console.log('Attempting to generate podcast SSML dialog...');
+
+  const MAX_TRIES = 3;
+  let validatedEnhancedSsml: string | null = null; // Holds the final, validated SSML after enhancement
+  let attempt = 0;
+  let successfulGeneration = false;
+
+  // --- Attempt 1: Read from Local Cache ---
   if (canReadLocal()) {
-    finalSsml = await readLocalFile({ filename: 'gemini/pass3_final.txt', plainText: true });
-  } else {
     try {
-      // Initial generation configuration
-      const generationConfig: GenerationConfig = {
+      const cachedSsml = await readLocalFile<string>({ filename: 'gemini/pass4_final_enhanced.txt', plainText: true }); // Cache the enhanced version
+      if (cachedSsml) {
+        console.log('SSML dialog read from local cache (pass4_final_enhanced.txt). Re-validating...');
+        // Re-validate cached SSML to ensure it's still good
+        const validationResult = validateAndFixSsml(cachedSsml);
+        if (validationResult.error === null && validationResult.correctedSsml) {
+          validatedEnhancedSsml = validationResult.correctedSsml;
+          successfulGeneration = true;
+          console.log('Cached SSML is valid.');
+          // Optionally log warnings from re-validation
+          if (validationResult.warnings.length > 0) {
+            console.warn('Warnings during re-validation of cached SSML:', validationResult.warnings);
+          }
+        } else {
+          console.warn(
+            'Cached SSML is invalid or could not be fixed. Proceeding with generation.',
+            validationResult.error,
+          );
+          // Optionally log warnings: console.warn('Warnings:', validationResult.warnings);
+        }
+      }
+    } catch (cacheError) {
+      console.warn('Local cache read failed for pass4_final_enhanced.txt, proceeding with generation.');
+      // Ignore cache read error
+    }
+  }
+
+  // --- Attempt 2: Generation Loop (if not found in cache or cache was invalid) ---
+  if (!successfulGeneration) {
+    try {
+      // --- Initial Generation Setup ---
+      const initialGenConfig: GenerationConfig = {
         temperature: 1.2,
         topP: 0.95,
         topK: 64,
-        maxOutputTokens: 128000,
+        maxOutputTokens: 128000, // Adjust as needed, consider SSML size limits
         responseMimeType: 'text/plain',
       };
-
-      let model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-pro',
-        generationConfig,
+      const initialModel = genAI.getGenerativeModel({
+        model: 'gemini-1.5-pro', // Or your preferred model for initial draft
+        generationConfig: initialGenConfig,
       });
-
-      // Load and interpolate template
       const template3 = await loadTemplate('pass3.txt');
-      const prompt = interpolate(template3, {
+      const initialPrompt = interpolate(template3, {
         notes: data.notes ?? '',
         assessment1: data.assessment1 ?? '',
         assessment2: data.assessment2 ?? '',
       });
 
-      let isValidSsml = false;
-      let noSsmlTries = 0;
+      // --- Enhancement Setup ---
+      const enhancedGenConfig: GenerationConfig = {
+        temperature: 1.5, // Higher temperature for more creative enhancement
+        topP: 0.95,
+        maxOutputTokens: 128000, // Ensure enough tokens for potentially longer enhanced SSML
+        responseMimeType: 'text/plain', // Assuming enhancement also returns plain text SSML
+      };
+      const enhancementModel = genAI.getGenerativeModel({
+        model: 'gemini-1.5-flash', // Using Flash for potentially faster enhancement
+        generationConfig: enhancedGenConfig,
+      });
+      const template4 = await loadTemplate('pass4.txt');
 
-      while (!isValidSsml && noSsmlTries < 3) {
-        console.log(`Generating SSML ${noSsmlTries} / 2`);
-        let podcastSsml: string | null = null;
+      // --- Retry Loop ---
+      while (!successfulGeneration && attempt < MAX_TRIES) {
+        attempt++;
+        console.log(`--- Generating SSML - Attempt ${attempt} / ${MAX_TRIES} ---`);
 
-        if (podcastSsml == null) {
-          const response = await model.generateContent(prompt);
-          podcastSsml = response.response.text();
+        let initialSsml: string | null = null;
+        let correctedInitialSsml: string | null = null;
+        let initialValidationResult: SSMLValidationResult | null = null;
+
+        // 1. Generate Initial SSML
+        try {
+          console.log(`Generating initial SSML draft (Attempt ${attempt})...`);
+          const response = await initialModel.generateContent(initialPrompt);
+          initialSsml = response.response.text();
+          // Basic cleanup (optional, but can help before validation)
+          initialSsml = initialSsml?.replaceAll('<laughs>', '').replaceAll('```', ''); // Example cleanup
+        } catch (genError) {
+          console.error(`Error during initial SSML generation (Attempt ${attempt}):`, genError);
+          // Decide if this error should count as a failed attempt or be retried immediately
+          continue; // Skip to the next attempt
         }
 
-        // Basic fixes that AI sometimes makes to SSML
-        podcastSsml = podcastSsml!.replaceAll('<laughs>', '');
+        if (!initialSsml) {
+          console.warn(`Initial SSML generation returned empty content (Attempt ${attempt}).`);
+          continue; // Skip to the next attempt
+        }
 
-        // Check SSML validity
-        var ssmlCheck: SSMLValidationResult = validateAndFixSsml(podcastSsml);
-        console.log(`Has invalid SSML? ${ssmlCheck.error}`);
+        // 2. Validate and Fix Initial SSML
+        console.log(`Validating initial SSML (Attempt ${attempt})...`);
+        initialValidationResult = validateAndFixSsml(initialSsml);
 
-        if (ssmlCheck.error) {
-          console.log(`${noSsmlTries}/3: Invalid SSML that couldn't be fixed: ${podcastSsml}`);
+        if (initialValidationResult.warnings.length > 0) {
+          console.warn(
+            `Warnings during initial SSML validation (Attempt ${attempt}):`,
+            initialValidationResult.warnings,
+          );
+        }
+
+        if (initialValidationResult.error !== null) {
+          // Initial SSML is invalid and could NOT be fixed
+          console.error(
+            `Attempt ${attempt}: Invalid initial SSML that couldn't be fixed. Error: ${initialValidationResult.error}`,
+          );
           if (canWriteLocal()) {
-            await writeLocalFile(ssmlCheck.correctedSsml, { filename: 'gemini/pass3_invalid.txt', plainText: true });
+            try {
+              // Write the *original* invalid SSML for debugging
+              await writeLocalFile(initialSsml, {
+                filename: `gemini/pass3_invalid_attempt_${attempt}.txt`,
+                plainText: true,
+              });
+            } catch (writeError) {
+              console.error('Failed to write invalid SSML log:', writeError);
+            }
           }
-          noSsmlTries++;
+          // Loop will continue to the next attempt if MAX_TRIES not reached
         } else {
-          isValidSsml = true;
-          // Got valid SSML, enhance it with more human intonation
-          const enhancedGenerationConfig: GenerationConfig = {
-            temperature: 1.5,
-            topP: 0.95,
-            maxOutputTokens: 128000,
-          };
+          // Initial SSML is valid (or was successfully fixed)
+          console.log(`Attempt ${attempt}: Initial SSML is valid or was fixed.`);
+          correctedInitialSsml = initialValidationResult.correctedSsml!;
 
-          model = genAI.getGenerativeModel({
-            model: 'gemini-2.0-flash-exp',
-            generationConfig: enhancedGenerationConfig,
-          });
-
-          // Load and interpolate template for enhancement
-          const template4 = await loadTemplate('pass4.txt');
-          const enhancedPrompt = interpolate(template4, {
-            ssml_dialog: ssmlCheck.correctedSsml,
-          });
-          let finalSsml: string | null = '';
-          if (finalSsml == null || finalSsml == '') {
-            const enhancedResponse = await model.generateContent(enhancedPrompt);
-            finalSsml = enhancedResponse.response.text().replace('```xml', '').replace('```', '').replace(/\\n/g, '\n');
-            ssmlCheck = validateAndFixSsml(finalSsml);
-            finalSsml = ssmlCheck.correctedSsml!;
+          if (!correctedInitialSsml) {
+            console.error(
+              `Attempt ${attempt}: Initial SSML validation succeeded but corrected SSML is unexpectedly empty.`,
+            );
+            continue; // Treat as failure for this attempt
           }
-          if (canWriteLocal()) {
-            await writeLocalFile(podcastSsml, { filename: 'gemini/pass3_final.txt', plainText: true });
+
+          // 3. Enhance Validated Initial SSML
+          console.log(`Enhancing SSML (Attempt ${attempt})...`);
+          let enhancedSsml: string | null = null;
+          try {
+            const enhancedPrompt = interpolate(template4, {
+              ssml_dialog: correctedInitialSsml, // Use the validated/fixed initial SSML
+            });
+            const enhancedResponse = await enhancementModel.generateContent(enhancedPrompt);
+            enhancedSsml = enhancedResponse.response.text();
+            // Basic cleanup for enhanced SSML (remove potential markdown/fences)
+            enhancedSsml = enhancedSsml
+              ?.replace(/^```(xml|ssml)?\s*/i, '')
+              .replace(/\s*```$/, '')
+              .trim();
+            enhancedSsml = enhancedSsml?.replace(/\\n/g, '\n'); // Fix escaped newlines if necessary
+          } catch (enhanceError) {
+            console.error(`Error during SSML enhancement (Attempt ${attempt}):`, enhanceError);
+            // Decide if enhancement failure should stop the process or just skip enhancement for this try
+            // For now, let's treat enhancement failure as a reason to retry the whole process
+            continue; // Skip to the next attempt
+          }
+
+          if (!enhancedSsml) {
+            console.warn(`SSML enhancement returned empty content (Attempt ${attempt}).`);
+            continue; // Skip to the next attempt
+          }
+
+          // 4. Validate and Fix Enhanced SSML
+          console.log(`Validating enhanced SSML (Attempt ${attempt})...`);
+          const enhancedValidationResult = validateAndFixSsml(enhancedSsml);
+
+          if (enhancedValidationResult.warnings.length > 0) {
+            console.warn(
+              `Warnings during enhanced SSML validation (Attempt ${attempt}):`,
+              enhancedValidationResult.warnings,
+            );
+          }
+
+          if (enhancedValidationResult.error === null && enhancedValidationResult.correctedSsml) {
+            // SUCCESS! Enhanced SSML is valid (or was fixed)
+            console.log(`--- Attempt ${attempt}: Successfully generated and validated enhanced SSML! ---`);
+            validatedEnhancedSsml = enhancedValidationResult.correctedSsml;
+            successfulGeneration = true; // Set flag to exit the loop
+
+            // Write the final, validated, *enhanced* SSML to cache if enabled
+            if (canWriteLocal()) {
+              try {
+                await writeLocalFile(validatedEnhancedSsml, {
+                  filename: 'gemini/pass4_final_enhanced.txt',
+                  plainText: true,
+                });
+                console.log('Final enhanced SSML written to local cache.');
+              } catch (writeError) {
+                console.error('Failed to write final enhanced SSML to cache:', writeError);
+              }
+            }
+            // Break the loop explicitly (though successfulGeneration flag would also do it)
+            break;
+          } else {
+            // Enhanced SSML failed validation and couldn't be fixed
+            console.error(
+              `Attempt ${attempt}: Enhanced SSML failed validation or fixing. Error: ${enhancedValidationResult.error}`,
+            );
+            if (canWriteLocal()) {
+              try {
+                // Write the *failed* enhanced SSML for debugging
+                await writeLocalFile(enhancedSsml, {
+                  filename: `gemini/pass4_invalid_enhanced_attempt_${attempt}.txt`,
+                  plainText: true,
+                });
+              } catch (writeError) {
+                console.error('Failed to write invalid enhanced SSML log:', writeError);
+              }
+            }
+            // Let the loop continue to retry the *entire* process (initial generation + enhancement)
           }
         }
-      }
-
-      throw new Error('Failed to generate valid SSML after 3 attempts');
+      } // End of while loop
     } catch (error) {
+      // Catch errors from setup (e.g., loading templates)
+      console.error('Error during SSML generation setup or loop:', error);
       if (error instanceof Error) {
-        console.error('Error:', error.message);
         throw new Error(`Failed to generate podcast text: ${error.message}`);
       }
-      throw new Error('Unknown error occurred during podcast text generation');
+      throw new Error('Unknown error occurred during podcast text generation process.');
     }
+  } // End of generation block (!successfulGeneration)
+
+  // --- Final Check and Return ---
+  if (!successfulGeneration || !validatedEnhancedSsml) {
+    // Only throw if we exhausted retries *and* didn't succeed via cache or generation
+    console.error(`Failed to generate valid SSML after ${attempt} attempts.`);
+    throw new Error(`Failed to generate valid and enhanced SSML after ${MAX_TRIES} attempts.`);
   }
+
+  console.log('Podcast SSML generation completed successfully.');
   return {
-    ...data,
-    valid: true,
-    ssml_dialog: finalSsml,
+    ...data, // Preserve all original data
+    valid: true, // Mark as valid because we have successful SSML
+    ssml_dialog: validatedEnhancedSsml, // Assign the final, validated SSML
     timestamp: new Date().toISOString(),
   };
 }
@@ -235,6 +423,11 @@ async function asyncGenerateJson<T>(prompt: string, model: GenerativeModel): Pro
   return result[0];
 }
 
+/**
+ * Generates a podcast title and description using Gemini AI.
+ * @param data Input AssessmentData containing the SSML dialog.
+ * @returns Updated AssessmentData with title and description.
+ */
 export async function generatePodcastDescription(data: AssessmentData): Promise<AssessmentData> {
   console.log('Generating podcast title and description');
 
@@ -299,6 +492,14 @@ export async function generatePodcastDescription(data: AssessmentData): Promise<
   }
 }
 
+// --- Placeholder/Example Implementations for Audio Generation/Status Check ---
+// Replace these with your actual implementations if they differ significantly
+
+/**
+ * Initiates long audio synthesis using Google Text-to-Speech API.
+ * @param podcast AssessmentData containing SSML, title, description, and ID.
+ * @returns PodcastGenerateResult indicating the start of the process.
+ */
 export async function generatePodcastAudio(podcast: AssessmentData): Promise<PodcastGenerateResult> {
   if (!podcast?.ssml_dialog) {
     throw new Error(`Invalid dialog: ${podcast.ssml_dialog}`);
@@ -362,7 +563,11 @@ export async function generatePodcastAudio(podcast: AssessmentData): Promise<Pod
   }
 }
 
-//
+/**
+ * Checks the status of a long-running Text-to-Speech operation.
+ * @param operationId The unique name/ID of the operation.
+ * @returns JobCheckResponse detailing the operation's status.
+ */
 async function getJobStatus(operationId: string): Promise<JobCheckResponse> {
   const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   if (!credentialsPath) {
@@ -442,6 +647,11 @@ async function getJobStatus(operationId: string): Promise<JobCheckResponse> {
   return status;
 }
 
+/**
+ * Checks the status of the podcast audio generation job and updates the RSS feed upon completion.
+ * @param podcast_result The current status of the podcast generation job.
+ * @returns Updated PodcastGenerateResult with the latest status.
+ */
 export async function checkPodcastStatus(podcast_result: PodcastGenerateResult): Promise<PodcastGenerateResult> {
   if (!podcast_result.operation_id) {
     podcast_result.status = 'error';

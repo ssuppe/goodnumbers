@@ -22,6 +22,7 @@ import {
   NightscoutData,
   PodcastGenerateResult,
   ReportItem,
+  ReportType,
 } from '@/types/nightscout.d';
 import { filterCriticalInsights, hasCriticalInsights, insightsToNotes } from './nightscoutActions';
 import { AgpDataPoint } from '@/components/charts/AgpChart';
@@ -139,6 +140,7 @@ export async function generateAssessments(
     // Weekly overview section
     ai_notes += '## Weekly overview\n\n';
     var weekly_overview_report: ReportItem = {
+      type: ReportType.AGP,
       insights: [],
       data: [],
     };
@@ -191,7 +193,8 @@ export async function generateAssessments(
     if (clusters.length > 0) {
       // Filter out clusters with only one event, then sort by count in descending order
       // With a secondary sort by time of day (meanTime) in ascending order
-      const significantClusters = clusters.filter(cluster => cluster.count >= 2)
+      const significantClusters = clusters
+        .filter((cluster) => cluster.count >= 2)
         .sort((a, b) => {
           // Primary sort: by count in descending order
           if (b.count !== a.count) {
@@ -200,45 +203,46 @@ export async function generateAssessments(
           // Secondary sort: by meanTime in ascending order
           return a.meanTime - b.meanTime;
         });
-      
+
       // Only proceed if we have significant clusters (with 2+ events)
       if (significantClusters.length > 0) {
         // Add header for glycemic patterns section
         ai_notes += '\n\n## Glycemic Pattern Analysis\n\n';
-        
+
         // Initialize array to store all report items
         const allReportItems: ReportItem[] = [weekly_overview_report];
-        
+
         // Process each significant cluster in descending order by size
         for (let i = 0; i < significantClusters.length; i++) {
           const cluster = significantClusters[i];
-          
-        // Compress the cluster data for storage efficiency
-        const compressedCluster = compress(cluster);
 
-        // Create a compressed data package for this cluster
-        const clusterAnalysisData = {
-          compressedCluster: compressedCluster,
-          // Reference to tell the client which entries to use
-          dataReference: {
-            type: 'nightscout-entries',
-            id: id  // The hash ID used for storage
-          }
-        };
+          // Compress the cluster data for storage efficiency
+          const compressedCluster = compress(cluster);
 
-        // Create a report item for this cluster
-        const clusterAnalysisReport: ReportItem = {
-          insights: [], // Will be populated later by AI
-          data: [clusterAnalysisData], // Pass the compressed data
-        };
-        
-        // Add notes about this cluster
-        ai_notes += `Pattern ${i+1}: ${cluster.count} ${cluster.eventType.toLowerCase()} events detected `;
-        ai_notes += `typically occurring around ${minutesToTimeString(cluster.meanTime)}.\n`;
-        
-        // Add this cluster's report item to the collection
-        allReportItems.push(clusterAnalysisReport);
-      }
+          // Create a compressed data package for this cluster
+          const clusterAnalysisData = {
+            compressedCluster: compressedCluster,
+            // Reference to tell the client which entries to use
+            dataReference: {
+              type: 'nightscout-entries',
+              id: id, // The hash ID used for storage
+            },
+          };
+
+          // Create a report item for this cluster
+          const clusterAnalysisReport: ReportItem = {
+            type: ReportType.CLUSTER_LINE,
+            insights: [], // Will be populated later by AI
+            data: [clusterAnalysisData], // Pass the compressed data
+          };
+
+          // Add notes about this cluster
+          ai_notes += `Pattern ${i + 1}: ${cluster.count} ${cluster.eventType.toLowerCase()} events detected `;
+          ai_notes += `typically occurring around ${minutesToTimeString(cluster.meanTime)}.\n`;
+
+          // Add this cluster's report item to the collection
+          allReportItems.push(clusterAnalysisReport);
+        }
 
         // Update current state with full notes and all report items
         currentAssessmentData = {
