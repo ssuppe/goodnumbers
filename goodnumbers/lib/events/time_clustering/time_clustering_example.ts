@@ -34,14 +34,14 @@ const sampleEvents: GlycemicEvent[] = [
 
   // Evening highs around 7:00 PM
   {
-    event_type: GlycemicEventType.HYPERGLYCEMIA,
+    event_type: GlycemicEventType.HIGH,
     start_timestamp: '2023-05-01T19:05:00Z',
     end_timestamp: '2023-05-01T20:00:00Z',
     duration_minutes: 55,
     extreme_bg_mgdl: 210,
   },
   {
-    event_type: GlycemicEventType.HYPERGLYCEMIA,
+    event_type: GlycemicEventType.HIGH,
     start_timestamp: '2023-05-02T18:55:00Z',
     end_timestamp: '2023-05-02T19:45:00Z',
     duration_minutes: 50,
@@ -50,7 +50,7 @@ const sampleEvents: GlycemicEvent[] = [
 
   // Random isolated events (shouldn't cluster)
   {
-    event_type: GlycemicEventType.HYPERGLYCEMIA,
+    event_type: GlycemicEventType.HIGH,
     start_timestamp: '2023-05-03T12:00:00Z',
     end_timestamp: '2023-05-03T12:30:00Z',
     duration_minutes: 30,
@@ -80,7 +80,12 @@ function generateClusterDescription(cluster: TimeCluster): string {
   const latestTimeStr = minutesToTimeString(cluster.startTimeRange.latest);
 
   // Get the event type description
-  const eventTypeStr = cluster.eventType === GlycemicEventType.HYPOGLYCEMIA ? 'low blood sugar' : 'high blood sugar';
+  let eventTypeStr = 'blood sugar event';
+  if (cluster.eventType === GlycemicEventType.HYPOGLYCEMIA || cluster.eventType === GlycemicEventType.SEVERE_HYPOGLYCEMIA) {
+    eventTypeStr = 'low blood sugar';
+  } else if (cluster.eventType === GlycemicEventType.HIGH || cluster.eventType === GlycemicEventType.VERY_HIGH) {
+    eventTypeStr = 'high blood sugar';
+  }
 
   // Check if it's a recurring pattern (more than one event)
   if (cluster.count > 1) {
