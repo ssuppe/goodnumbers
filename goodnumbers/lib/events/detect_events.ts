@@ -4,9 +4,9 @@ import { PatientRange } from '../oref0-autotune/gn-overview';
 // Define the event types as specified in the updated specification
 export enum GlycemicEventType {
   SEVERE_HYPOGLYCEMIA = 'SEVERE_HYPOGLYCEMIA', // bg <= 54
-  HYPOGLYCEMIA = 'HYPOGLYCEMIA',             // 54 < bg < 70
-  HIGH = 'HIGH',                             // target_high < bg <= very_high
-  VERY_HIGH = 'VERY_HIGH',                   // bg > very_high
+  HYPOGLYCEMIA = 'HYPOGLYCEMIA', // 54 < bg < 70
+  HIGH = 'HIGH', // target_high < bg <= very_high
+  VERY_HIGH = 'VERY_HIGH', // bg > very_high
 }
 
 // Define fixed thresholds for hypoglycemic events (clinical standards)
@@ -69,7 +69,12 @@ function calculateDurationMinutes(startTime: string, endTime: string): number {
  * @param eventType - The type of glycemic event being evaluated
  * @returns The extreme value (minimum for hypo events, maximum for high events)
  */
-function findExtremeBg(data: GlucoseDatum[], startIndex: number, endIndex: number, eventType: GlycemicEventType): number {
+function findExtremeBg(
+  data: GlucoseDatum[],
+  startIndex: number,
+  endIndex: number,
+  eventType: GlycemicEventType,
+): number {
   // Determine if we're looking for minimum (hypo events) or maximum (high events)
   const isHypo = eventType === GlycemicEventType.HYPOGLYCEMIA || eventType === GlycemicEventType.SEVERE_HYPOGLYCEMIA;
   let extremeValue = isHypo ? Number.MAX_VALUE : Number.MIN_VALUE;
@@ -102,7 +107,7 @@ function recordEventIfNeeded(
   endIndex: number,
   eventType: GlycemicEventType,
   eventsList: GlycemicEvent[],
-  minDuration: number
+  minDuration: number,
 ): boolean {
   // Validate indices
   if (startIndex < 0 || endIndex < startIndex || startIndex >= mergedData.length || endIndex >= mergedData.length) {
@@ -110,10 +115,7 @@ function recordEventIfNeeded(
   }
 
   // Calculate actual duration of the event
-  const actualDuration = calculateDurationMinutes(
-    mergedData[startIndex].dateString,
-    mergedData[endIndex].dateString
-  );
+  const actualDuration = calculateDurationMinutes(mergedData[startIndex].dateString, mergedData[endIndex].dateString);
 
   // Only record events that meet the minimum duration requirement
   if (actualDuration >= minDuration) {
@@ -126,13 +128,13 @@ function recordEventIfNeeded(
       start_timestamp: mergedData[startIndex].dateString,
       end_timestamp: mergedData[endIndex].dateString,
       duration_minutes: actualDuration,
-      extreme_bg_mgdl: extremeValue
+      extreme_bg_mgdl: extremeValue,
     };
-    
+
     eventsList.push(event);
     return true;
   }
-  
+
   return false;
 }
 
@@ -153,7 +155,7 @@ export function detectGlycemicEvents(data: AutotunePreppedData, patientRange: Pa
   // Exit thresholds (with hysteresis)
   const EXIT_SEVERE_HYPO = HYSTERESIS_THRESHOLDS.EXIT_SEVERE_HYPO;
   const EXIT_HYPO = HYSTERESIS_THRESHOLDS.EXIT_HYPO;
-  
+
   // Ensure exit thresholds don't overlap between zones
   const EXIT_HIGH = Math.min(HIGH_THRESHOLD, Math.max(EXIT_HYPO + 1, HIGH_THRESHOLD - 10));
   const EXIT_VERY_HIGH = Math.min(VERY_HIGH_THRESHOLD, Math.max(HIGH_THRESHOLD + 1, VERY_HIGH_THRESHOLD - 10));
@@ -179,7 +181,7 @@ export function detectGlycemicEvents(data: AutotunePreppedData, patientRange: Pa
 
     // Check for data gap before processing the point
     if (i > 0) {
-      const previousDatum = mergedData[i-1];
+      const previousDatum = mergedData[i - 1];
       const previousTime = new Date(previousDatum.dateString).getTime();
       const timeDiffMinutes = (currentTime - previousTime) / (60 * 1000);
 
@@ -249,7 +251,7 @@ export function detectGlycemicEvents(data: AutotunePreppedData, patientRange: Pa
 
       // If event didn't continue/upgrade, it might have ended
       if (eventEnded) {
-        recordEventIfNeeded(mergedData, eventStartIndex, i - 1, previousEventType, events, MIN_EVENT_DURATION_MINUTES);
+        recordEventIfNeeded(mergedData, eventStartIndex, i - 1, previousEventType!, events, MIN_EVENT_DURATION_MINUTES);
         currentEventType = null;
         eventStartIndex = -1;
         consecutiveCount = 0;
@@ -259,18 +261,22 @@ export function detectGlycemicEvents(data: AutotunePreppedData, patientRange: Pa
       // Only check if event didn't just end
       if (currentEventType !== null && !eventEnded) {
         let newEventType: GlycemicEventType | null = null;
-        
+
         if (bg <= SEVERE_HYPO_THRESHOLD && currentEventType !== GlycemicEventType.SEVERE_HYPOGLYCEMIA) {
           newEventType = GlycemicEventType.SEVERE_HYPOGLYCEMIA;
-        } else if (bg < HYPO_THRESHOLD && 
-                  currentEventType !== GlycemicEventType.HYPOGLYCEMIA && 
-                  currentEventType !== GlycemicEventType.SEVERE_HYPOGLYCEMIA) {
+        } else if (
+          bg < HYPO_THRESHOLD &&
+          currentEventType !== GlycemicEventType.HYPOGLYCEMIA &&
+          currentEventType !== GlycemicEventType.SEVERE_HYPOGLYCEMIA
+        ) {
           newEventType = GlycemicEventType.HYPOGLYCEMIA;
         } else if (bg > VERY_HIGH_THRESHOLD && currentEventType !== GlycemicEventType.VERY_HIGH) {
           newEventType = GlycemicEventType.VERY_HIGH;
-        } else if (bg > HIGH_THRESHOLD && 
-                  currentEventType !== GlycemicEventType.HIGH && 
-                  currentEventType !== GlycemicEventType.VERY_HIGH) {
+        } else if (
+          bg > HIGH_THRESHOLD &&
+          currentEventType !== GlycemicEventType.HIGH &&
+          currentEventType !== GlycemicEventType.VERY_HIGH
+        ) {
           newEventType = GlycemicEventType.HIGH;
         }
 
@@ -312,7 +318,14 @@ export function detectGlycemicEvents(data: AutotunePreppedData, patientRange: Pa
   // --- End of Data Handling ---
   // Check if there's an ongoing event at the end of the data
   if (currentEventType !== null) {
-    recordEventIfNeeded(mergedData, eventStartIndex, mergedData.length - 1, currentEventType, events, MIN_EVENT_DURATION_MINUTES);
+    recordEventIfNeeded(
+      mergedData,
+      eventStartIndex,
+      mergedData.length - 1,
+      currentEventType,
+      events,
+      MIN_EVENT_DURATION_MINUTES,
+    );
   }
 
   return events;
