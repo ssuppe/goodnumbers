@@ -31,7 +31,9 @@ interface ClusterAnalysisDisplayProps {
  */
 function getEventTypeName(eventType: GlycemicEventType): string {
   switch (eventType) {
-    case GlycemicEventType.HYPERGLYCEMIA:
+    case GlycemicEventType.VERY_HIGH:
+      return 'Very High Glucose';
+    case GlycemicEventType.HIGH:
       return 'High Glucose';
     case GlycemicEventType.HYPOGLYCEMIA:
       return 'Low Glucose';
