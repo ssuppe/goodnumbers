@@ -262,6 +262,30 @@ const NightscoutComponent = ({
     }
   }, [assessmentData?.ssml_dialog, debugMode]);
 
+  // Helper function to get meanTime from a cluster
+  const getClusterMeanTime = (reportItem: any): number => {
+    try {
+      if (reportItem.data && reportItem.data.length > 0) {
+        const dataItem = reportItem.data[0];
+        
+        // Handle compressed cluster format
+        if ('compressedCluster' in dataItem) {
+          // Try to extract meanTime from compressed data
+          // Since we can't directly decompress here, we'll use a fallback
+          return dataItem.meanTime || 0;
+        }
+        // Handle legacy direct cluster format
+        else if ('meanTime' in dataItem) {
+          return dataItem.meanTime;
+        }
+      }
+      return 0; // Default value if meanTime can't be determined
+    } catch (e) {
+      console.error('Error extracting cluster meanTime:', e);
+      return 0;
+    }
+  };
+
   // Simplified render method for assessments
   const renderAssessmentContent = () => {
     if (debugMode) {
@@ -346,7 +370,13 @@ const NightscoutComponent = ({
                 </>
               )}
 
-              {assessmentData.report_items.map((reportItem, index) => {
+              {(() => {
+                // First, separate cluster reports from other reports
+                const clusterReports: any[] = [];
+                const otherReports: any[] = [];
+                
+                // Separate items into clusters and non-clusters
+                assessmentData.report_items.forEach((reportItem, index) => {
                 // Check if this is a cluster report item (looking for TimeCluster structure or compressed cluster)
                 const isClusterReport = 
                   reportItem.data && 
@@ -360,28 +390,67 @@ const NightscoutComponent = ({
                   );
 
                 if (isClusterReport) {
-                  return (
-                    <ClusterReportRenderer
-                      key={`cluster-report-${index}`}
-                      reportItem={reportItem}
-                      units={assessmentData.preferred_units || 'mg/dl'}
-                      patientLowGoal={assessmentData.patient_range?.target_low}
-                      patientHighGoal={assessmentData.patient_range?.target_high}
-                    />
-                  );
-                } else {
+                    clusterReports.push({...reportItem, originalIndex: index});
+                  } else {
+                    otherReports.push({...reportItem, originalIndex: index});
+                  }
+                });
+                
+                // Sort cluster reports by meanTime
+                const sortedClusterReports = [...clusterReports].sort((a, b) => {
+                  const timeA = getClusterMeanTime(a);
+                  const timeB = getClusterMeanTime(b);
+                  return timeA - timeB;
+                });
+                
+                if (debugMode) {
+                  console.log('Cluster sorting info:', {
+                    totalReportItems: assessmentData.report_items.length,
+                    clusterReportsCount: clusterReports.length,
+                    otherReportsCount: otherReports.length,
+                    sortedClusterTimes: sortedClusterReports.map(cluster => getClusterMeanTime(cluster))
+                  });
+                }
+                
+                // Render other reports first (maintain original order for them)
+                const renderedItems = otherReports.map((reportItem: any) => {
+                  const index = reportItem.originalIndex;
+                  // Create a clean copy without our temporary property
+                  const cleanReportItem = {...reportItem};
+                  delete cleanReportItem.originalIndex;
+                  
                   return (
                     <ReportItemDisplay
                       key={`report-item-${index}`}
-                      reportItem={reportItem}
+                      reportItem={cleanReportItem}
                       units={assessmentData.preferred_units || 'mg/dl'}
                       patientLowGoal={assessmentData.patient_range?.target_low}
                       patientHighGoal={assessmentData.patient_range?.target_high}
                       title={index === 0 ? 'Weekly Overview' : `Chart ${index + 1}`}
                     />
                   );
-                }
-              })}
+                });
+                
+                // Then render sorted cluster reports
+                sortedClusterReports.forEach((reportItem, i) => {
+                  const originalIndex = reportItem.originalIndex;
+                  // Create a clean copy without our temporary property
+                  const cleanReportItem = {...reportItem};
+                  delete cleanReportItem.originalIndex;
+                  
+                  renderedItems.push(
+                    <ClusterReportRenderer
+                      key={`cluster-report-${originalIndex}`}
+                      reportItem={cleanReportItem}
+                      units={assessmentData.preferred_units || 'mg/dl'}
+                      patientLowGoal={assessmentData.patient_range?.target_low}
+                      patientHighGoal={assessmentData.patient_range?.target_high}
+                    />
+                  );
+                });
+                
+                return renderedItems;
+              })()}
             </div>
           ) : (
             <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800">
