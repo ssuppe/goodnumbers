@@ -1,21 +1,29 @@
 import { AutotunePreppedData, GlucoseDatum, CSFGlucoseDatum, CRDatum } from '../oref0-autotune/gn-autotune-prep';
+import { PatientRange } from '../oref0-autotune/gn-overview';
 
-// Define the event types as specified in the PRD
+// Define the event types as specified in the updated specification
 export enum GlycemicEventType {
-  SEVERE_HYPOGLYCEMIA = 'SEVERE_HYPOGLYCEMIA',
-  HYPOGLYCEMIA = 'HYPOGLYCEMIA',
-  HYPERGLYCEMIA = 'HYPERGLYCEMIA',
+  SEVERE_HYPOGLYCEMIA = 'SEVERE_HYPOGLYCEMIA', // bg <= 54
+  HYPOGLYCEMIA = 'HYPOGLYCEMIA',             // 54 < bg < 70
+  HIGH = 'HIGH',                             // target_high < bg <= very_high
+  VERY_HIGH = 'VERY_HIGH',                   // bg > very_high
 }
 
-// Define thresholds for the different event types
+// Define fixed thresholds for hypoglycemic events (clinical standards)
 export const GLYCEMIC_THRESHOLDS = {
-  SEVERE_HYPO_THRESHOLD: 53, // mg/dL
+  SEVERE_HYPO_THRESHOLD: 54, // mg/dL
   HYPO_THRESHOLD: 70, // mg/dL
-  HYPER_THRESHOLD: 180, // mg/dL
 };
 
-// Define the minimum duration required to classify an event (in minutes)
-export const MIN_EVENT_DURATION_MINUTES = 5;
+// Define thresholds for hysteresis (to prevent event "fluttering")
+export const HYSTERESIS_THRESHOLDS = {
+  EXIT_SEVERE_HYPO: 60, // mg/dL (must be > SEVERE_HYPO_THRESHOLD)
+  EXIT_HYPO: 80, // mg/dL (must be > HYPO_THRESHOLD)
+};
+
+// Define minimum duration and gap thresholds
+export const MIN_EVENT_DURATION_MINUTES = 15; // Minimum duration to record an event
+export const MAX_ALLOWABLE_GAP_MINUTES = 15; // Maximum gap between readings to consider event continuous
 
 // Define the structure of a glycemic event as described in the PRD
 export interface GlycemicEvent {
@@ -58,10 +66,12 @@ function calculateDurationMinutes(startTime: string, endTime: string): number {
  * @param data - Array of glucose data
  * @param startIndex - Start index in the array
  * @param endIndex - End index in the array
- * @param isHypo - Boolean indicating if looking for minimum (true) or maximum (false)
- * @returns The extreme value (minimum for hypo, maximum for hyper)
+ * @param eventType - The type of glycemic event being evaluated
+ * @returns The extreme value (minimum for hypo events, maximum for high events)
  */
-function findExtremeBg(data: GlucoseDatum[], startIndex: number, endIndex: number, isHypo: boolean): number {
+function findExtremeBg(data: GlucoseDatum[], startIndex: number, endIndex: number, eventType: GlycemicEventType): number {
+  // Determine if we're looking for minimum (hypo events) or maximum (high events)
+  const isHypo = eventType === GlycemicEventType.HYPOGLYCEMIA || eventType === GlycemicEventType.SEVERE_HYPOGLYCEMIA;
   let extremeValue = isHypo ? Number.MAX_VALUE : Number.MIN_VALUE;
 
   for (let i = startIndex; i <= endIndex; i++) {
@@ -77,155 +87,232 @@ function findExtremeBg(data: GlucoseDatum[], startIndex: number, endIndex: numbe
 }
 
 /**
- * Detects glycemic excursion events based on the criteria specified in the PRD
+ * Records a glycemic event if it meets the minimum duration criteria
+ * @param mergedData - Array of merged glucose data
+ * @param startIndex - Start index of the event in the array
+ * @param endIndex - End index of the event in the array
+ * @param eventType - The type of glycemic event
+ * @param eventsList - Array to store detected events
+ * @param minDuration - Minimum duration required to record an event (minutes)
+ * @returns Boolean indicating if an event was recorded
+ */
+function recordEventIfNeeded(
+  mergedData: GlucoseDatum[],
+  startIndex: number,
+  endIndex: number,
+  eventType: GlycemicEventType,
+  eventsList: GlycemicEvent[],
+  minDuration: number
+): boolean {
+  // Validate indices
+  if (startIndex < 0 || endIndex < startIndex || startIndex >= mergedData.length || endIndex >= mergedData.length) {
+    return false;
+  }
+
+  // Calculate actual duration of the event
+  const actualDuration = calculateDurationMinutes(
+    mergedData[startIndex].dateString,
+    mergedData[endIndex].dateString
+  );
+
+  // Only record events that meet the minimum duration requirement
+  if (actualDuration >= minDuration) {
+    // Find the extreme BG value during the event
+    const extremeValue = findExtremeBg(mergedData, startIndex, endIndex, eventType);
+
+    // Create and record the event
+    const event: GlycemicEvent = {
+      event_type: eventType,
+      start_timestamp: mergedData[startIndex].dateString,
+      end_timestamp: mergedData[endIndex].dateString,
+      duration_minutes: actualDuration,
+      extreme_bg_mgdl: extremeValue
+    };
+    
+    eventsList.push(event);
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Detects glycemic excursion events based on the refined criteria
  * @param data - AutotunePreppedData containing the glucose data
+ * @param patientRange - Patient-specific range definitions
  * @returns Array of detected glycemic events
  */
-export function detectGlycemicEvents(data: AutotunePreppedData): GlycemicEvent[] {
+export function detectGlycemicEvents(data: AutotunePreppedData, patientRange: PatientRange): GlycemicEvent[] {
+  // --- Configuration ---
+  // Entry thresholds
+  const SEVERE_HYPO_THRESHOLD = GLYCEMIC_THRESHOLDS.SEVERE_HYPO_THRESHOLD;
+  const HYPO_THRESHOLD = GLYCEMIC_THRESHOLDS.HYPO_THRESHOLD;
+  const HIGH_THRESHOLD = patientRange.target_high;
+  const VERY_HIGH_THRESHOLD = patientRange.very_high;
+
+  // Exit thresholds (with hysteresis)
+  const EXIT_SEVERE_HYPO = HYSTERESIS_THRESHOLDS.EXIT_SEVERE_HYPO;
+  const EXIT_HYPO = HYSTERESIS_THRESHOLDS.EXIT_HYPO;
+  
+  // Ensure exit thresholds don't overlap between zones
+  const EXIT_HIGH = Math.min(HIGH_THRESHOLD, Math.max(EXIT_HYPO + 1, HIGH_THRESHOLD - 10));
+  const EXIT_VERY_HIGH = Math.min(VERY_HIGH_THRESHOLD, Math.max(HIGH_THRESHOLD + 1, VERY_HIGH_THRESHOLD - 10));
+
+  // --- Initialization ---
   const mergedData = mergeGlucoseData(data);
   const events: GlycemicEvent[] = [];
 
-  // Minimum consecutive readings required to classify an event (assuming 5-minute intervals)
-  const MIN_CONSECUTIVE_READINGS = 3;
+  // Need at least 2 points to calculate duration
+  if (mergedData.length < 2) {
+    return events;
+  }
 
   let currentEventType: GlycemicEventType | null = null;
   let eventStartIndex = -1;
   let consecutiveCount = 0;
 
-  // Iterate through the merged data to detect events
+  // --- Main Loop ---
   for (let i = 0; i < mergedData.length; i++) {
-    const bg = mergedData[i].glucose;
+    const currentDatum = mergedData[i];
+    const bg = currentDatum.glucose;
+    const currentTime = new Date(currentDatum.dateString).getTime();
 
-    // Check for severe hypoglycemia
-    if (bg <= GLYCEMIC_THRESHOLDS.SEVERE_HYPO_THRESHOLD) {
-      if (currentEventType === null || currentEventType === GlycemicEventType.HYPOGLYCEMIA) {
-        // Start a new event or upgrade from hypoglycemia
-        if (currentEventType === GlycemicEventType.HYPOGLYCEMIA) {
-          // Don't reset the start index or consecutive count as we're upgrading an existing event
+    // Check for data gap before processing the point
+    if (i > 0) {
+      const previousDatum = mergedData[i-1];
+      const previousTime = new Date(previousDatum.dateString).getTime();
+      const timeDiffMinutes = (currentTime - previousTime) / (60 * 1000);
+
+      // If there's a significant gap, finalize any ongoing event
+      if (timeDiffMinutes > MAX_ALLOWABLE_GAP_MINUTES) {
+        if (currentEventType !== null) {
+          recordEventIfNeeded(mergedData, eventStartIndex, i - 1, currentEventType, events, MIN_EVENT_DURATION_MINUTES);
+        }
+        // Reset state after the gap
+        currentEventType = null;
+        eventStartIndex = -1;
+        consecutiveCount = 0;
+      }
+    }
+
+    // Store state before potential changes
+    const previousEventType = currentEventType;
+
+    // --- State Machine Logic ---
+    // CASE 1: Event is currently ongoing
+    if (currentEventType !== null) {
+      let eventEnded = false;
+      let switchedType = false;
+
+      // Check for continuation or upgrade
+      if (currentEventType === GlycemicEventType.SEVERE_HYPOGLYCEMIA) {
+        if (bg < EXIT_SEVERE_HYPO) {
+          // Continue current severe hypo event
+          consecutiveCount++;
         } else {
+          // BG crossed exit threshold
+          eventEnded = true;
+        }
+      } else if (currentEventType === GlycemicEventType.HYPOGLYCEMIA) {
+        if (bg <= SEVERE_HYPO_THRESHOLD) {
+          // Upgrade to severe hypoglycemia
+          currentEventType = GlycemicEventType.SEVERE_HYPOGLYCEMIA;
+          consecutiveCount++;
+        } else if (bg < EXIT_HYPO) {
+          // Continue current hypo event
+          consecutiveCount++;
+        } else {
+          // BG crossed exit threshold
+          eventEnded = true;
+        }
+      } else if (currentEventType === GlycemicEventType.HIGH) {
+        if (bg > VERY_HIGH_THRESHOLD) {
+          // Upgrade to very high
+          currentEventType = GlycemicEventType.VERY_HIGH;
+          consecutiveCount++;
+        } else if (bg > EXIT_HIGH) {
+          // Continue current high event
+          consecutiveCount++;
+        } else {
+          // BG crossed exit threshold
+          eventEnded = true;
+        }
+      } else if (currentEventType === GlycemicEventType.VERY_HIGH) {
+        if (bg > EXIT_VERY_HIGH) {
+          // Continue current very high event
+          consecutiveCount++;
+        } else {
+          // BG crossed exit threshold
+          eventEnded = true;
+        }
+      }
+
+      // If event didn't continue/upgrade, it might have ended
+      if (eventEnded) {
+        recordEventIfNeeded(mergedData, eventStartIndex, i - 1, previousEventType, events, MIN_EVENT_DURATION_MINUTES);
+        currentEventType = null;
+        eventStartIndex = -1;
+        consecutiveCount = 0;
+      }
+
+      // Check if BG jumped directly into a different category
+      // Only check if event didn't just end
+      if (currentEventType !== null && !eventEnded) {
+        let newEventType: GlycemicEventType | null = null;
+        
+        if (bg <= SEVERE_HYPO_THRESHOLD && currentEventType !== GlycemicEventType.SEVERE_HYPOGLYCEMIA) {
+          newEventType = GlycemicEventType.SEVERE_HYPOGLYCEMIA;
+        } else if (bg < HYPO_THRESHOLD && 
+                  currentEventType !== GlycemicEventType.HYPOGLYCEMIA && 
+                  currentEventType !== GlycemicEventType.SEVERE_HYPOGLYCEMIA) {
+          newEventType = GlycemicEventType.HYPOGLYCEMIA;
+        } else if (bg > VERY_HIGH_THRESHOLD && currentEventType !== GlycemicEventType.VERY_HIGH) {
+          newEventType = GlycemicEventType.VERY_HIGH;
+        } else if (bg > HIGH_THRESHOLD && 
+                  currentEventType !== GlycemicEventType.HIGH && 
+                  currentEventType !== GlycemicEventType.VERY_HIGH) {
+          newEventType = GlycemicEventType.HIGH;
+        }
+
+        if (newEventType !== null) {
+          // Finalize the previous event
+          recordEventIfNeeded(mergedData, eventStartIndex, i - 1, currentEventType, events, MIN_EVENT_DURATION_MINUTES);
+          // Start the new event
+          currentEventType = newEventType;
           eventStartIndex = i;
           consecutiveCount = 1;
+          switchedType = true;
         }
-        currentEventType = GlycemicEventType.SEVERE_HYPOGLYCEMIA;
-      } else if (currentEventType === GlycemicEventType.SEVERE_HYPOGLYCEMIA) {
-        // Continue the current severe hypo event
-        consecutiveCount++;
-      } else {
-        // Coming from a hyperglycemia event, reset and start new
-        eventStartIndex = i;
-        consecutiveCount = 1;
-        currentEventType = GlycemicEventType.SEVERE_HYPOGLYCEMIA;
       }
     }
-    // Check for hypoglycemia
-    else if (bg < GLYCEMIC_THRESHOLDS.HYPO_THRESHOLD) {
-      if (currentEventType === null) {
-        // Start a new hypoglycemia event
-        eventStartIndex = i;
-        consecutiveCount = 1;
-        currentEventType = GlycemicEventType.HYPOGLYCEMIA;
-      } else if (currentEventType === GlycemicEventType.HYPOGLYCEMIA) {
-        // Continue the current hypo event
-        consecutiveCount++;
-      } else if (currentEventType === GlycemicEventType.SEVERE_HYPOGLYCEMIA) {
-        // Coming out of severe hypo, but still in hypo range
-        // Keep the severe hypo classification and continue counting
-        consecutiveCount++;
-      } else {
-        // Coming from a hyperglycemia event, reset and start new
-        eventStartIndex = i;
-        consecutiveCount = 1;
-        currentEventType = GlycemicEventType.HYPOGLYCEMIA;
-      }
-    }
-    // Check for hyperglycemia
-    else if (bg > GLYCEMIC_THRESHOLDS.HYPER_THRESHOLD) {
-      if (currentEventType === null) {
-        // Start a new hyperglycemia event
-        eventStartIndex = i;
-        consecutiveCount = 1;
-        currentEventType = GlycemicEventType.HYPERGLYCEMIA;
-      } else if (currentEventType === GlycemicEventType.HYPERGLYCEMIA) {
-        // Continue the current hyper event
-        consecutiveCount++;
-      } else {
-        // Coming from a hypo event, record it if it meets criteria and start a new hyper event
-        if (consecutiveCount >= MIN_CONSECUTIVE_READINGS) {
-          // Record the completed event before starting a new one
-          const endIndex = i - 1;
-          const event: GlycemicEvent = {
-            event_type: currentEventType,
-            start_timestamp: mergedData[eventStartIndex].dateString,
-            end_timestamp: mergedData[endIndex].dateString,
-            duration_minutes: calculateDurationMinutes(
-              mergedData[eventStartIndex].dateString,
-              mergedData[endIndex].dateString,
-            ),
-            extreme_bg_mgdl: findExtremeBg(
-              mergedData,
-              eventStartIndex,
-              endIndex,
-              currentEventType !== GlycemicEventType.HYPERGLYCEMIA,
-            ),
-          };
-          events.push(event);
-        }
 
-        // Start new hyperglycemia event
+    // CASE 2: No event currently ongoing
+    if (currentEventType === null) {
+      if (bg <= SEVERE_HYPO_THRESHOLD) {
+        currentEventType = GlycemicEventType.SEVERE_HYPOGLYCEMIA;
         eventStartIndex = i;
         consecutiveCount = 1;
-        currentEventType = GlycemicEventType.HYPERGLYCEMIA;
+      } else if (bg < HYPO_THRESHOLD) {
+        currentEventType = GlycemicEventType.HYPOGLYCEMIA;
+        eventStartIndex = i;
+        consecutiveCount = 1;
+      } else if (bg > VERY_HIGH_THRESHOLD) {
+        currentEventType = GlycemicEventType.VERY_HIGH;
+        eventStartIndex = i;
+        consecutiveCount = 1;
+      } else if (bg > HIGH_THRESHOLD) {
+        currentEventType = GlycemicEventType.HIGH;
+        eventStartIndex = i;
+        consecutiveCount = 1;
       }
-    }
-    // In target range
-    else {
-      if (currentEventType !== null && consecutiveCount >= MIN_CONSECUTIVE_READINGS) {
-        // Record the completed event
-        const endIndex = i - 1;
-        const event: GlycemicEvent = {
-          event_type: currentEventType,
-          start_timestamp: mergedData[eventStartIndex].dateString,
-          end_timestamp: mergedData[endIndex].dateString,
-          duration_minutes: calculateDurationMinutes(
-            mergedData[eventStartIndex].dateString,
-            mergedData[endIndex].dateString,
-          ),
-          extreme_bg_mgdl: findExtremeBg(
-            mergedData,
-            eventStartIndex,
-            endIndex,
-            currentEventType !== GlycemicEventType.HYPERGLYCEMIA,
-          ),
-        };
-        events.push(event);
-      }
-
-      // Reset tracking variables
-      currentEventType = null;
-      eventStartIndex = -1;
-      consecutiveCount = 0;
+      // Else: BG is in target range, do nothing
     }
   }
 
+  // --- End of Data Handling ---
   // Check if there's an ongoing event at the end of the data
-  if (currentEventType !== null && consecutiveCount >= MIN_CONSECUTIVE_READINGS) {
-    const endIndex = mergedData.length - 1;
-    const event: GlycemicEvent = {
-      event_type: currentEventType,
-      start_timestamp: mergedData[eventStartIndex].dateString,
-      end_timestamp: mergedData[endIndex].dateString,
-      duration_minutes: calculateDurationMinutes(
-        mergedData[eventStartIndex].dateString,
-        mergedData[endIndex].dateString,
-      ),
-      extreme_bg_mgdl: findExtremeBg(
-        mergedData,
-        eventStartIndex,
-        endIndex,
-        currentEventType !== GlycemicEventType.HYPERGLYCEMIA,
-      ),
-    };
-    events.push(event);
+  if (currentEventType !== null) {
+    recordEventIfNeeded(mergedData, eventStartIndex, mergedData.length - 1, currentEventType, events, MIN_EVENT_DURATION_MINUTES);
   }
 
   return events;

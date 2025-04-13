@@ -184,7 +184,7 @@ export async function generateAssessments(
 
     // OTHER INSIGHTS
     // First, let's find high and low clusters
-    var events = detectGlycemicEvents(all_prepped_glucose);
+    var events = detectGlycemicEvents(all_prepped_glucose, patient_range);
     var clusters = clusterGlycemicEvents(events, 60);
 
     // Check if we have any clusters to analyze

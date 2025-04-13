@@ -81,6 +81,31 @@ export function circularTimeDistance(time1: number, time2: number): number {
 }
 
 /**
+ * Determines if two event types are compatible for clustering
+ * Treats similar event types (like HIGH and VERY_HIGH) as compatible
+ * 
+ * @param type1 - First glycemic event type
+ * @param type2 - Second glycemic event type
+ * @returns True if the event types are compatible for clustering
+ */
+export function areCompatibleEventTypes(type1: GlycemicEventType, type2: GlycemicEventType): boolean {
+  // Group hypoglycemic events together
+  if ((type1 === GlycemicEventType.HYPOGLYCEMIA || type1 === GlycemicEventType.SEVERE_HYPOGLYCEMIA) &&
+      (type2 === GlycemicEventType.HYPOGLYCEMIA || type2 === GlycemicEventType.SEVERE_HYPOGLYCEMIA)) {
+    return true;
+  }
+  
+  // Group hyperglycemic events together
+  if ((type1 === GlycemicEventType.HIGH || type1 === GlycemicEventType.VERY_HIGH) &&
+      (type2 === GlycemicEventType.HIGH || type2 === GlycemicEventType.VERY_HIGH)) {
+    return true;
+  }
+  
+  // Otherwise, require exact match
+  return type1 === type2;
+}
+
+/**
  * Calculates the center time for a cluster of events
  * Uses circular mean to handle the circular nature of time
  *
@@ -219,8 +244,8 @@ export function clusterGlycemicEvents(events: GlycemicEvent[], proximityThreshol
     let foundCluster = false;
 
     for (const cluster of clusters) {
-      // Skip clusters that don't match the event type
-      if (cluster.eventType !== event.event_type) {
+      // Skip clusters that don't match the event type group
+      if (!areCompatibleEventTypes(cluster.eventType, event.event_type)) {
         continue;
       }
 
