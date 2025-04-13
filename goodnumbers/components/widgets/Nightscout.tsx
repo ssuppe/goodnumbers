@@ -8,7 +8,7 @@ import { createApiClient } from '@/lib/axios/axios';
 import { useAssessmentState } from '@/hooks/useAssessmentState';
 import { useLoadingState } from '@/hooks/useLoadingState';
 import { useFormState } from '@/hooks/useFormState';
-import { AssessmentData, GlucoseUnits, NightscoutData, PodcastGenerateResult } from '@/types/nightscout';
+import { AssessmentData, GlucoseUnits, NightscoutData, PodcastGenerateResult, ReportType } from '@/types/nightscout';
 import 'react-h5-audio-player/lib/styles.css';
 import LazyAudioPlayer from './LazyAudioPlayer';
 import DebugInterfaceViewer from './DebugInterfaceViewer';
@@ -172,7 +172,7 @@ const NightscoutComponent = ({
         return createHash(formData.nightscout_url, formData.nightscout_token).then((hash) => {
           // Save entries data separately with the hash as reference
           const entriesStorageKey = `goodnumbers-nightscout-entries-${hash}`;
-          localStorage.setItem(entriesStorageKey, JSON.stringify({ 
+          localStorage.setItem(entriesStorageKey, JSON.stringify({
             entries: compressedData.entries,
             timestamp: new Date().toISOString()
           }));
@@ -267,7 +267,7 @@ const NightscoutComponent = ({
     try {
       if (reportItem.data && reportItem.data.length > 0) {
         const dataItem = reportItem.data[0];
-        
+
         // Handle compressed cluster format
         if ('compressedCluster' in dataItem) {
           // Try to extract meanTime from compressed data
@@ -371,54 +371,43 @@ const NightscoutComponent = ({
               )}
 
               {(() => {
-                // First, separate cluster reports from other reports
+                // Group reports by ReportType
+                const agpReports: any[] = [];
                 const clusterReports: any[] = [];
-                const otherReports: any[] = [];
-                
-                // Separate items into clusters and non-clusters
-                assessmentData.report_items.forEach((reportItem, index) => {
-                // Check if this is a cluster report item (looking for TimeCluster structure or compressed cluster)
-                const isClusterReport = 
-                  reportItem.data && 
-                  reportItem.data.length > 0 && 
-                  reportItem.data[0] && 
-                  (
-                    // Compressed cluster format
-                    ('compressedCluster' in reportItem.data[0] && 'dataReference' in reportItem.data[0]) ||
-                    // Legacy direct cluster format
-                    ('events' in reportItem.data[0] && 'meanTime' in reportItem.data[0])
-                  );
 
-                if (isClusterReport) {
+                // Group items by their explicit ReportType enum value
+                assessmentData.report_items.forEach((reportItem, index) => {
+                  if (reportItem.type === ReportType.CLUSTER_LINE) {
                     clusterReports.push({...reportItem, originalIndex: index});
                   } else {
-                    otherReports.push({...reportItem, originalIndex: index});
+                    // All non-cluster reports (AGP and any future types) go here
+                    agpReports.push({...reportItem, originalIndex: index});
                   }
                 });
-                
+
                 // Sort cluster reports by meanTime
                 const sortedClusterReports = [...clusterReports].sort((a, b) => {
                   const timeA = getClusterMeanTime(a);
                   const timeB = getClusterMeanTime(b);
                   return timeA - timeB;
                 });
-                
+
                 if (debugMode) {
-                  console.log('Cluster sorting info:', {
+                  console.log('Report sorting info:', {
                     totalReportItems: assessmentData.report_items.length,
+                    agpReportsCount: agpReports.length,
                     clusterReportsCount: clusterReports.length,
-                    otherReportsCount: otherReports.length,
                     sortedClusterTimes: sortedClusterReports.map(cluster => getClusterMeanTime(cluster))
                   });
                 }
-                
-                // Render other reports first (maintain original order for them)
-                const renderedItems = otherReports.map((reportItem: any) => {
+
+                // Render AGP reports first (maintain original order for them)
+                const renderedItems = agpReports.map((reportItem: any) => {
                   const index = reportItem.originalIndex;
                   // Create a clean copy without our temporary property
                   const cleanReportItem = {...reportItem};
                   delete cleanReportItem.originalIndex;
-                  
+
                   return (
                     <ReportItemDisplay
                       key={`report-item-${index}`}
@@ -430,14 +419,14 @@ const NightscoutComponent = ({
                     />
                   );
                 });
-                
+
                 // Then render sorted cluster reports
                 sortedClusterReports.forEach((reportItem, i) => {
                   const originalIndex = reportItem.originalIndex;
                   // Create a clean copy without our temporary property
                   const cleanReportItem = {...reportItem};
                   delete cleanReportItem.originalIndex;
-                  
+
                   renderedItems.push(
                     <ClusterReportRenderer
                       key={`cluster-report-${originalIndex}`}
@@ -448,7 +437,7 @@ const NightscoutComponent = ({
                     />
                   );
                 });
-                
+
                 return renderedItems;
               })()}
             </div>
