@@ -8,7 +8,7 @@ import { createApiClient } from '@/lib/axios/axios';
 import { useAssessmentState } from '@/hooks/useAssessmentState';
 import { useLoadingState } from '@/hooks/useLoadingState';
 import { useFormState } from '@/hooks/useFormState';
-import { AssessmentData, GlucoseUnits, NightscoutData, PodcastGenerateResult, ReportType } from '@/types/nightscout';
+import { AssessmentData, GlucoseUnits, NightscoutData, PodcastGenerateResult, ReportType } from '@/types/nightscout.d';
 import 'react-h5-audio-player/lib/styles.css';
 import LazyAudioPlayer from './LazyAudioPlayer';
 import DebugInterfaceViewer from './DebugInterfaceViewer';
@@ -172,10 +172,13 @@ const NightscoutComponent = ({
         return createHash(formData.nightscout_url, formData.nightscout_token).then((hash) => {
           // Save entries data separately with the hash as reference
           const entriesStorageKey = `goodnumbers-nightscout-entries-${hash}`;
-          localStorage.setItem(entriesStorageKey, JSON.stringify({
-            entries: compressedData.entries,
-            timestamp: new Date().toISOString()
-          }));
+          localStorage.setItem(
+            entriesStorageKey,
+            JSON.stringify({
+              entries: compressedData.entries,
+              timestamp: new Date().toISOString(),
+            }),
+          );
 
           return generateAssessments(
             compressedData?.entries,
@@ -361,7 +364,6 @@ const NightscoutComponent = ({
         </TabPanel>
         <TabPanel>
           {assessmentData?.podcastResult?.status && <PodcastStatusBadge status={assessmentData.podcastResult.status} />}
-
           {assessmentData?.report_items && assessmentData.report_items.length > 0 ? (
             <div className="mt-4">
               {assessmentData?.podcastResult?.status === 'done' && getCurrentPodcastResult()?.url && (
@@ -371,17 +373,18 @@ const NightscoutComponent = ({
               )}
 
               {(() => {
-                // Group reports by ReportType
+                // Group reports by
+                debugger;
                 const agpReports: any[] = [];
                 const clusterReports: any[] = [];
 
                 // Group items by their explicit ReportType enum value
                 assessmentData.report_items.forEach((reportItem, index) => {
                   if (reportItem.type === ReportType.CLUSTER_LINE) {
-                    clusterReports.push({...reportItem, originalIndex: index});
+                    clusterReports.push({ ...reportItem, originalIndex: index });
                   } else {
                     // All non-cluster reports (AGP and any future types) go here
-                    agpReports.push({...reportItem, originalIndex: index});
+                    agpReports.push({ ...reportItem, originalIndex: index });
                   }
                 });
 
@@ -397,7 +400,7 @@ const NightscoutComponent = ({
                     totalReportItems: assessmentData.report_items.length,
                     agpReportsCount: agpReports.length,
                     clusterReportsCount: clusterReports.length,
-                    sortedClusterTimes: sortedClusterReports.map(cluster => getClusterMeanTime(cluster))
+                    sortedClusterTimes: sortedClusterReports.map((cluster) => getClusterMeanTime(cluster)),
                   });
                 }
 
@@ -405,7 +408,7 @@ const NightscoutComponent = ({
                 const renderedItems = agpReports.map((reportItem: any) => {
                   const index = reportItem.originalIndex;
                   // Create a clean copy without our temporary property
-                  const cleanReportItem = {...reportItem};
+                  const cleanReportItem = { ...reportItem };
                   delete cleanReportItem.originalIndex;
 
                   return (
@@ -424,7 +427,7 @@ const NightscoutComponent = ({
                 sortedClusterReports.forEach((reportItem, i) => {
                   const originalIndex = reportItem.originalIndex;
                   // Create a clean copy without our temporary property
-                  const cleanReportItem = {...reportItem};
+                  const cleanReportItem = { ...reportItem };
                   delete cleanReportItem.originalIndex;
 
                   renderedItems.push(
@@ -434,7 +437,7 @@ const NightscoutComponent = ({
                       units={assessmentData.preferred_units || 'mg/dl'}
                       patientLowGoal={assessmentData.patient_range?.target_low}
                       patientHighGoal={assessmentData.patient_range?.target_high}
-                    />
+                    />,
                   );
                 });
 
@@ -447,9 +450,7 @@ const NightscoutComponent = ({
               <p className="text-sm mt-1">The chart data may not have been properly saved or is missing.</p>
             </div>
           )}
-
           {debugMode && assessmentData && <DebugInterfaceViewer data={assessmentData} />}
-
           {/* Add raw data visualization for debugging */}
           {debugMode && (
             <div className="mt-6">
@@ -479,7 +480,6 @@ const NightscoutComponent = ({
               </details>
             </div>
           )}
-
           {/* Debug viewer if needed */}
           {debugMode && assessmentData?.podcastResult?.status && assessmentData.podcastResult && (
             <DebugInterfaceViewer data={assessmentData.podcastResult} />
@@ -607,7 +607,7 @@ const NightscoutComponent = ({
                       : 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
                   }`}
                 >
-                  Create podcast
+                  Create weekly report
                 </button>
               </>
             )}

@@ -12,7 +12,13 @@ export interface PodcastGenerateResult {
 
 export type GlucoseUnits = 'mg/dl' | 'mmol/L';
 
+export enum ReportType {
+  AGP = 0,
+  CLUSTER_LINE = 1,
+}
+
 export interface ReportItem {
+  type: ReportType;
   insights: AssessmentInsight[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any[];
