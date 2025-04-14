@@ -1,12 +1,7 @@
 'use server';
 
 // app/actions/assessment.ts
-import {
-  GenerationConfig,
-  GenerativeModel,
-  SchemaType,
-  ResponseSchema,
-} from '@google/generative-ai';
+import { GenerationConfig, GenerativeModel, SchemaType, ResponseSchema } from '@google/generative-ai';
 import { AssessmentData, PodcastGenerateResult, JobCheckResponse } from '@/types/nightscout';
 import { interpolate } from '@/utils/utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,16 +11,15 @@ import { canReadLocal, canWriteLocal } from '@/utils/env';
 import { readLocalFile, writeLocalFile } from '@/utils/fileCache';
 import { SSMLValidationResult, validateAndFixSsml } from '@/utils/ssml-server';
 import { loadTemplate } from './utils/templateUtils';
-import { 
-  genAI, 
-  asyncGenerateJson, 
-  createTtsClient, 
+import {
+  genAI,
+  asyncGenerateJson,
+  createTtsClient,
   getJobStatus,
   generateAudioPath,
   DEFAULT_BUCKET_NAME,
-  DEFAULT_AUDIO_PATH
+  DEFAULT_AUDIO_PATH,
 } from './clients';
-import { Storage } from '@google-cloud/storage';
 
 // Interface for Description (used in generatePodcastDescription)
 export interface Description {
@@ -486,8 +480,8 @@ export async function generatePodcastAudio(podcast: AssessmentData): Promise<Pod
     const { title, description, ssml_dialog, id } = podcast;
 
     // Generate unique paths using our storage client utility
-    const pathInfo = generateAudioPath(id);
-    
+    const pathInfo = generateAudioPath(id!);
+
     const client = createTtsClient();
 
     // Start synthesis
