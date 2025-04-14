@@ -1,6 +1,6 @@
 'use server';
 
-// Re-export geminiActions functions
+// Export service functions
 export {
   getAssessment,
   generatePodcastText,
@@ -8,7 +8,7 @@ export {
   generatePodcastAudio,
   checkPodcastStatus,
   type Description
-} from './geminiActions';
+} from './services';
 
 // Export utilities
 export { loadTemplate } from './utils/templateUtils';
