@@ -6,12 +6,6 @@ import { decompress, Compressed, compress } from 'compress-json';
 import { getBestProfile } from '@/utils/nightscoutProfile';
 import { AutotunePreppedData, gn_autotune_prep } from '@/lib/oref0-autotune/gn-autotune-prep';
 import { getPatientsRange, getWeekOverview, PatientRange } from '@/lib/oref0-autotune/gn-overview';
-import {
-  generatePodcastAudio,
-  generatePodcastDescription,
-  generatePodcastText,
-  getAssessment,
-} from '@/actions/gemini';
 import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '@/lib/oref0-autotune/gn-meal-analysis';
 import { generateAgpData } from '@/components/charts/AgpWeeklyChart-data';
 import {
@@ -28,6 +22,12 @@ import { filterCriticalInsights, hasCriticalInsights, insightsToNotes } from './
 import { AgpDataPoint } from '@/components/charts/AgpChart';
 import { detectGlycemicEvents } from '@/lib/events/detect_events';
 import { clusterGlycemicEvents, minutesToTimeString } from '@/lib/events/time_clustering/time_clustering';
+import { getAssessment } from './gemini/services/assessmentService';
+import {
+  generatePodcastAudio,
+  generatePodcastDescription,
+  generatePodcastText,
+} from './gemini/services/podcastService';
 var _ = require('lodash');
 
 // Configure Winston logger

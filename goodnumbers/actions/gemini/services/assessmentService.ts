@@ -6,7 +6,7 @@ import { interpolate } from '@/utils/utils';
 import { canReadLocal, canWriteLocal } from '@/utils/env';
 import { readLocalFile, writeLocalFile } from '@/utils/fileCache';
 import { loadTemplate } from '../utils/templateUtils';
-import { genAI, getGeminiModel } from '../clients';
+import { getGeminiModel } from '../clients/geminiClient';
 
 /**
  * Generates assessment text based on notes and previous assessments.
