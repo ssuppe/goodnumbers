@@ -8,21 +8,11 @@ import { updateRssFeed } from '../rss';
 import { canReadLocal, canWriteLocal } from '@/utils/env';
 import { readLocalFile, writeLocalFile } from '@/utils/fileCache';
 import { SSMLValidationResult, validateAndFixSsml } from '@/utils/ssml-server';
-import { 
-  genAI, 
-  getGeminiModel, 
-  asyncGenerateJson, 
-  getJobStatus,
-  createTtsClient,
-  generateAudioPath,
-  DEFAULT_BUCKET_NAME
-} from '../clients';
-
-// Interface for Description (used in generatePodcastDescription)
-export interface Description {
-  title: string;
-  description: string;
-}
+import { asyncGenerateJson, getGeminiModel } from '../clients/geminiClient';
+import { createTtsClient, getJobStatus } from '../clients/ttsClient';
+import { Description } from '@/components/nightscout.types';
+import { generateAudioPath } from '../clients/storageClient';
+import { DEFAULT_BUCKET_NAME } from '../clients/geminiClient.types.d';
 
 /**
  * Generates podcast SSML dialog using Gemini AI, templates, and SSML validation/fixing.
@@ -80,7 +70,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
         responseMimeType: 'text/plain',
       };
       const initialModel = getGeminiModel('gemini-1.5-pro', initialGenConfig);
-      
+
       const template3 = await loadTemplate('pass3.txt');
       const initialPrompt = interpolate(template3, {
         notes: data.notes ?? '',
@@ -96,7 +86,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
         responseMimeType: 'text/plain', // Assuming enhancement also returns plain text SSML
       };
       const enhancementModel = getGeminiModel('gemini-1.5-flash', enhancedGenConfig);
-      
+
       const template4 = await loadTemplate('pass4.txt');
 
       // --- Retry Loop ---
@@ -114,7 +104,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
           const response = await initialModel.generateContent(initialPrompt);
           initialSsml = response.response.text();
           // Basic cleanup (optional, but can help before validation)
-          initialSsml = initialSsml?.replaceAll('<laughs>', '').replaceAll('```', ''); // Example cleanup
+          initialSsml = initialSsml!.replaceAll('<laughs>', '').replaceAll('```', ''); // Example cleanup
         } catch (genError) {
           console.error(`Error during initial SSML generation (Attempt ${attempt}):`, genError);
           // Decide if this error should count as a failed attempt or be retried immediately
@@ -176,8 +166,8 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
             const enhancedResponse = await enhancementModel.generateContent(enhancedPrompt);
             enhancedSsml = enhancedResponse.response.text();
             // Basic cleanup for enhanced SSML (remove potential markdown/fences)
-            enhancedSsml = enhancedSsml
-              ?.replace(/^```(xml|ssml)?\s*/i, '')
+            enhancedSsml = enhancedSsml!
+              .replace(/^```(xml|ssml)?\s*/i, '')
               .replace(/\s*```$/, '')
               .trim();
             enhancedSsml = enhancedSsml?.replace(/\\n/g, '\n'); // Fix escaped newlines if necessary
@@ -355,8 +345,8 @@ export async function generatePodcastAudio(podcast: AssessmentData): Promise<Pod
     const { title, description, ssml_dialog, id } = podcast;
 
     // Generate unique paths using our storage client utility
-    const pathInfo = generateAudioPath(id);
-    
+    const pathInfo = generateAudioPath(id!);
+
     const client = createTtsClient();
 
     // Start synthesis

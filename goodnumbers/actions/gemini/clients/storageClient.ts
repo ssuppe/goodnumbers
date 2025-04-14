@@ -1,11 +1,7 @@
 'use server';
 
 import { Storage, Bucket } from '@google-cloud/storage';
-
-// Default bucket settings
-const DEFAULT_BUCKET_NAME = 'goodnumbersmain';
-const DEFAULT_AUDIO_PATH = 'audio-files';
-
+import { DEFAULT_AUDIO_PATH, DEFAULT_BUCKET_NAME } from './geminiClient.types.d';
 /**
  * Creates a Google Cloud Storage client with the specified credentials.
  * @param projectId Optional project ID. Defaults to 'goodnumbers-446416'.
@@ -44,20 +40,14 @@ function generateAudioPath(id: string) {
   const gcsPath = `${DEFAULT_AUDIO_PATH}/${id}/${fileName}`;
   const outputGcsUri = `gs://${DEFAULT_BUCKET_NAME}/${gcsPath}`;
   const publicUrl = `https://storage.googleapis.com/${DEFAULT_BUCKET_NAME}/${gcsPath}`;
-  
+
   return {
     fileName,
     gcsPath,
     outputGcsUri,
     publicUrl,
-    bucketName: DEFAULT_BUCKET_NAME
+    bucketName: DEFAULT_BUCKET_NAME,
   };
 }
 
-export { 
-  createStorageClient, 
-  getBucket, 
-  generateAudioPath,
-  DEFAULT_BUCKET_NAME,
-  DEFAULT_AUDIO_PATH
-};
+export { createStorageClient, getBucket, generateAudioPath };

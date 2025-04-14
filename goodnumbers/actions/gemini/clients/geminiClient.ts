@@ -8,9 +8,6 @@ import {
   ResponseSchema,
 } from '@google/generative-ai';
 
-// Initialize Gemini client
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
 /**
  * Generates JSON content using the provided model and schema
  */
@@ -30,10 +27,13 @@ async function asyncGenerateJson<T>(prompt: string, model: GenerativeModel): Pro
  * Gets a configured Gemini model with the provided configuration
  */
 function getGeminiModel(modelName: string, config: GenerationConfig): GenerativeModel {
+  // Initialize Gemini client
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
   return genAI.getGenerativeModel({
     model: modelName,
     generationConfig: config,
   });
 }
 
-export { getGeminiModel, asyncGenerateJson, genAI };
+export { getGeminiModel, asyncGenerateJson };

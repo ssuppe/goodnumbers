@@ -18,12 +18,12 @@ import parserXml from '@prettier/plugin-xml';
 import { generateAssessments } from '@/actions/podcastActions';
 import { fetchNightscoutData } from '@/actions/nightscoutActions';
 import { ssmlToMarkdown } from '@/utils/ssml-client';
-import { checkPodcastStatus } from '@/actions/gemini';
 import PodcastStatusBadge from './PodcastStatusBadge';
 import { ReportItemDisplay } from '../charts/AgpReportItemDisplay';
 import { ClusterReportRenderer } from '../report/ClusterReportRenderer';
 import Headline from '../atoms/Headline';
 import WidgetWrapper from '../atoms/WidgetWrapper';
+import { checkPodcastStatus } from '@/actions/gemini/services/podcastService';
 
 // Function to check if debug mode is enabled via URL parameter
 function isDebugMode(): boolean {
