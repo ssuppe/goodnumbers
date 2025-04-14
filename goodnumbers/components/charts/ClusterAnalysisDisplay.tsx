@@ -20,7 +20,7 @@ interface ClusterAnalysisDisplayProps {
   units: GlucoseUnits;
   patientLowGoal?: number;
   patientHighGoal?: number;
-  subtitle?: string;
+  title?: string;
   description?: string;
   insights: AssessmentInsight[];
 }
@@ -54,7 +54,7 @@ export function ClusterAnalysisDisplay({
   units,
   patientLowGoal,
   patientHighGoal,
-  subtitle,
+  title: title,
   description,
   insights,
 }: ClusterAnalysisDisplayProps) {
@@ -145,15 +145,13 @@ export function ClusterAnalysisDisplay({
     typically occur around ${minutesToTimeString(cluster.meanTime)} (between ${minutesToTimeString(cluster.startTimeRange.earliest)}
     and ${minutesToTimeString(cluster.startTimeRange.latest)})`;
 
-  // Generate subtitle if not provided
-  const effectiveSubtitle = subtitle || `${getEventTypeName(cluster.eventType)} Pattern Analysis`;
+  // Generate title if not provided
+  const effectiveTitle = title || `${getEventTypeName(cluster.eventType)} Pattern Analysis`;
 
   return (
     <div className="mb-8 space-y-4">
-      {/* Subtitle */}
-      {effectiveSubtitle && (
-        <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">{effectiveSubtitle}</h3>
-      )}
+      {/* Title */}
+      {effectiveTitle && <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">{effectiveTitle}</h3>}
 
       {/* Cluster summary section */}
       <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
