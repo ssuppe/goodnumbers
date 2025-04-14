@@ -1,26 +1,69 @@
 <speak>
-<voice name="en-GB-Wavenet-B">Hello, I'm Your AI Doctor Turner, and welcome back to Good Numbers.</voice>
-<voice name="en-US-Wavenet-C">And I'm Rebecca. We're excited to dive into your data this week.</voice>
-<voice name="en-GB-Wavenet-B"><p>As always, a gentle reminder that this podcast is for informational purposes only and doesn't replace advice from your personal healthcare team. <break time="300ms"/> Any changes to your treatment plan should be discussed with your doctor.</p></voice>
-<voice name="en-US-Wavenet-C">Absolutely. <emphasis level="moderate">We're here to help you see your data in a new light and spark conversations with your doctor</emphasis>, not give medical advice.</voice>
-<voice name="en-GB-Wavenet-B">Right. Now, let's look at your blood sugar data from April 6th to the 13th.<break time="200ms"/> Overall, <prosody rate="slow">excellent control!</prosody> Your GMI is fantastic, time in range is superb… very impressive.</voice>
-<voice name="en-US-Wavenet-C">Seriously, you're doing great! <break time="200ms"/> But, as always, even in excellent data, there are opportunities to fine-tune things. <break time="100ms"/> Kinda like how I’m always tweaking my son's LEGO creations...even though he insists they're perfect as they are.</voice>
-<voice name="en-GB-Wavenet-B"><p> (chuckles) Indeed. Now, let’s start with those afternoon highs, particularly around 3:45 pm. <emphasis level="strong">Pattern 1.</emphasis> <break time="300ms"/> This might be "late afternoon hyperglycemia." <break time="200ms"/> You're likely experiencing the tail end of your lunch bolus wearing off, combined perhaps with some pre-dinner snacking or hormonal fluctuations.</p></voice>
-<voice name="en-US-Wavenet-C"><p>Oh, I know that one well! <break time="100ms"/> It’s like your insulin takes a little siesta just when you need it to be on its A-game. <break time="200ms"/> You might want to chat with your doctor about adjusting your lunch bolus timing, maybe splitting it, or even tweaking the amount. <break time="100ms"/> It might also be worth double-checking your carb counting for lunch - sneaky carbs can hide anywhere!</p></voice>
-<voice name="en-GB-Wavenet-B"><p>Precisely. Now, very similar to that, we see the same pattern around 10:00 am and 1:32 pm. <break time="200ms"/> Same advice applies here as the 3:45 pm highs; adjusting bolus timing or amount, carb counting review.<break time="200ms"/> Even consider a little extra walking after meals to see if that helps flatten the curve.</p></voice>
-<voice name="en-US-Wavenet-C"><p>Exactly. And speaking of sneaky carbs, sometimes it's not even what you're <em>eating</em>, but <em>when</em> you're eating. <break time="100ms"/>If lunch is later than usual, that throws everything off! <break time="100ms"/> Been there, done that, got the high blood sugar reading to prove it.</p></voice>
-<voice name="en-GB-Wavenet-B"><p>(gentle chuckle)  Quite right.  Let's move on to the most prominent pattern - those pesky high readings around dinnertime, around 6:06 pm. <emphasis level="strong">Pattern 2.</emphasis> <break time="300ms"/> Dinner often throws a wrench in the works, doesn’t it? <break time="100ms"/>Larger portions, higher fat and protein content... it's a bolus-timing puzzle.</p></voice>
-<voice name="en-US-Wavenet-C"><p>Tell me about it! <break time="100ms"/>For me, dinner is the wild west of blood sugars.  <break time="100ms"/>One minute you're fine, the next you're doing the high blood sugar hokey-pokey. <break time="200ms"/>You could explore extended boluses with your care team.  <break time="100ms"/>That little trick has saved me from many a dinnertime disaster. <break time="100ms"/>Also, watch out for alcohol, which is what I used to like at dinner until it went to war against my blood sugar!</p> </voice>
-<voice name="en-GB-Wavenet-B"><p>Good point, Rebecca. Alcohol can be a real game-changer, as outlined by the American Diabetes Association.<break time="200ms"/> Now, another tricky part of the day is mornings. <break time="100ms"/>Those 7:10 am highs point towards the dawn phenomenon. <break time="200ms"/>Your body releases hormones that raise blood sugar before you even think about breakfast.</p></voice>
-<voice name="en-US-Wavenet-C"><p>Ugh, the dawn phenomenon. My nemesis! <break time="100ms"/>It’s like your liver decides to throw a rave in the middle of the night, pumping out glucose like there’s no tomorrow. <break time="200ms"/>You might want to talk to your healthcare provider about adjusting your basal rate overnight. <break time="100ms"/>I remember one time I thought I had my basal rate nailed, and then BAM! Dawn phenomenon hit me like a ton of glucose bricks.</p></voice>
-<voice name="en-GB-Wavenet-B"><say-as interpret-as="interjection">(amused)</say-as> A very vivid description. One approach to think about is a small bedtime snack with some protein and slow-digesting carbohydrates. <break time="200ms"/>This might help prevent those pre-breakfast spikes.</voice>
-<voice name="en-US-Wavenet-C"><p>That's a great tip! <break time="100ms"/>Sometimes a little snack before bed is like giving your liver a "go to sleep" lullaby. <break time="100ms"/>But definitely check with your doctor first.  <break time="100ms"/>What works for one person might not work for another, right Dr. Turner?</p></voice>
-<voice name="en-GB-Wavenet-B">Precisely. Everyone's diabetes is different, like snowflakes. No two are alike.</voice>
-<voice name="en-US-Wavenet-C">That's deep, Dr. Turner.  Did you get that from a fortune cookie?</voice>
-<voice name="en-GB-Wavenet-B"><say-as interpret-as="interjection">(dryly)</say-as> My algorithms generated that analogy. Now, lastly, those two severe lows around 4:34 pm and 6:31 pm are concerning. <break time="200ms"/>These could be due to a number of factors like stacking insulin boluses, unexpected physical activity or an insulin sensitivity factor that is not correct.</voice>
-<voice name="en-US-Wavenet-C"><p>Yeah, lows are no joke. <break time="100ms"/>You want to talk about that with your health care team right away and address any of these possibilities or get other theories as to what might be the cause.  <break time="100ms"/>Sometimes a tiny change in timing of dose and meals or activities can make a huge difference.</p></voice>
-<voice name="en-GB-Wavenet-B">Indeed. Perhaps using a temporary basal rate during exercise might be worth discussing with your healthcare provider.  Do you have any closing thoughts, Rebecca?</voice>
-<voice name="en-US-Wavenet-C">Just that you’re doing an amazing job managing your diabetes. <break time="100ms"/>Remember, small tweaks can lead to big improvements.  Keep up the great work!</voice>
-<voice name="en-GB-Wavenet-B">Excellent.  We look forward to reviewing your data next week. Until then, take care and keep those numbers good.</voice>
+<s>
+<voice name="en-GB-Wavenet-B">Hello, <emphasis level="strong">I'm Your AI Doctor Turner</emphasis>, and welcome back to Good Numbers.</s>
+</speak>
+<speak>
+<s>
+<voice name="en-US-Wavenet-C">And I'm Rebecca. We're excited to dive into your blood glucose data this week.</s>
+</speak>
+<speak>
+<s>
+<voice name="en-GB-Wavenet-B">As always, a gentle reminder that this podcast is for informational purposes only, and isn't a substitute for advice from your own healthcare team. <break time="0.5s"/> Any changes to your diabetes management plan should be discussed with your doctor or diabetes educator.</s>
+</speak>
+<speak>
+<s>
+<voice name="en-US-Wavenet-C">Exactly. <break time="0.2s"/>We're here to offer insights and support, but your medical team knows your specific situation best.</s>
+</speak>
+<speak>
+<s>
+<voice name="en-GB-Wavenet-B">Right, let's jump into the first key area for you this week. <break time="0.5s"/>Your data shows a recurring pattern of high blood glucose levels around mealtimes, particularly lunch and dinner. <break time="0.5s"/>This suggests we should take a closer look at your bolus insulin dosing strategies. <break time="0.3s"/>Now, there could be several reasons for these post-meal spikes. <prosody rate="0.9">Perhaps your carbohydrate counting needs a little fine-tuning, or maybe your insulin-to-carbohydrate ratio (ICR) needs adjusting.</prosody>
+</s>
+</speak>
+<speak>
+<s>
+<voice name="en-US-Wavenet-C">Yeah, it can be tricky to get the ICR just right. <break time="0.3s"/>It's like trying to hit a moving target, especially with all the variables in what we eat. <break time="0.2s"/>Remember that time my son swore he'd only had 20 carbs, but his blood sugar shot up like a rocket? <break time="0.2s"/>Turned out the "small" handful of trail mix he'd grabbed had way more carbs than he thought.
+</s>
+</speak>
+<speak>
+<s>
+<voice name="en-GB-Wavenet-B">
+<p>A classic case of sneaky carbs. </p>You should definitely review your carb counting methods, maybe try using a food scale for a while to ensure accuracy. <break time="0.5s"/>Also, chat with your doctor about possibly adjusting your ICR. <break time="0.3s"/>It might even be worth considering different ICRs for different meals, as our bodies can process food differently throughout the day. <say-as interpret-as="characters">Research by Bergenstal and colleagues in 2019</say-as> highlights the importance of individualized insulin regimens. <break time="0.5s"/>You know, adjusting ICRs is like finding the right spices for a recipe - a little tweak here and there can make all the difference. <break time="0.5s"/>
+</voice>
+</s>
+</speak>
+<speak>
+<s>
+<voice name="en-US-Wavenet-C">Absolutely. <emphasis level="moderate">It's all about personalization.</emphasis><break time="1s"/> Now, Your AI Dr Turner, what about those pesky overnight and early morning highs? <break time="0.2s"/>The data points to a possible Dawn Phenomenon.
+</s>
+</speak>
+<speak>
+<s>
+<voice name="en-GB-Wavenet-B">Indeed.  The Dawn Phenomenon is a natural rise in blood glucose due to hormonal changes in the early morning. <break time="0.5s"/>It’s a bit like your liver deciding to throw a surprise glucose party while you're sleeping. <break time="0.5s"/>It's important to differentiate this from insufficient insulin action from your evening meal. <break time="0.3s"/>Analyzing the timing of the glucose rise will help pinpoint the cause. <break time="0.3s"/>You should discuss this with your healthcare provider, and consider adjusting your evening meal bolus strategy if necessary. <break time="0.2s"/>Maybe experimenting with a later bolus or a small bedtime snack, of course, consulting your dietitian. <say-as interpret-as="characters">Hirsch (2016)</say-as> provided valuable insights into the impact of overnight insulin action on glucose levels.
+</s>
+</speak>
+<speak>
+<s>
+<voice name="en-US-Wavenet-C">I totally get that. <break time="0.2s"/>Bedtime snacks are a lifesaver, literally, because night-time lows can be really scary! <break time="0.2s"/>Remember that one conference where the speaker was talking about the dawn phenomenon, and he called it the "vampire effect"? <break time="0.2s"/>Everyone started cracking up! <break time="1s"/>Moving on to the next point, I'm seeing some patterns of hypoglycemia here. <break time="0.2s"/>The big one here is three severe hypoglycemic events around 6:30 PM.
+</s>
+</speak>
+<speak>
+<s>
+<voice name="en-GB-Wavenet-B">Yes, these hypoglycemic events warrant careful attention. <break time="0.3s"/>Stacking insulin, unanticipated exercise, or an incorrect insulin sensitivity factor (ISF) could be culprits. <break time="0.3s"/>Reviewing your bolus timing, considering pre-exercise adjustments, and potentially reevaluating your ISF with your healthcare provider are all advisable. <say-as interpret-as="characters">Colberg et al. (2017)</say-as> emphasize the importance of exercise management in type 1 diabetes. <break time="0.2s"/>Remember, hypoglycemia is like a mischievous gremlin in your system, and you need to figure out what's feeding it.
+</s>
+</speak>
+<speak>
+<s>
+<voice name="en-US-Wavenet-C">Ha! I love that analogy. <break time="0.2s"/>It's important to remember that everyone's diabetes is different. <break time="0.2s"/>What works for one person might not work for another. <break time="0.2s"/>It's like those "one-size-fits-all" hats...they never actually fit anyone! <break time="1s"/>Finally, there are a few high glucose events popping up around 10:50 PM.
+</s>
+</speak>
+<speak>
+<s>
+<voice name="en-GB-Wavenet-B">Indeed, these late-night highs might stem from evening snacks without proper bolusing or inadequate basal insulin action from earlier. <break time="0.3s"/>I'd advise following a similar approach to managing the overnight patterns, by focusing on accurate carb counting for any late-night snacks and discussing potential adjustments to evening bolus with your medical team. <break time="1s"/>Now, above all, consistent CGM data analysis and ongoing Diabetes Self-Management Education and Support (DSMES) are paramount. <break time="0.2s"/> <emphasis level="moderate">Think Like a Pancreas</emphasis>, a favorite book of ours, has many practical ideas, and if you are struggling, <emphasis level="moderate">Dealing with Diabetes Burnout</emphasis> offers valuable coping strategies. <say-as interpret-as="characters">The ADA emphasizes the importance of DSMES in their 2017 guidelines (6).</say-as>
+</s>
+</speak>
+<speak>
+<s>
+<voice name="en-US-Wavenet-C">Totally agree, Your AI Dr. Turner. <break time="0.2s"/>Regular CGM review is like checking your map on a road trip—it helps you stay on course. <break time="0.2s"/>And DSMES is your personal guide, ensuring you have the skills and support to navigate all those twists and turns along the way. <break time="0.2s"/>Your diabetes management journey, however bumpy or smooth, is ultimately your own unique adventure!
+</s>
 </speak>
 ```
