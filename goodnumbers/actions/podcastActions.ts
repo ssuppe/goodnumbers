@@ -11,7 +11,7 @@ import {
   generatePodcastDescription,
   generatePodcastText,
   getAssessment,
-} from '@/actions/gemini/geminiActions';
+} from '@/actions/gemini';
 import { FullAnalysisResult, analyzeTimeOfDay, AnalysisResult } from '@/lib/oref0-autotune/gn-meal-analysis';
 import { generateAgpData } from '@/components/charts/AgpWeeklyChart-data';
 import {
