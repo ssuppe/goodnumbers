@@ -2,14 +2,11 @@
 
 // app/actions/assessment.ts
 import {
-  GoogleGenerativeAI,
   GenerationConfig,
   GenerativeModel,
   SchemaType,
   ResponseSchema,
 } from '@google/generative-ai';
-import { promises as fs } from 'fs';
-import path from 'path';
 import { AssessmentData, PodcastGenerateResult, JobCheckResponse } from '@/types/nightscout';
 import { interpolate } from '@/utils/utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -17,30 +14,18 @@ import { Storage } from '@google-cloud/storage';
 import { updateRssFeed } from './rss';
 import { canReadLocal, canWriteLocal } from '@/utils/env';
 import { readLocalFile, writeLocalFile } from '@/utils/fileCache';
-import { SSMLValidationResult, validateAndFixSsml } from '@/utils/ssml-server'; // Assuming this path is correct
-
-const { TextToSpeechLongAudioSynthesizeClient } = require('@google-cloud/text-to-speech').v1beta1;
-
-const BUCKET_NAME = 'goodnumbersmain'; // Replace with your bucket name
-const GCS_PATH = 'audio-files'; // Folder in bucket to store audio files
-
-// Initialize Gemini client
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
-/**
- * Loads a text template file from the specified path.
- * @param filename The name of the template file within the prompts directory.
- * @returns The content of the template file as a string.
- */
-const loadTemplate = async (filename: string): Promise<string> => {
-  const templatePath = path.join(process.cwd(), 'actions', 'gemini', '_prompts', filename);
-  try {
-    return await fs.readFile(templatePath, 'utf-8');
-  } catch (error) {
-    console.error(`Error loading template ${filename}:`, error);
-    throw new Error(`Failed to load template: ${filename}`);
-  }
-};
+import { SSMLValidationResult, validateAndFixSsml } from '@/utils/ssml-server';
+import { loadTemplate } from './utils/templateUtils';
+import { 
+  genAI, 
+  asyncGenerateJson, 
+  createTtsClient, 
+  getJobStatus,
+  generateAudioPath,
+  DEFAULT_BUCKET_NAME,
+  DEFAULT_AUDIO_PATH
+} from './clients';
+import { Storage } from '@google-cloud/storage';
 
 // Interface for Description (used in generatePodcastDescription)
 export interface Description {
@@ -408,20 +393,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
   };
 }
 
-/**
- * Generates JSON content using the provided model and schema
- */
-async function asyncGenerateJson<T>(prompt: string, model: GenerativeModel): Promise<T> {
-  console.log('generating JSON');
-
-  const response = await model.generateContent(prompt);
-
-  // Clean up JSON response
-  const cleanJson = response.response.text().replace('```json\n', '').replace('\n```', '');
-  var result = JSON.parse(cleanJson);
-  console.log('done');
-  return result[0];
-}
+// asyncGenerateJson function moved to geminiClient.ts
 
 /**
  * Generates a podcast title and description using Gemini AI.
@@ -513,23 +485,10 @@ export async function generatePodcastAudio(podcast: AssessmentData): Promise<Pod
   try {
     const { title, description, ssml_dialog, id } = podcast;
 
-    // Initialize Storage
-    const storage = new Storage({
-      projectId: 'goodnumbers-446416',
-      keyFilename: credentialsPath,
-    });
-    const bucket = storage.bucket(BUCKET_NAME);
-
-    // Generate unique path
-    const timestamp = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15);
-    const fileName = `podcast_${timestamp}.wav`;
-    const gcsPath = `${GCS_PATH}/${id}/${fileName}`;
-    const outputGcsUri = `gs://${BUCKET_NAME}/${gcsPath}`;
-
-    const client = new TextToSpeechLongAudioSynthesizeClient({
-      apiEndpoint: 'texttospeech.googleapis.com',
-      credentials: JSON.parse(require('fs').readFileSync(credentialsPath, 'utf-8')),
-    });
+    // Generate unique paths using our storage client utility
+    const pathInfo = generateAudioPath(id);
+    
+    const client = createTtsClient();
 
     // Start synthesis
     const [operation] = await client.synthesizeLongAudio({
@@ -540,7 +499,7 @@ export async function generatePodcastAudio(podcast: AssessmentData): Promise<Pod
         speakingRate: 0.95,
         pitch: 0.0,
       },
-      outputGcsUri: outputGcsUri,
+      outputGcsUri: pathInfo.outputGcsUri,
       voice: {
         languageCode: 'en-GB',
         name: 'en-GB-Wavenet-B',
@@ -550,9 +509,9 @@ export async function generatePodcastAudio(podcast: AssessmentData): Promise<Pod
     return {
       status: 'processing',
       operation_id: operation.name,
-      gcs_path: gcsPath,
-      bucket_name: BUCKET_NAME,
-      url: `https://storage.googleapis.com/goodnumbersmain/${gcsPath}`,
+      gcs_path: pathInfo.gcsPath,
+      bucket_name: pathInfo.bucketName,
+      url: pathInfo.publicUrl,
       message: 'Audio generation started successfully',
       title,
       description,
@@ -563,89 +522,7 @@ export async function generatePodcastAudio(podcast: AssessmentData): Promise<Pod
   }
 }
 
-/**
- * Checks the status of a long-running Text-to-Speech operation.
- * @param operationId The unique name/ID of the operation.
- * @returns JobCheckResponse detailing the operation's status.
- */
-async function getJobStatus(operationId: string): Promise<JobCheckResponse> {
-  const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (!credentialsPath) {
-    throw new Error('GOOGLE_APPLICATION_CREDENTIALS environment variable not set.');
-  }
-
-  const client = new TextToSpeechLongAudioSynthesizeClient({
-    apiEndpoint: 'texttospeech.googleapis.com',
-    credentials: JSON.parse(require('fs').readFileSync(credentialsPath, 'utf-8')),
-  });
-
-  var status: JobCheckResponse = {
-    name: operationId,
-    done: false,
-    status: 'unknown',
-    error: null,
-    result: null,
-  };
-
-  try {
-    // Create a proper GetOperationRequest object
-
-    const operationCall = await client.checkSynthesizeLongAudioProgress(operationId);
-    const operation = await operationCall.promise();
-    const operationProgress: number = operation[1]['progressPercentage'];
-    const operationInfo = operation[2];
-    console.debug('\nDebug Information:');
-    console.debug(operation);
-
-    // Initialize done to true, then update if needed
-    status.name = operationInfo.name;
-    status.done = operationInfo.done;
-
-    if (operationInfo.done) {
-      if (operationInfo.response) {
-        console.log('success');
-        status.status = 'done';
-        status.error = null;
-      } else if (operationInfo.error) {
-        // Directly check for operation.error
-        console.log('error');
-        status.status = 'error';
-        status.error = operationInfo.error.message;
-      } else {
-        console.log('else'); // This case shouldn't typically happen with the updated logic
-        status.status = 'unknown';
-        status.result = operationInfo.result; // Use operation.result directly
-      }
-    } else {
-      status.status = 'processing';
-    }
-
-    console.log(`Returning: ${JSON.stringify(status)}`);
-    return status;
-
-    // if (operation.done) {
-    //   if (operation.error) {
-    //     console.error('Long-running operation failed:', operation.error.message);
-    //   } else if (operation.response) {
-    //     const results = operation.response.results as unknown as { alternatives: { transcript: string }[] }[]; // Type casting may be needed because sometimes types in the library aren't perfect
-
-    //     // Process the results
-    //     results.forEach((result) => {
-    //       const transcript = result.alternatives[0].transcript;
-    //       console.log(`Transcript: ${transcript}`);
-    //     });
-    //   }
-    // } else {
-    //   console.log('Operation still in progress...');
-    //   // You can check again later (e.g., using setInterval)
-    // }
-  } catch (error) {
-    console.error('Error checking operation status:', error);
-    // Handle the error appropriately
-  }
-
-  return status;
-}
+// getJobStatus function moved to ttsClient.ts
 
 /**
  * Checks the status of the podcast audio generation job and updates the RSS feed upon completion.
@@ -673,7 +550,7 @@ export async function checkPodcastStatus(podcast_result: PodcastGenerateResult):
     const pubDate = new Date(); // UTC by default
 
     updateRssFeed({
-      bucketName: BUCKET_NAME,
+      bucketName: DEFAULT_BUCKET_NAME,
       rssPath: rssPath,
       link: podcast_result.url,
       title: podcast_result.title ?? 'Goodnumbers',
