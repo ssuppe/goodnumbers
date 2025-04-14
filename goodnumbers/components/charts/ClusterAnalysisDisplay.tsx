@@ -20,7 +20,6 @@ interface ClusterAnalysisDisplayProps {
   units: GlucoseUnits;
   patientLowGoal?: number;
   patientHighGoal?: number;
-  title?: string;
   subtitle?: string;
   description?: string;
   insights: AssessmentInsight[];
@@ -55,7 +54,6 @@ export function ClusterAnalysisDisplay({
   units,
   patientLowGoal,
   patientHighGoal,
-  title = 'Cluster Analysis',
   subtitle,
   description,
   insights,
@@ -152,9 +150,6 @@ export function ClusterAnalysisDisplay({
 
   return (
     <div className="mb-8 space-y-4">
-      {/* Title section */}
-      {title && <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h2>}
-
       {/* Subtitle */}
       {effectiveSubtitle && (
         <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">{effectiveSubtitle}</h3>
