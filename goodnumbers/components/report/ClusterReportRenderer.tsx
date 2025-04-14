@@ -116,7 +116,6 @@ export function ClusterReportRenderer({
       units={units}
       patientLowGoal={patientLowGoal}
       patientHighGoal={patientHighGoal}
-      title="Glycemic Pattern Analysis"
       insights={reportItem.insights}
     />
   );
