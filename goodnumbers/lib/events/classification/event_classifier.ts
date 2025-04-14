@@ -4,17 +4,21 @@ import {
   ClassifiedEvent,
   EventClassificationType,
   ClassificationConfig,
-  DEFAULT_CLASSIFICATION_CONFIG
+  DEFAULT_CLASSIFICATION_CONFIG,
+  Classification
 } from './classification_types';
 
 /**
  * Main classifier function that takes glycemic events and treatments
- * and returns classified events
+ * and returns classified events with multiple potential classifications
+ * 
+ * This updated version supports multiple classifications per event, allowing
+ * for more nuanced analysis of glycemic patterns.
  *
  * @param glycemicEvents - Array of glycemic events to classify
  * @param treatments - Array of treatments to analyze for classification
  * @param config - Optional configuration for classification windows
- * @returns Array of classified events
+ * @returns Array of classified events with potential classifications
  */
 export function classifyEvents(
   glycemicEvents: GlycemicEvent[],
@@ -31,18 +35,35 @@ export function classifyEvents(
 
   // Process each glycemic event
   for (const event of sortedEvents) {
-    // Convert to classified event with default classification
-    const classifiedEvent = initializeClassifiedEvent(event);
+    // Initialize with empty classifications array
+    const classifiedEvent: ClassifiedEvent = {
+      ...event,
+      classifications: [] // Each event can have multiple classifications
+    };
 
     // Apply classification rules based on event type
     if (event.event_type === GlycemicEventType.HIGH ||
         event.event_type === GlycemicEventType.VERY_HIGH) {
-
-      // Apply high event classification rules
-      applyHighEventRules(classifiedEvent, sortedTreatments, config);
+      
+      // Check for meal-related classifications (may find multiple)
+      const mealRelatedClassifications = checkMealRelatedHighs(event, sortedTreatments, config);
+      classifiedEvent.classifications.push(...mealRelatedClassifications);
+      
+      // Example of extensibility: Future rules would add additional classifications
+      // const otherClassifications = checkOtherRuleFunction(event, sortedTreatments, config);
+      // classifiedEvent.classifications.push(...otherClassifications);
     }
-
-    // Other event types would have their own rule application here
+    
+    // If no classifications found, add UNCLASSIFIED as a fallback
+    if (classifiedEvent.classifications.length === 0) {
+      classifiedEvent.classifications.push({
+        type: EventClassificationType.UNCLASSIFIED,
+        relatedTreatments: {
+          treatments: [],
+          minutesBefore: []
+        }
+      });
+    }
 
     // Add the classified event to results
     classifiedEvents.push(classifiedEvent);
@@ -52,111 +73,164 @@ export function classifyEvents(
 }
 
 /**
- * Initialize a glycemic event as a classified event with default values
+ * Checks a high glycemic event for potential links to preceding meals and boluses.
+ * Returns an array of applicable classifications.
  *
- * @param event - The glycemic event to initialize as a classified event
- * @returns A classified event with default classification
- */
-function initializeClassifiedEvent(event: GlycemicEvent): ClassifiedEvent {
-  return {
-    ...event,
-    classification: EventClassificationType.UNCLASSIFIED,
-    relatedTreatments: {
-      treatments: [] as NightscoutTreatment[],
-      minutesBefore: [] as number[]
-    }
-  };
-}
-
-/**
- * Apply classification rules specific to high glucose events
+ * This function implements the meal-related classification logic:
+ * 1. HIGH_AFTER_UNCOVERED_MEAL: Meal with no insulin bolus found
+ * 2. HIGH_AFTER_POSTBOLUSED_MEAL: Meal with insulin given at/after meal time
+ * 3. HIGH_AFTER_PREBOLUSED_MEAL: Meal with insulin given well before meal time
  *
- * @param event - The classified event to update
+ * @param event - The glycemic event to check
  * @param treatments - Array of treatments to analyze
  * @param config - Configuration for classification windows
+ * @returns Array of applicable classifications
+ * 
+ * @example
+ * // Example of a HIGH_AFTER_UNCOVERED_MEAL classification:
+ * // A meal at 12:00 PM with no insulin bolus, followed by a high at 1:30 PM
+ * 
+ * @example
+ * // Example of a HIGH_AFTER_POSTBOLUSED_MEAL classification:
+ * // A meal at 12:00 PM with insulin given at 12:05 PM, followed by a high at 1:30 PM
+ * 
+ * @example
+ * // Example of a HIGH_AFTER_PREBOLUSED_MEAL classification:
+ * // Insulin given at 11:50 AM, meal at 12:00 PM, followed by a high at 1:30 PM
  */
-function applyHighEventRules(
-  event: ClassifiedEvent,
+function checkMealRelatedHighs(
+  event: GlycemicEvent,
   treatments: NightscoutTreatment[],
   config: ClassificationConfig
-): void {
-
-  // Example rule: Check for meals before high event
-  const mealBeforeHighRule = checkMealBeforeHigh(event, treatments, config);
-
-  if (mealBeforeHighRule.matches) {
-    // Apply the classification from this rule
-    event.classification = mealBeforeHighRule.classification;
-    event.relatedTreatments = mealBeforeHighRule.relatedTreatments;
-
-    // Once a rule is matched, we can either stop or continue applying rules
-    // For now, we'll stop at first match
-    return;
+): Classification[] {
+  const results: Classification[] = [];
+  
+  // Early return if no event or treatments data
+  if (!event || !event.start_timestamp || !treatments || treatments.length === 0) {
+    return results;
   }
-
-  // Additional rules would be checked here in sequence or combination
-}
-
-/**
- * Rule: Check if a meal occurred within the configured window before a high event
- *
- * @param event - The classified event to check
- * @param treatments - Array of treatments to analyze
- * @param config - Configuration for classification windows
- * @returns Result object with match status and classification details
- */
-function checkMealBeforeHigh(
-  event: ClassifiedEvent,
-  treatments: NightscoutTreatment[],
-  config: ClassificationConfig
-): {
-  matches: boolean;
-  classification: EventClassificationType;
-  relatedTreatments: { treatments: NightscoutTreatment[]; minutesBefore: number[] };
-} {
-
-  // Extract timestamps
-  const eventTime = new Date(event.start_timestamp).getTime();
-
-  // Initialize result
-  const result = {
-    matches: false,
-    classification: EventClassificationType.UNCLASSIFIED,
-    relatedTreatments: {
-      treatments: [] as NightscoutTreatment[],
-      minutesBefore: [] as number[]
+  
+  // Ensure we have a valid timestamp
+  let eventStartTime: number;
+  try {
+    eventStartTime = new Date(event.start_timestamp).getTime();
+    if (isNaN(eventStartTime)) {
+      return results; // Invalid date
     }
-  };
-
-  // Find meal treatments within the specified window
+  } catch (error) {
+    return results; // Error parsing date
+  }
+  
+  // Setup time window constants with defaults as fallback
+  const mealLookbackWindow = (config?.mealLookbackWindowMinutes ?? 180) * 60 * 1000;
+  const bolusSearchWindow = (config?.bolusSearchWindowMinutes ?? 30) * 60 * 1000;
+  const prebolusThreshold = (config?.prebolusThresholdMinutes ?? 5) * 60 * 1000;
+  
+  // Find meals within lookback window
   const relevantMeals = treatments.filter(treatment => {
-    // Check if it's a meal treatment
-    if (treatment.eventType !== 'Meal Bolus' && !treatment.carbs) {
-      return false;
+    // Skip null/undefined treatments
+    if (!treatment || !treatment.created_at) return false;
+    
+    // Check if it's a meal treatment (has carbs > 0)
+    if (!(treatment.carbs ?? 0) > 0) return false;
+    
+    // Calculate time difference
+    let treatmentTime: number;
+    try {
+      treatmentTime = new Date(treatment.created_at).getTime();
+      if (isNaN(treatmentTime)) return false; // Invalid date
+    } catch (error) {
+      return false; // Error parsing date
     }
-
-    // Calculate time difference in minutes
-    const treatmentTime = new Date(treatment.created_at).getTime();
-    const minutesBefore = Math.round((eventTime - treatmentTime) / (60 * 1000));
-
-    // Check if within the configured window
-    return minutesBefore >= 0 && minutesBefore <= config.mealBeforeHighWindowMinutes;
+    
+    const timeDiff = eventStartTime - treatmentTime;
+    
+    // Check if within lookback window
+    return timeDiff >= 0 && timeDiff <= mealLookbackWindow;
   });
-
-  // If at least one relevant meal found, this rule matches
-  if (relevantMeals.length > 0) {
-    result.matches = true;
-    result.classification = EventClassificationType.HIGH_AFTER_MEAL;
-
-    // Store the related treatments and their time differences
-    result.relatedTreatments.treatments = relevantMeals;
-    result.relatedTreatments.minutesBefore = relevantMeals.map(meal => {
-      const treatmentTime = new Date(meal.created_at).getTime();
-      return Math.round((eventTime - treatmentTime) / (60 * 1000));
+  
+  // If no relevant meals found, return empty array
+  if (relevantMeals.length === 0) return results;
+  
+  // Process each relevant meal
+  for (const meal of relevantMeals) {
+    const mealTime = new Date(meal.created_at).getTime();
+    const mealTimeDiff = Math.round((eventStartTime - mealTime) / (60 * 1000));
+    
+    // Find boluses around this meal
+    let closestBolus: NightscoutTreatment | null = null;
+    let closestBolusTimeDiff = 0;
+    let minTimeDelta = Infinity;
+    
+    for (const treatment of treatments) {
+      // Skip null/undefined treatments
+      if (!treatment || !treatment.created_at) continue;
+      
+      // Check if it's a bolus treatment (has insulin > 0)
+      if (!(treatment.insulin ?? 0) > 0) continue;
+      
+      let bolusTime: number;
+      try {
+        bolusTime = new Date(treatment.created_at).getTime();
+        if (isNaN(bolusTime)) continue; // Invalid date
+      } catch (error) {
+        continue; // Error parsing date
+      }
+      
+      const timeDeltaFromMeal = Math.abs(bolusTime - mealTime);
+      
+      // Check if within search window around meal
+      if (timeDeltaFromMeal <= bolusSearchWindow) {
+        // Is this bolus closer to the meal than previous ones?
+        if (timeDeltaFromMeal < minTimeDelta) {
+          minTimeDelta = timeDeltaFromMeal;
+          closestBolus = treatment;
+          closestBolusTimeDiff = Math.round((eventStartTime - bolusTime) / (60 * 1000));
+        }
+      }
+    }
+    
+    // Determine classification based on bolus presence/timing
+    let classificationType: EventClassificationType;
+    let relatedTreatmentsList: NightscoutTreatment[];
+    let minutesBeforeList: number[];
+    
+    if (!closestBolus) {
+      // SCENARIO 1: No bolus found for this meal
+      // This indicates the meal was not covered with insulin
+      classificationType = EventClassificationType.HIGH_AFTER_UNCOVERED_MEAL;
+      relatedTreatmentsList = [meal];
+      minutesBeforeList = [mealTimeDiff];
+    } else {
+      // Bolus found, check timing relative to meal
+      const bolusTime = new Date(closestBolus.created_at).getTime();
+      const bolusVsMealDiff = bolusTime - mealTime; // Negative if bolus before meal
+      
+      if (bolusVsMealDiff < -prebolusThreshold) {
+        // SCENARIO 2: Bolus given significantly before meal
+        // This is proper pre-bolusing, but high may indicate insufficient dosing
+        classificationType = EventClassificationType.HIGH_AFTER_PREBOLUSED_MEAL;
+      } else {
+        // SCENARIO 3: Bolus given at/after meal or only slightly before
+        // This may indicate that insulin didn't have time to start working
+        classificationType = EventClassificationType.HIGH_AFTER_POSTBOLUSED_MEAL;
+      }
+      
+      relatedTreatmentsList = [meal, closestBolus];
+      minutesBeforeList = [mealTimeDiff, closestBolusTimeDiff];
+    }
+    
+    // Add this classification to results
+    results.push({
+      type: classificationType,
+      relatedTreatments: {
+        treatments: relatedTreatmentsList,
+        minutesBefore: minutesBeforeList
+      }
     });
   }
-
-  return result;
+  
+  return results;
 }
 
 /**
