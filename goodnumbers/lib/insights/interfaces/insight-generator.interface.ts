@@ -10,7 +10,7 @@ export interface InsightGenerator {
    * Written in the tone of a medical health care professional's notes
    */
   getAIInsight(): AssessmentInsight;
-  
+
   /**
    * Returns an insight formatted for user-friendly display
    * Written in a patient-friendly tone for web display
