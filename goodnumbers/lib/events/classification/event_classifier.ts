@@ -257,3 +257,4 @@ function sortTreatments(treatments: NightscoutTreatment[]): NightscoutTreatment[
     return timeA - timeB;
   });
 }
+export { DEFAULT_CLASSIFICATION_CONFIG };
