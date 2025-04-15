@@ -10,19 +10,19 @@ export enum EventClassificationType {
    * This often indicates that insulin coverage was missing for the meal
    */
   HIGH_AFTER_UNCOVERED_MEAL = 'HIGH_AFTER_UNCOVERED_MEAL',
-  
+
   /**
    * High glucose that occurred after a meal where insulin was given at or after the meal time
    * May indicate that insulin didn't have enough time to start working before carbs were absorbed
    */
   HIGH_AFTER_POSTBOLUSED_MEAL = 'HIGH_AFTER_POSTBOLUSED_MEAL',
-  
+
   /**
    * High glucose that occurred after a meal where insulin was given well before the meal
    * Insulin was properly timed (pre-bolused), but the high may indicate insufficient dosing
    */
   HIGH_AFTER_PREBOLUSED_MEAL = 'HIGH_AFTER_PREBOLUSED_MEAL',
-  
+
   /**
    * Default classification when no specific patterns are identified
    */
@@ -37,7 +37,7 @@ export interface Classification {
    * The classification type
    */
   type: EventClassificationType;
-  
+
   /**
    * Treatments related to this classification and their temporal relationship
    */
@@ -75,12 +75,12 @@ export interface ClassificationConfig {
    * Time window in minutes to look for meals before high glucose events
    */
   mealLookbackWindowMinutes: number;
-  
+
   /**
    * Time window in minutes to search for boluses around a meal
    */
   bolusSearchWindowMinutes?: number;
-  
+
   /**
    * Threshold in minutes to determine if a bolus was given significantly before a meal
    */
@@ -94,7 +94,7 @@ export interface ClassificationConfig {
  */
 export const DEFAULT_CLASSIFICATION_CONFIG: ClassificationConfig = {
   mealLookbackWindowMinutes: 180, // 3 hours
-  bolusSearchWindowMinutes: 30,     // 30 minutes
-  prebolusThresholdMinutes: 5,      // 5 minutes
+  bolusSearchWindowMinutes: 30, // 30 minutes
+  prebolusThresholdMinutes: 15, // 15 minutes
   // Additional defaults would be added here
 };
