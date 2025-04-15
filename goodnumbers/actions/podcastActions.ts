@@ -22,6 +22,7 @@ import { filterCriticalInsights, hasCriticalInsights, insightsToNotes } from './
 import { AgpDataPoint } from '@/components/charts/AgpChart';
 import { detectGlycemicEvents } from '@/lib/events/detect_events';
 import { clusterGlycemicEvents, minutesToTimeString } from '@/lib/events/time_clustering/time_clustering';
+import { classifyEvents, DEFAULT_CLASSIFICATION_CONFIG } from '@/lib/events/classification/event_classifier';
 import { getAssessment } from './gemini/services/assessmentService';
 import {
   generatePodcastAudio,
@@ -187,7 +188,10 @@ export async function generateAssessments(
     // OTHER INSIGHTS
     // First, let's find high and low clusters
     var events = detectGlycemicEvents(all_prepped_glucose, patient_range);
-    var clusters = clusterGlycemicEvents(events, 60);
+    // Classify the events with our enhanced classification system
+    var classifiedEvents = classifyEvents(events, nsData.treatments, DEFAULT_CLASSIFICATION_CONFIG);
+    // Cluster the classified events by time
+    var clusters = clusterGlycemicEvents(classifiedEvents, 60);
 
     // Check if we have any clusters to analyze
     if (clusters.length > 0) {
