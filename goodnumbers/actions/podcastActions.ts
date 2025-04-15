@@ -194,17 +194,42 @@ export async function generateAssessments(
     // Cluster the classified events by time
     var clusters = clusterGlycemicEvents(classifiedEvents, 60);
 
-    // Generate insights about meal-related high glucose patterns
-    const mealHighsGenerator = createMealRelatedHighsInsight(clusters);
-    const mealHighInsights = mealHighsGenerator.getAllInsights();
-    
-    // Add AI insights to notes
-    ai_notes += await insightsToNotes(mealHighInsights.ai_insights);
-    
-    // Add user insights to the collection
-    mealHighInsights.user_insights.forEach(insight => {
-      user_insights.push(insight);
-    });
+    // Initialize array to store individual cluster reports
+    // These will hold meal-related insights for each cluster separately
+    const cluster_reports: ReportItem[] = [];
+
+    // Process each cluster individually to generate meal-related insights
+    for (const cluster of clusters) {
+      // Create a meal-related insight generator specific to this cluster
+      const clusterMealHighsGenerator = createMealRelatedHighsInsight([cluster]);
+      const clusterMealHighInsights = clusterMealHighsGenerator.getAllInsights();
+
+      // Add AI insights to notes
+      ai_notes += await insightsToNotes(clusterMealHighInsights.ai_insights);
+
+      // Compress the cluster data for storage efficiency
+      const compressedCluster = compress(cluster);
+
+      // Create a compressed data package for this cluster
+      const clusterAnalysisData = {
+        compressedCluster: compressedCluster,
+        // Reference to tell the client which entries to use
+        dataReference: {
+          type: 'nightscout-entries',
+          id: id, // The hash ID used for storage
+        },
+      };
+
+      // Create a report item for this cluster
+      const clusterAnalysisReport: ReportItem = {
+        type: ReportType.CLUSTER_LINE,
+        insights: clusterMealHighInsights.user_insights, // Add user insights directly to the report
+        data: [clusterAnalysisData], // Pass the compressed data
+      };
+
+      // Add this cluster's report item to the collection
+      cluster_reports.push(clusterAnalysisReport);
+    }
 
     // Check if we have any clusters to analyze
     if (clusters.length > 0) {
@@ -226,8 +251,8 @@ export async function generateAssessments(
         // Add header for glycemic patterns section
         ai_notes += '\n\n## Glycemic Pattern Analysis\n\n';
 
-        // Initialize array to store all report items
-        const allReportItems: ReportItem[] = [weekly_overview_report];
+        // Initialize array to store glycemic pattern report items
+        const glycemicPatternReports: ReportItem[] = [];
 
         // Process each significant cluster in descending order by size
         for (let i = 0; i < significantClusters.length; i++) {
@@ -258,29 +283,31 @@ export async function generateAssessments(
           ai_notes += `typically occurring around ${minutesToTimeString(cluster.meanTime)}.\n`;
 
           // Add this cluster's report item to the collection
-          allReportItems.push(clusterAnalysisReport);
+          glycemicPatternReports.push(clusterAnalysisReport);
         }
 
         // Update current state with full notes and all report items
+        // Combine weekly overview, meal-related cluster reports, and glycemic pattern reports
         currentAssessmentData = {
           ...currentAssessmentData,
           notes: ai_notes,
-          report_items: allReportItems,
+          report_items: [weekly_overview_report, ...cluster_reports, ...glycemicPatternReports],
         };
       } else {
-        // No significant clusters found (all had only 1 event) - update with just the weekly report
+        // No significant clusters found (all had only 1 event) - update with weekly report and any meal-related cluster reports
         currentAssessmentData = {
           ...currentAssessmentData,
           notes: ai_notes,
-          report_items: [weekly_overview_report],
+          report_items: [weekly_overview_report, ...cluster_reports],
         };
       }
     } else {
       // No clusters found - update with just the weekly report
+      // Note: cluster_reports will be empty in this case anyway, but including for consistency
       currentAssessmentData = {
         ...currentAssessmentData,
         notes: ai_notes,
-        report_items: [weekly_overview_report],
+        report_items: [weekly_overview_report, ...cluster_reports],
       };
     }
 
