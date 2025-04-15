@@ -23,6 +23,7 @@ import { AgpDataPoint } from '@/components/charts/AgpChart';
 import { detectGlycemicEvents } from '@/lib/events/detect_events';
 import { clusterGlycemicEvents, minutesToTimeString } from '@/lib/events/time_clustering/time_clustering';
 import { classifyEvents, DEFAULT_CLASSIFICATION_CONFIG } from '@/lib/events/classification/event_classifier';
+import { createMealRelatedHighsInsight } from '@/lib/insights/generators/meal-related-highs.generator';
 import { getAssessment } from './gemini/services/assessmentService';
 import {
   generatePodcastAudio,
@@ -192,6 +193,18 @@ export async function generateAssessments(
     var classifiedEvents = classifyEvents(events, nsData.treatments, DEFAULT_CLASSIFICATION_CONFIG);
     // Cluster the classified events by time
     var clusters = clusterGlycemicEvents(classifiedEvents, 60);
+
+    // Generate insights about meal-related high glucose patterns
+    const mealHighsGenerator = createMealRelatedHighsInsight(clusters);
+    const mealHighInsights = mealHighsGenerator.getAllInsights();
+    
+    // Add AI insights to notes
+    ai_notes += await insightsToNotes(mealHighInsights.ai_insights);
+    
+    // Add user insights to the collection
+    mealHighInsights.user_insights.forEach(insight => {
+      user_insights.push(insight);
+    });
 
     // Check if we have any clusters to analyze
     if (clusters.length > 0) {
