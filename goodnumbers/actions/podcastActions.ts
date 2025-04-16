@@ -202,10 +202,9 @@ export async function generateAssessments(
     for (const cluster of clusters) {
       // Create a meal-related insight generator specific to this cluster
       const clusterMealHighsGenerator = createMealRelatedHighsInsight([cluster]);
-      const clusterMealHighInsights = clusterMealHighsGenerator.getAllInsights();
 
       // Add AI insights to notes
-      ai_notes += await insightsToNotes(clusterMealHighInsights.ai_insights);
+      ai_notes += await insightsToNotes([clusterMealHighsGenerator.getAIInsight()]);
 
       // Compress the cluster data for storage efficiency
       const compressedCluster = compress(cluster);
@@ -213,6 +212,8 @@ export async function generateAssessments(
       // Create a compressed data package for this cluster
       const clusterAnalysisData = {
         compressedCluster: compressedCluster,
+        // Store meanTime separately outside the compressed data for easier sorting
+        meanTimeMinutes: cluster.meanTime,
         // Reference to tell the client which entries to use
         dataReference: {
           type: 'nightscout-entries',
@@ -223,7 +224,7 @@ export async function generateAssessments(
       // Create a report item for this cluster
       const clusterAnalysisReport: ReportItem = {
         type: ReportType.CLUSTER_LINE,
-        insights: clusterMealHighInsights.user_insights, // Add user insights directly to the report
+        insights: [clusterMealHighsGenerator.getUserInsight()], // Add user insights directly to the report
         data: [clusterAnalysisData], // Pass the compressed data
       };
 
@@ -264,6 +265,8 @@ export async function generateAssessments(
           // Create a compressed data package for this cluster
           const clusterAnalysisData = {
             compressedCluster: compressedCluster,
+            // Store meanTime separately outside the compressed data for easier sorting
+            meanTimeMinutes: cluster.meanTime,
             // Reference to tell the client which entries to use
             dataReference: {
               type: 'nightscout-entries',

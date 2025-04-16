@@ -273,8 +273,11 @@ const NightscoutComponent = ({
 
         // Handle compressed cluster format
         if ('compressedCluster' in dataItem) {
-          // Try to extract meanTime from compressed data
-          // Since we can't directly decompress here, we'll use a fallback
+          // First try to use the separately stored meanTimeMinutes
+          if ('meanTimeMinutes' in dataItem) {
+            return dataItem.meanTimeMinutes;
+          }
+          // Fall back to original method if not available (for backward compatibility)
           return dataItem.meanTime || 0;
         }
         // Handle legacy direct cluster format
@@ -400,7 +403,24 @@ const NightscoutComponent = ({
                     totalReportItems: assessmentData.report_items.length,
                     agpReportsCount: agpReports.length,
                     clusterReportsCount: clusterReports.length,
-                    sortedClusterTimes: sortedClusterReports.map((cluster) => getClusterMeanTime(cluster)),
+                    sortedClusterTimes: sortedClusterReports.map((cluster) => {
+                      const time = getClusterMeanTime(cluster);
+                      // Convert minutes to HH:MM format for easier debugging
+                      const hours = Math.floor(time / 60).toString().padStart(2, '0');
+                      const minutes = (time % 60).toString().padStart(2, '0');
+                      return `${hours}:${minutes} (${time} min)`;
+                    }),
+                    // Also log raw data about each cluster for debugging
+                    clusterDetails: sortedClusterReports.map(cluster => {
+                      const dataItem = cluster.data && cluster.data.length > 0 ? cluster.data[0] : null;
+                      return {
+                        hasMeanTimeMinutes: dataItem ? 'meanTimeMinutes' in dataItem : false,
+                        meanTimeMinutesValue: dataItem && 'meanTimeMinutes' in dataItem ? dataItem.meanTimeMinutes : 'N/A',
+                        hasMeanTime: dataItem ? 'meanTime' in dataItem : false,
+                        meanTimeValue: dataItem && 'meanTime' in dataItem ? dataItem.meanTime : 'N/A',
+                        extractedTime: getClusterMeanTime(cluster)
+                      };
+                    })
                   });
                 }
 
