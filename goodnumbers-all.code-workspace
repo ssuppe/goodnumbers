@@ -5,10 +5,6 @@
       "name": "Next.js Frontend"
     },
     {
-      "path": "./goodnumbers-be",
-      "name": "FastAPI Backend"
-    },
-    {
       "path": "."
     },
     {

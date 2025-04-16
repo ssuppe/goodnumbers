@@ -2,7 +2,7 @@
 # Run commands with: just <command>
 
 # Project variables
-backend-dir := "goodnumbers-be"
+# backend-dir := "goodnumbers-be"  # Commented out as no longer used
 frontend-dir := "goodnumbers"
 gcp-region := "us-east1"
 gcp-project := "gemini-437920"
@@ -14,54 +14,54 @@ set dotenv-load := false
 default:
     @just --list
 
-# Deploy backend with environment variables
-deploy-backend env:
-    #!/usr/bin/env bash
-    # First, verify environment file exists
-    if [ ! -f "{{env-dir}}/env.{{env}}.backend" ]; then
-        echo "Error: Environment file {{env-dir}}/env.{{env}}.backend not found"
-        exit 1
-    fi
-    
-    echo "Deploying backend with {{env}}.backend environment..."
-    
-    # Load environment variables - do not use as this is a YAML file
-    # for Google Cloud
-    # set -a
-    # source {{env-dir}}/env.{{env}}.backend
-    # set +a
-    
-    # Deploy to Cloud Functions
-    cd {{backend-dir}}/src/api && \
-    gcloud functions deploy goodnumbers-api \
-        --gen2 \
-        --runtime=python312 \
-        --region={{gcp-region}} \
-        --source=. \
-        --entry-point=handler \
-        --trigger-http \
-        --allow-unauthenticated \
-        --env-vars-file={{env-dir}}/env.{{env}}.backend \
-        --memory=512M \
-        --service-account=google-text-to-speech-api@gemini-437920.iam.gserviceaccount.com \
-        --timeout=300
+# Deploy backend with environment variables - COMMENTED OUT (no longer needed)
+# deploy-backend env:
+#     #!/usr/bin/env bash
+#     # First, verify environment file exists
+#     if [ ! -f "{{env-dir}}/env.{{env}}.backend" ]; then
+#         echo "Error: Environment file {{env-dir}}/env.{{env}}.backend not found"
+#         exit 1
+#     fi
+#
+#     echo "Deploying backend with {{env}}.backend environment..."
+#
+#     # Load environment variables - do not use as this is a YAML file
+#     # for Google Cloud
+#     # set -a
+#     # source {{env-dir}}/env.{{env}}.backend
+#     # set +a
+#
+#     # Deploy to Cloud Functions
+#     cd {{backend-dir}}/src/api && \
+#     gcloud functions deploy goodnumbers-api \
+#         --gen2 \
+#         --runtime=python312 \
+#         --region={{gcp-region}} \
+#         --source=. \
+#         --entry-point=handler \
+#         --trigger-http \
+#         --allow-unauthenticated \
+#         --env-vars-file={{env-dir}}/env.{{env}}.backend \
+#         --memory=512M \
+#         --service-account=google-text-to-speech-api@gemini-437920.iam.gserviceaccount.com \
+#         --timeout=300
 
 # Quick development deploy (shorthand)
 # dev:
 #     just deploy-backend development
 
 # Quick production deploy (shorthand)
-prod:
-    just deploy-backend production
+# prod:
+#     just deploy-backend production
 
 # Show current GCP configuration
 show-gcp-config:
     gcloud config list
 
-# Clean Python cache files
-clean-backend:
-    find {{backend-dir}} -type d -name "__pycache__" -exec rm -r {} +
-    find {{backend-dir}} -type f -name "*.pyc" -delete
+# Clean Python cache files - COMMENTED OUT (no longer needed)
+# clean-backend:
+#     find {{backend-dir}} -type d -name "__pycache__" -exec rm -r {} +
+#     find {{backend-dir}} -type f -name "*.pyc" -delete
 
 # Show environment variables (safely - hiding secrets)
 show-env env:
@@ -70,7 +70,7 @@ show-env env:
         echo "Error: Environment file {{env-dir}}/env.{{env}} not found"
         exit 1
     fi
-    
+
     echo "Environment variables for {{env}}:"
     # Show variables but hide values
     grep -v '^#' {{env-dir}}/env.{{env}} | cut -d '=' -f1
@@ -88,7 +88,7 @@ _verify-vercel:
         echo "Then add it to your environment: export VERCEL_TOKEN='your-token'"
         exit 1
     fi
-    
+
     # Verify token works by checking authentication
     if ! vercel whoami --token=$VERCEL_TOKEN > /dev/null 2>&1; then
         echo "Error: Invalid VERCEL_TOKEN"
@@ -100,24 +100,24 @@ _verify-vercel:
 push-env filename env:
     #!/usr/bin/env bash
     #set -euo pipefail
-    
+
     cd {{frontend-dir}}
 
     while IFS='=' read -r key value || [ -n "$key" ]; do
         # Skip empty lines and comments
         [[ -z "$key" || "$key" == \#* ]] && continue
-        
+
         # Trim whitespace from key and value
         key=$(echo "$key" | xargs)
         value=$(echo "$value" | xargs)
-        
+
         # Remove any surrounding quotes from the value
         value=$(echo "$value" | sed -e 's/^["\x27]//' -e 's/["\x27]$//')
-        
+
         echo "Adding $key to Vercel..."
         echo "$value" | vercel env add "$key" {{env}} --token=$VERCEL_TOKEN
     done < {{filename}}
-    
+
     echo "✅ Environment variables have been pushed to Vercel {{env}}"
 
 deploy-frontend env:
@@ -125,20 +125,20 @@ deploy-frontend env:
     # First run verification
     set -euo pipefail # -e means exit on any error, -u means error on undefined variables
     just _verify-vercel
-    
+
     # Verify environment file exists
     if [ ! -f "{{env-dir}}/env.{{env}}.frontend" ]; then
         echo "Error: Environment file {{env-dir}}/env.{{env}}.frontend not found"
         exit 1
     fi
-    
+
     echo "Deploying frontend with {{env}}.frontend environment..."
 
     # Load environment variables into current shell
     set -a
     source "{{env-dir}}/env.{{env}}.frontend"
     set +a
-    
+
     #just push-env {{env-dir}}/env.{{env}}.frontend {{env}}
 
     cd {{frontend-dir}} && \
