@@ -146,6 +146,42 @@ function formatTime(dateString: string): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+/**
+ * Extracts the day part of a date in YYYY-MM-DD format
+ */
+function extractDay(dateString: string): string {
+  return new Date(dateString).toISOString().split('T')[0];
+}
+
+/**
+ * Determines if two events are truly related (same event index AND same day)
+ */
+function areEventsRelated(
+  event1: { eventIndex?: number; originalDateString?: string; day?: string },
+  event2: { eventIndex?: number; originalDateString?: string; day?: string }
+): boolean {
+  // Check if events have the same event index
+  if (
+    event1.eventIndex === undefined || 
+    event2.eventIndex === undefined || 
+    event1.eventIndex !== event2.eventIndex
+  ) {
+    return false;
+  }
+  
+  // Get day information, preferring pre-computed day if available
+  const day1 = event1.day ?? (event1.originalDateString ? extractDay(event1.originalDateString) : null);
+  const day2 = event2.day ?? (event2.originalDateString ? extractDay(event2.originalDateString) : null);
+  
+  // If either day is missing, we can't compare
+  if (!day1 || !day2) {
+    return false;
+  }
+  
+  // Check if events are from the same day
+  return day1 === day2;
+}
+
 // --- Main Component ---
 
 export function ClusterEventsChart({
@@ -192,21 +228,64 @@ export function ClusterEventsChart({
       const highlightedSeries = params.batch[0];
       if (!highlightedSeries.seriesName) return;
 
+      // Extract the event index from the series name
       const eventIndex = extractEventIndex(highlightedSeries.seriesName);
       if (eventIndex === null) return;
+      
+      // If we have data access, extract day information
+      let hoveredDay: string | null = null;
+      if (highlightedSeries.data && highlightedSeries.dataIndex !== undefined) {
+        const dataPoint = highlightedSeries.data[highlightedSeries.dataIndex];
+        if (dataPoint && dataPoint.day) {
+          hoveredDay = dataPoint.day;
+        } else if (dataPoint && dataPoint.originalDateString) {
+          hoveredDay = extractDay(dataPoint.originalDateString);
+        }
+      }
 
       // Get all series
       const option = chart.getOption();
       const allSeries = option.series;
 
-      // Find all series with the same event index
+      // Find series to highlight based on our criteria
       const seriesToHighlight: number[] = [];
+      
+      // Always include the original hovered series index
+      if (highlightedSeries.seriesIndex !== undefined) {
+        seriesToHighlight.push(highlightedSeries.seriesIndex);
+      }
+      
+      // Add related series from the other panel if they match both event index and day
       allSeries.forEach((series: any, index: number) => {
-        // Try to extract from both series name and series id
-        const seriesEventIndex = extractEventIndex(series.name) ?? extractEventIndex(series.id || '');
-        if (seriesEventIndex === eventIndex) {
-          seriesToHighlight.push(index);
+        // Skip the original series which is already included
+        if (index === highlightedSeries.seriesIndex) return;
+        
+        // Check if the series has the same event index
+        const seriesEventIndex = extractEventIndex(series.name) ?? 
+                               extractEventIndex(series.id || '');
+                               
+        if (seriesEventIndex !== eventIndex) return;
+        
+        // If we're enforcing day matching and we have the hovered day
+        if (hoveredDay && series.data && series.data.length) {
+          // Check if any data point in this series matches the day
+          let hasMatchingDay = false;
+          
+          for (const point of series.data) {
+            const pointDay = point.day || 
+                           (point.originalDateString ? extractDay(point.originalDateString) : null);
+            
+            if (pointDay === hoveredDay) {
+              hasMatchingDay = true;
+              break;
+            }
+          }
+          
+          if (!hasMatchingDay) return;
         }
+        
+        // If we got here, add the series to highlight
+        seriesToHighlight.push(index);
       });
 
       // Highlight all related series
@@ -227,21 +306,18 @@ export function ClusterEventsChart({
 
     // Add mouseover handler to initiate highlighting
     chart.on('mouseover', (params: any) => {
-      if (!params.seriesName) return;
+      if (!params.seriesName || !params.data) return;
 
-      const eventIndex = extractEventIndex(params.seriesName) ?? extractEventIndex(params.seriesId || '');
-      if (eventIndex === null) return;
-
-      // Find the series index for the hovered element
-      const option = chart.getOption();
-      const allSeries = option.series;
-      const seriesIndex = allSeries.findIndex((series: any) => series.name === params.seriesName);
-
-      if (seriesIndex !== -1) {
-        // Trigger highlight action
+      // Store the data index for use in the highlight event
+      const seriesIndex = params.seriesIndex;
+      const dataIndex = params.dataIndex;
+      
+      if (seriesIndex !== undefined) {
+        // Trigger highlight action with the data point information
         chart.dispatchAction({
           type: 'highlight',
           seriesIndex: seriesIndex,
+          dataIndex: dataIndex
         });
       }
     });
@@ -412,6 +488,10 @@ export function ClusterEventsChart({
           extremeOriginal: event.extreme_bg_mgdl,
           eventType: event.event_type,
           isInEventRange, // Custom property to mark points within the event range
+          // Add event relationship data
+          eventIndex: index,
+          day: extractDay(g.dateString),
+          seriesType: 'glucose',
         };
       });
 
@@ -488,6 +568,10 @@ export function ClusterEventsChart({
                   month: 'short',
                   day: 'numeric',
                 }),
+                // Add event relationship data
+                eventIndex: index,
+                day: extractDay(treatment.dateString),
+                seriesType: 'carbs',
               };
             });
 
@@ -616,22 +700,74 @@ export function ClusterEventsChart({
           return null;
         }
 
-        // Get time info from the first parameter
-        const normalizedTime = new Date(paramsArray[0].data.value[0]);
+        // Find the actively hovered parameter (the one that triggered the tooltip)
+        const hoveredParam = paramsArray.find(p => p.isHovered || p.isSelected) || paramsArray[0];
+        
+        // Determine the hovered type (glucose or carbs)
+        const isGlucoseHover = hoveredParam.seriesType === 'line';
+        
+        // Extract event info from the hovered data
+        const hoveredEventIndex = hoveredParam.data.eventIndex;
+        const hoveredDay = hoveredParam.data.day || 
+                          (hoveredParam.data.originalDateString ? 
+                           extractDay(hoveredParam.data.originalDateString) : null);
+
+        // Get time info from the hovered parameter
+        const normalizedTime = new Date(hoveredParam.data.value[0]);
         const formattedTime = normalizedTime.toLocaleTimeString([], {
           hour: '2-digit',
           minute: '2-digit',
           hour12: true,
         });
+        
+        // Get date info
+        const dateInfo = hoveredParam.data.originalDateStr
+          ? `<div style="margin-bottom: 4px;">Date: ${hoveredParam.data.originalDateStr}</div>`
+          : '';
 
-        // Start tooltip content with time
+        // Start tooltip content with time and date
         let content = `<div style="font-weight: bold; margin-bottom: 10px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 6px;">Time: ${formattedTime}</div>`;
+        content += dateInfo;
 
-        // Group params by series type (glucose vs meal)
-        const glucoseData = paramsArray.filter(
-          (p) => p.seriesType === 'line' && p.data.glucoseInUserUnits !== undefined,
+        // Filter params to only include the hovered one and related ones
+        const filteredParams = paramsArray.filter(param => {
+          // Always include the hovered parameter
+          if (param === hoveredParam) return true;
+          
+          // Check if this param is related to the hovered one
+          const paramEventIndex = param.data.eventIndex;
+          const paramDay = param.data.day || 
+                          (param.data.originalDateString ? 
+                           extractDay(param.data.originalDateString) : null);
+                           
+          // Only include if from the same event and same day
+          return paramEventIndex === hoveredEventIndex && paramDay === hoveredDay;
+        });
+        
+        // Sort params to put hovered type first
+        const sortedParams = filteredParams.sort((a, b) => {
+          // Put the exact hovered param first
+          if (a === hoveredParam) return -1;
+          if (b === hoveredParam) return 1;
+          
+          // Then sort by type (hovered type first)
+          const aIsGlucose = a.seriesType === 'line';
+          const bIsGlucose = b.seriesType === 'line';
+          
+          if (isGlucoseHover) {
+            return aIsGlucose ? -1 : 1;
+          } else {
+            return aIsGlucose ? 1 : -1;
+          }
+        });
+        
+        // Group sorted params by series type for rendering
+        const glucoseData = sortedParams.filter(
+          (p) => p.seriesType === 'line' && p.data.glucoseInUserUnits !== undefined
         );
-        const mealData = paramsArray.filter((p) => p.seriesType === 'bar' && p.data.originalCarbs !== undefined);
+        const mealData = sortedParams.filter(
+          (p) => p.seriesType === 'bar' && p.data.originalCarbs !== undefined
+        );
 
         // Add glucose data
         if (glucoseData.length > 0) {
@@ -640,16 +776,10 @@ export function ClusterEventsChart({
             const match = param.seriesName.match(/Event (\d+)/);
             const eventLabel = match ? `Event ${match[1]}` : param.seriesName;
 
-            // Add date info if available
-            const dateInfo = param.data.originalDateStr
-              ? `<div style="margin-bottom: 4px;">Date: ${param.data.originalDateStr}</div>`
-              : '';
-
             // Get glucose value formatted with units
             const glucoseValueFormatted = `${formatValue(param.data.glucoseInUserUnits)} ${units}`;
 
             // Add glucose info
-            content += `${dateInfo}`;
             content += `<div style="margin-bottom: 6px;"><span style="display:inline-block;margin-right:8px;border-radius:10px;width:10px;height:10px;background-color:${param.color};"></span><span style="font-weight: 500;">${eventLabel}:</span> <span style="margin-left: 5px; font-weight: bold;">${glucoseValueFormatted}</span></div>`;
 
             // Include event type and duration if available
