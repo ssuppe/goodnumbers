@@ -260,7 +260,7 @@ function analyzeMealRelatedHighs(clusters: TimeCluster[]): {
 
       // User-friendly summary insight
       userInsights.push({
-        note: `About ${percentMealRelated}% (${totalMealRelatedHighs} out of ${totalHighs}) of your high glucose readings appear to be related to meals. Let's look at how we can improve your mealtime management to reduce these spikes.`,
+        note: `About ${percentMealRelated}% (${totalMealRelatedHighs} out of ${totalHighs}) of your high glucose readings appear to be related to meals.`,
         priority: InsightPriority.IMPORTANT,
       });
     }
