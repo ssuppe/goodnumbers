@@ -104,13 +104,13 @@ function analyzeMealRelatedHighs(clusters: TimeCluster[]): {
             if (!event) continue;
 
             totalHighs++;
-            
+
             // Track if this event has any meal-related classifications
             let eventHasMealRelation = false;
-            
+
             // Track individual classification types for this event
             let hasUncoveredMeal = false;
-            let hasPostbolusedMeal = false;  
+            let hasPostbolusedMeal = false;
             let hasPrebolusedMeal = false;
 
             // Safely check classifications with type guards
@@ -139,12 +139,12 @@ function analyzeMealRelatedHighs(clusters: TimeCluster[]): {
                     break;
                 }
               }
-              
+
               // After checking all classifications, increment counters appropriately
               if (eventHasMealRelation) {
                 // Only count each event once in the total
                 totalMealRelatedHighs++;
-                
+
                 // Count each classification type separately
                 if (hasUncoveredMeal) {
                   uncoveredMealCount++;

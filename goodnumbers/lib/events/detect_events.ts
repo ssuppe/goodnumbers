@@ -3,8 +3,10 @@ import { PatientRange } from '../oref0-autotune/gn-overview';
 
 // Define the simplified event types
 export enum GlycemicEventType {
-  HYPOGLYCEMIA = 'HYPOGLYCEMIA', // bg < 70
-  HYPERGLYCEMIA = 'HYPERGLYCEMIA', // bg > 180
+  SEVERE_HYPOGLYCEMIA = 'SEVERE_HYPOGLYCEMIA', // bg <= 54
+  HYPOGLYCEMIA = 'HYPOGLYCEMIA', // 54 < bg < 70
+  HIGH = 'HIGH', // target_high < bg <= very_high
+  VERY_HIGH = 'VERY_HIGH', // bg > very_high
 }
 
 // Define fixed thresholds for glycemic events
@@ -15,6 +17,7 @@ export const GLYCEMIC_THRESHOLDS = {
 
 // Define thresholds for hysteresis (to prevent event "fluttering")
 export const HYSTERESIS_THRESHOLDS = {
+  EXIT_SEVERE_HYPO: 60, // mg/dL (must be > SEVERE_HYPO_THRESHOLD)
   EXIT_HYPO: 80, // mg/dL (must be > HYPO_THRESHOLD)
   EXIT_HIGH: 170, // mg/dL (must be < HIGH_THRESHOLD)
 };
