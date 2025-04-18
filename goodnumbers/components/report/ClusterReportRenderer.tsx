@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ReportItem, AssessmentInsight, GlucoseUnits } from '@/types/nightscout.d';
+import { ReportItem, AssessmentInsight, GlucoseUnits, NightscoutTreatment } from '@/types/nightscout.d';
 import { ClusterAnalysisDisplay } from '../charts/ClusterAnalysisDisplay';
 import { TimeCluster } from '@/lib/events/time_clustering/time_clustering';
 import { decompress } from 'compress-json';
@@ -26,6 +26,7 @@ export function ClusterReportRenderer({
 }: ClusterReportRendererProps) {
   const [cluster, setCluster] = useState<TimeCluster | null>(null);
   const [entries, setEntries] = useState<NightscoutEntry[]>([]);
+  const [treatments, setTreatments] = useState<NightscoutTreatment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -55,6 +56,10 @@ export function ClusterReportRenderer({
           const storageKey = `goodnumbers-nightscout-entries-${reference.id}`;
           const entriesData = localStorage.getItem(storageKey);
           
+          // Try to get the treatments data from localStorage using the same reference ID
+          const treatmentsStorageKey = `goodnumbers-nightscout-treatments-${reference.id}`;
+          const treatmentsData = localStorage.getItem(treatmentsStorageKey);
+          
           if (entriesData) {
             // Parse and decompress the entries
             const parsedData = JSON.parse(entriesData);
@@ -73,6 +78,29 @@ export function ClusterReportRenderer({
             }
           } else {
             setError('Entries data not found in storage');
+          }
+          
+          // Process treatments data if available
+          if (treatmentsData) {
+            try {
+              const parsedTreatmentsData = JSON.parse(treatmentsData);
+              if (parsedTreatmentsData && parsedTreatmentsData.treatments) {
+                const decompressedTreatments = decompress(parsedTreatmentsData.treatments);
+                setTreatments(decompressedTreatments);
+                console.log('Retrieved treatments for cluster:', {
+                  count: decompressedTreatments.length,
+                  hasMealData: decompressedTreatments.some(t => t.carbs && t.carbs > 0)
+                });
+              }
+            } catch (treatmentError) {
+              // Just log but don't set error state - treatments are optional
+              console.warn('Error processing treatments data:', treatmentError);
+              setTreatments([]);
+            }
+          } else {
+            // Treatments data not available - this is acceptable
+            console.log('No treatments data found for this cluster');
+            setTreatments([]);
           }
         } else {
           setError('Invalid data reference');
@@ -117,6 +145,7 @@ export function ClusterReportRenderer({
       patientLowGoal={patientLowGoal}
       patientHighGoal={patientHighGoal}
       insights={reportItem.insights}
+      treatments={treatments}
     />
   );
 }
