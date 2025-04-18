@@ -159,12 +159,111 @@ export function ClusterEventsChart({
 }: ClusterEventsChartProps) {
   const chartRef = useRef<ReactECharts>(null);
 
-  // Effect to refresh chart when needed
+  // Extract event index from series name or ID
+  const extractEventIndex = (input: string): number | null => {
+    // First try to extract from series name (e.g., "Event 1 (10:30 AM, Mon, Feb 12)")
+    const nameMatch = input.match(/Event (\d+)/);
+    if (nameMatch) {
+      return parseInt(nameMatch[1], 10) - 1; // Convert to zero-based index
+    }
+    
+    // If that fails, try to extract from series ID (e.g., "glucose-event-0" or "carb-event-0")
+    const idMatch = input.match(/(?:glucose|carb)-event-(\d+)/);
+    if (idMatch) {
+      return parseInt(idMatch[1], 10); // Already zero-based
+    }
+    
+    return null;
+  };
+
+  // Effect to refresh chart and add event handlers
   React.useEffect(() => {
     const chart = chartRef.current?.getEchartsInstance();
-    if (chart) {
-      chart.resize();
-    }
+    if (!chart) return;
+    
+    // Resize chart when needed
+    chart.resize();
+    
+    // Add event handlers for synchronized hover using ECharts' highlight/downplay events
+    chart.on('highlight', (params: any) => {
+      if (!params.batch || !params.batch.length) return;
+      
+      // Get the first highlighted series (params.batch contains all highlighted series)
+      const highlightedSeries = params.batch[0];
+      if (!highlightedSeries.seriesName) return;
+      
+      const eventIndex = extractEventIndex(highlightedSeries.seriesName);
+      if (eventIndex === null) return;
+      
+      // Get all series
+      const option = chart.getOption();
+      const allSeries = option.series;
+      
+      // Find all series with the same event index
+      const seriesToHighlight: number[] = [];
+      allSeries.forEach((series: any, index: number) => {
+        // Try to extract from both series name and series id
+        const seriesEventIndex = extractEventIndex(series.name) ?? 
+                                extractEventIndex(series.id || '');
+        if (seriesEventIndex === eventIndex) {
+          seriesToHighlight.push(index);
+        }
+      });
+      
+      // Highlight all related series
+      if (seriesToHighlight.length > 0) {
+        // First downplay all series
+        chart.dispatchAction({
+          type: 'downplay',
+          seriesIndex: allSeries.map((_: any, i: number) => i)
+        });
+        
+        // Then highlight our target series
+        chart.dispatchAction({
+          type: 'highlight',
+          seriesIndex: seriesToHighlight
+        });
+      }
+    });
+    
+    // Add mouseover handler to initiate highlighting
+    chart.on('mouseover', (params: any) => {
+      if (!params.seriesName) return;
+      
+      const eventIndex = extractEventIndex(params.seriesName) ?? 
+                         extractEventIndex(params.seriesId || '');
+      if (eventIndex === null) return;
+      
+      // Find the series index for the hovered element
+      const option = chart.getOption();
+      const allSeries = option.series;
+      const seriesIndex = allSeries.findIndex((series: any) => series.name === params.seriesName);
+      
+      if (seriesIndex !== -1) {
+        // Trigger highlight action
+        chart.dispatchAction({
+          type: 'highlight',
+          seriesIndex: seriesIndex
+        });
+      }
+    });
+    
+    // Reset highlights when mouse leaves the chart
+    chart.on('globalout', () => {
+      // Reset all series to normal state
+      chart.dispatchAction({
+        type: 'downplay',
+        seriesIndex: [] // Empty array means reset all to normal
+      });
+    });
+    
+    // Clean up event listeners on unmount
+    return () => {
+      chart.off('mouseover');
+      chart.off('highlight');
+      chart.off('globalout');
+    };
+    
     // Dependency array includes props that might change chart dimensions or content
   }, [cluster, entries, units, patientLowGoal, patientHighGoal, title, treatments]);
 
@@ -336,10 +435,14 @@ export function ClusterEventsChart({
         },
         emphasis: {
           focus: 'series',
-          lineStyle: { width: 4 }, // Thicker line on hover
+          lineStyle: { 
+            width: 4, // Thicker line on hover
+            color: eventVisuals.color,  // Keep original color
+          },
           itemStyle: {
             borderWidth: 2, // Thicker border on hover
             borderColor: '#FFFFFF', // White border for contrast
+            color: eventVisuals.color,  // Keep original color
           },
           z: 20, // Bring emphasized series to front
         },
@@ -349,7 +452,7 @@ export function ClusterEventsChart({
           opacity: (params: any) => (params.data.isInEventRange ? 1 : 0.7), // Full opacity in range, slightly transparent out of range
         },
         data: eventData,
-        id: `event-line-${index}`,
+        id: `glucose-event-${index}`, // Unique ID that includes event type and index
       };
     });
 
@@ -404,13 +507,20 @@ export function ClusterEventsChart({
               emphasis: {
                 focus: 'series',
                 itemStyle: {
+                  color: eventVisuals.color, // Keep original color
                   opacity: 1,
+                  borderWidth: 1,
+                  borderColor: '#FFFFFF',
+                  shadowBlur: 6,
+                  shadowColor: 'rgba(0, 0, 0, 0.2)'
                 },
+                z: 20, // Higher z-index for emphasized state
               },
               data: mealData,
               barWidth: '50%', // Make bars wider
               barGap: '-50%', // Space between bars
               z: 10, // Higher z-index to ensure visibility
+              id: `carb-event-${index}`, // Unique ID that includes event type and index
             };
           })
           .filter(Boolean)
@@ -941,15 +1051,33 @@ export function ClusterEventsChart({
           link: { xAxisIndex: 'all' },
         }
       : undefined,
-    // Turn off animations for static display
-    animation: false,
-    animationDuration: 0,
-    animationEasing: 'linear',
-    // Define how non-emphasized series appear (blur them slightly)
+    // Enable animations for hover transitions
+    animation: true,
+    animationDuration: 200, // Fast animation for responsive feel
+    animationEasing: 'cubicOut',
+    // Define how emphasized series appear 
+    emphasis: {
+      focus: 'series',
+      scale: false, // Don't scale points on hover
+      lineStyle: { 
+        width: 3, // Thicker line for emphasized series
+        shadowBlur: 10,
+        shadowColor: 'rgba(0, 0, 0, 0.2)'
+      },
+      itemStyle: {
+        opacity: 1,
+        borderWidth: 2,
+        borderColor: '#fff',
+        shadowBlur: 10,
+        shadowColor: 'rgba(0, 0, 0, 0.2)'
+      },
+      z: 20, // Higher z-index to bring emphasized series to front
+    },
+    // Define how non-emphasized series appear (blur them more distinctly)
     blur: {
-      lineStyle: { color: '#BBBBBB', width: 1.5, opacity: 0.7 }, // Slightly dimmed and thinner
-      itemStyle: { color: '#BBBBBB', opacity: 0.7 },
-      z: 1, // Keep blurred items below emphasized ones (z: 20)
+      lineStyle: { color: '#DDDDDD', width: 1.5, opacity: 0.3 }, // More pronounced dimming
+      itemStyle: { color: '#DDDDDD', opacity: 0.3 },
+      z: 1, // Keep blurred items below emphasized ones
     },
   };
 
