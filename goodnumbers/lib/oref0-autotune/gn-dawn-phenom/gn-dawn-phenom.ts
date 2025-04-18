@@ -1,10 +1,9 @@
+import { AssessmentInsight, GlucoseUnits, InsightPriority } from '@/types/nightscout';
 import { ATReading, AutotunePreppedData } from '../gn-autotune-prep';
-import { AssessmentInsight, GlucoseUnits, InsightPriority } from '../../types/nightscout';
-import { t, u } from '../../utils/text';
 import { PatientRange } from '../gn-overview';
-import { ATProfileSettings } from '../../components/widgets/nightscoutProfile';
 import { analyzeMorningRises, formatMinutes, getUniqueDays } from './gn-dawn-phenom-analysis';
 import { MorningRise, MorningRiseAnalysis } from './gn-dawn-phenom-interfaces';
+import { u } from '@/utils/text';
 
 export interface TimeCluster {
   centerTime: number; // Minutes since midnight

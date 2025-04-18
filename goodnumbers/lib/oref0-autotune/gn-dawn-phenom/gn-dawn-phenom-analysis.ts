@@ -4,8 +4,8 @@
 import { ATReading, AutotunePreppedData } from '../gn-autotune-prep';
 import { PatientRange } from '../gn-overview';
 import { CleanRise, MorningRise, MorningRiseAnalysis } from './gn-dawn-phenom-interfaces';
-import { NightscoutTreatment } from '../../types/nightscout';
 import { clusterStartTimes, TimeCluster } from './gn-dawn-phenom';
+import { NightscoutTreatment } from '@/types/nightscout';
 
 // Minimum 45 minutes for a meaningful rise
 const MIN_RISE_DURATION = 45; // minutes
