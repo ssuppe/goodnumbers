@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { ATProfileSettings } from '../components/widgets/nightscoutProfile.js';
+import { ATProfileSettings } from '@/types/nightscout';
 
 /*
 

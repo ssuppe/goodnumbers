@@ -1,6 +1,7 @@
 // import { ATReading } from 'gn-autotune-prep';
 
-import { ATReading } from 'gn-autotune-prep';
+// import { ATReading } from 'gn-autotune-prep';
+import { ATReading } from '../gn-autotune-prep';
 import { TimeCluster } from './gn-dawn-phenom';
 
 // // Types for the segments of a dawn pattern
