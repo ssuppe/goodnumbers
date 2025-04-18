@@ -315,7 +315,7 @@ export function ClusterEventsChart({
       });
 
       return {
-        name: `Event ${index + 1} (${formatTime(event.start_timestamp)}, ${dateStr})`,
+        name: `Event ${index + 1} (${dateStr}, ${formatTime(event.start_timestamp)})`,
         id: `glucose-event-${index}`, // Unique ID including index
         type: 'line',
         ...(hasMealData ? { xAxisIndex: 0, yAxisIndex: 0 } : {}), // Assign to top grid if meals shown
@@ -635,41 +635,39 @@ export function ClusterEventsChart({
           minute: '2-digit',
           hour12: true,
         });
-        const dateInfo = data.originalDateStr
-          ? `<div style="margin-bottom: 4px;">Date: ${data.originalDateStr}</div>`
-          : '';
+        // const dateInfo = data.originalDateStr
+        //   ? `<div style="margin-bottom: 4px;">Date: ${data.originalDateStr}</div>`
+        //   : '';
 
-        let content = `<div style="font-weight: bold; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 6px;">${seriesName}</div>`;
-        content += `<div style="margin-bottom: 4px;">Time: ${formattedTime}</div>`;
-        content += dateInfo;
+        let content = `<div style="font-weight: bold; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 6px;"><span style="display:inline-block;margin-right:8px;border-radius:10px;width:10px;height:10px;background-color:${color};"></span>${seriesName}</div>`;
+        content += `<div style="margin-bottom: 4px;">${data.originalDateStr} ${formattedTime}</div>`;
+        // content += dateInfo;
 
         // Add specific info based on series type
         if (data.seriesType === 'glucose') {
           const glucoseValueFormatted = `${formatValue(data.glucoseInUserUnits)} ${units}`;
           content += `<div style="margin-top: 8px;">
-                            <span style="display:inline-block;margin-right:8px;border-radius:10px;width:10px;height:10px;background-color:${color};"></span>
-                            <span style="font-weight: 500;">Glucose:</span>
                             <span style="margin-left: 5px; font-weight: bold;">${glucoseValueFormatted}</span>
                          </div>`;
-          if (data.eventType) {
-            content += `<div style="margin-left: 18px; font-size: 11px; color: #555;">Type: ${getEventTypeName(data.eventType)}</div>`;
-          }
-          if (data.duration) {
-            content += `<div style="margin-left: 18px; font-size: 11px; color: #555;">Event Duration: ${data.duration} min</div>`;
-          }
+          // if (data.eventType) {
+          //   content += `<div style="margin-left: 18px; font-size: 11px; color: #555;">Type: ${getEventTypeName(data.eventType)}</div>`;
+          // }
+          // if (data.duration) {
+          //   content += `<div style="margin-left: 18px; font-size: 11px; color: #555;">Event Duration: ${data.duration} min</div>`;
+          // }
         } else if (data.seriesType === 'carbs') {
           const carbsValueFormatted = `${data.originalCarbs} g`;
           content += `<div style="margin-top: 8px;">
-                            <span style="display:inline-block;margin-right:8px;border-radius:10px;width:10px;height:10px;background-color:${color};"></span>
+
                             <span style="font-weight: 500;">Carbs:</span>
                             <span style="margin-left: 5px; font-weight: bold;">${carbsValueFormatted}</span>
                          </div>`;
-          if (data.notes) {
-            content += `<div style="margin-left: 18px; font-style: italic; font-size: 11px; color: #555;">"${data.notes}"</div>`;
-          }
-          if (data.mealEventType) {
-            content += `<div style="margin-left: 18px; font-size: 11px; color: #555;">Type: ${data.mealEventType}</div>`;
-          }
+          // if (data.notes) {
+          //   content += `<div style="margin-left: 18px; font-style: italic; font-size: 11px; color: #555;">"${data.notes}"</div>`;
+          // }
+          // if (data.mealEventType) {
+          //   content += `<div style="margin-left: 18px; font-size: 11px; color: #555;">Type: ${data.mealEventType}</div>`;
+          // }
         }
         // Potential TODO: Could try to find the 'linked' data point (e.g., find carb bar for hovered glucose point on same day/eventIndex)
         // This would require iterating through other series data here, which might be slow. Keeping it simple for now.
