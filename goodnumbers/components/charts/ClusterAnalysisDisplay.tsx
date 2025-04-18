@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { AssessmentInsight, GlucoseUnits, InsightPriority, NightscoutEntry } from '@/types/nightscout.d';
+import { AssessmentInsight, GlucoseUnits, InsightPriority, NightscoutEntry, NightscoutTreatment } from '@/types/nightscout.d';
 import { ClusterEventsChart } from './ClusterEventsChart';
 import {
   IconAlertCircle,
@@ -23,6 +23,7 @@ interface ClusterAnalysisDisplayProps {
   title?: string;
   description?: string;
   insights: AssessmentInsight[];
+  treatments?: NightscoutTreatment[]; // Optional treatments data for meal events
 }
 
 /**
@@ -57,6 +58,7 @@ export function ClusterAnalysisDisplay({
   title: title,
   description,
   insights,
+  treatments,
 }: ClusterAnalysisDisplayProps) {
   // Function to render the appropriate icon based on insight priority
   const renderPriorityIcon = (priority: InsightPriority) => {
@@ -187,6 +189,7 @@ export function ClusterAnalysisDisplay({
           patientLowGoal={patientLowGoal}
           patientHighGoal={patientHighGoal}
           title={`${getEventTypeName(cluster.eventType)} Events around ${minutesToTimeString(cluster.meanTime)}`}
+          treatments={treatments}
         />
       </div>
       {/* Insights */}
