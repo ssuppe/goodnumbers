@@ -1,7 +1,7 @@
 import { AutotunePreppedData, GlucoseDatum, CSFGlucoseDatum, CRDatum } from '../oref0-autotune/gn-autotune-prep';
 import { PatientRange } from '../oref0-autotune/gn-overview';
 
-// Define the simplified event types
+// Define the event types as specified in the updated specification
 export enum GlycemicEventType {
   SEVERE_HYPOGLYCEMIA = 'SEVERE_HYPOGLYCEMIA', // bg <= 54
   HYPOGLYCEMIA = 'HYPOGLYCEMIA', // 54 < bg < 70
@@ -9,17 +9,16 @@ export enum GlycemicEventType {
   VERY_HIGH = 'VERY_HIGH', // bg > very_high
 }
 
-// Define fixed thresholds for glycemic events
+// Define fixed thresholds for hypoglycemic events (clinical standards)
 export const GLYCEMIC_THRESHOLDS = {
-  HYPO_THRESHOLD: 70, // mg/dL (patient_range.target_low)
-  HIGH_THRESHOLD: 180, // mg/dL (patient_range.very_high)
+  SEVERE_HYPO_THRESHOLD: 54, // mg/dL
+  HYPO_THRESHOLD: 70, // mg/dL
 };
 
 // Define thresholds for hysteresis (to prevent event "fluttering")
 export const HYSTERESIS_THRESHOLDS = {
   EXIT_SEVERE_HYPO: 60, // mg/dL (must be > SEVERE_HYPO_THRESHOLD)
   EXIT_HYPO: 80, // mg/dL (must be > HYPO_THRESHOLD)
-  EXIT_HIGH: 170, // mg/dL (must be < HIGH_THRESHOLD)
 };
 
 // Define minimum duration and gap thresholds
@@ -77,7 +76,7 @@ function findExtremeBg(
   eventType: GlycemicEventType,
 ): number {
   // Determine if we're looking for minimum (hypo events) or maximum (high events)
-  const isHypo = eventType === GlycemicEventType.HYPOGLYCEMIA;
+  const isHypo = eventType === GlycemicEventType.HYPOGLYCEMIA || eventType === GlycemicEventType.SEVERE_HYPOGLYCEMIA;
   let extremeValue = isHypo ? Number.MAX_VALUE : Number.MIN_VALUE;
 
   for (let i = startIndex; i <= endIndex; i++) {
@@ -140,20 +139,26 @@ function recordEventIfNeeded(
 }
 
 /**
- * Detects glycemic excursion events based on simplified criteria
+ * Detects glycemic excursion events based on the refined criteria
  * @param data - AutotunePreppedData containing the glucose data
- * @param patientRange - Patient-specific range definitions (only using target_low and very_high)
+ * @param patientRange - Patient-specific range definitions
  * @returns Array of detected glycemic events
  */
 export function detectGlycemicEvents(data: AutotunePreppedData, patientRange: PatientRange): GlycemicEvent[] {
   // --- Configuration ---
-  // Entry thresholds - simplified to use patient_range.target_low and patient_range.very_high
-  const HYPO_THRESHOLD = patientRange.target_low; // Always 70 mg/dL
-  const HIGH_THRESHOLD = patientRange.very_high; // Always 180 mg/dL
+  // Entry thresholds
+  const SEVERE_HYPO_THRESHOLD = GLYCEMIC_THRESHOLDS.SEVERE_HYPO_THRESHOLD;
+  const HYPO_THRESHOLD = GLYCEMIC_THRESHOLDS.HYPO_THRESHOLD;
+  const HIGH_THRESHOLD = patientRange.target_high;
+  const VERY_HIGH_THRESHOLD = patientRange.very_high;
 
   // Exit thresholds (with hysteresis)
+  const EXIT_SEVERE_HYPO = HYSTERESIS_THRESHOLDS.EXIT_SEVERE_HYPO;
   const EXIT_HYPO = HYSTERESIS_THRESHOLDS.EXIT_HYPO;
-  const EXIT_HIGH = HYSTERESIS_THRESHOLDS.EXIT_HIGH;
+
+  // Ensure exit thresholds don't overlap between zones
+  const EXIT_HIGH = Math.min(HIGH_THRESHOLD, Math.max(EXIT_HYPO + 1, HIGH_THRESHOLD - 10));
+  const EXIT_VERY_HIGH = Math.min(VERY_HIGH_THRESHOLD, Math.max(HIGH_THRESHOLD + 1, VERY_HIGH_THRESHOLD - 10));
 
   // --- Initialization ---
   const mergedData = mergeGlucoseData(data);
@@ -201,18 +206,42 @@ export function detectGlycemicEvents(data: AutotunePreppedData, patientRange: Pa
       let eventEnded = false;
       let switchedType = false;
 
-      // Check for continuation or event end with simplified logic
-      if (currentEventType === GlycemicEventType.HYPOGLYCEMIA) {
-        if (bg < EXIT_HYPO) {
+      // Check for continuation or upgrade
+      if (currentEventType === GlycemicEventType.SEVERE_HYPOGLYCEMIA) {
+        if (bg < EXIT_SEVERE_HYPO) {
+          // Continue current severe hypo event
+          consecutiveCount++;
+        } else {
+          // BG crossed exit threshold
+          eventEnded = true;
+        }
+      } else if (currentEventType === GlycemicEventType.HYPOGLYCEMIA) {
+        if (bg <= SEVERE_HYPO_THRESHOLD) {
+          // Upgrade to severe hypoglycemia
+          currentEventType = GlycemicEventType.SEVERE_HYPOGLYCEMIA;
+          consecutiveCount++;
+        } else if (bg < EXIT_HYPO) {
           // Continue current hypo event
           consecutiveCount++;
         } else {
           // BG crossed exit threshold
           eventEnded = true;
         }
-      } else if (currentEventType === GlycemicEventType.HYPERGLYCEMIA) {
-        if (bg > EXIT_HIGH) {
+      } else if (currentEventType === GlycemicEventType.HIGH) {
+        if (bg > VERY_HIGH_THRESHOLD) {
+          // Upgrade to very high
+          currentEventType = GlycemicEventType.VERY_HIGH;
+          consecutiveCount++;
+        } else if (bg > EXIT_HIGH) {
           // Continue current high event
+          consecutiveCount++;
+        } else {
+          // BG crossed exit threshold
+          eventEnded = true;
+        }
+      } else if (currentEventType === GlycemicEventType.VERY_HIGH) {
+        if (bg > EXIT_VERY_HIGH) {
+          // Continue current very high event
           consecutiveCount++;
         } else {
           // BG crossed exit threshold
@@ -220,7 +249,7 @@ export function detectGlycemicEvents(data: AutotunePreppedData, patientRange: Pa
         }
       }
 
-      // If event didn't continue, it has ended
+      // If event didn't continue/upgrade, it might have ended
       if (eventEnded) {
         recordEventIfNeeded(mergedData, eventStartIndex, i - 1, previousEventType!, events, MIN_EVENT_DURATION_MINUTES);
         currentEventType = null;
@@ -233,11 +262,22 @@ export function detectGlycemicEvents(data: AutotunePreppedData, patientRange: Pa
       if (currentEventType !== null && !eventEnded) {
         let newEventType: GlycemicEventType | null = null;
 
-        // Check for switching between hypoglycemia and hyperglycemia
-        if (bg < HYPO_THRESHOLD && currentEventType === GlycemicEventType.HYPERGLYCEMIA) {
+        if (bg <= SEVERE_HYPO_THRESHOLD && currentEventType !== GlycemicEventType.SEVERE_HYPOGLYCEMIA) {
+          newEventType = GlycemicEventType.SEVERE_HYPOGLYCEMIA;
+        } else if (
+          bg < HYPO_THRESHOLD &&
+          currentEventType !== GlycemicEventType.HYPOGLYCEMIA &&
+          currentEventType !== GlycemicEventType.SEVERE_HYPOGLYCEMIA
+        ) {
           newEventType = GlycemicEventType.HYPOGLYCEMIA;
-        } else if (bg > HIGH_THRESHOLD && currentEventType === GlycemicEventType.HYPOGLYCEMIA) {
-          newEventType = GlycemicEventType.HYPERGLYCEMIA;
+        } else if (bg > VERY_HIGH_THRESHOLD && currentEventType !== GlycemicEventType.VERY_HIGH) {
+          newEventType = GlycemicEventType.VERY_HIGH;
+        } else if (
+          bg > HIGH_THRESHOLD &&
+          currentEventType !== GlycemicEventType.HIGH &&
+          currentEventType !== GlycemicEventType.VERY_HIGH
+        ) {
+          newEventType = GlycemicEventType.HIGH;
         }
 
         if (newEventType !== null) {
@@ -254,12 +294,20 @@ export function detectGlycemicEvents(data: AutotunePreppedData, patientRange: Pa
 
     // CASE 2: No event currently ongoing
     if (currentEventType === null) {
-      if (bg < HYPO_THRESHOLD) {
+      if (bg <= SEVERE_HYPO_THRESHOLD) {
+        currentEventType = GlycemicEventType.SEVERE_HYPOGLYCEMIA;
+        eventStartIndex = i;
+        consecutiveCount = 1;
+      } else if (bg < HYPO_THRESHOLD) {
         currentEventType = GlycemicEventType.HYPOGLYCEMIA;
         eventStartIndex = i;
         consecutiveCount = 1;
+      } else if (bg > VERY_HIGH_THRESHOLD) {
+        currentEventType = GlycemicEventType.VERY_HIGH;
+        eventStartIndex = i;
+        consecutiveCount = 1;
       } else if (bg > HIGH_THRESHOLD) {
-        currentEventType = GlycemicEventType.HYPERGLYCEMIA;
+        currentEventType = GlycemicEventType.HIGH;
         eventStartIndex = i;
         consecutiveCount = 1;
       }
