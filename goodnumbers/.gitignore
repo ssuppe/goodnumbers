@@ -40,5 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-gemini/*txt
-nightscout/*json
+goodnumbers/gemini/*txt
+goodnumbers/nightscout/*json
