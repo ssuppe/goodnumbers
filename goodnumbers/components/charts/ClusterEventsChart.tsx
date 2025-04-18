@@ -3,7 +3,7 @@
 // --- Imports ---
 import * as React from 'react';
 import { useRef, useMemo } from 'react';
-import { GlucoseUnits, NightscoutEntry } from '@/types/nightscout';
+import { GlucoseUnits, NightscoutEntry, NightscoutTreatment } from '@/types/nightscout';
 import ReactECharts from 'echarts-for-react';
 // No need to import 'echarts/core' explicitly when using ReactECharts unless using specific extensions
 import { MG_DL_PER_MMOL_L } from '@/utils/utils';
@@ -18,6 +18,11 @@ export interface ClusterEventsChartProps {
   patientLowGoal?: number;
   patientHighGoal?: number;
   title?: string;
+  /**
+   * Optional array of Nightscout treatments to display meal events as a bar chart.
+   * When provided, the chart will show a subplot with carb values from treatments.
+   */
+  treatments?: NightscoutTreatment[];
 }
 
 // --- Helper Functions ---
@@ -46,6 +51,84 @@ function processEntries(entries: NightscoutEntry[]): { dateString: string; gluco
   }));
 }
 
+/**
+ * Process treatments data to format for chart display
+ * Filter to relevant treatments (with carbs > 0) and sort by date
+ */
+function processTreatments(treatments: NightscoutTreatment[] | undefined): { 
+  dateString: string; 
+  carbs: number;
+  notes: string | null;
+  eventType: string;
+}[] {
+  if (!treatments || treatments.length === 0) return [];
+  
+  // Filter for treatments with carbs > 0
+  const carbTreatments = treatments.filter(t => t.carbs && t.carbs > 0);
+  
+  // Sort by date
+  const sortedTreatments = [...carbTreatments].sort((a, b) => a.date - b.date);
+  
+  // Map to simplified format
+  return sortedTreatments.map((treatment) => ({
+    dateString: new Date(treatment.date).toISOString(),
+    carbs: treatment.carbs || 0,
+    notes: treatment.notes || null,
+    eventType: treatment.eventType,
+  }));
+}
+
+/**
+ * Maps treatments to events based on timestamp matching
+ * Takes into account both time of day and calendar date
+ * Returns treatments grouped by event index
+ */
+function mapTreatmentsToEvents(
+  processedTreatments: ReturnType<typeof processTreatments>,
+  cluster: TimeCluster,
+  bufferBeforeMinutes: number = 60,
+  bufferAfterMinutes: number = 30
+): Record<number, ReturnType<typeof processTreatments>> {
+  const treatmentsByEvent: Record<number, ReturnType<typeof processTreatments>> = {};
+  
+  // Initialize empty arrays for each event
+  cluster.events.forEach((_, index) => {
+    treatmentsByEvent[index] = [];
+  });
+  
+  // For each treatment, find which event it belongs to
+  processedTreatments.forEach((treatment) => {
+    const treatmentDate = new Date(treatment.dateString);
+    const treatmentDay = treatmentDate.toISOString().split('T')[0]; // Get YYYY-MM-DD format
+    
+    // Find the event this treatment falls into
+    for (let i = 0; i < cluster.events.length; i++) {
+      const event = cluster.events[i];
+      const eventStartDate = new Date(event.start_timestamp);
+      const eventEndDate = new Date(event.end_timestamp);
+      const eventDay = eventStartDate.toISOString().split('T')[0]; // Get YYYY-MM-DD format
+      
+      // Check if the treatment is on the same day as the event
+      if (treatmentDay === eventDay) {
+        // Define a buffer around the event (same as for glucose data)
+        const bufferStartTime = new Date(eventStartDate);
+        bufferStartTime.setMinutes(eventStartDate.getMinutes() - bufferBeforeMinutes);
+        
+        const bufferEndTime = new Date(eventEndDate);
+        bufferEndTime.setMinutes(eventEndDate.getMinutes() + bufferAfterMinutes);
+        
+        // If the treatment falls within this event's time range (with buffer)
+        if (treatmentDate >= bufferStartTime && treatmentDate <= bufferEndTime) {
+          treatmentsByEvent[i].push(treatment);
+          break; // Treatment assigned to an event, move to next treatment
+        }
+      }
+    }
+  });
+  
+  return treatmentsByEvent;
+}
+
 // Palette designed for better accessibility and contrast (e.g., Tablueau 10)
 const eventColors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f'];
 // Line styles for additional visual distinction when many lines are present
@@ -72,6 +155,7 @@ export function ClusterEventsChart({
   patientLowGoal,
   patientHighGoal,
   title = 'Glycemic Event Cluster Analysis',
+  treatments,
 }: ClusterEventsChartProps) {
   const chartRef = useRef<ReactECharts>(null);
 
@@ -82,7 +166,7 @@ export function ClusterEventsChart({
       chart.resize();
     }
     // Dependency array includes props that might change chart dimensions or content
-  }, [cluster, entries, units, patientLowGoal, patientHighGoal, title]);
+  }, [cluster, entries, units, patientLowGoal, patientHighGoal, title, treatments]);
 
   const processedEntries = useMemo(() => processEntries(entries), [entries]);
 
