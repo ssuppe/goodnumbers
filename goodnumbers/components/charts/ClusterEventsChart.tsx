@@ -321,7 +321,7 @@ export function ClusterEventsChart({
         ...(hasMealData ? { xAxisIndex: 0, yAxisIndex: 0 } : {}), // Assign to top grid if meals shown
         smooth: false, // Keep medical data non-smoothed
         symbol: 'circle',
-        symbolSize: (val: any, params: any) => (params.data.isInEventRange ? 8 : 4),
+        symbolSize: (val: any, params: any) => (params.data.isInEventRange ? 6 : 2),
         showSymbol: true,
         lineStyle: {
           width: 2,
