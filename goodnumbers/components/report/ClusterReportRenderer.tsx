@@ -89,7 +89,7 @@ export function ClusterReportRenderer({
                 setTreatments(decompressedTreatments);
                 console.log('Retrieved treatments for cluster:', {
                   count: decompressedTreatments.length,
-                  hasMealData: decompressedTreatments.some(t => t.carbs && t.carbs > 0)
+                  hasMealData: decompressedTreatments.some((t: NightscoutTreatment) => t.carbs && t.carbs > 0)
                 });
               }
             } catch (treatmentError) {
