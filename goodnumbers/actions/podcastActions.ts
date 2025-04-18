@@ -194,49 +194,33 @@ export async function generateAssessments(
     // Cluster the classified events by time
     var clusters = clusterGlycemicEvents(classifiedEvents, 60);
 
-    // Initialize array to store individual cluster reports
-    // These will hold meal-related insights for each cluster separately
-    const cluster_reports: ReportItem[] = [];
-
-    // Process each cluster individually to generate meal-related insights
-    for (const cluster of clusters) {
-      // Create a meal-related insight generator specific to this cluster
-      const clusterMealHighsGenerator = createMealRelatedHighsInsight([cluster]);
-
-      // Add AI insights to notes
-      ai_notes += await insightsToNotes([clusterMealHighsGenerator.getAIInsight()]);
-
-      // Compress the cluster data for storage efficiency
-      const compressedCluster = compress(cluster);
-
-      // Create a compressed data package for this cluster
-      const clusterAnalysisData = {
-        compressedCluster: compressedCluster,
-        // Store meanTime separately outside the compressed data for easier sorting
-        meanTimeMinutes: cluster.meanTime,
-        // Reference to tell the client which entries to use
-        dataReference: {
-          type: 'nightscout-entries',
-          id: id, // The hash ID used for storage
-        },
-      };
-
-      // Create a report item for this cluster
-      const clusterAnalysisReport: ReportItem = {
-        type: ReportType.CLUSTER_LINE,
-        insights: [clusterMealHighsGenerator.getUserInsight()], // Add user insights directly to the report
-        data: [clusterAnalysisData], // Pass the compressed data
-      };
-
-      // Add this cluster's report item to the collection
-      cluster_reports.push(clusterAnalysisReport);
-    }
-
+    // -------------------------------------------------------------
+    // UNIFIED CLUSTER PROCESSING - FIX FOR DUPLICATE CLUSTER REPORTS
+    // -------------------------------------------------------------
+    
+    // Initialize array to store all unique cluster reports
+    const allClusterReports: ReportItem[] = [];
+    
     // Check if we have any clusters to analyze
     if (clusters.length > 0) {
-      // Filter out clusters with only one event, then sort by count in descending order
-      // With a secondary sort by time of day (meanTime) in ascending order
-      const significantClusters = clusters
+      // Create a Map to ensure we only process each unique cluster once
+      // We use a combination of eventType and meanTime as the unique identifier
+      const uniqueClusters = new Map();
+      
+      // First pass: Identify all unique clusters
+      for (const cluster of clusters) {
+        // Create a unique identifier for this cluster
+        const clusterId = `${cluster.eventType}_${cluster.meanTime}`;
+        
+        // Only add to our Map if this is a new unique cluster
+        if (!uniqueClusters.has(clusterId)) {
+          uniqueClusters.set(clusterId, cluster);
+        }
+      }
+      
+      // Prepare the significant clusters section if needed
+      // Filter out clusters with only one event for pattern analysis section
+      const significantClusters = Array.from(uniqueClusters.values())
         .filter((cluster) => cluster.count >= 2)
         .sort((a, b) => {
           // Primary sort: by count in descending order
@@ -246,23 +230,33 @@ export async function generateAssessments(
           // Secondary sort: by meanTime in ascending order
           return a.meanTime - b.meanTime;
         });
-
-      // Only proceed if we have significant clusters (with 2+ events)
+        
+      // Add header for glycemic patterns section if we have significant clusters
       if (significantClusters.length > 0) {
-        // Add header for glycemic patterns section
         ai_notes += '\n\n## Glycemic Pattern Analysis\n\n';
-
-        // Initialize array to store glycemic pattern report items
-        const glycemicPatternReports: ReportItem[] = [];
-
-        // Process each significant cluster in descending order by size
-        for (let i = 0; i < significantClusters.length; i++) {
-          const cluster = significantClusters[i];
-
-          // Compress the cluster data for storage efficiency
+      }
+      
+      // Second pass: Process each unique cluster exactly once
+      // Process all clusters for meal insights, but only add pattern notes for significant ones
+      let patternCounter = 1;
+      
+      try {
+        // Process each unique cluster
+        for (const cluster of uniqueClusters.values()) {
+          // 1. Create a meal-related insight generator specific to this cluster
+          const clusterMealHighsGenerator = createMealRelatedHighsInsight([cluster]);
+          
+          // 2. Add AI insights to notes
+          ai_notes += await insightsToNotes([clusterMealHighsGenerator.getAIInsight()]);
+          
+          // 3. Create the insights array for this cluster's report
+          // Start with the meal-related insight
+          const clusterInsights = [clusterMealHighsGenerator.getUserInsight()];
+          
+          // 4. Compress the cluster data for storage efficiency
           const compressedCluster = compress(cluster);
-
-          // Create a compressed data package for this cluster
+          
+          // 5. Create a compressed data package for this cluster
           const clusterAnalysisData = {
             compressedCluster: compressedCluster,
             // Store meanTime separately outside the compressed data for easier sorting
@@ -273,44 +267,43 @@ export async function generateAssessments(
               id: id, // The hash ID used for storage
             },
           };
-
-          // Create a report item for this cluster
+          
+          // 6. Create a report item for this cluster - ONE report per unique cluster
           const clusterAnalysisReport: ReportItem = {
             type: ReportType.CLUSTER_LINE,
-            insights: [], // Will be populated later by AI
-            data: [clusterAnalysisData], // Pass the compressed data
+            insights: clusterInsights,
+            data: [clusterAnalysisData],
           };
-
-          // Add notes about this cluster
-          ai_notes += `Pattern ${i + 1}: ${cluster.count} ${cluster.eventType.toLowerCase()} events detected `;
-          ai_notes += `typically occurring around ${minutesToTimeString(cluster.meanTime)}.\n`;
-
-          // Add this cluster's report item to the collection
-          glycemicPatternReports.push(clusterAnalysisReport);
+          
+          // 7. Add this cluster's report item to the collection
+          allClusterReports.push(clusterAnalysisReport);
+          
+          // 8. Add pattern notes for significant clusters (2+ events)
+          if (cluster.count >= 2) {
+            ai_notes += `Pattern ${patternCounter}: ${cluster.count} ${cluster.eventType.toLowerCase()} events detected `;
+            ai_notes += `typically occurring around ${minutesToTimeString(cluster.meanTime)}.\n`;
+            patternCounter++;
+          }
         }
-
-        // Update current state with full notes and all report items
-        // Combine weekly overview, meal-related cluster reports, and glycemic pattern reports
-        currentAssessmentData = {
-          ...currentAssessmentData,
-          notes: ai_notes,
-          report_items: [weekly_overview_report, ...cluster_reports, ...glycemicPatternReports],
-        };
-      } else {
-        // No significant clusters found (all had only 1 event) - update with weekly report and any meal-related cluster reports
-        currentAssessmentData = {
-          ...currentAssessmentData,
-          notes: ai_notes,
-          report_items: [weekly_overview_report, ...cluster_reports],
-        };
+      } catch (error) {
+        // Log any errors during cluster processing but continue execution
+        logger.error(`Error processing clusters: ${error}`);
+        console.error('Error processing clusters:', error);
       }
-    } else {
-      // No clusters found - update with just the weekly report
-      // Note: cluster_reports will be empty in this case anyway, but including for consistency
+      
+      // Update current state with full notes and all report items
+      // Combine weekly overview and the unified cluster reports
       currentAssessmentData = {
         ...currentAssessmentData,
         notes: ai_notes,
-        report_items: [weekly_overview_report, ...cluster_reports],
+        report_items: [weekly_overview_report, ...allClusterReports],
+      };
+    } else {
+      // No clusters found - update with just the weekly report
+      currentAssessmentData = {
+        ...currentAssessmentData,
+        notes: ai_notes,
+        report_items: [weekly_overview_report],
       };
     }
 
