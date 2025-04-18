@@ -2,10 +2,10 @@
 
 // --- Imports ---
 import * as React from 'react';
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react'; // Added useEffect
 import { GlucoseUnits, NightscoutEntry, NightscoutTreatment } from '@/types/nightscout';
 import ReactECharts from 'echarts-for-react';
-// No need to import 'echarts/core' explicitly when using ReactECharts unless using specific extensions
+import { EChartsOption, ECElementEvent } from 'echarts'; // Import ECharts types
 import { MG_DL_PER_MMOL_L } from '@/utils/utils';
 import { TimeCluster } from '@/lib/events/time_clustering/time_clustering';
 import { GlycemicEvent, GlycemicEventType } from '@/lib/events/detect_events';
@@ -51,10 +51,6 @@ function processEntries(entries: NightscoutEntry[]): { dateString: string; gluco
   }));
 }
 
-/**
- * Process treatments data to format for chart display
- * Filter to relevant treatments (with carbs > 0) and sort by date
- */
 function processTreatments(treatments: NightscoutTreatment[] | undefined): {
   dateString: string;
   carbs: number;
@@ -62,14 +58,8 @@ function processTreatments(treatments: NightscoutTreatment[] | undefined): {
   eventType: string;
 }[] {
   if (!treatments || treatments.length === 0) return [];
-
-  // Filter for treatments with carbs > 0
   const carbTreatments = treatments.filter((t) => t.carbs && t.carbs > 0);
-
-  // Sort by date
   const sortedTreatments = [...carbTreatments].sort((a, b) => a.date - b.date);
-
-  // Map to simplified format
   return sortedTreatments.map((treatment) => ({
     dateString: new Date(treatment.date).toISOString(),
     carbs: treatment.carbs || 0,
@@ -78,11 +68,6 @@ function processTreatments(treatments: NightscoutTreatment[] | undefined): {
   }));
 }
 
-/**
- * Maps treatments to events based on timestamp matching
- * Takes into account both time of day and calendar date
- * Returns treatments grouped by event index
- */
 function mapTreatmentsToEvents(
   processedTreatments: ReturnType<typeof processTreatments>,
   cluster: TimeCluster,
@@ -90,37 +75,29 @@ function mapTreatmentsToEvents(
   bufferAfterMinutes: number = 30,
 ): Record<number, ReturnType<typeof processTreatments>> {
   const treatmentsByEvent: Record<number, ReturnType<typeof processTreatments>> = {};
-
-  // Initialize empty arrays for each event
   cluster.events.forEach((_, index) => {
     treatmentsByEvent[index] = [];
   });
 
-  // For each treatment, find which event it belongs to
   processedTreatments.forEach((treatment) => {
     const treatmentDate = new Date(treatment.dateString);
-    const treatmentDay = treatmentDate.toISOString().split('T')[0]; // Get YYYY-MM-DD format
+    const treatmentDay = treatmentDate.toISOString().split('T')[0];
 
-    // Find the event this treatment falls into
     for (let i = 0; i < cluster.events.length; i++) {
       const event = cluster.events[i];
       const eventStartDate = new Date(event.start_timestamp);
       const eventEndDate = new Date(event.end_timestamp);
-      const eventDay = eventStartDate.toISOString().split('T')[0]; // Get YYYY-MM-DD format
+      const eventDay = eventStartDate.toISOString().split('T')[0];
 
-      // Check if the treatment is on the same day as the event
       if (treatmentDay === eventDay) {
-        // Define a buffer around the event (same as for glucose data)
         const bufferStartTime = new Date(eventStartDate);
         bufferStartTime.setMinutes(eventStartDate.getMinutes() - bufferBeforeMinutes);
-
         const bufferEndTime = new Date(eventEndDate);
         bufferEndTime.setMinutes(eventEndDate.getMinutes() + bufferAfterMinutes);
 
-        // If the treatment falls within this event's time range (with buffer)
         if (treatmentDate >= bufferStartTime && treatmentDate <= bufferEndTime) {
           treatmentsByEvent[i].push(treatment);
-          break; // Treatment assigned to an event, move to next treatment
+          break;
         }
       }
     }
@@ -129,19 +106,19 @@ function mapTreatmentsToEvents(
   return treatmentsByEvent;
 }
 
-// Palette designed for better accessibility and contrast (e.g., Tablueau 10)
+// Define colors and line styles
 const eventColors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f'];
-// Line styles for additional visual distinction when many lines are present
 const lineStyleTypes = ['solid', 'dashed', 'dotted'];
 
+// Function to get visual properties based on event index, ensuring color consistency
 function getEventVisuals(index: number): { color: string; lineType: string } {
   return {
     color: eventColors[index % eventColors.length],
-    lineType: lineStyleTypes[index % lineStyleTypes.length],
+    lineType: lineStyleTypes[Math.floor(index / eventColors.length) % lineStyleTypes.length], // Cycle line styles after colors repeat
   };
 }
 
-function formatTime(dateString: string): string {
+function formatTime(dateString: string | number | Date): string {
   const date = new Date(dateString);
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
@@ -149,38 +126,44 @@ function formatTime(dateString: string): string {
 /**
  * Extracts the day part of a date in YYYY-MM-DD format
  */
-function extractDay(dateString: string): string {
-  return new Date(dateString).toISOString().split('T')[0];
+function extractDay(dateString: string | number | Date): string {
+  try {
+    // Handle potential invalid date strings gracefully
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      // console.warn(`Invalid date string encountered in extractDay: ${dateString}`);
+      return 'unknown-day';
+    }
+    return date.toISOString().split('T')[0];
+  } catch (error) {
+    // console.error(`Error parsing date in extractDay: ${dateString}`, error);
+    return 'unknown-day';
+  }
 }
 
 /**
- * Determines if two events are truly related (same event index AND same day)
+ * Extracts the event index (0-based) from a series name or ID.
+ * Example names: "Event 1 (...", "Event 1 Meals"
+ * Example IDs: "glucose-event-0", "carb-event-0"
  */
-function areEventsRelated(
-  event1: { eventIndex?: number; originalDateString?: string; day?: string },
-  event2: { eventIndex?: number; originalDateString?: string; day?: string }
-): boolean {
-  // Check if events have the same event index
-  if (
-    event1.eventIndex === undefined || 
-    event2.eventIndex === undefined || 
-    event1.eventIndex !== event2.eventIndex
-  ) {
-    return false;
+const extractEventIndex = (input: string | undefined): number | null => {
+  if (!input) return null;
+
+  // Try extracting from "Event X ..." or "Event X Meals" format in name
+  const nameMatch = input.match(/^Event (\d+)/);
+  if (nameMatch) {
+    return parseInt(nameMatch[1], 10) - 1; // Convert to zero-based index
   }
-  
-  // Get day information, preferring pre-computed day if available
-  const day1 = event1.day ?? (event1.originalDateString ? extractDay(event1.originalDateString) : null);
-  const day2 = event2.day ?? (event2.originalDateString ? extractDay(event2.originalDateString) : null);
-  
-  // If either day is missing, we can't compare
-  if (!day1 || !day2) {
-    return false;
+
+  // Try extracting from ID format "type-event-X"
+  const idMatch = input.match(/(?:glucose|carb)-event-(\d+)/);
+  if (idMatch) {
+    return parseInt(idMatch[1], 10); // Already zero-based
   }
-  
-  // Check if events are from the same day
-  return day1 === day2;
-}
+
+  // console.warn(`Could not extract event index from input: ${input}`);
+  return null;
+};
 
 // --- Main Component ---
 
@@ -190,174 +173,21 @@ export function ClusterEventsChart({
   units,
   patientLowGoal,
   patientHighGoal,
-  title = 'Glycemic Event Cluster Analysis',
+  title = 'Glycemic Event Cluster Analysis', // Default title (can be overridden)
   treatments,
 }: ClusterEventsChartProps) {
   const chartRef = useRef<ReactECharts>(null);
 
-  // Extract event index from series name or ID
-  const extractEventIndex = (input: string): number | null => {
-    // First try to extract from series name (e.g., "Event 1 (10:30 AM, Mon, Feb 12)")
-    const nameMatch = input.match(/Event (\d+)/);
-    if (nameMatch) {
-      return parseInt(nameMatch[1], 10) - 1; // Convert to zero-based index
-    }
-
-    // If that fails, try to extract from series ID (e.g., "glucose-event-0" or "carb-event-0")
-    const idMatch = input.match(/(?:glucose|carb)-event-(\d+)/);
-    if (idMatch) {
-      return parseInt(idMatch[1], 10); // Already zero-based
-    }
-
-    return null;
-  };
-
-  // Effect to refresh chart and add event handlers
-  React.useEffect(() => {
-    const chart = chartRef.current?.getEchartsInstance();
-    if (!chart) return;
-
-    // Resize chart when needed
-    chart.resize();
-
-    // Add event handlers for synchronized hover using ECharts' highlight/downplay events
-    chart.on('highlight', (params: any) => {
-      if (!params.batch || !params.batch.length) return;
-
-      // Get the first highlighted series (params.batch contains all highlighted series)
-      const highlightedSeries = params.batch[0];
-      if (!highlightedSeries.seriesName) return;
-
-      // Extract the event index from the series name
-      const eventIndex = extractEventIndex(highlightedSeries.seriesName);
-      if (eventIndex === null) return;
-      
-      // If we have data access, extract day information
-      let hoveredDay: string | null = null;
-      if (highlightedSeries.data && highlightedSeries.dataIndex !== undefined) {
-        const dataPoint = highlightedSeries.data[highlightedSeries.dataIndex];
-        if (dataPoint && dataPoint.day) {
-          hoveredDay = dataPoint.day;
-        } else if (dataPoint && dataPoint.originalDateString) {
-          hoveredDay = extractDay(dataPoint.originalDateString);
-        }
-      }
-
-      // Get all series
-      const option = chart.getOption();
-      const allSeries = option.series;
-
-      // Find series to highlight based on our criteria
-      const seriesToHighlight: number[] = [];
-      
-      // Always include the original hovered series index
-      if (highlightedSeries.seriesIndex !== undefined) {
-        seriesToHighlight.push(highlightedSeries.seriesIndex);
-      }
-      
-      // Add related series from the other panel if they match both event index and day
-      allSeries.forEach((series: any, index: number) => {
-        // Skip the original series which is already included
-        if (index === highlightedSeries.seriesIndex) return;
-        
-        // Check if the series has the same event index
-        const seriesEventIndex = extractEventIndex(series.name) ?? 
-                               extractEventIndex(series.id || '');
-                               
-        if (seriesEventIndex !== eventIndex) return;
-        
-        // If we're enforcing day matching and we have the hovered day
-        if (hoveredDay && series.data && series.data.length) {
-          // Check if any data point in this series matches the day
-          let hasMatchingDay = false;
-          
-          for (const point of series.data) {
-            const pointDay = point.day || 
-                           (point.originalDateString ? extractDay(point.originalDateString) : null);
-            
-            if (pointDay === hoveredDay) {
-              hasMatchingDay = true;
-              break;
-            }
-          }
-          
-          if (!hasMatchingDay) return;
-        }
-        
-        // If we got here, add the series to highlight
-        seriesToHighlight.push(index);
-      });
-
-      // Highlight all related series
-      if (seriesToHighlight.length > 0) {
-        // First downplay all series
-        chart.dispatchAction({
-          type: 'downplay',
-          seriesIndex: allSeries.map((_: any, i: number) => i),
-        });
-
-        // Then highlight our target series
-        chart.dispatchAction({
-          type: 'highlight',
-          seriesIndex: seriesToHighlight,
-        });
-      }
-    });
-
-    // Add mouseover handler to initiate highlighting
-    chart.on('mouseover', (params: any) => {
-      if (!params.seriesName || !params.data) return;
-
-      // Store the data index for use in the highlight event
-      const seriesIndex = params.seriesIndex;
-      const dataIndex = params.dataIndex;
-      
-      if (seriesIndex !== undefined) {
-        // Trigger highlight action with the data point information
-        chart.dispatchAction({
-          type: 'highlight',
-          seriesIndex: seriesIndex,
-          dataIndex: dataIndex
-        });
-      }
-    });
-
-    // Reset highlights when mouse leaves the chart
-    chart.on('globalout', () => {
-      // Reset all series to normal state
-      chart.dispatchAction({
-        type: 'downplay',
-        seriesIndex: [], // Empty array means reset all to normal
-      });
-    });
-
-    // Clean up event listeners on unmount
-    return () => {
-      chart.off('mouseover');
-      chart.off('highlight');
-      chart.off('globalout');
-    };
-
-    // Dependency array includes props that might change chart dimensions or content
-  }, [cluster, entries, units, patientLowGoal, patientHighGoal, title, treatments]);
-
+  // Process glucose entries (memoized for performance)
   const processedEntries = useMemo(() => processEntries(entries), [entries]);
 
-  const formatValue = (value: number | null): string => {
-    if (value === null || typeof value === 'undefined') return 'N/A';
-    // Use browser's toLocaleString for potentially better locale-specific formatting
-    // Adjust minimumFractionDigits based on units
-    return value.toLocaleString(undefined, {
-      minimumFractionDigits: units === 'mmol/L' ? 1 : 0,
-      maximumFractionDigits: units === 'mmol/L' ? 1 : 0,
-    });
-  };
-
-  const getTimeWindowData = useMemo(() => {
+  // Prepare data for ECharts (memoized for performance)
+  const chartData = useMemo(() => {
+    // --- Time Window Calculation ---
     const referenceDate = new Date();
-    // Normalize reference date to start of day to align times correctly
-    referenceDate.setHours(0, 0, 0, 0);
+    referenceDate.setHours(0, 0, 0, 0); // Normalize to start of an arbitrary day
 
+    // Function to normalize a timestamp to the reference date's time-of-day
     const normalizeToReferenceDate = (timestamp: string | number): Date => {
       const originalDate = new Date(timestamp);
       const normalizedDate = new Date(referenceDate);
@@ -370,7 +200,7 @@ export function ClusterEventsChart({
       return normalizedDate;
     };
 
-    // Calculate the earliest and latest times across all events to determine window
+    // Determine the overall time window needed based on all events
     let earliestTimeOfDay = 24 * 60;
     let latestTimeOfDay = 0;
     cluster.events.forEach((event) => {
@@ -382,8 +212,8 @@ export function ClusterEventsChart({
       latestTimeOfDay = Math.max(latestTimeOfDay, endMinutes);
     });
 
-    const bufferBeforeMinutes = 60; // Show 60 minutes before the earliest event start
-    const bufferAfterMinutes = 30; // Show 30 minutes after the latest event end
+    const bufferBeforeMinutes = 60;
+    const bufferAfterMinutes = 30;
 
     const windowStartTime = new Date(referenceDate);
     windowStartTime.setMinutes(Math.max(0, earliestTimeOfDay - bufferBeforeMinutes));
@@ -391,55 +221,59 @@ export function ClusterEventsChart({
     const windowEndTime = new Date(referenceDate);
     const proposedEndMinutes = latestTimeOfDay + bufferAfterMinutes;
 
-    // Handle cases where the window crosses midnight
+    // Handle potential midnight crossing for the window
     if (proposedEndMinutes >= 24 * 60) {
-      // If the proposed end is past midnight, set the date to the next day
       windowEndTime.setDate(windowEndTime.getDate() + 1);
-      windowEndTime.setHours(0, 0, 0, 0); // Reset to start of next day
       windowEndTime.setMinutes(proposedEndMinutes % (24 * 60));
     } else {
-      // Otherwise, stay on the same reference date and set the minutes
       windowEndTime.setMinutes(proposedEndMinutes);
     }
 
-    // ---- MEAL DATA PROCESSING ----
-    // Process treatments data if available, otherwise use empty array
+    // --- Meal Data Processing (if treatments are provided) ---
     const processedTreatments = treatments ? processTreatments(treatments) : [];
-
-    // Map treatments to their corresponding events by date and time
     const treatmentsByEvent = mapTreatmentsToEvents(
       processedTreatments,
       cluster,
       bufferBeforeMinutes,
       bufferAfterMinutes,
     );
-
-    // Determine if we have any valid meal data to display
     const hasMealData = processedTreatments.length > 0;
 
-    // Handle empty data case
-    if (processedEntries.length === 0) {
-      // Return a default range if no entries to avoid chart errors
-      const defaultStart = new Date(referenceDate);
-      defaultStart.setHours(0);
-      const defaultEnd = new Date(referenceDate);
-      defaultEnd.setHours(23, 59);
+    // --- Series Generation ---
+
+    // Helper function to create common data point properties
+    const createDataPoint = (
+      originalTimestamp: string | number,
+      value: number | [string | number, number],
+      type: 'glucose' | 'carbs',
+      eventIndex: number,
+      additionalProps: Record<string, any> = {},
+    ): Record<string, any> => {
+      const originalTime = new Date(originalTimestamp);
+      const normalizedTime = normalizeToReferenceDate(originalTimestamp);
+      const day = extractDay(originalTimestamp);
+
       return {
-        windowStartTime: defaultStart,
-        windowEndTime: defaultEnd,
-        series: [],
-        referenceDate,
-        hasMealData: false,
-        lineSeries: [],
-        mealSeries: [],
+        value: Array.isArray(value)
+          ? [normalizedTime.toISOString(), value[1]] // Use normalized time for plotting
+          : [normalizedTime.toISOString(), value], // Assume value is the Y-value if not array
+        originalTime,
+        originalDateString: originalTimestamp,
+        originalDateStr: originalTime.toLocaleDateString(undefined, {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+        }),
+        eventIndex, // Store the 0-based index of the parent event
+        day, // Store the specific day (YYYY-MM-DD)
+        seriesType: type, // Store the type ('glucose' or 'carbs')
+        ...additionalProps, // Include any type-specific props
       };
-    }
+    };
 
-    // ---- GLUCOSE LINE SERIES ----
-    // Create the glucose line series (same as original with minor changes for consistency)
+    // Generate Glucose Line Series
     const lineSeries = cluster.events.map((event, index) => {
-      const eventVisuals = getEventVisuals(index); // Get color and line style
-
+      const eventVisuals = getEventVisuals(index);
       const originalStartDate = new Date(event.start_timestamp);
       const dateStr = originalStartDate.toLocaleDateString(undefined, {
         weekday: 'short',
@@ -447,7 +281,7 @@ export function ClusterEventsChart({
         day: 'numeric',
       });
 
-      // Determine the actual time window for *this specific event's data*
+      // Define the specific time range for this event instance (including buffers)
       const eventStartTimeOriginal = new Date(event.start_timestamp);
       const eventEndTimeOriginal = new Date(event.end_timestamp);
       const bufferStartTimeOriginal = new Date(eventStartTimeOriginal);
@@ -455,7 +289,7 @@ export function ClusterEventsChart({
       const bufferEndTimeOriginal = new Date(eventEndTimeOriginal);
       bufferEndTimeOriginal.setMinutes(eventEndTimeOriginal.getMinutes() + bufferAfterMinutes);
 
-      // Filter and sort glucose data for this event
+      // Filter glucose data relevant to this event instance's time window
       const eventGlucoseData = processedEntries
         .filter((g) => {
           const readingTime = new Date(g.dateString);
@@ -463,168 +297,273 @@ export function ClusterEventsChart({
         })
         .sort((a, b) => new Date(a.dateString).getTime() - new Date(b.dateString).getTime());
 
-      // Map glucose data to chart-friendly format
+      // Map filtered glucose data to ECharts format
       const eventData = eventGlucoseData.map((g) => {
-        const originalTime = new Date(g.dateString);
-        const normalizedTime = normalizeToReferenceDate(g.dateString); // Normalize time to reference date
         const glucoseValue = units === 'mmol/L' ? g.glucose / MG_DL_PER_MMOL_L : g.glucose;
+        const originalTime = new Date(g.dateString);
         const isInEventRange = originalTime >= eventStartTimeOriginal && originalTime <= eventEndTimeOriginal;
 
-        return {
-          // ECharts requires the time value as a string or number (timestamp)
-          value: [normalizedTime.toISOString(), glucoseValue],
-          // Store original data for tooltip or other uses
-          originalTime,
-          originalDateString: g.dateString,
+        return createDataPoint(g.dateString, glucoseValue, 'glucose', index, {
           originalGlucose: g.glucose,
           glucoseInUserUnits: glucoseValue,
-          originalDateStr: originalTime.toLocaleDateString(undefined, {
-            weekday: 'short',
-            month: 'short',
-            day: 'numeric',
-          }),
           duration: event.duration_minutes,
           extreme: units === 'mmol/L' ? event.extreme_bg_mgdl / MG_DL_PER_MMOL_L : event.extreme_bg_mgdl,
           extremeOriginal: event.extreme_bg_mgdl,
           eventType: event.event_type,
-          isInEventRange, // Custom property to mark points within the event range
-          // Add event relationship data
-          eventIndex: index,
-          day: extractDay(g.dateString),
-          seriesType: 'glucose',
-        };
+          isInEventRange, // Flag points within the core event time
+        });
       });
 
-      // Configure glucose line series for this event
       return {
         name: `Event ${index + 1} (${formatTime(event.start_timestamp)}, ${dateStr})`,
+        id: `glucose-event-${index}`, // Unique ID including index
         type: 'line',
-        // When we have meal data, specify which grid to use
-        ...(hasMealData ? { xAxisIndex: 0, yAxisIndex: 0 } : {}),
-        smooth: false, // Keep non-smooth for medical data
+        ...(hasMealData ? { xAxisIndex: 0, yAxisIndex: 0 } : {}), // Assign to top grid if meals shown
+        smooth: false, // Keep medical data non-smoothed
         symbol: 'circle',
-        // Adjust symbol size based on whether it's within the event range
-        symbolSize: (val: any, params: any) => (params.data.isInEventRange ? 8 : 4), // Reduced symbol size slightly
-        showSymbol: true, // Ensure symbols are shown for data points
+        symbolSize: (val: any, params: any) => (params.data.isInEventRange ? 8 : 4),
+        showSymbol: true,
         lineStyle: {
-          width: 2, // Slightly thinner line for potentially more lines
-          color: eventVisuals.color,
-          type: eventVisuals.lineType, // Apply different line styles
-        },
-        emphasis: {
-          focus: 'series',
-          lineStyle: {
-            width: 4, // Thicker line on hover
-            color: eventVisuals.color, // Keep original color
-          },
-          itemStyle: {
-            borderWidth: 2, // Thicker border on hover
-            borderColor: '#FFFFFF', // White border for contrast
-            color: eventVisuals.color, // Keep original color
-          },
-          z: 20, // Bring emphasized series to front
+          width: 2,
+          color: eventVisuals.color, // Use consistent color
+          type: eventVisuals.lineType, // Use consistent line style
         },
         itemStyle: {
-          // Apply color and opacity based on whether it's within the event range
-          color: (params: any) => (params.data.isInEventRange ? eventVisuals.color : 'rgba(170, 170, 170, 0.6)'), // Use event color or gray
-          opacity: (params: any) => (params.data.isInEventRange ? 1 : 0.7), // Full opacity in range, slightly transparent out of range
+          // Style for the data points themselves
+          color: (params: any) => (params.data.isInEventRange ? eventVisuals.color : 'rgba(170, 170, 170, 0.6)'),
+          opacity: (params: any) => (params.data.isInEventRange ? 1 : 0.7),
+        },
+        emphasis: {
+          // Style on hover (when series is highlighted)
+          focus: 'series', // Enables blur effect on others
+          lineStyle: { width: 4 },
+          itemStyle: { borderWidth: 2, borderColor: '#fff' },
+        },
+        blur: {
+          // Style when another series is highlighted
+          lineStyle: { opacity: 0.2, color: '#ccc' },
+          itemStyle: { opacity: 0.2, color: '#ccc' },
         },
         data: eventData,
-        id: `glucose-event-${index}`, // Unique ID that includes event type and index
+        z: 5, // Default z-level for data series
       };
     });
 
-    // ---- MEAL BAR SERIES ----
-    // Create bar series for meals if available
+    // Generate Meal Bar Series (if data exists)
     const mealSeries = hasMealData
       ? cluster.events
           .map((event, index) => {
             const eventVisuals = getEventVisuals(index);
             const eventTreatments = treatmentsByEvent[index] || [];
 
-            // Skip events with no treatments by returning null
-            // (we'll filter these out later)
             if (eventTreatments.length === 0) {
-              return null;
+              return null; // Skip if no treatments for this event index
             }
 
-            // Map treatments to chart data format with normalized timestamps
+            // Map treatments to ECharts bar format
             const mealData = eventTreatments.map((treatment) => {
-              const originalTime = new Date(treatment.dateString);
-              // Use the same normalization function as for glucose data
-              const normalizedTime = normalizeToReferenceDate(treatment.dateString);
-
-              return {
-                // Basic value pair for ECharts [time, carbs]
-                value: [normalizedTime.toISOString(), treatment.carbs],
-                // Additional metadata for tooltips and interaction
-                originalTime,
-                originalDateString: treatment.dateString,
+              return createDataPoint(treatment.dateString, treatment.carbs, 'carbs', index, {
                 originalCarbs: treatment.carbs,
                 notes: treatment.notes,
-                eventType: treatment.eventType,
-                originalDateStr: originalTime.toLocaleDateString(undefined, {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                }),
-                // Add event relationship data
-                eventIndex: index,
-                day: extractDay(treatment.dateString),
-                seriesType: 'carbs',
-              };
+                mealEventType: treatment.eventType, // Keep original eventType name distinct
+              });
             });
 
-            // Configure meal bar series for this event
             return {
               name: `Event ${index + 1} Meals`,
+              id: `carb-event-${index}`, // Unique ID including index
               type: 'bar',
-              xAxisIndex: 1, // Use secondary x-axis (for meal chart)
-              yAxisIndex: 1, // Use secondary y-axis (for carb values)
+              xAxisIndex: 1, // Assign to bottom grid
+              yAxisIndex: 1,
               itemStyle: {
-                // Use the same color as the glucose series for this event
-                color: eventVisuals.color,
+                color: eventVisuals.color, // Use consistent color
                 opacity: 0.8,
               },
               emphasis: {
+                // Style on hover (when series is highlighted)
                 focus: 'series',
                 itemStyle: {
-                  color: eventVisuals.color, // Keep original color
                   opacity: 1,
+                  borderColor: '#fff',
                   borderWidth: 1,
-                  borderColor: '#FFFFFF',
-                  shadowBlur: 6,
-                  shadowColor: 'rgba(0, 0, 0, 0.2)',
                 },
-                z: 20, // Higher z-index for emphasized state
               },
+              blur: {
+                // Style when another series is highlighted
+                itemStyle: { opacity: 0.2, color: '#ccc' },
+              },
+              barWidth: '60%', // Adjust bar width as needed
               data: mealData,
-              barWidth: '100%', // Make bars wider
-              barGap: '-50%', // Space between bars
-              z: 10, // Higher z-index to ensure visibility
-              id: `carb-event-${index}`, // Unique ID that includes event type and index
+              z: 5, // Default z-level for data series
             };
           })
-          .filter(Boolean)
-      : []; // Filter out null entries for events with no meals
+          .filter((s): s is NonNullable<typeof s> => s !== null) // Filter out nulls and ensure type safety
+      : [];
 
-    // ---- COMBINE SERIES ----
-    // Combine glucose line series and meal bar series
     const allSeries = [...lineSeries, ...mealSeries];
 
-    // Return both data series and metadata
     return {
       windowStartTime,
       windowEndTime,
       series: allSeries,
-      referenceDate,
-      hasMealData, // Flag indicating if meal data is available
-      lineSeries, // Line series for glucose data
-      mealSeries, // Bar series for meal data
+      lineSeries,
+      mealSeries,
+      hasMealData,
     };
-  }, [cluster, processedEntries, units, treatments]); // Include treatments in dependency array
+  }, [cluster, processedEntries, units, treatments]); // Dependencies for data processing
 
-  // Adjust clinical and patient goals based on selected units
+  // --- Effect for Chart Interaction (Highlighting Logic) ---
+  useEffect(() => {
+    const chartInstance = chartRef.current?.getEchartsInstance();
+    if (!chartInstance) return;
+
+    // --- Highlight Handler ---
+    // This function is triggered AFTER a mouseover causes a 'highlight' action.
+    // It refines which series should *stay* highlighted vs. be downplayed.
+    const handleHighlight = (...args: unknown[]) => {
+      // --- Argument Validation and Casting ---
+      // ECharts events might pass various arguments. We usually care about the first one.
+      if (!args || args.length === 0 || typeof args[0] !== 'object' || args[0] === null) {
+        // console.warn("Highlight event received invalid or no arguments.");
+        return; // No valid argument object found
+      }
+      // Safely cast the first argument to the expected event parameter type.
+      // Note: ECElementEvent might not cover *all* properties sometimes passed,
+      // but it's the most relevant type for component interactions.
+      const params = args[0] as ECElementEvent;
+
+      // --- Get Chart Option and Validate Params ---
+      // Ensure the chart instance is still valid before proceeding
+      const chartInstance = chartRef.current?.getEchartsInstance();
+      if (!chartInstance) return;
+
+      // Explicitly type the returned options object
+      const currentOption = chartInstance.getOption() as EChartsOption;
+
+      // Validate that the params object has the necessary indices and the chart option is valid
+      if (
+        !params ||
+        params.seriesIndex === undefined ||
+        params.dataIndex === undefined ||
+        !currentOption?.series ||
+        !Array.isArray(currentOption.series)
+      ) {
+        // console.warn("Highlight event triggered but essential params or option/series data is invalid.", params);
+        return;
+      }
+
+      // --- Access Hovered Data (as implemented previously) ---
+      const seriesItem = currentOption.series[params.seriesIndex];
+      const hoveredData = Array.isArray(seriesItem?.data) ? seriesItem.data[params.dataIndex] : undefined;
+
+      // Check if we successfully retrieved the data point and if it has the necessary properties
+      if (!hoveredData || typeof hoveredData !== 'object' || hoveredData.eventIndex === undefined || !hoveredData.day) {
+        // console.warn("Highlight event missing necessary data properties in hoveredData:", hoveredData);
+        return; // Exit if the required data properties aren't available
+      }
+
+      // --- Highlighting Logic (Remains the same) ---
+      const hoveredEventIndex: number = hoveredData.eventIndex;
+      const hoveredDay: string = hoveredData.day;
+
+      const seriesToHighlightIndices: number[] = [];
+      const seriesToDownplayIndices: number[] = [];
+
+      (currentOption.series as any[]).forEach((series, index) => {
+        if (!series.type || ['line', 'bar'].indexOf(series.type) === -1 || !series.data || series.data.length === 0) {
+          return;
+        }
+        const seriesEventIndex = extractEventIndex(series.name) ?? extractEventIndex(series.id);
+        if (seriesEventIndex === hoveredEventIndex) {
+          const hasMatchingDay = series.data.some((point: any) => point && point.day === hoveredDay);
+          if (hasMatchingDay) {
+            seriesToHighlightIndices.push(index);
+          } else {
+            seriesToDownplayIndices.push(index);
+          }
+        } else {
+          seriesToDownplayIndices.push(index);
+        }
+      });
+
+      // Dispatch actions
+      if (seriesToDownplayIndices.length > 0) {
+        chartInstance.dispatchAction({
+          type: 'downplay',
+          seriesIndex: seriesToDownplayIndices,
+        });
+      }
+      if (seriesToHighlightIndices.length > 0) {
+        chartInstance.dispatchAction({
+          type: 'highlight',
+          seriesIndex: seriesToHighlightIndices,
+        });
+      }
+    }; // End of handleHighlight
+    // --- Mouseover Handler ---
+    // Triggers the initial 'highlight' action when hovering over a data item.
+    // This then triggers the 'handleHighlight' listener above.
+    const handleMouseOver = (params: ECElementEvent) => {
+      // Check if hovering over a valid data point in a line or bar series
+      if (
+        params.componentType === 'series' &&
+        ['line', 'bar'].includes(params.seriesType || '') &&
+        params.seriesIndex !== undefined
+      ) {
+        chartInstance.dispatchAction({
+          type: 'highlight',
+          seriesIndex: params.seriesIndex,
+          dataIndex: params.dataIndex, // Pass dataIndex for handleHighlight to use
+        });
+      }
+    };
+
+    // --- Global Out Handler ---
+    // Resets all series highlights/downplays when the mouse leaves the chart area.
+    const handleGlobalOut = () => {
+      const currentOption = chartInstance.getOption();
+      if (!currentOption?.series) return;
+      // Get indices of all line and bar series to reset them
+      const allDataSeriesIndices = (currentOption.series as any[])
+        .map((_, index) => index)
+        .filter((index) => {
+          const series = (currentOption.series as any[])[index];
+          return series.type && ['line', 'bar'].includes(series.type);
+        });
+
+      if (allDataSeriesIndices.length > 0) {
+        chartInstance.dispatchAction({
+          type: 'downplay',
+          seriesIndex: allDataSeriesIndices,
+        });
+      }
+    };
+
+    // Register event listeners
+    chartInstance.on('highlight', handleHighlight);
+    chartInstance.on('mouseover', handleMouseOver);
+    chartInstance.on('globalout', handleGlobalOut);
+
+    // Initial resize
+    chartInstance.resize();
+
+    // Cleanup function to remove listeners when component unmounts or dependencies change
+    return () => {
+      chartInstance.off('highlight', handleHighlight);
+      chartInstance.off('mouseover', handleMouseOver);
+      chartInstance.off('globalout', handleGlobalOut);
+    };
+  }, [chartData]); // Rerun effect if chartData changes (important!)
+
+  // --- Formatters and Goal Calculations ---
+  const formatValue = (value: number | null): string => {
+    if (value === null || typeof value === 'undefined') return 'N/A';
+    return value.toLocaleString(undefined, {
+      minimumFractionDigits: units === 'mmol/L' ? 1 : 0,
+      maximumFractionDigits: units === 'mmol/L' ? 1 : 0,
+    });
+  };
+
   const clinicalLow = units === 'mmol/L' ? 3.9 : 70;
   const clinicalHigh = units === 'mmol/L' ? 10 : 180;
   const adjustedPatientLowGoal =
@@ -632,8 +571,8 @@ export function ClusterEventsChart({
   const adjustedPatientHighGoal =
     patientHighGoal && units === 'mmol/L' ? patientHighGoal / MG_DL_PER_MMOL_L : patientHighGoal;
 
-  // Handle empty data case
-  if (cluster.events.length === 0 || getTimeWindowData.series.length === 0 || processedEntries.length === 0) {
+  // --- Loading/Empty State ---
+  if (cluster.events.length === 0 || chartData.series.length === 0 || processedEntries.length === 0) {
     return (
       <div className="flex items-center justify-center h-[450px] w-full border rounded-lg bg-muted/50">
         <p className="text-muted-foreground">No event data available for this cluster.</p>
@@ -641,474 +580,265 @@ export function ClusterEventsChart({
     );
   }
 
-  // Calculate min/max values for Y-axis domain to potentially improve scaling
-  const allGlucoseValues = getTimeWindowData.lineSeries.flatMap((s) => s.data.map((d: any) => d.value[1]));
-  // Include goal lines in min/max calculation to ensure they are visible
+  // --- Y-Axis Scaling Calculations ---
+  const allGlucoseValues = chartData.lineSeries.flatMap((s) => s.data.map((d: any) => d.value[1]));
   const minDataValue = Math.min(...allGlucoseValues, adjustedPatientLowGoal ?? Infinity, clinicalLow);
   const maxDataValue = Math.max(...allGlucoseValues, adjustedPatientHighGoal ?? -Infinity, clinicalHigh);
+  const yAxisMin = Math.max(0, Math.floor(minDataValue * 0.9));
+  const yAxisMax = Math.ceil(maxDataValue * 1.1);
 
-  // Determine Y-axis min/max - add padding for readability
-  // Ensure min is not too low (e.g., below 0 or a sensible physical minimum)
-  const yAxisMin = Math.max(0, Math.floor(minDataValue * 0.9)); // 10% buffer below min data, min 0
-  const yAxisMax = Math.ceil(maxDataValue * 1.1); // 10% buffer above max data
-
-  // Calculate max carbs value for carbs axis scaling when meal data is present
   const maxCarbsValue =
-    getTimeWindowData.hasMealData && getTimeWindowData.mealSeries.length > 0
+    chartData.hasMealData && chartData.mealSeries.length > 0
       ? Math.max(
-          ...getTimeWindowData.mealSeries.filter((s) => s !== null).flatMap((s) => s.data.map((d: any) => d.value[1])),
-          50, // Ensure a minimum reasonable scale for carbs
+          ...chartData.mealSeries.flatMap((s) => s.data.map((d: any) => d.value[1])),
+          10, // Ensure minimum carb axis of 10g
         )
       : 0;
-  const carbsAxisMax = Math.ceil(maxCarbsValue * 1.2); // 20% buffer above max carbs
+  const carbsAxisMax = Math.ceil(maxCarbsValue * 1.2);
 
-  const options = {
-    // --- Chart options ---
-    // Title is often managed by the parent component's structure, set to null here
+  // --- ECharts Option Configuration ---
+  const options: EChartsOption = {
+    // Title (optional, often handled by parent)
     title: {
-      text: null,
-      subtext: null,
+      text: undefined, // Set explicitly to null if title is handled outside
+      subtext: undefined,
     },
 
-    // ---- TOOLTIP CONFIGURATION ----
+    // Tooltip Configuration
     tooltip: {
-      // Use 'axis' trigger when meal data is present to show both glucose and carbs at same time point
-      trigger: getTimeWindowData.hasMealData ? 'axis' : 'item',
-      // Add axis pointer for cross-hairs when meal data is present
-      axisPointer: getTimeWindowData.hasMealData
-        ? {
-            type: 'cross',
-            link: { xAxisIndex: 'all' }, // Link all x-axes for synchronized highlighting
-          }
-        : undefined,
+      // *** CHANGED: Trigger on item hover, not axis position ***
+      trigger: 'item',
+      // Removed axisPointer as it's less relevant for 'item' trigger
+      // axisPointer: undefined,
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
       borderColor: '#ddd',
       borderWidth: 1,
       padding: 12,
-      textStyle: {
-        fontSize: 13,
-        lineHeight: 20,
-        color: '#333',
-      },
-      // Enhanced formatter to handle both glucose and meal data
+      textStyle: { fontSize: 13, color: '#333' },
+      confine: true, // Keep tooltip within chart bounds
+
+      // Formatter for 'item' trigger
       formatter: (params: any) => {
-        // Handle array of params when using axis trigger
-        const paramsArray = Array.isArray(params) ? params : [params];
+        // params is now a single object or array of objects at same point
+        // Ensure we have valid params data (could be array if items overlap)
+        const param = Array.isArray(params) ? params[0] : params;
+        if (!param || !param.data || !param.data.value) return ''; // Basic check
 
-        // Check if we have valid params
-        if (!paramsArray.length || !paramsArray[0].data || !paramsArray[0].data.value) {
-          return null;
-        }
+        const data = param.data; // The specific data point hovered
+        const seriesName = param.seriesName || '';
+        const color = param.color || '#ccc';
 
-        // Find the actively hovered parameter (the one that triggered the tooltip)
-        const hoveredParam = paramsArray.find(p => p.isHovered || p.isSelected) || paramsArray[0];
-        
-        // Determine the hovered type (glucose or carbs)
-        const isGlucoseHover = hoveredParam.seriesType === 'line';
-        
-        // Extract event info from the hovered data
-        const hoveredEventIndex = hoveredParam.data.eventIndex;
-        const hoveredDay = hoveredParam.data.day || 
-                          (hoveredParam.data.originalDateString ? 
-                           extractDay(hoveredParam.data.originalDateString) : null);
-
-        // Get time info from the hovered parameter
-        const normalizedTime = new Date(hoveredParam.data.value[0]);
+        // Extract common info
+        const normalizedTime = new Date(data.value[0]); // Time is always index 0
         const formattedTime = normalizedTime.toLocaleTimeString([], {
           hour: '2-digit',
           minute: '2-digit',
           hour12: true,
         });
-        
-        // Get date info
-        const dateInfo = hoveredParam.data.originalDateStr
-          ? `<div style="margin-bottom: 4px;">Date: ${hoveredParam.data.originalDateStr}</div>`
+        const dateInfo = data.originalDateStr
+          ? `<div style="margin-bottom: 4px;">Date: ${data.originalDateStr}</div>`
           : '';
 
-        // Start tooltip content with time and date
-        let content = `<div style="font-weight: bold; margin-bottom: 10px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 6px;">Time: ${formattedTime}</div>`;
+        let content = `<div style="font-weight: bold; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 6px;">${seriesName}</div>`;
+        content += `<div style="margin-bottom: 4px;">Time: ${formattedTime}</div>`;
         content += dateInfo;
 
-        // Filter params to only include the hovered one and related ones
-        const filteredParams = paramsArray.filter(param => {
-          // Always include the hovered parameter
-          if (param === hoveredParam) return true;
-          
-          // Check if this param is related to the hovered one
-          const paramEventIndex = param.data.eventIndex;
-          const paramDay = param.data.day || 
-                          (param.data.originalDateString ? 
-                           extractDay(param.data.originalDateString) : null);
-                           
-          // Only include if from the same event and same day
-          return paramEventIndex === hoveredEventIndex && paramDay === hoveredDay;
-        });
-        
-        // Sort params to put hovered type first
-        const sortedParams = filteredParams.sort((a, b) => {
-          // Put the exact hovered param first
-          if (a === hoveredParam) return -1;
-          if (b === hoveredParam) return 1;
-          
-          // Then sort by type (hovered type first)
-          const aIsGlucose = a.seriesType === 'line';
-          const bIsGlucose = b.seriesType === 'line';
-          
-          if (isGlucoseHover) {
-            return aIsGlucose ? -1 : 1;
-          } else {
-            return aIsGlucose ? 1 : -1;
+        // Add specific info based on series type
+        if (data.seriesType === 'glucose') {
+          const glucoseValueFormatted = `${formatValue(data.glucoseInUserUnits)} ${units}`;
+          content += `<div style="margin-top: 8px;">
+                            <span style="display:inline-block;margin-right:8px;border-radius:10px;width:10px;height:10px;background-color:${color};"></span>
+                            <span style="font-weight: 500;">Glucose:</span>
+                            <span style="margin-left: 5px; font-weight: bold;">${glucoseValueFormatted}</span>
+                         </div>`;
+          if (data.eventType) {
+            content += `<div style="margin-left: 18px; font-size: 11px; color: #555;">Type: ${getEventTypeName(data.eventType)}</div>`;
           }
-        });
-        
-        // Group sorted params by series type for rendering
-        const glucoseData = sortedParams.filter(
-          (p) => p.seriesType === 'line' && p.data.glucoseInUserUnits !== undefined
-        );
-        const mealData = sortedParams.filter(
-          (p) => p.seriesType === 'bar' && p.data.originalCarbs !== undefined
-        );
-
-        // Add glucose data
-        if (glucoseData.length > 0) {
-          glucoseData.forEach((param) => {
-            // Extract event label from series name
-            const match = param.seriesName.match(/Event (\d+)/);
-            const eventLabel = match ? `Event ${match[1]}` : param.seriesName;
-
-            // Get glucose value formatted with units
-            const glucoseValueFormatted = `${formatValue(param.data.glucoseInUserUnits)} ${units}`;
-
-            // Add glucose info
-            content += `<div style="margin-bottom: 6px;"><span style="display:inline-block;margin-right:8px;border-radius:10px;width:10px;height:10px;background-color:${param.color};"></span><span style="font-weight: 500;">${eventLabel}:</span> <span style="margin-left: 5px; font-weight: bold;">${glucoseValueFormatted}</span></div>`;
-
-            // Include event type and duration if available
-            const eventTypeInfo = param.data.eventType
-              ? `<div style="margin-bottom: 4px;">Type: ${getEventTypeName(param.data.eventType)}</div>`
-              : '';
-            const durationInfo = param.data.duration
-              ? `<div style="margin-bottom: 4px;">Duration: ${param.data.duration} min</div>`
-              : '';
-
-            content += `${eventTypeInfo}${durationInfo}`;
-          });
-        }
-
-        // Add meal data
-        if (mealData.length > 0) {
-          // Add separator if we already have glucose data
-          if (glucoseData.length > 0) {
-            content += `<div style="margin: 8px 0; border-top: 1px dotted #ddd; padding-top: 8px;"></div>`;
+          if (data.duration) {
+            content += `<div style="margin-left: 18px; font-size: 11px; color: #555;">Event Duration: ${data.duration} min</div>`;
           }
-
-          mealData.forEach((param) => {
-            // Extract event label from series name
-            const match = param.seriesName.match(/Event (\d+)/);
-            const eventLabel = match ? `Event ${match[1]}` : param.seriesName;
-
-            // Get carb value
-            const carbsValueFormatted = `${param.data.originalCarbs} g`;
-
-            // Add meal info
-            content += `<div style="margin-bottom: 6px;"><span style="display:inline-block;margin-right:8px;border-radius:10px;width:10px;height:10px;background-color:${param.color};"></span><span style="font-weight: 500;">${eventLabel} Meal:</span> <span style="margin-left: 5px; font-weight: bold;">${carbsValueFormatted}</span></div>`;
-
-            // Add notes if available
-            if (param.data.notes) {
-              content += `<div style="margin-bottom: 4px; font-style: italic;">"${param.data.notes}"</div>`;
-            }
-
-            // Add meal type if available
-            if (param.data.eventType) {
-              content += `<div style="margin-bottom: 4px;">Type: ${param.data.eventType}</div>`;
-            }
-          });
+        } else if (data.seriesType === 'carbs') {
+          const carbsValueFormatted = `${data.originalCarbs} g`;
+          content += `<div style="margin-top: 8px;">
+                            <span style="display:inline-block;margin-right:8px;border-radius:10px;width:10px;height:10px;background-color:${color};"></span>
+                            <span style="font-weight: 500;">Carbs:</span>
+                            <span style="margin-left: 5px; font-weight: bold;">${carbsValueFormatted}</span>
+                         </div>`;
+          if (data.notes) {
+            content += `<div style="margin-left: 18px; font-style: italic; font-size: 11px; color: #555;">"${data.notes}"</div>`;
+          }
+          if (data.mealEventType) {
+            content += `<div style="margin-left: 18px; font-size: 11px; color: #555;">Type: ${data.mealEventType}</div>`;
+          }
         }
+        // Potential TODO: Could try to find the 'linked' data point (e.g., find carb bar for hovered glucose point on same day/eventIndex)
+        // This would require iterating through other series data here, which might be slow. Keeping it simple for now.
 
         return content;
       },
       extraCssText: 'box-shadow: 0 3px 14px rgba(0,0,0,0.15); border-radius: 6px;',
     },
 
-    // ---- GRID CONFIGURATION ----
-    // Dynamic grid configuration based on whether meal data is present
-    grid: getTimeWindowData.hasMealData
+    // Grid Configuration (Dynamic based on meal data presence)
+    grid: chartData.hasMealData
       ? [
-          {
-            // Top grid for glucose chart (when meal data is present)
-            left: 70,
-            right: 30,
-            top: 20,
-            bottom: '45%', // Leave 45% of space at bottom for meal chart and legend (increased from 35%)
-            containLabel: true,
-          },
-          {
-            // Bottom grid for meal chart
-            left: 70,
-            right: 30,
-            top: '60%', // Start at 60% from top (decreased from 70%)
-            bottom: 100, // Leave space for legend at bottom
-            containLabel: true,
-          },
+          { left: 70, right: 30, top: 20, bottom: '45%', containLabel: true }, // Top: Glucose
+          { left: 70, right: 30, top: '60%', bottom: 100, containLabel: true }, // Bottom: Meals
         ]
-      : {
-          // Single grid when no meal data (same as original)
-          left: 70,
-          right: 30,
-          top: 20,
-          bottom: 100,
-          containLabel: true,
-        },
+      : { left: 70, right: 30, top: 20, bottom: 100, containLabel: true }, // Single grid if no meals
 
-    // ---- X-AXIS CONFIGURATION ----
-    // Configure x-axes based on whether meal data is present
-    xAxis: getTimeWindowData.hasMealData
+    // X-Axis Configuration (Dynamic)
+    xAxis: chartData.hasMealData
       ? [
           {
-            // Primary x-axis for glucose chart
+            // Top X-Axis (Glucose)
             gridIndex: 0,
             type: 'time',
-            boundaryGap: false,
-            min: getTimeWindowData.windowStartTime.toISOString(),
-            max: getTimeWindowData.windowEndTime.toISOString(),
+            min: chartData.windowStartTime.toISOString(),
+            max: chartData.windowEndTime.toISOString(),
             axisLine: { show: true, lineStyle: { color: '#ccc' } },
             axisTick: { show: true, lineStyle: { color: '#ccc' } },
-            axisLabel: {
-              formatter: (value: number) =>
-                new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              color: '#333',
-              textStyle: { fontSize: 12 },
-              show: false, // Hide label for top axis to avoid clutter
-            },
-            axisPointer: {
-              label: {
-                formatter: (params: any) =>
-                  new Date(params.value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              },
-            },
+            axisLabel: { show: false }, // Hide labels on top axis to reduce clutter
+            axisPointer: { show: false }, // Hide pointer label on top axis too
           },
           {
-            // Secondary x-axis for meal chart (bottom)
+            // Bottom X-Axis (Meals / Shared Time)
             gridIndex: 1,
             type: 'time',
-            boundaryGap: false,
-            min: getTimeWindowData.windowStartTime.toISOString(),
-            max: getTimeWindowData.windowEndTime.toISOString(),
+            min: chartData.windowStartTime.toISOString(),
+            max: chartData.windowEndTime.toISOString(),
             axisLine: { show: true, lineStyle: { color: '#ccc' } },
             axisTick: { show: true, lineStyle: { color: '#ccc' } },
             axisLabel: {
-              formatter: (value: number) =>
-                new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              // Show labels only on bottom axis
+              formatter: (value: number) => formatTime(value),
               color: '#333',
-              textStyle: { fontSize: 12 },
             },
-            axisPointer: {
-              link: { xAxisIndex: 'all' }, // Link all x-axes together
-              label: {
-                formatter: (params: any) =>
-                  new Date(params.value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              },
-            },
+            // Link axis pointers if needed (though trigger:item makes this less critical)
+            // axisPointer: { link: [{ xAxisIndex: 0 }] }
           },
         ]
       : {
-          // Original single x-axis configuration when no meal data
+          // Single X-Axis
           type: 'time',
-          boundaryGap: false,
-          min: getTimeWindowData.windowStartTime.toISOString(),
-          max: getTimeWindowData.windowEndTime.toISOString(),
+          min: chartData.windowStartTime.toISOString(),
+          max: chartData.windowEndTime.toISOString(),
           axisLine: { show: true, lineStyle: { color: '#ccc' } },
           axisTick: { show: true, lineStyle: { color: '#ccc' } },
           axisLabel: {
-            formatter: (value: number) =>
-              new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            formatter: (value: number) => formatTime(value),
             color: '#333',
-            textStyle: { fontSize: 12 },
-          },
-          axisPointer: {
-            label: {
-              formatter: (params: any) =>
-                new Date(params.value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            },
           },
         },
 
-    // ---- Y-AXIS CONFIGURATION ----
-    // Configure y-axes based on whether meal data is present
-    yAxis: getTimeWindowData.hasMealData
+    // Y-Axis Configuration (Dynamic)
+    yAxis: chartData.hasMealData
       ? [
           {
-            // Primary y-axis for glucose values (top chart)
+            // Left Y-Axis (Glucose)
             gridIndex: 0,
             type: 'value',
             name: `Glucose (${units})`,
             nameLocation: 'middle',
             nameGap: 50,
-            nameTextStyle: {
-              fontSize: 14,
-              fontWeight: 'bold',
-              color: '#333',
-            },
+            nameTextStyle: { fontSize: 14, fontWeight: 'bold', color: '#333' },
             min: yAxisMin,
             max: yAxisMax,
-            axisLabel: {
-              formatter: (value: number) => formatValue(value),
-              color: '#333',
-              textStyle: { fontSize: 12 },
-            },
             axisLine: { show: false },
             axisTick: { show: false },
-            splitLine: {
-              show: true,
-              lineStyle: {
-                type: 'dashed',
-                opacity: 0.4,
-              },
-            },
+            splitLine: { show: true, lineStyle: { type: 'dashed', opacity: 0.4 } },
           },
           {
-            // Secondary y-axis for carb values (bottom chart)
+            // Left Y-Axis (Carbs)
             gridIndex: 1,
             type: 'value',
             name: 'Carbs (g)',
             nameLocation: 'middle',
             nameGap: 50,
-            nameTextStyle: {
-              fontSize: 14,
-              fontWeight: 'bold',
-              color: '#333',
-            },
+            nameTextStyle: { fontSize: 14, fontWeight: 'bold', color: '#333' },
             min: 0,
-            max: carbsAxisMax > 0 ? carbsAxisMax : 100, // Use calculated max or default to 100
-            axisLabel: {
-              formatter: (value: number) => value.toFixed(0),
-              color: '#333',
-              textStyle: { fontSize: 12 },
-            },
+            max: carbsAxisMax > 0 ? carbsAxisMax : 100, // Ensure non-zero max
             axisLine: { show: false },
             axisTick: { show: false },
-            splitLine: {
-              show: true,
-              lineStyle: {
-                type: 'dashed',
-                opacity: 0.4,
-              },
-            },
+            splitLine: { show: true, lineStyle: { type: 'dashed', opacity: 0.4 } },
           },
         ]
       : {
-          // Original single y-axis configuration when no meal data
+          // Single Y-Axis (Glucose)
           type: 'value',
           name: `Glucose (${units})`,
           nameLocation: 'middle',
           nameGap: 50,
-          nameTextStyle: {
-            fontSize: 14,
-            fontWeight: 'bold',
-            color: '#333',
-            padding: [0, 0, 0, 0],
-          },
+          nameTextStyle: { fontSize: 14, fontWeight: 'bold', color: '#333' },
           min: yAxisMin,
           max: yAxisMax,
-          axisLabel: {
-            formatter: (value: number) => formatValue(value),
-            color: '#333',
-            textStyle: { fontSize: 12 },
-          },
           axisLine: { show: false },
           axisTick: { show: false },
-          splitLine: {
-            show: true,
-            lineStyle: {
-              type: 'dashed',
-              opacity: 0.4,
-            },
-          },
+          splitLine: { show: true, lineStyle: { type: 'dashed', opacity: 0.4 } },
         },
 
-    // ---- SERIES CONFIGURATION ----
+    // Series Data (Generated in useMemo)
     series: [
-      /* Data series generated in getTimeWindowData */
-      ...getTimeWindowData.series,
+      // Spread the generated line and bar series
+      ...chartData.series,
 
-      /* Mark lines for clinical ranges */
-      // Add grid indices to markLines when meal data is present
+      // --- Add Mark Lines ---
+      // These are separate, non-interactive series used only for drawing lines
       {
         name: 'Clinical Low',
-        type: 'line', // Needs to be a line type for markLine to work
-        ...(getTimeWindowData.hasMealData ? { xAxisIndex: 0, yAxisIndex: 0 } : {}), // Only add to glucose chart
-        data: [], // No data points for this series, just the markLine
-        silent: true, // Make it not interactive
-        tooltip: { show: false }, // Hide tooltip for this series
+        type: 'line',
+        silent: true, // Non-interactive
+        data: [], // No data points needed
         markLine: {
-          silent: true, // Make markLine itself not interactive
-          lineStyle: { color: '#f5222d', type: 'dashed', width: 2 }, // More standard error/danger red
-          label: {
-            show: true,
-            position: 'end',
-            formatter: 'Low',
-            fontSize: 11, // Slightly smaller label
-            fontWeight: 'bold',
-            color: '#333', // Label color
-            backgroundColor: '#fff', // Background for readability over lines
-            padding: [2, 5], // Padding around label
-            borderRadius: 3,
-          },
+          silent: true,
+          precision: 1, // Non-interactive, precision for label display
+          symbol: 'none', // No arrows at ends
+          lineStyle: { color: '#f5222d', type: 'dashed', width: 1.5 },
+          label: { show: true, position: 'end', formatter: 'Low', fontSize: 11, color: '#f5222d', distance: 5 },
           data: [{ yAxis: clinicalLow }],
         },
-        z: 10, // Ensure markLines are above grid lines but below data lines (data z is default 2)
+        // Ensure it's on the correct axis if using split view
+        ...(chartData.hasMealData ? { xAxisIndex: 0, yAxisIndex: 0 } : {}),
       },
       {
         name: 'Clinical High',
         type: 'line',
-        ...(getTimeWindowData.hasMealData ? { xAxisIndex: 0, yAxisIndex: 0 } : {}), // Only add to glucose chart
-        data: [],
         silent: true,
-        tooltip: { show: false },
+        data: [],
         markLine: {
           silent: true,
-          lineStyle: { color: '#f5222d', type: 'dashed', width: 2 }, // More standard error/danger red
-          label: {
-            show: true,
-            position: 'end',
-            formatter: 'High',
-            fontSize: 11,
-            fontWeight: 'bold',
-            color: '#333',
-            backgroundColor: '#fff',
-            padding: [2, 5],
-            borderRadius: 3,
-          },
+          precision: 1,
+          symbol: 'none',
+          lineStyle: { color: '#f5222d', type: 'dashed', width: 1.5 },
+          label: { show: true, position: 'end', formatter: 'High', fontSize: 11, color: '#f5222d', distance: 5 },
           data: [{ yAxis: clinicalHigh }],
         },
-        z: 10,
+        ...(chartData.hasMealData ? { xAxisIndex: 0, yAxisIndex: 0 } : {}),
       },
-
-      /* Mark lines for patient goals (conditional rendering) */
+      // Conditional Patient Goal Lines
       ...(adjustedPatientLowGoal !== undefined && adjustedPatientLowGoal !== null
         ? [
             {
               name: 'Patient Low Goal',
               type: 'line',
-              ...(getTimeWindowData.hasMealData ? { xAxisIndex: 0, yAxisIndex: 0 } : {}), // Only add to glucose chart
-              data: [],
               silent: true,
-              tooltip: { show: false },
+              data: [],
               markLine: {
                 silent: true,
-                lineStyle: { color: '#52c41a', type: 'dashed', width: 1 }, // Standard success/target green, slightly thinner
+                precision: 1,
+                symbol: 'none',
+                lineStyle: { color: '#52c41a', type: 'dashed', width: 1 },
                 label: {
                   show: true,
                   position: 'end',
                   formatter: 'Target Low',
                   fontSize: 11,
-                  color: '#333',
-                  backgroundColor: '#fff',
-                  padding: [2, 5],
-                  borderRadius: 3,
+                  color: '#52c41a',
+                  distance: 5,
                 },
                 data: [{ yAxis: adjustedPatientLowGoal }],
               },
-              z: 10,
+              ...(chartData.hasMealData ? { xAxisIndex: 0, yAxisIndex: 0 } : {}),
             },
           ]
         : []),
@@ -1117,108 +847,74 @@ export function ClusterEventsChart({
             {
               name: 'Patient High Goal',
               type: 'line',
-              ...(getTimeWindowData.hasMealData ? { xAxisIndex: 0, yAxisIndex: 0 } : {}), // Only add to glucose chart
-              data: [],
               silent: true,
-              tooltip: { show: false },
+              data: [],
               markLine: {
                 silent: true,
-                lineStyle: { color: '#52c41a', type: 'dashed', width: 1 }, // Standard success/target green, slightly thinner
+                precision: 1,
+                symbol: 'none',
+                lineStyle: { color: '#52c41a', type: 'dashed', width: 1 },
                 label: {
                   show: true,
                   position: 'end',
                   formatter: 'Target High',
                   fontSize: 11,
-                  color: '#333',
-                  backgroundColor: '#fff',
-                  padding: [2, 5],
-                  borderRadius: 3,
+                  color: '#52c41a',
+                  distance: 5,
                 },
                 data: [{ yAxis: adjustedPatientHighGoal }],
               },
-              z: 10,
+              ...(chartData.hasMealData ? { xAxisIndex: 0, yAxisIndex: 0 } : {}),
             },
           ]
         : []),
     ],
+
+    // Legend Configuration
     legend: {
-      type: 'scroll', // Use scrollable legend if many items
+      type: 'scroll', // Enable scrolling if many legend items
       orient: 'horizontal',
-      bottom: 10, // Position relative to the chart container bottom
-      padding: [10, 20], // Padding around the legend content
-      itemGap: 15, // Space between legend items
-      textStyle: {
-        fontSize: 12,
-        color: '#333', // Ensure text color is readable
-      },
-      // Include both glucose and meal series in legend
-      data: [
-        ...getTimeWindowData.lineSeries.map((s) => s.name!),
-        ...(getTimeWindowData.hasMealData
-          ? getTimeWindowData.mealSeries.filter((s) => s !== null).map((s) => s.name!)
-          : []),
-      ],
-      // Set initial visibility state for all series
-      selected: [
-        ...getTimeWindowData.lineSeries.map((s) => ({ [s.name!]: true })),
-        ...(getTimeWindowData.hasMealData
-          ? getTimeWindowData.mealSeries.filter((s) => s !== null).map((s) => ({ [s.name!]: true }))
-          : []),
-      ].reduce((acc, curr) => ({ ...acc, ...curr }), {}),
-      selectedMode: 'multiple', // Allow selecting/deselecting multiple series
+      bottom: 10, // Position at the bottom
+      padding: [20, 20], // Padding around legend
+      itemGap: 15,
+      textStyle: { fontSize: 12, color: '#333' },
+      // Generate legend data from the actual series names
+      data: chartData.series.map((s) => s.name!),
+      // Set initial selected state (all true) - ECharts handles this by default if 'data' is provided
+      // selected: chartData.series.reduce((acc, s) => ({ ...acc, [s.name!]: true }), {}),
+      selectedMode: 'multiple', // Allow toggling multiple series
     },
-    // Highlight configuration - link highlighting across both charts
-    highlightPolicy: 'series', // Highlight the whole series on hover
+
+    // State Styles (Emphasis / Blur) - These apply globally unless overridden in series
     emphasis: {
-      focus: 'series',
-      scale: false, // Don't scale the series on hover, just change style
+      // When a series is highlighted (by dispatchAction or legend hover)
+      focus: 'series', // This is key to enable blurring other series
+      scale: false, // Don't scale points/bars on hover
+      // Styles defined within series take precedence, but set defaults here if needed
+      lineStyle: { width: 3 }, // Slightly thicker line
+      itemStyle: { borderWidth: 1, borderColor: '#555' }, // e.g., subtle border on points/bars
     },
-    // Add axis pointer linking for synchronized highlighting
-    axisPointer: getTimeWindowData.hasMealData
-      ? {
-          link: { xAxisIndex: 'all' },
-        }
-      : undefined,
-    // Enable animations for hover transitions
-    animation: true,
-    animationDuration: 200, // Fast animation for responsive feel
-    animationEasing: 'cubicOut',
-    // Define how emphasized series appear
-    emphasis: {
-      focus: 'series',
-      scale: false, // Don't scale points on hover
-      lineStyle: {
-        width: 3, // Thicker line for emphasized series
-        shadowBlur: 10,
-        shadowColor: 'rgba(0, 0, 0, 0.2)',
-      },
-      itemStyle: {
-        opacity: 1,
-        borderWidth: 2,
-        borderColor: '#fff',
-        shadowBlur: 10,
-        shadowColor: 'rgba(0, 0, 0, 0.2)',
-      },
-      z: 20, // Higher z-index to bring emphasized series to front
-    },
-    // Define how non-emphasized series appear (blur them more distinctly)
     blur: {
-      lineStyle: { color: '#DDDDDD', width: 1.5, opacity: 0.3 }, // More pronounced dimming
-      itemStyle: { color: '#DDDDDD', opacity: 0.3 },
-      z: 1, // Keep blurred items below emphasized ones
+      // When a series is downplayed (because another is highlighted)
+      lineStyle: { opacity: 0.2, color: '#ccc' }, // Make lines faint gray
+      itemStyle: { opacity: 0.2, color: '#ccc' }, // Make points/bars faint gray
     },
+
+    // Animation Settings
+    animation: true,
+    animationDurationUpdate: 200, // Animation duration for updates/highlighting
+    animationEasingUpdate: 'cubicOut', // Smooth easing for transitions
   };
 
   return (
-    // Parent div provides dimensions and basic styling
     <div className="w-full h-[450px] p-1 border rounded-lg shadow-sm bg-card text-card-foreground relative">
-      {' '}
-      {/* Reduced padding here as grid handles internal spacing */}
       <ReactECharts
         ref={chartRef}
         option={options}
-        style={{ height: '100%', width: '100%' }} // ECharts takes up full size of parent div
-        opts={{ renderer: 'svg' }} // SVG renderer generally preferred for web apps
+        style={{ height: '100%', width: '100%' }}
+        opts={{ renderer: 'svg' }} // Use SVG renderer
+        // Consider adding notMerge={false} if you want subsequent renders to merge options
+        // notMerge={false}
       />
     </div>
   );
