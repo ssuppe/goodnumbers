@@ -408,8 +408,8 @@ export function ClusterEventsChart({
                 },
               },
               data: mealData,
-              barWidth: '60%', // Make bars wider
-              barGap: '10%', // Space between bars
+              barWidth: '50%', // Make bars wider
+              barGap: '-50%', // Space between bars
               z: 10, // Higher z-index to ensure visibility
             };
           })
