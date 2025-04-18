@@ -121,7 +121,7 @@ export function ClusterAnalysisDisplay({
     );
   };
 
-  // Log cluster details for debugging
+  // Log cluster details for debugging (keeping this as is)
   React.useEffect(() => {
     console.log('Cluster analysis data:', {
       eventType: cluster.eventType,
@@ -149,12 +149,15 @@ export function ClusterAnalysisDisplay({
   const effectiveTitle = title || `${getEventTypeName(cluster.eventType)} Pattern Analysis`;
 
   return (
-    <div className="mb-8 space-y-4">
+    <div className="mb-6 space-y-3">
+      {' '}
+      {/* Reduced bottom margin and spacing between sections */}
       {/* Title */}
       {effectiveTitle && <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">{effectiveTitle}</h3>}
-
       {/* Cluster summary section */}
-      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+      <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-md">
+        {' '}
+        {/* Reduced padding in summary box */}
         <div className="flex space-x-4 mb-3">
           <div className="flex items-center">
             <IconClock className="w-5 h-5 mr-2 text-blue-500" />
@@ -169,24 +172,26 @@ export function ClusterAnalysisDisplay({
             </span>
           </div>
         </div>
-        <p className="text-gray-600 dark:text-gray-400">{clusterSummary}</p>
+        {/* Reduced font size for the detailed summary */}
+        <p className="text-sm text-gray-600 dark:text-gray-400">{clusterSummary}</p>
         {description && <p className="text-gray-600 dark:text-gray-400 mt-2">{description}</p>}
       </div>
-
       {/* Chart */}
-      <div className="mt-4">
+      <div className="mt-3">
+        {' '}
+        {/* Reduced margin above chart */}
         <ClusterEventsChart
           cluster={cluster}
           entries={entries}
           units={units}
           patientLowGoal={patientLowGoal}
           patientHighGoal={patientHighGoal}
-          title={`${getEventTypeName(cluster.eventType)} Events at ${minutesToTimeString(cluster.meanTime)}`}
+          title={`${getEventTypeName(cluster.eventType)} Events around ${minutesToTimeString(cluster.meanTime)}`}
         />
       </div>
-
       {/* Insights */}
-      <div className="mt-6">
+      {/* Reduced margin above insights */}
+      <div className="mt-4">
         {insights.length > 0 ? (
           <ul className="space-y-2" role="list" aria-label="Cluster insights">
             {insights.map(renderInsight)}

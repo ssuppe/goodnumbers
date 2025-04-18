@@ -1,69 +1,85 @@
 <speak>
 <s>
-<voice name="en-GB-Wavenet-B">Hello, <emphasis level="strong">I'm Your AI Doctor Turner</emphasis>, and welcome back to Good Numbers.</s>
+<voice name="en-GB-Wavenet-B">Hello, <break time="200ms"/>I'm your AI Doctor Turner,<break time="200ms"/> and welcome back to Good Numbers.</s>
 </speak>
 <speak>
 <s>
-<voice name="en-US-Wavenet-C">And I'm Rebecca. We're excited to dive into your blood glucose data this week.</s>
+<voice name="en-US-Wavenet-C">And I'm Rebecca.<break time="200ms"/> We're excited you're joining us again this week.</s>
 </speak>
 <speak>
 <s>
-<voice name="en-GB-Wavenet-B">As always, a gentle reminder that this podcast is for informational purposes only, and isn't a substitute for advice from your own healthcare team. <break time="0.5s"/> Any changes to your diabetes management plan should be discussed with your doctor or diabetes educator.</s>
+<voice name="en-GB-Wavenet-B">As always,<break time="200ms"/> a friendly reminder that this podcast is for informational purposes only <prosody rate="slow">and doesn't substitute advice from your own healthcare team.</prosody><break time="300ms"/> Any changes to your treatment plan should be discussed with your medical providers.</s>
 </speak>
 <speak>
 <s>
-<voice name="en-US-Wavenet-C">Exactly. <break time="0.2s"/>We're here to offer insights and support, but your medical team knows your specific situation best.</s>
+<voice name="en-US-Wavenet-C">Right,<break time="200ms"/> definitely talk to your doctor before making any changes based on what we chat about.<break time="300ms"/> Now,<break time="200ms"/> let's dive into your numbers from this week.<break time="200ms"/> Overall, wow,<break time="200ms"/> impressive!<break time="200ms"/> You’re doing an amazing job,<emphasis level="strong"> seriously.</emphasis></s>
 </speak>
 <speak>
 <s>
-<voice name="en-GB-Wavenet-B">Right, let's jump into the first key area for you this week. <break time="0.5s"/>Your data shows a recurring pattern of high blood glucose levels around mealtimes, particularly lunch and dinner. <break time="0.5s"/>This suggests we should take a closer look at your bolus insulin dosing strategies. <break time="0.3s"/>Now, there could be several reasons for these post-meal spikes. <prosody rate="0.9">Perhaps your carbohydrate counting needs a little fine-tuning, or maybe your insulin-to-carbohydrate ratio (ICR) needs adjusting.</prosody>
-</s>
+<voice name="en-GB-Wavenet-B">Indeed.<break time="200ms"/> A GMI of 6.5% and Time in Range of 85% are excellent.<break time="300ms"/> You’ve clearly got a good handle on your diabetes management.<break time="300ms"/>But,<break time="200ms"/> as always,<break time="200ms"/> there's room for fine-tuning.</s>
 </speak>
 <speak>
 <s>
-<voice name="en-US-Wavenet-C">Yeah, it can be tricky to get the ICR just right. <break time="0.3s"/>It's like trying to hit a moving target, especially with all the variables in what we eat. <break time="0.2s"/>Remember that time my son swore he'd only had 20 carbs, but his blood sugar shot up like a rocket? <break time="0.2s"/>Turned out the "small" handful of trail mix he'd grabbed had way more carbs than he thought.
-</s>
+<voice name="en-US-Wavenet-C">Exactly.<break time="200ms"/> It's like having a perfectly tuned race car,<break time="200ms"/> you still gotta tweak it for each track,<break time="200ms"/> right?</s>
 </speak>
 <speak>
 <s>
-<voice name="en-GB-Wavenet-B">
-<p>A classic case of sneaky carbs. </p>You should definitely review your carb counting methods, maybe try using a food scale for a while to ensure accuracy. <break time="0.5s"/>Also, chat with your doctor about possibly adjusting your ICR. <break time="0.3s"/>It might even be worth considering different ICRs for different meals, as our bodies can process food differently throughout the day. <say-as interpret-as="characters">Research by Bergenstal and colleagues in 2019</say-as> highlights the importance of individualized insulin regimens. <break time="0.5s"/>You know, adjusting ICRs is like finding the right spices for a recipe - a little tweak here and there can make all the difference. <break time="0.5s"/>
-</voice>
-</s>
+<voice name="en-GB-Wavenet-B">A rather apt analogy, Rebecca.<break time="300ms"/> First on the list:<break time="200ms"/> those overnight highs.<break time="200ms"/> You’re seeing a pattern around 1 a.m., 4 a.m., and 5 a.m.<break time="300ms"/> Classic dawn phenomenon territory,<break time="200ms"/> but could be something more.</s>
 </speak>
 <speak>
 <s>
-<voice name="en-US-Wavenet-C">Absolutely. <emphasis level="moderate">It's all about personalization.</emphasis><break time="1s"/> Now, Your AI Dr Turner, what about those pesky overnight and early morning highs? <break time="0.2s"/>The data points to a possible Dawn Phenomenon.
-</s>
+<voice name="en-US-Wavenet-C">Ugh,<break time="200ms"/> the dawn phenomenon.<break time="200ms"/> My kid went through a phase where it felt like battling a sugar monster every morning!<break time="300ms"/> Remember that, Dr. Turner,<break time="200ms"/> it was like every other week for months.<break time="200ms"/> It felt like their basal rate was more like a suggestion than a hard limit!</s>
 </speak>
 <speak>
 <s>
-<voice name="en-GB-Wavenet-B">Indeed.  The Dawn Phenomenon is a natural rise in blood glucose due to hormonal changes in the early morning. <break time="0.5s"/>It’s a bit like your liver deciding to throw a surprise glucose party while you're sleeping. <break time="0.5s"/>It's important to differentiate this from insufficient insulin action from your evening meal. <break time="0.3s"/>Analyzing the timing of the glucose rise will help pinpoint the cause. <break time="0.3s"/>You should discuss this with your healthcare provider, and consider adjusting your evening meal bolus strategy if necessary. <break time="0.2s"/>Maybe experimenting with a later bolus or a small bedtime snack, of course, consulting your dietitian. <say-as interpret-as="characters">Hirsch (2016)</say-as> provided valuable insights into the impact of overnight insulin action on glucose levels.
-</s>
+<voice name="en-GB-Wavenet-B"><prosody pitch="x-low"> (chuckles)</prosody> Yes,<break time="200ms"/> I recall.<break time="200ms"/> It’s a common struggle.<break time="300ms"/> For you,<break time="200ms"/> adjusting your basal rates between midnight and 7 a.m. might be beneficial.<break time="300ms"/> You should talk to your healthcare provider about making gradual increases during those hours.<break time="200ms"/>Your CGM trends will be super helpful in pinpointing where the rise starts.</s>
 </speak>
 <speak>
 <s>
-<voice name="en-US-Wavenet-C">I totally get that. <break time="0.2s"/>Bedtime snacks are a lifesaver, literally, because night-time lows can be really scary! <break time="0.2s"/>Remember that one conference where the speaker was talking about the dawn phenomenon, and he called it the "vampire effect"? <break time="0.2s"/>Everyone started cracking up! <break time="1s"/>Moving on to the next point, I'm seeing some patterns of hypoglycemia here. <break time="0.2s"/>The big one here is three severe hypoglycemic events around 6:30 PM.
-</s>
+<voice name="en-US-Wavenet-C">And don't forget,<break time="200ms"/> other things can sneakily affect those overnight numbers.<break time="300ms"/> Late-night snacks,<break time="200ms"/> especially those loaded with fat,<break time="200ms"/> can sometimes mess with your glucose levels later on.<break time="200ms"/> Even stress or just not sleeping well!<break time="200ms"/> Remember that wild week when our patient couldn't find their Dexcom receiver,<break time="200ms"/> pure rollercoaster. </s>
 </speak>
 <speak>
 <s>
-<voice name="en-GB-Wavenet-B">Yes, these hypoglycemic events warrant careful attention. <break time="0.3s"/>Stacking insulin, unanticipated exercise, or an incorrect insulin sensitivity factor (ISF) could be culprits. <break time="0.3s"/>Reviewing your bolus timing, considering pre-exercise adjustments, and potentially reevaluating your ISF with your healthcare provider are all advisable. <say-as interpret-as="characters">Colberg et al. (2017)</say-as> emphasize the importance of exercise management in type 1 diabetes. <break time="0.2s"/>Remember, hypoglycemia is like a mischievous gremlin in your system, and you need to figure out what's feeding it.
-</s>
+<voice name="en-GB-Wavenet-B"><prosody pitch="x-low">(amused)</prosody> A memorable case indeed.<break time="300ms"/> Now,<break time="200ms"/> moving on to the daytime highs,<break time="200ms"/> mostly after meals.<break time="200ms"/> This suggests we look at your carb ratios,<break time="200ms"/> pre-bolus timing,<break time="200ms"/> and Insulin Sensitivity Factor (ISF).</s>
 </speak>
 <speak>
 <s>
-<voice name="en-US-Wavenet-C">Ha! I love that analogy. <break time="0.2s"/>It's important to remember that everyone's diabetes is different. <break time="0.2s"/>What works for one person might not work for another. <break time="0.2s"/>It's like those "one-size-fits-all" hats...they never actually fit anyone! <break time="1s"/>Finally, there are a few high glucose events popping up around 10:50 PM.
-</s>
+<voice name="en-US-Wavenet-C">Carb counting can be tricky!<break time="200ms"/> Are you using a food scale?<break time="200ms"/> That made a world of difference for me.<break time="200ms"/> I used to eyeball portions,<break time="200ms"/> and let me tell you,<break time="200ms"/> my "one cup" of rice was often more like a cup and a half! </s>
 </speak>
 <speak>
 <s>
-<voice name="en-GB-Wavenet-B">Indeed, these late-night highs might stem from evening snacks without proper bolusing or inadequate basal insulin action from earlier. <break time="0.3s"/>I'd advise following a similar approach to managing the overnight patterns, by focusing on accurate carb counting for any late-night snacks and discussing potential adjustments to evening bolus with your medical team. <break time="1s"/>Now, above all, consistent CGM data analysis and ongoing Diabetes Self-Management Education and Support (DSMES) are paramount. <break time="0.2s"/> <emphasis level="moderate">Think Like a Pancreas</emphasis>, a favorite book of ours, has many practical ideas, and if you are struggling, <emphasis level="moderate">Dealing with Diabetes Burnout</emphasis> offers valuable coping strategies. <say-as interpret-as="characters">The ADA emphasizes the importance of DSMES in their 2017 guidelines (6).</say-as>
-</s>
+<voice name="en-GB-Wavenet-B"><prosody pitch="x-low">(chuckles)</prosody> Precision is key.<break time="300ms"/> It might be worth discussing with your healthcare team about adjusting your carb ratios if you're consistently high after meals.<break time="200ms"/> And that pre-bolus timing – are you giving yourself enough time,<break time="200ms"/> say 15-20 minutes before eating?<break time="200ms"/> It allows the insulin to start working as your food digests.</s>
 </speak>
 <speak>
 <s>
-<voice name="en-US-Wavenet-C">Totally agree, Your AI Dr. Turner. <break time="0.2s"/>Regular CGM review is like checking your map on a road trip—it helps you stay on course. <break time="0.2s"/>And DSMES is your personal guide, ensuring you have the skills and support to navigate all those twists and turns along the way. <break time="0.2s"/>Your diabetes management journey, however bumpy or smooth, is ultimately your own unique adventure!
-</s>
+<voice name="en-US-Wavenet-C">Oh,<break time="200ms"/> pre-bolusing!<break time="200ms"/> I've got a story.<break time="200ms"/> One time, I pre-bolused,<break time="200ms"/> but then got distracted by... well,<break time="200ms"/> something shiny,<break time="200ms"/> as usual.<break time="200ms"/> Totally forgot to eat!<break time="200ms"/> Low blood sugar city!<break time="200ms"/> Luckily, I had some juice boxes handy!<break time="200ms"/> Never again! </s>
+</speak>
+<speak>
+<s>
+<voice name="en-GB-Wavenet-B"><prosody pitch="x-low">(laughing slightly)</prosody> A cautionary tale indeed, Rebecca.<break time="300ms"/>It highlights the importance of coordinating bolusing with actual meal consumption.<break time="200ms"/> Also,<break time="200ms"/> consider the composition of your meals.<break time="200ms"/> High-fat meals can delay glucose absorption,<break time="200ms"/> sometimes requiring a split bolus or adjusting the timing of your bolus.<break time="200ms"/> Something to discuss with your dietitian or healthcare team.</s>
+</speak>
+<speak>
+<s>
+<voice name="en-US-Wavenet-C">Totally.<break time="200ms"/> Fat can be a frenemy for us diabetics.<break time="200ms"/> It can lead to those delayed spikes.<break time="200ms"/> Also,<break time="200ms"/> exercise and stress – those sneaky blood sugar ninjas – can also mess with your numbers.<break time="200ms"/> Ever tried yoga or meditation,<break time="200ms"/> by the way? </s>
+</speak>
+<speak>
+<s>
+<voice name="en-GB-Wavenet-B">I have explored some mindfulness techniques.<break time="200ms"/> They can be quite helpful.<break time="300ms"/> Finally,<break time="200ms"/> if those post-meal spikes continue,<break time="200ms"/> it might be worth chatting with your healthcare provider about adjusting your Insulin Sensitivity Factor, or ISF.<break time="200ms"/> This essentially changes how much your blood sugar drops per unit of insulin. </s>
+</speak>
+<speak>
+<s>
+<voice name="en-US-Wavenet-C">And don't forget about that fancy CGM data you've got!<break time="200ms"/> It’s like having a diabetes detective on your wrist!<break time="200ms"/> Learn to read those trend arrows – they can give you a heads-up about where your blood sugar is headed.<break time="200ms"/> It can be hard to understand at first,<break time="200ms"/> so don't give up,<break time="200ms"/> it took me a while to figure mine out.<break time="200ms"/> I just sat with my pump trainer every appointment for 30 minutes to walk through the examples.<break time="200ms"/> The work pays off.</s>
+</speak>
+<speak>
+<s>
+<voice name="en-GB-Wavenet-B">Absolutely.<break time="200ms"/> Regularly reviewing your CGM data with your diabetes educator can provide valuable insights.<break time="300ms"/>So,<break time="200ms"/> to summarize,<break time="200ms"/> some things you can discuss with your healthcare provider are your basal rates for the overnight highs,<break time="200ms"/> and your carb ratios,<break time="200ms"/> pre-bolus timing,<break time="200ms"/> and ISF for those post-meal spikes.<break time="300ms"/> Don’t underestimate the power of diet,<break time="200ms"/> exercise,<break time="200ms"/> and stress management too.<break time="200ms"/> You are doing incredibly well.<break time="200ms"/> These are just tweaks to an already well-managed system.</s>
+</speak>
+<speak>
+<s>
+<voice name="en-US-Wavenet-C">You’ve got this!<break time="200ms"/> We’re here to cheer you on.<break time="200ms"/> And hey,<break time="200ms"/> even with those little spikes,<break time="200ms"/> your numbers are fantastic.<break time="200ms"/> You’re a diabetes superhero!<break time="300ms"/> Until next week,<break time="200ms"/> keep up the amazing work!</s>
+</speak>
+<speak>
+<s>
+<voice name="en-GB-Wavenet-B">Indeed.<break time="200ms"/> Until next time.</s>
 </speak>
 ```

@@ -21,7 +21,7 @@ import {
 import { filterCriticalInsights, hasCriticalInsights, insightsToNotes } from './nightscoutActions';
 import { AgpDataPoint } from '@/components/charts/AgpChart';
 import { detectGlycemicEvents } from '@/lib/events/detect_events';
-import { clusterGlycemicEvents, minutesToTimeString } from '@/lib/events/time_clustering/time_clustering';
+import { clusterGlycemicEvents, minutesToTimeString, TimeCluster } from '@/lib/events/time_clustering/time_clustering';
 import { classifyEvents, DEFAULT_CLASSIFICATION_CONFIG } from '@/lib/events/classification/event_classifier';
 import { createMealRelatedHighsInsight } from '@/lib/insights/generators/meal-related-highs.generator';
 import { getAssessment } from './gemini/services/assessmentService';
@@ -192,32 +192,29 @@ export async function generateAssessments(
     // Classify the events with our enhanced classification system
     var classifiedEvents = classifyEvents(events, nsData.treatments, DEFAULT_CLASSIFICATION_CONFIG);
     // Cluster the classified events by time
-    var clusters = clusterGlycemicEvents(classifiedEvents, 60);
+    var clusters: TimeCluster[] = clusterGlycemicEvents(classifiedEvents, 60);
 
-    // -------------------------------------------------------------
-    // UNIFIED CLUSTER PROCESSING - FIX FOR DUPLICATE CLUSTER REPORTS
-    // -------------------------------------------------------------
-    
+    ///////////////// Create Reports from Clusters ///////////////////
     // Initialize array to store all unique cluster reports
     const allClusterReports: ReportItem[] = [];
-    
+
     // Check if we have any clusters to analyze
     if (clusters.length > 0) {
       // Create a Map to ensure we only process each unique cluster once
       // We use a combination of eventType and meanTime as the unique identifier
       const uniqueClusters = new Map();
-      
+
       // First pass: Identify all unique clusters
       for (const cluster of clusters) {
         // Create a unique identifier for this cluster
         const clusterId = `${cluster.eventType}_${cluster.meanTime}`;
-        
+
         // Only add to our Map if this is a new unique cluster
         if (!uniqueClusters.has(clusterId)) {
           uniqueClusters.set(clusterId, cluster);
         }
       }
-      
+
       // Prepare the significant clusters section if needed
       // Filter out clusters with only one event for pattern analysis section
       const significantClusters = Array.from(uniqueClusters.values())
@@ -230,32 +227,32 @@ export async function generateAssessments(
           // Secondary sort: by meanTime in ascending order
           return a.meanTime - b.meanTime;
         });
-        
+
       // Add header for glycemic patterns section if we have significant clusters
       if (significantClusters.length > 0) {
         ai_notes += '\n\n## Glycemic Pattern Analysis\n\n';
       }
-      
+
       // Second pass: Process each unique cluster exactly once
       // Process all clusters for meal insights, but only add pattern notes for significant ones
       let patternCounter = 1;
-      
+
       try {
         // Process each unique cluster
-        for (const cluster of uniqueClusters.values()) {
+        for (const cluster of significantClusters) {
           // 1. Create a meal-related insight generator specific to this cluster
           const clusterMealHighsGenerator = createMealRelatedHighsInsight([cluster]);
-          
+
           // 2. Add AI insights to notes
           ai_notes += await insightsToNotes([clusterMealHighsGenerator.getAIInsight()]);
-          
+
           // 3. Create the insights array for this cluster's report
           // Start with the meal-related insight
           const clusterInsights = [clusterMealHighsGenerator.getUserInsight()];
-          
+
           // 4. Compress the cluster data for storage efficiency
           const compressedCluster = compress(cluster);
-          
+
           // 5. Create a compressed data package for this cluster
           const clusterAnalysisData = {
             compressedCluster: compressedCluster,
@@ -267,17 +264,17 @@ export async function generateAssessments(
               id: id, // The hash ID used for storage
             },
           };
-          
+
           // 6. Create a report item for this cluster - ONE report per unique cluster
           const clusterAnalysisReport: ReportItem = {
             type: ReportType.CLUSTER_LINE,
             insights: clusterInsights,
             data: [clusterAnalysisData],
           };
-          
+
           // 7. Add this cluster's report item to the collection
           allClusterReports.push(clusterAnalysisReport);
-          
+
           // 8. Add pattern notes for significant clusters (2+ events)
           if (cluster.count >= 2) {
             ai_notes += `Pattern ${patternCounter}: ${cluster.count} ${cluster.eventType.toLowerCase()} events detected `;
@@ -290,7 +287,7 @@ export async function generateAssessments(
         logger.error(`Error processing clusters: ${error}`);
         console.error('Error processing clusters:', error);
       }
-      
+
       // Update current state with full notes and all report items
       // Combine weekly overview and the unified cluster reports
       currentAssessmentData = {
