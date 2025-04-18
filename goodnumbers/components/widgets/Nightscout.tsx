@@ -168,7 +168,7 @@ const NightscoutComponent = ({
           profiles: compress(nightscoutData.profiles),
         };
 
-        // Store the compressed entries in localStorage for future reference by cluster visualization
+        // Store the compressed entries and treatments in localStorage for future reference by cluster visualization
         return createHash(formData.nightscout_url, formData.nightscout_token).then((hash) => {
           // Save entries data separately with the hash as reference
           const entriesStorageKey = `goodnumbers-nightscout-entries-${hash}`;
@@ -176,6 +176,16 @@ const NightscoutComponent = ({
             entriesStorageKey,
             JSON.stringify({
               entries: compressedData.entries,
+              timestamp: new Date().toISOString(),
+            }),
+          );
+          
+          // Save treatments data separately with the same hash reference
+          const treatmentsStorageKey = `goodnumbers-nightscout-treatments-${hash}`;
+          localStorage.setItem(
+            treatmentsStorageKey,
+            JSON.stringify({
+              treatments: compressedData.treatments,
               timestamp: new Date().toISOString(),
             }),
           );
