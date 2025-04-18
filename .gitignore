@@ -32,3 +32,7 @@ data/
 
 .vercel
 .aider*
+
+pass*txt
+entries.json
+treatments.json
