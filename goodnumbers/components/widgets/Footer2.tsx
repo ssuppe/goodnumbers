@@ -26,17 +26,17 @@ export const footerData2: FooterProps = {
     //   texts: ['', ''],
     // },
   ],
-  socials: [
-    // { label: 'Twitter', icon: IconBrandTwitter, href: '#' },
-    // { label: 'Instagram', icon: IconBrandInstagram, href: '#' },
-    // { label: 'Facebook', icon: IconBrandFacebook, href: '#' },
-    // { label: 'RSS', icon: IconRss, href: '#' },
-    // { label: 'Github', icon: IconBrandGithub, href: 'https://github.com/onwidget/tailnext' },
-  ],
+  // socials: [
+  //   // { label: 'Twitter', icon: IconBrandTwitter, href: '#' },
+  //   // { label: 'Instagram', icon: IconBrandInstagram, href: '#' },
+  //   // { label: 'Facebook', icon: IconBrandFacebook, href: '#' },
+  //   // { label: 'RSS', icon: IconRss, href: '#' },
+  //   // { label: 'Github', icon: IconBrandGithub, href: 'https://github.com/onwidget/tailnext' },
+  // ],
   footNote: (
-    <div className="mr-4 rtl:mr-0 rtl:ml-4 text-sm">
-      <span className="float-left rtl:float-right mr-1.5 rtl:mr-0 rtl:ml-1.5 h-5 w-5 rounded-sm bg-[url(https://onwidget.com/favicon/favicon-32x32.png)] bg-cover md:-mt-0.5 md:h-6 md:w-6"></span>
-      <span>Made by · All rights reserved.</span>
+    <div className="mr-4 rtl:mr-0 rtl:ml-4">
+      <span className="float-left rtl:float-right mr-1.5 rtl:mr-0 rtl:ml-1.5 h-5 w-5 bg-cover md:-mt-0.5 md:h-6 md:w-6"></span>
+      <span>Made by Steve Suppe · All rights reserved, 2025</span>
     </div>
   ),
 };
@@ -61,7 +61,7 @@ const Footer2 = () => {
               ))}
           </div>
         ))}
-        <div className="col-span-4 sm:col-span-2 md:col-span-2 lg:col-span-1 xl:col-span-1">
+        {/* <div className="col-span-4 sm:col-span-2 md:col-span-2 lg:col-span-1 xl:col-span-1">
           <div className="mb-2 font-medium text-gray-800 dark:text-gray-300">Social</div>
           <ul className="mb-4 -ml-2 rtl:ml-0 rtl:-mr-2 flex md:order-1 md:mb-0">
             {socials.map(({ label, icon: Icon, href }, index) => (
@@ -76,9 +76,9 @@ const Footer2 = () => {
               </li>
             ))}
           </ul>
-        </div>
+        </div> */}
       </div>
-      <div className="text-muted py-6 text-sm text-gray-700 dark:text-slate-400 md:flex md:items-center md:justify-between md:py-8">
+      <div className=" py-6 text-sm text-gray-700 dark:text-slate-400 md:flex md:items-center md:justify-between md:py-8">
         <ul className="mb-4 flex pl-2 rtl:pl-0 rtl:pr-2 md:order-1 md:mb-0">
           {links &&
             links.map(({ label, href }, index) => (
