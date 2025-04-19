@@ -866,7 +866,7 @@ export function ClusterEventsChart({
             },
           ]
         : []),
-    ],
+    ] as EChartsOption['series'],
 
     // Legend Configuration
     legend: {
