@@ -26,13 +26,13 @@ export const footerData2: FooterProps = {
     //   texts: ['', ''],
     // },
   ],
-  // socials: [
-  //   // { label: 'Twitter', icon: IconBrandTwitter, href: '#' },
-  //   // { label: 'Instagram', icon: IconBrandInstagram, href: '#' },
-  //   // { label: 'Facebook', icon: IconBrandFacebook, href: '#' },
-  //   // { label: 'RSS', icon: IconRss, href: '#' },
-  //   // { label: 'Github', icon: IconBrandGithub, href: 'https://github.com/onwidget/tailnext' },
-  // ],
+  socials: [
+    //   // { label: 'Twitter', icon: IconBrandTwitter, href: '#' },
+    //   // { label: 'Instagram', icon: IconBrandInstagram, href: '#' },
+    //   // { label: 'Facebook', icon: IconBrandFacebook, href: '#' },
+    //   // { label: 'RSS', icon: IconRss, href: '#' },
+    //   // { label: 'Github', icon: IconBrandGithub, href: 'https://github.com/onwidget/tailnext' },
+  ],
   footNote: (
     <div className="mr-4 rtl:mr-0 rtl:ml-4">
       <span className="float-left rtl:float-right mr-1.5 rtl:mr-0 rtl:ml-1.5 h-5 w-5 bg-cover md:-mt-0.5 md:h-6 md:w-6"></span>
