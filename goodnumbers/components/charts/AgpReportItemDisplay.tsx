@@ -111,7 +111,7 @@ export function ReportItemDisplay({
       <div className="mt-4">
         {hasValidChartData ? (
           <AgpChart
-            data={reportItem.data}
+            data={reportItem.data!}
             units={units}
             patientLowGoal={patientLowGoal}
             patientHighGoal={patientHighGoal}
