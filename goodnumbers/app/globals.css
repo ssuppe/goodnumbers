@@ -155,6 +155,11 @@
     @apply text-foreground;
   }
 
+  /* Ensure all anchor tags are underlined */
+  a {
+    text-decoration: underline;
+  }
+
   /* Style form elements for dark mode */
   input,
   select,
