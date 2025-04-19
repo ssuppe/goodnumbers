@@ -179,7 +179,7 @@ const NightscoutComponent = ({
               timestamp: new Date().toISOString(),
             }),
           );
-          
+
           // Save treatments data separately with the same hash reference
           const treatmentsStorageKey = `goodnumbers-nightscout-treatments-${hash}`;
           localStorage.setItem(
@@ -416,21 +416,24 @@ const NightscoutComponent = ({
                     sortedClusterTimes: sortedClusterReports.map((cluster) => {
                       const time = getClusterMeanTime(cluster);
                       // Convert minutes to HH:MM format for easier debugging
-                      const hours = Math.floor(time / 60).toString().padStart(2, '0');
+                      const hours = Math.floor(time / 60)
+                        .toString()
+                        .padStart(2, '0');
                       const minutes = (time % 60).toString().padStart(2, '0');
                       return `${hours}:${minutes} (${time} min)`;
                     }),
                     // Also log raw data about each cluster for debugging
-                    clusterDetails: sortedClusterReports.map(cluster => {
+                    clusterDetails: sortedClusterReports.map((cluster) => {
                       const dataItem = cluster.data && cluster.data.length > 0 ? cluster.data[0] : null;
                       return {
                         hasMeanTimeMinutes: dataItem ? 'meanTimeMinutes' in dataItem : false,
-                        meanTimeMinutesValue: dataItem && 'meanTimeMinutes' in dataItem ? dataItem.meanTimeMinutes : 'N/A',
+                        meanTimeMinutesValue:
+                          dataItem && 'meanTimeMinutes' in dataItem ? dataItem.meanTimeMinutes : 'N/A',
                         hasMeanTime: dataItem ? 'meanTime' in dataItem : false,
                         meanTimeValue: dataItem && 'meanTime' in dataItem ? dataItem.meanTime : 'N/A',
-                        extractedTime: getClusterMeanTime(cluster)
+                        extractedTime: getClusterMeanTime(cluster),
                       };
-                    })
+                    }),
                   });
                 }
 
@@ -609,8 +612,10 @@ const NightscoutComponent = ({
                     className="mr-2 mt-1"
                   />
                   <span>
-                    I understand this is experimental. The analysis might be wrong and does not constitute medical
-                    advice. All data should be manually verified by you and your healthcare professionals.
+                    I accept the <a href="/terms">Terms and Conditions</a>. I understand Goodnumbers is NOT medical
+                    advice, is a personal experimental project and very likely wrong. I will always speak to a
+                    healthcare professional before making changes to my healthcare plan, pump settings, insulin usage,
+                    etc. I accept all responsibility and liability for its use.
                   </span>
                 </label>
                 <label className="flex items-start mb-4 text-gray-800 dark:text-slate-200">
