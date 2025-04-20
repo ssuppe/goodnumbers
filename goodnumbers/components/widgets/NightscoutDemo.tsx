@@ -39,16 +39,12 @@ function isDebugMode(): boolean {
 }
 
 interface NightscoutDemoProps {
-  header?: Header;
+  header?: Headers;
   id?: string;
   hasBackground?: boolean;
 }
 
-const NightscoutDemo = ({
-  header,
-  id,
-  hasBackground = false,
-}: NightscoutDemoProps): JSX.Element => {
+const NightscoutDemo = ({ header, id, hasBackground = false }: NightscoutDemoProps): JSX.Element => {
   // State management with our existing hooks
   const { assessmentData, error: storageError, updateAssessmentData, getCurrentPodcastResult } = useAssessmentState();
   const { isLoading, startLoading, stopLoading } = useLoadingState();
@@ -64,14 +60,14 @@ const NightscoutDemo = ({
       try {
         // Start loading state
         startLoading('Loading demo data...');
-        
+
         // Read demo data
         const demoData = await readAssessmentDemoData(DEMO_ID);
-        
+
         if (demoData) {
           // Update assessment data
           updateAssessmentData(demoData.assessmentData);
-          
+
           // Store compressed entries and treatments in localStorage like handleSubmit did
           const entriesStorageKey = `goodnumbers-nightscout-entries-${DEMO_ID}`;
           localStorage.setItem(
@@ -81,7 +77,7 @@ const NightscoutDemo = ({
               timestamp: demoData.timestamp,
             }),
           );
-          
+
           const treatmentsStorageKey = `goodnumbers-nightscout-treatments-${DEMO_ID}`;
           localStorage.setItem(
             treatmentsStorageKey,
@@ -100,7 +96,7 @@ const NightscoutDemo = ({
         stopLoading();
       }
     }
-    
+
     loadDemoData();
   }, []); // Empty dependency array - only runs on mount
 
@@ -444,9 +440,7 @@ const NightscoutDemo = ({
       )}
 
       {loadingError && (
-        <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
-          {loadingError}
-        </div>
+        <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">{loadingError}</div>
       )}
 
       {isClient && assessmentData && (
