@@ -2939,7 +2939,7 @@
       "operation_id": "projects/goodnumbers-446416/locations/global/operations/3648074964904415112",
       "gcs_path": "audio-files/fc0eea91e2bfcb30f73960ea6abbc65afea8799f6405c8a75407d2f8a6d87be5/podcast_20250420T171540.wav",
       "bucket_name": "goodnumbersmain",
-      "url": "https://storage.googleapis.com/goodnumbersmain/audio-files/fc0eea91e2bfcb30f73960ea6abbc65afea8799f6405c8a75407d2f8a6d87be5/podcast_20250420T171540.wav",
+      "url": "https://storage.googleapis.com/goodnumbersmainassets/demo/audio-files/podcast_20250420T171540.wav",
       "message": "Audio generation started successfully",
       "title": "Excellent Glucose Control, Fine-tune Mealtime Insulin",
       "description": "This week's diabetes data shows excellent overall glucose control, with an average glucose of 6.9, Time in Range at 87%, and a GMI of 6.3.  However, there's room for improvement in mealtime glucose management, particularly around dinner and breakfast.  Focus on refining carb counting methods and exploring strategies like dual-wave boluses to address these minor inconsistencies."
