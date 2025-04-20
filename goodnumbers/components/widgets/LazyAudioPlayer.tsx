@@ -29,7 +29,7 @@ const LazyAudioPlayer = ({ audioUrl }: { audioUrl: string }) => {
             <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
-            <span>Click to load audio</span>
+            <span>Click to load AI discussion on your numbers</span>
           </button>
         </div>
       )}

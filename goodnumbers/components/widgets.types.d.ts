@@ -64,6 +64,13 @@ type MenuLink = Link & {
   links?: Array<Link>;
 };
 
+type Header = {
+  title?: string;
+  subtitle?: string;
+  tagline?: string;
+  position?: string;
+};
+
 type HeaderProps = {
   links?: Array<MenuLink>;
   actions?: Array<CallToActionType>;
