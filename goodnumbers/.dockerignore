@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+npm-debug.log
+
+# Next.js build output
+.next
+out
+
+# Development files
+*.md
+.env*
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+
+# Logs
+*.log
+
+# Tests
+__tests__
+*.test.*
