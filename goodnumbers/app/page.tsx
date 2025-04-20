@@ -17,14 +17,14 @@ const heroHome = {
     </>
   ),
   callToAction: {
-    text: 'Try Nightscout Demo',
+    text: 'See a demo',
+    href: '/demo',
+  },
+  callToAction2: {
+    text: 'Try it with Nightscout',
     href: 'trynow',
     // icon: IconBrandApplePodcast,
     targetBlank: false,
-  },
-  callToAction2: {
-    text: 'Learn more',
-    href: '/about',
   },
 };
 
