@@ -43,3 +43,6 @@ next-env.d.ts
 pass*txt
 entries.json
 treatments.json
+.env*
+.env.development
+.env.production
