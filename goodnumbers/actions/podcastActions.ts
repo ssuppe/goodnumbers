@@ -2,6 +2,8 @@
 
 import winston from 'winston';
 import { decompress, Compressed, compress } from 'compress-json';
+import { writeAssessmentDemoData, ComprehensiveAssessmentData } from '@/services/demoDataService';
+import { canWriteLocal } from '@/utils/env';
 
 import { getBestProfile } from '@/utils/nightscoutProfile';
 import { AutotunePreppedData, gn_autotune_prep } from '@/lib/oref0-autotune/gn-autotune-prep';
@@ -358,6 +360,30 @@ export async function generateAssessments(
       preferred_units: preferred_units,
       patient_range: patient_range,
     };
+
+    // Write comprehensive data for demo purposes before returning
+    if (canWriteLocal()) {
+      try {
+        const comprehensiveData: ComprehensiveAssessmentData = {
+          assessmentData: finalAssessmentData,
+          nightscoutData: {
+            entries: cEntries,
+            treatments: cTreatments,
+            profiles: cProfiles
+          },
+          reportItems: finalAssessmentData.report_items,
+          podcastResult: podcastResult,
+          timestamp: new Date().toISOString(),
+          id: id
+        };
+        
+        await writeAssessmentDemoData(comprehensiveData);
+        logger.info(`Demo data written successfully for ID: ${id}`);
+      } catch (error) {
+        logger.error(`Failed to write demo data: ${error}`);
+        // Don't throw - don't interrupt normal flow
+      }
+    }
 
     return finalAssessmentData;
   } catch (error) {

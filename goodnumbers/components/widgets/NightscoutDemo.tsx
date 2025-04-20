@@ -2,28 +2,26 @@
 
 import React, { useState, useEffect } from 'react';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
-import Progress from '../atoms/progress';
-import { compress, decompress } from 'compress-json';
-import { createApiClient } from '@/lib/axios/axios';
+import { decompress } from 'compress-json';
 import { useAssessmentState } from '@/hooks/useAssessmentState';
 import { useLoadingState } from '@/hooks/useLoadingState';
-import { useFormState } from '@/hooks/useFormState';
-import { AssessmentData, GlucoseUnits, NightscoutData, PodcastGenerateResult, ReportType } from '@/types/nightscout.d';
+import { AssessmentData, ReportType } from '@/types/nightscout.d';
 import 'react-h5-audio-player/lib/styles.css';
 import LazyAudioPlayer from './LazyAudioPlayer';
 import DebugInterfaceViewer from './DebugInterfaceViewer';
 import ReactMarkdown from 'react-markdown';
 import * as prettier from 'prettier/standalone';
 import parserXml from '@prettier/plugin-xml';
-import { generateAssessments } from '@/actions/podcastActions';
-import { fetchNightscoutData } from '@/actions/nightscoutActions';
+import { readAssessmentDemoData } from '@/services/demoDataService';
 import { ssmlToMarkdown } from '@/utils/ssml-client';
 import PodcastStatusBadge from './PodcastStatusBadge';
 import { ReportItemDisplay } from '../charts/AgpReportItemDisplay';
 import { ClusterReportRenderer } from '../report/ClusterReportRenderer';
 import Headline from '../atoms/Headline';
 import WidgetWrapper from '../atoms/WidgetWrapper';
-import { checkPodcastStatus } from '@/actions/gemini/services/podcastService';
+
+// Hardcoded demo ID
+const DEMO_ID = 'demo1';
 
 // Function to check if debug mode is enabled via URL parameter
 function isDebugMode(): boolean {
@@ -40,44 +38,76 @@ function isDebugMode(): boolean {
   return false;
 }
 
-interface NightscoutComponentProps extends NightscoutWidgetProps {
-  onAssessmentComplete?: (data: AssessmentData) => void;
+interface NightscoutDemoProps {
+  header?: Header;
+  id?: string;
+  hasBackground?: boolean;
 }
 
-function createHash(url: string, token: string): Promise<string> {
-  const textEncoder = new TextEncoder();
-  const combined = `${url}:${token}`;
-  const data = textEncoder.encode(combined);
-
-  return crypto.subtle.digest('SHA-256', data).then((hashBuffer) => {
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((byte) => byte.toString(16).padStart(2, '0')).join('');
-  });
-}
-
-const axiosInstance = createApiClient();
-
-const NightscoutComponent = ({
+const NightscoutDemo = ({
   header,
   id,
   hasBackground = false,
-  onAssessmentComplete,
-}: NightscoutComponentProps): JSX.Element => {
-  // State management with our new hooks
+}: NightscoutDemoProps): JSX.Element => {
+  // State management with our existing hooks
   const { assessmentData, error: storageError, updateAssessmentData, getCurrentPodcastResult } = useAssessmentState();
-  const { isLoading, progress, progressText, error, startLoading, updateProgress, stopLoading, setLoadingError } =
-    useLoadingState();
-  const { formData, handleInputChange, error: formError } = useFormState();
+  const { isLoading, startLoading, stopLoading } = useLoadingState();
 
   const [isClient, setIsClient] = useState(false);
   const [formattedSSML, setFormattedSSML] = useState('');
-  const [formSubmitted, setFormSubmitted] = useState(false);
   const [debugMode, setDebugMode] = useState(false);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
+
+  // Load demo data on mount
+  useEffect(() => {
+    async function loadDemoData() {
+      try {
+        // Start loading state
+        startLoading('Loading demo data...');
+        
+        // Read demo data
+        const demoData = await readAssessmentDemoData(DEMO_ID);
+        
+        if (demoData) {
+          // Update assessment data
+          updateAssessmentData(demoData.assessmentData);
+          
+          // Store compressed entries and treatments in localStorage like handleSubmit did
+          const entriesStorageKey = `goodnumbers-nightscout-entries-${DEMO_ID}`;
+          localStorage.setItem(
+            entriesStorageKey,
+            JSON.stringify({
+              entries: demoData.nightscoutData.entries,
+              timestamp: demoData.timestamp,
+            }),
+          );
+          
+          const treatmentsStorageKey = `goodnumbers-nightscout-treatments-${DEMO_ID}`;
+          localStorage.setItem(
+            treatmentsStorageKey,
+            JSON.stringify({
+              treatments: demoData.nightscoutData.treatments,
+              timestamp: demoData.timestamp,
+            }),
+          );
+        } else {
+          setLoadingError(`Demo data not found for ID: ${DEMO_ID}`);
+        }
+      } catch (error) {
+        console.error('Error loading demo data:', error);
+        setLoadingError('Failed to load demo data');
+      } finally {
+        stopLoading();
+      }
+    }
+    
+    loadDemoData();
+  }, []); // Empty dependency array - only runs on mount
 
   // Debug assessment data at component level
   useEffect(() => {
     if (debugMode && assessmentData) {
-      console.log('Nightscout component assessment data:', {
+      console.log('Nightscout demo component assessment data:', {
         hasAssessmentData: Boolean(assessmentData),
         hasDialog: Boolean(assessmentData?.ssml_dialog),
         dialogLength: assessmentData?.ssml_dialog?.length || 0,
@@ -114,136 +144,11 @@ const NightscoutComponent = ({
     setIsClient(true);
   }, []);
 
-  // Poll for podcast status
-  useEffect(() => {
-    if (!assessmentData) return;
-
-    const currentResult = getCurrentPodcastResult();
-
-    if (currentResult?.status !== 'processing') return;
-
-    const intervalId = setInterval(async () => {
-      const podcastResult = getCurrentPodcastResult();
-
-      if (!podcastResult || podcastResult.status !== 'processing') {
-        clearInterval(intervalId);
-        return;
-      }
-
-      const response: PodcastGenerateResult = await checkPodcastStatus(podcastResult);
-
-      const updatedData = {
-        ...assessmentData,
-        podcastResult: response,
-        preferred_units: assessmentData.preferred_units, // Explicitly include this
-      };
-      updateAssessmentData(updatedData);
-    }, 30000);
-
-    return () => clearInterval(intervalId);
-  }, [assessmentData, getCurrentPodcastResult, updateAssessmentData]);
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    if (debugMode) {
-      console.log('Form submission started');
-    }
-
-    e.preventDefault();
-    startLoading('Collecting Nightscout data...');
-
-    // First handle the Nightscout data fetch
-    updateProgress(25, 'Collecting Nightscout data...');
-    fetchNightscoutData({ url: formData.nightscout_url, token: formData.nightscout_token })
-      .then((nightscoutData: NightscoutData) => {
-        if (debugMode) {
-          debugger; // Only trigger debugger in debug mode
-        }
-        updateProgress(
-          50,
-          "Generating assessments (this will take a few minutes). Please don't close your browser. After, we will generate the audio of the podcast.",
-        );
-        const compressedData = {
-          entries: compress(nightscoutData.entries),
-          treatments: compress(nightscoutData.treatments),
-          profiles: compress(nightscoutData.profiles),
-        };
-
-        // Store the compressed entries and treatments in localStorage for future reference by cluster visualization
-        return createHash(formData.nightscout_url, formData.nightscout_token).then((hash) => {
-          // Save entries data separately with the hash as reference
-          const entriesStorageKey = `goodnumbers-nightscout-entries-${hash}`;
-          localStorage.setItem(
-            entriesStorageKey,
-            JSON.stringify({
-              entries: compressedData.entries,
-              timestamp: new Date().toISOString(),
-            }),
-          );
-
-          // Save treatments data separately with the same hash reference
-          const treatmentsStorageKey = `goodnumbers-nightscout-treatments-${hash}`;
-          localStorage.setItem(
-            treatmentsStorageKey,
-            JSON.stringify({
-              treatments: compressedData.treatments,
-              timestamp: new Date().toISOString(),
-            }),
-          );
-
-          return generateAssessments(
-            compressedData?.entries,
-            compressedData?.treatments || null,
-            compressedData.profiles,
-            hash,
-            formData.preferred_units, // Add units preference
-          );
-        });
-      })
-      .then((data) => {
-        const now = new Date();
-        const formattedTimestamp = now
-          .toLocaleString('en-GB', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          })
-          .replace(/\//g, '-');
-        if (data == null) return;
-        const dataWithTimestamp = {
-          ...data,
-          timestamp: formattedTimestamp,
-          preferred_units: data.preferred_units, // Explicitly include this
-        };
-
-        // Update assessment data (which will save to localStorage)
-        updateAssessmentData(dataWithTimestamp);
-
-        // Set a new state to indicate successful submission
-        setFormSubmitted(true);
-
-        if (onAssessmentComplete) {
-          onAssessmentComplete(dataWithTimestamp);
-        }
-      })
-      .catch((error) => {
-        setLoadingError(error instanceof Error ? error.message : 'An unexpected error occurred');
-      })
-      .finally(() => {
-        stopLoading();
-      });
-  };
-
-  const isFormValid =
-    formData.nightscout_url && formData.nightscout_token && formData.terms_accepted && formData.responsibility_accepted;
-
   // Handle formatting in useEffect
   useEffect(() => {
     if (debugMode) {
       console.log(
-        'SSML dialog in Nightscout component:',
+        'SSML dialog in Nightscout demo component:',
         assessmentData?.ssml_dialog ? `Present (length: ${assessmentData.ssml_dialog.length})` : 'Not present',
       );
     }
@@ -386,8 +291,7 @@ const NightscoutComponent = ({
               )}
 
               {(() => {
-                // Group reports by
-                debugger;
+                // Group reports by type
                 const agpReports: any[] = [];
                 const clusterReports: any[] = [];
 
@@ -522,15 +426,6 @@ const NightscoutComponent = ({
     );
   };
 
-  const renderDebugViewer = () => {
-    if (!debugMode) return null;
-
-    const viewerData = assessmentData?.podcastResult;
-    if (!viewerData) return null;
-
-    return <DebugInterfaceViewer data={viewerData} />;
-  };
-
   return (
     <WidgetWrapper id={id || ''} hasBackground={hasBackground} containerClass="max-w-7xl mx-auto">
       {header && <Headline header={header} titleClass="text-3xl sm:text-5xl" />}
@@ -548,105 +443,9 @@ const NightscoutComponent = ({
         </div>
       )}
 
-      {formError && (
+      {loadingError && (
         <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
-          Error loading form data: {formError}
-        </div>
-      )}
-
-      {!formSubmitted && (
-        <div className="flex items-stretch justify-center">
-          <form onSubmit={handleSubmit} className="card h-fit max-w-2xl mx-auto p-5 md:p-12">
-            {isLoading && (
-              <div className="mb-4">
-                <Progress value={progress} className="w-full" />
-                <p className="text-center mt-2 text-gray-700 dark:text-slate-200">{progressText}</p>
-              </div>
-            )}
-            {error && (
-              <div className="mb-4 p-2 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-300 rounded">
-                {error}
-              </div>
-            )}
-
-            {/* Form fields - only shown when NOT loading */}
-            {!isLoading && (
-              <>
-                {/* Nightscout URL input */}
-                <input
-                  type="text"
-                  name="nightscout_url"
-                  placeholder="Nightscout URL"
-                  value={formData.nightscout_url}
-                  onChange={handleInputChange}
-                  className="w-full p-2 mb-4 border rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-                />
-                <input
-                  type="text"
-                  name="nightscout_token"
-                  placeholder="Nightscout Token"
-                  value={formData.nightscout_token}
-                  onChange={handleInputChange}
-                  className="w-full p-2 mb-4 border rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-                />
-                <div className="w-full mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                    Preferred glucose units
-                  </label>
-                  <select
-                    name="preferred_units"
-                    value={formData.preferred_units}
-                    onChange={handleInputChange}
-                    className="w-full p-2 border rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
-                  >
-                    <option value="mg/dl">mg/dL</option>
-                    <option value="mmol/L">mmol/L</option>
-                  </select>
-                </div>
-                <label className="flex items-start mb-4 text-gray-800 dark:text-slate-200">
-                  <input
-                    type="checkbox"
-                    name="terms_accepted"
-                    checked={formData.terms_accepted}
-                    onChange={handleInputChange}
-                    className="mr-2 mt-1"
-                  />
-                  <span>
-                    I accept the <a href="/terms">Terms and Conditions</a>. I understand Goodnumbers is NOT medical
-                    advice, is a personal experimental project and very likely wrong. I will always speak to a
-                    healthcare professional before making changes to my healthcare plan, pump settings, insulin usage,
-                    etc. I accept all responsibility and liability for its use.
-                  </span>
-                </label>
-                <label className="flex items-start mb-4 text-gray-800 dark:text-slate-200">
-                  <input
-                    type="checkbox"
-                    name="responsibility_accepted"
-                    checked={formData.responsibility_accepted}
-                    onChange={handleInputChange}
-                    className="mr-2 mt-1"
-                  />
-                  <span>
-                    I have read and accept the <a href="/privacy">Privacy Policy</a>. I am consenting to sending this
-                    data, and understand I do not have to if I do not want to. I take full responsibility for the
-                    sending of this data.
-                  </span>
-                </label>
-                {/* Submit button - only shown when not loading */}
-                <button
-                  type="submit"
-                  disabled={!isFormValid}
-                  className={`w-full p-2 text-white rounded ${
-                    isFormValid
-                      ? 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700'
-                      : 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed'
-                  }`}
-                >
-                  Create weekly report
-                </button>
-              </>
-            )}
-          </form>
+          {loadingError}
         </div>
       )}
 
@@ -674,11 +473,11 @@ const NightscoutComponent = ({
             isLoading ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          Your results will appear here when we are done
+          Loading demo data...
         </div>
       )}
     </WidgetWrapper>
   );
 };
 
-export default NightscoutComponent;
+export default NightscoutDemo;
