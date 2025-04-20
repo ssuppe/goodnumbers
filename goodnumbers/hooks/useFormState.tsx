@@ -6,7 +6,7 @@ import {
   savePreferredUnits,
   loadNightscoutUrl,
   loadNightscoutToken,
-  loadPreferredUnits
+  loadPreferredUnits,
 } from '@/utils/assessmentStorage';
 
 export interface FormData {
@@ -24,7 +24,7 @@ export const useFormState = () => {
     nightscout_token: '',
     preferred_units: 'mg/dl',
     terms_accepted: false,
-    responsibility_accepted: false
+    responsibility_accepted: false,
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -32,11 +32,11 @@ export const useFormState = () => {
   // Load saved form data from localStorage on mount
   useEffect(() => {
     try {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         nightscout_url: loadNightscoutUrl() || '',
         nightscout_token: loadNightscoutToken() || '',
-        preferred_units: loadPreferredUnits() || 'mg/dl'
+        preferred_units: loadPreferredUnits() || 'mg/dl',
       }));
       setError(null);
     } catch (err) {
@@ -49,20 +49,20 @@ export const useFormState = () => {
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const target = e.target as HTMLInputElement | HTMLSelectElement;
     const name = target.name as keyof FormData;
-    
+
     if (target.type === 'checkbox') {
       const checkboxTarget = target as HTMLInputElement;
-      
-      setFormData(prev => ({
+
+      setFormData((prev) => ({
         ...prev,
-        [name]: checkboxTarget.checked
+        [name]: checkboxTarget.checked,
       }));
     } else {
       const value = target.value;
-      
-      setFormData(prev => ({
+
+      setFormData((prev) => ({
         ...prev,
-        [name]: value
+        [name]: value,
       }));
 
       // Save form field to localStorage
@@ -82,9 +82,9 @@ export const useFormState = () => {
 
   // Update a form field programmatically
   const updateFormField = useCallback((field: keyof FormData, value: string | boolean | GlucoseUnits) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
 
     // Save form field to localStorage (only for fields we want to persist)
@@ -108,7 +108,7 @@ export const useFormState = () => {
       nightscout_token: loadNightscoutToken() || '',
       preferred_units: loadPreferredUnits() || 'mg/dl',
       terms_accepted: false,
-      responsibility_accepted: false
+      responsibility_accepted: false,
     });
   }, []);
 
@@ -117,6 +117,6 @@ export const useFormState = () => {
     error,
     handleInputChange,
     updateFormField,
-    resetForm
+    resetForm,
   };
 };

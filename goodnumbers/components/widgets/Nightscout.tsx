@@ -627,9 +627,9 @@ const NightscoutComponent = ({
                     className="mr-2 mt-1"
                   />
                   <span>
-                    I have read and accept the <a href="/privacy">Privacy Policy</a>. I am consenting to sending this
-                    data, and understand I do not have to if I do not want to. I take full responsibility for the
-                    sending of this data.
+                    I have read and accept the <a href="/privacy>">Privacy policy</a>, including the use of cookies to
+                    save my report data. I am consenting to sending this data, and understand I do not have to if I do
+                    not want to. I take full responsibility for the sending of this data.
                   </span>
                 </label>
                 {/* Submit button - only shown when not loading */}
