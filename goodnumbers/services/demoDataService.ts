@@ -12,18 +12,18 @@ import { Compressed } from 'compress-json';
 export interface ComprehensiveAssessmentData {
   // Core assessment data
   assessmentData: AssessmentData;
-  
+
   // Raw Nightscout API data
   nightscoutData: {
     entries: Compressed;
     treatments: Compressed;
     profiles: Compressed;
   };
-  
+
   // Extracted for easy access
   reportItems: ReportItem[];
   podcastResult: PodcastGenerateResult | null;
-  
+
   // Metadata
   timestamp: string;
   id: string;
@@ -38,11 +38,11 @@ export async function writeAssessmentDemoData(data: ComprehensiveAssessmentData)
     console.warn('Cannot write demo data - local writing is disabled');
     return false;
   }
-  
+
   try {
     await writeLocalFile(data, {
       filename: `gemini/comprehensive/${data.id}.json`,
-      plainText: false
+      plainText: false,
     });
     console.log(`Successfully wrote demo data for ID: ${data.id}`);
     return true;
@@ -57,15 +57,10 @@ export async function writeAssessmentDemoData(data: ComprehensiveAssessmentData)
  * Only works when canReadLocal() is true
  */
 export async function readAssessmentDemoData(id: string): Promise<ComprehensiveAssessmentData | null> {
-  if (!canReadLocal()) {
-    console.warn('Cannot read demo data - local reading is disabled');
-    return null;
-  }
-  
   try {
     const data = await readLocalFile<ComprehensiveAssessmentData>({
       filename: `gemini/comprehensive/${id}.json`,
-      plainText: false
+      plainText: false,
     });
     console.log(`Successfully read demo data for ID: ${id}`);
     return data;
@@ -85,7 +80,7 @@ export async function getAvailableDemoIds(): Promise<string[]> {
     console.warn('Cannot get demo IDs - local reading is disabled');
     return [];
   }
-  
+
   try {
     // For now, return a predefined list of demo IDs
     // In a full implementation, this would scan the directory

@@ -21,7 +21,7 @@ import Headline from '../atoms/Headline';
 import WidgetWrapper from '../atoms/WidgetWrapper';
 
 // Hardcoded demo ID
-const DEMO_ID = 'demo1';
+const DEMO_ID = 'fc0eea91e2bfcb30f73960ea6abbc65afea8799f6405c8a75407d2f8a6d87be5';
 
 // Function to check if debug mode is enabled via URL parameter
 function isDebugMode(): boolean {
@@ -39,7 +39,7 @@ function isDebugMode(): boolean {
 }
 
 interface NightscoutDemoProps {
-  header?: Headers;
+  header?: Header;
   id?: string;
   hasBackground?: boolean;
 }
@@ -246,11 +246,8 @@ const NightscoutDemo = ({ header, id, hasBackground = false }: NightscoutDemoPro
           </div>
         </TabPanel>
         <TabPanel>
-          {/* StatusBadge will show processing state or error, and disappear when done */}
-          {assessmentData?.podcastResult?.status && <PodcastStatusBadge status={assessmentData.podcastResult.status} />}
-
           {/* Audio player only shows when processing is complete and URL exists */}
-          {assessmentData?.podcastResult?.status === 'done' && getCurrentPodcastResult()?.url && (
+          {getCurrentPodcastResult()?.url && (
             <>
               <h2 className="text-xl font-bold mb-2">Podcast</h2>
               <LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
@@ -277,10 +274,9 @@ const NightscoutDemo = ({ header, id, hasBackground = false }: NightscoutDemoPro
           )}
         </TabPanel>
         <TabPanel>
-          {assessmentData?.podcastResult?.status && <PodcastStatusBadge status={assessmentData.podcastResult.status} />}
           {assessmentData?.report_items && assessmentData.report_items.length > 0 ? (
             <div className="mt-4">
-              {assessmentData?.podcastResult?.status === 'done' && getCurrentPodcastResult()?.url && (
+              {getCurrentPodcastResult()?.url && (
                 <>
                   <LazyAudioPlayer audioUrl={getCurrentPodcastResult()?.url!} />
                 </>
