@@ -369,14 +369,14 @@ export async function generateAssessments(
           nightscoutData: {
             entries: cEntries,
             treatments: cTreatments,
-            profiles: cProfiles
+            profiles: cProfiles,
           },
-          reportItems: finalAssessmentData.report_items,
+          reportItems: finalAssessmentData.report_items!,
           podcastResult: podcastResult,
           timestamp: new Date().toISOString(),
-          id: id
+          id: id,
         };
-        
+
         await writeAssessmentDemoData(comprehensiveData);
         logger.info(`Demo data written successfully for ID: ${id}`);
       } catch (error) {
