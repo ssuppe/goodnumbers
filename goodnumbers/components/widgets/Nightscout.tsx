@@ -155,9 +155,9 @@ const NightscoutComponent = ({
     updateProgress(25, 'Collecting Nightscout data...');
     fetchNightscoutData({ url: formData.nightscout_url, token: formData.nightscout_token })
       .then((nightscoutData: NightscoutData) => {
-        if (debugMode) {
-          debugger; // Only trigger debugger in debug mode
-        }
+        // if (debugMode) {
+        //   debugger; // Only trigger debugger in debug mode
+        // }
         updateProgress(
           50,
           "Generating assessments (this will take a few minutes). Please don't close your browser. After, we will generate the audio of the podcast.",
@@ -387,7 +387,7 @@ const NightscoutComponent = ({
 
               {(() => {
                 // Group reports by
-                debugger;
+                // debugger;
                 const agpReports: any[] = [];
                 const clusterReports: any[] = [];
 
