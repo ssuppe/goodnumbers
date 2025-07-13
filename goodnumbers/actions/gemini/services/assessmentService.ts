@@ -49,7 +49,7 @@ export async function getAssessment(data: AssessmentData): Promise<AssessmentDat
         responseMimeType: 'text/plain',
       };
 
-      const model = getGeminiModel('gemini-1.5-pro', generationConfig);
+      const model = getGeminiModel('gemini-2.5-pro', generationConfig);
 
       let prompt: string;
       switch (templateNum) {
