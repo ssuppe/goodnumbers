@@ -80,7 +80,7 @@ const Page = () => {
               </li>
               <li>
                 <strong className="font-semibold">Retention Period:</strong> Audio reports and their associated RSS
-                files are stored on our servers for a maximum of <strong className="font-semibold">7 days</strong>.
+                files are stored on our servers for a maximum of <strong className="font-semibold">30 days</strong>.
                 After this period, they are automatically and permanently deleted.
               </li>
             </ul>
@@ -97,7 +97,7 @@ const Page = () => {
               </li>
               <li>
                 <strong className="font-semibold">Server-Side (Goodnumbers' Servers):</strong> As mentioned above, audio
-                reports are stored for a maximum of <strong className="font-semibold">7 days</strong> and then
+                reports are stored for a maximum of <strong className="font-semibold">30 days</strong> and then
                 automatically deleted.
               </li>
             </ul>
