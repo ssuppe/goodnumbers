@@ -14,4 +14,4 @@ services:
       - NODE_ENV=production
     volumes:
       # Mount the host key file to the container path (read-only)
-      - /home/ssuppe/s/goodnumbersmain-446416-eff174c6bc72.json:/app/secrets/gcp-key.json:ro
+      - /home/ssuppe/s/gcp-key.json:/app/secrets/gcp-key.json:ro
