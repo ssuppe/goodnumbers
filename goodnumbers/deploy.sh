@@ -18,7 +18,7 @@ VM_TMP_DIR="/home/${VM_USER}"         # Temp directory on VM for the tarball
 
 # --- Docker Details ---
 DOCKER_IMAGE_NAME="goodnumbers:latest" # Tag for your Docker image
-TARBALL_NAME="goodnumbers.tar"         # Filename for the saved image tarball
+TARBALL_NAME="goodnumbers.tar.gz"         # Filename for the saved image tarball
 
 # --- Local File Paths ---
 # Assuming script is run from the project root where Dockerfile is located
@@ -91,7 +91,8 @@ echo ""
 echo ">>> Step 2: Saving Docker image to tarball ($TARBALL_NAME)..."
 # Remove existing tarball if it exists to avoid confusion
 rm -f "${LOCAL_PROJECT_ROOT}/${TARBALL_NAME}"
-docker save -o "${LOCAL_PROJECT_ROOT}/${TARBALL_NAME}" "$DOCKER_IMAGE_NAME"
+docker save "$DOCKER_IMAGE_NAME" | gzip > "${LOCAL_PROJECT_ROOT}/${TARBALL_NAME}" 
+
 echo "Docker image saved successfully."
 
 echo ""
