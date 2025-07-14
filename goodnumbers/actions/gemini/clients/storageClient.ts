@@ -2,14 +2,30 @@
 
 import { Storage, Bucket } from '@google-cloud/storage';
 import { DEFAULT_AUDIO_PATH, DEFAULT_BUCKET_NAME } from './geminiClient.types.d';
+
+// Helper function for logging with timestamps
+function logWithTimestamp(level: 'log' | 'warn' | 'error', message: string, ...args: any[]) {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}`;
+  if (level === 'log') {
+    console.log(logMessage, ...args);
+  } else if (level === 'warn') {
+    console.warn(logMessage, ...args);
+  } else if (level === 'error') {
+    console.error(logMessage, ...args);
+  }
+}
+
 /**
  * Creates a Google Cloud Storage client with the specified credentials.
  * @param projectId Optional project ID. Defaults to 'goodnumbers-446416'.
  * @returns A configured Storage client instance.
  */
 function createStorageClient(projectId: string = 'goodnumbers-446416'): Storage {
+  logWithTimestamp('log', `GOOGLE_APPLICATION_CREDENTIALS: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`);
   const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   if (!credentialsPath) {
+    logWithTimestamp('error', 'GOOGLE_APPLICATION_CREDENTIALS environment variable not set.');
     throw new Error('GOOGLE_APPLICATION_CREDENTIALS environment variable not set.');
   }
 
