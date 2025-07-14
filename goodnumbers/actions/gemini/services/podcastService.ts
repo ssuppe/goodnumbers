@@ -14,6 +14,19 @@ import { Description } from '@/components/nightscout.types';
 import { generateAudioPath } from '../clients/storageClient';
 import { DEFAULT_BUCKET_NAME } from '../clients/geminiClient.types.d';
 
+// Helper function for logging with timestamps
+function logWithTimestamp(level: 'log' | 'warn' | 'error', message: string, ...args: any[]) {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}`;
+  if (level === 'log') {
+    console.log(logMessage, ...args);
+  } else if (level === 'warn') {
+    console.warn(logMessage, ...args);
+  } else if (level === 'error') {
+    console.error(logMessage, ...args);
+  }
+}
+
 /**
  * Generates podcast SSML dialog using Gemini AI, templates, and SSML validation/fixing.
  * Includes a retry mechanism for initial SSML generation and an enhancement step.
@@ -21,7 +34,7 @@ import { DEFAULT_BUCKET_NAME } from '../clients/geminiClient.types.d';
  * @returns Updated AssessmentData with the final, validated SSML dialog.
  */
 export async function generatePodcastText(data: AssessmentData): Promise<AssessmentData> {
-  console.log('Attempting to generate podcast SSML dialog...');
+  logWithTimestamp('log', 'Attempting to generate podcast SSML dialog...');
 
   const MAX_TRIES = 3;
   let validatedEnhancedSsml: string | null = null; // Holds the final, validated SSML after enhancement
@@ -33,27 +46,30 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
     try {
       const cachedSsml = await readLocalFile<string>({ filename: 'gemini/pass4_final_enhanced.txt', plainText: true }); // Cache the enhanced version
       if (cachedSsml) {
-        console.log('SSML dialog read from local cache (pass4_final_enhanced.txt). Re-validating...');
+        logWithTimestamp('log', 'SSML dialog read from local cache (pass4_final_enhanced.txt). Re-validating...');
         // Re-validate cached SSML to ensure it's still good
         const validationResult = validateAndFixSsml(cachedSsml);
         if (validationResult.error === null && validationResult.correctedSsml) {
           validatedEnhancedSsml = validationResult.correctedSsml;
           successfulGeneration = true;
-          console.log('Cached SSML is valid.');
+          logWithTimestamp('log', 'Cached SSML is valid.');
           // Optionally log warnings from re-validation
           if (validationResult.warnings.length > 0) {
-            console.warn('Warnings during re-validation of cached SSML:', validationResult.warnings);
+            logWithTimestamp('warn',
+              'Warnings during re-validation of cached SSML:',
+              validationResult.warnings,
+            );
           }
         } else {
-          console.warn(
+          logWithTimestamp('warn',
             'Cached SSML is invalid or could not be fixed. Proceeding with generation.',
             validationResult.error,
           );
-          // Optionally log warnings: console.warn('Warnings:', validationResult.warnings);
+          // Optionally log warnings: logWithTimestamp('warn','Warnings:', validationResult.warnings);
         }
       }
     } catch (cacheError) {
-      console.warn('Local cache read failed for pass4_final_enhanced.txt, proceeding with generation.');
+      logWithTimestamp('warn', 'Local cache read failed for pass4_final_enhanced.txt, proceeding with generation.');
       // Ignore cache read error
     }
   }
@@ -92,7 +108,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
       // --- Retry Loop ---
       while (!successfulGeneration && attempt < MAX_TRIES) {
         attempt++;
-        console.log(`--- Generating SSML - Attempt ${attempt} / ${MAX_TRIES} ---`);
+        logWithTimestamp('log', `--- Generating SSML - Attempt ${attempt} / ${MAX_TRIES} ---`);
 
         let initialSsml: string | null = null;
         let correctedInitialSsml: string | null = null;
@@ -100,28 +116,28 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
 
         // 1. Generate Initial SSML
         try {
-          console.log(`Generating initial SSML draft (Attempt ${attempt})...`);
+          logWithTimestamp('log', `Generating initial SSML draft (Attempt ${attempt})...`);
           const response = await initialModel.generateContent(initialPrompt);
           initialSsml = response.response.text();
           // Basic cleanup (optional, but can help before validation)
           initialSsml = initialSsml!.replaceAll('<laughs>', '').replaceAll('```', ''); // Example cleanup
         } catch (genError) {
-          console.error(`Error during initial SSML generation (Attempt ${attempt}):`, genError);
+          logWithTimestamp('error', `Error during initial SSML generation (Attempt ${attempt}):`, genError);
           // Decide if this error should count as a failed attempt or be retried immediately
           continue; // Skip to the next attempt
         }
 
         if (!initialSsml) {
-          console.warn(`Initial SSML generation returned empty content (Attempt ${attempt}).`);
+          logWithTimestamp('warn', `Initial SSML generation returned empty content (Attempt ${attempt}).`);
           continue; // Skip to the next attempt
         }
 
         // 2. Validate and Fix Initial SSML
-        console.log(`Validating initial SSML (Attempt ${attempt})...`);
+        logWithTimestamp('log', `Validating initial SSML (Attempt ${attempt})...`);
         initialValidationResult = validateAndFixSsml(initialSsml);
 
         if (initialValidationResult.warnings.length > 0) {
-          console.warn(
+          logWithTimestamp('warn',
             `Warnings during initial SSML validation (Attempt ${attempt}):`,
             initialValidationResult.warnings,
           );
@@ -129,7 +145,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
 
         if (initialValidationResult.error !== null) {
           // Initial SSML is invalid and could NOT be fixed
-          console.error(
+          logWithTimestamp('error',
             `Attempt ${attempt}: Invalid initial SSML that couldn't be fixed. Error: ${initialValidationResult.error}`,
           );
           if (canWriteLocal()) {
@@ -140,24 +156,24 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
                 plainText: true,
               });
             } catch (writeError) {
-              console.error('Failed to write invalid SSML log:', writeError);
+              logWithTimestamp('error', 'Failed to write invalid SSML log:', writeError);
             }
           }
           // Loop will continue to the next attempt if MAX_TRIES not reached
         } else {
           // Initial SSML is valid (or was successfully fixed)
-          console.log(`Attempt ${attempt}: Initial SSML is valid or was fixed.`);
+          logWithTimestamp('log', `Attempt ${attempt}: Initial SSML is valid or was fixed.`);
           correctedInitialSsml = initialValidationResult.correctedSsml!;
 
           if (!correctedInitialSsml) {
-            console.error(
+            logWithTimestamp('error',
               `Attempt ${attempt}: Initial SSML validation succeeded but corrected SSML is unexpectedly empty.`,
             );
             continue; // Treat as failure for this attempt
           }
 
           // 3. Enhance Validated Initial SSML
-          console.log(`Enhancing SSML (Attempt ${attempt})...`);
+          logWithTimestamp('log', `Enhancing SSML (Attempt ${attempt})...`);
           let enhancedSsml: string | null = null;
           try {
             const enhancedPrompt = interpolate(template4, {
@@ -172,23 +188,23 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
               .trim();
             enhancedSsml = enhancedSsml?.replace(/\\n/g, '\n'); // Fix escaped newlines if necessary
           } catch (enhanceError) {
-            console.error(`Error during SSML enhancement (Attempt ${attempt}):`, enhanceError);
+            logWithTimestamp('error', `Error during SSML enhancement (Attempt ${attempt}):`, enhanceError);
             // Decide if enhancement failure should stop the process or just skip enhancement for this try
             // For now, let's treat enhancement failure as a reason to retry the whole process
             continue; // Skip to the next attempt
           }
 
           if (!enhancedSsml) {
-            console.warn(`SSML enhancement returned empty content (Attempt ${attempt}).`);
+            logWithTimestamp('warn', `SSML enhancement returned empty content (Attempt ${attempt}).`);
             continue; // Skip to the next attempt
           }
 
           // 4. Validate and Fix Enhanced SSML
-          console.log(`Validating enhanced SSML (Attempt ${attempt})...`);
+          logWithTimestamp('log', `Validating enhanced SSML (Attempt ${attempt})...`);
           const enhancedValidationResult = validateAndFixSsml(enhancedSsml);
 
           if (enhancedValidationResult.warnings.length > 0) {
-            console.warn(
+            logWithTimestamp('warn',
               `Warnings during enhanced SSML validation (Attempt ${attempt}):`,
               enhancedValidationResult.warnings,
             );
@@ -196,7 +212,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
 
           if (enhancedValidationResult.error === null && enhancedValidationResult.correctedSsml) {
             // SUCCESS! Enhanced SSML is valid (or was fixed)
-            console.log(`--- Attempt ${attempt}: Successfully generated and validated enhanced SSML! ---`);
+            logWithTimestamp('log', `--- Attempt ${attempt}: Successfully generated and validated enhanced SSML! ---`);
             validatedEnhancedSsml = enhancedValidationResult.correctedSsml;
             successfulGeneration = true; // Set flag to exit the loop
 
@@ -207,16 +223,16 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
                   filename: 'gemini/pass4_final_enhanced.txt',
                   plainText: true,
                 });
-                console.log('Final enhanced SSML written to local cache.');
+                logWithTimestamp('log', 'Final enhanced SSML written to local cache.');
               } catch (writeError) {
-                console.error('Failed to write final enhanced SSML to cache:', writeError);
+                logWithTimestamp('error', 'Failed to write final enhanced SSML to cache:', writeError);
               }
             }
             // Break the loop explicitly (though successfulGeneration flag would also do it)
             break;
           } else {
             // Enhanced SSML failed validation and couldn't be fixed
-            console.error(
+            logWithTimestamp('error',
               `Attempt ${attempt}: Enhanced SSML failed validation or fixing. Error: ${enhancedValidationResult.error}`,
             );
             if (canWriteLocal()) {
@@ -227,7 +243,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
                   plainText: true,
                 });
               } catch (writeError) {
-                console.error('Failed to write invalid enhanced SSML log:', writeError);
+                logWithTimestamp('error', 'Failed to write invalid enhanced SSML log:', writeError);
               }
             }
             // Let the loop continue to retry the *entire* process (initial generation + enhancement)
@@ -247,11 +263,11 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
   // --- Final Check and Return ---
   if (!successfulGeneration || !validatedEnhancedSsml) {
     // Only throw if we exhausted retries *and* didn't succeed via cache or generation
-    console.error(`Failed to generate valid SSML after ${attempt} attempts.`);
+    logWithTimestamp('error', `Failed to generate valid SSML after ${attempt} attempts.`);
     throw new Error(`Failed to generate valid and enhanced SSML after ${MAX_TRIES} attempts.`);
   }
 
-  console.log('Podcast SSML generation completed successfully.');
+  logWithTimestamp('log', 'Podcast SSML generation completed successfully.');
   return {
     ...data, // Preserve all original data
     valid: true, // Mark as valid because we have successful SSML
@@ -266,7 +282,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
  * @returns Updated AssessmentData with title and description.
  */
 export async function generatePodcastDescription(data: AssessmentData): Promise<AssessmentData> {
-  console.log('Generating podcast title and description');
+  logWithTimestamp('log', 'Generating podcast title and description');
 
   try {
     // Load and interpolate template
@@ -319,7 +335,7 @@ export async function generatePodcastDescription(data: AssessmentData): Promise<
     };
   } catch (error) {
     if (error instanceof Error) {
-      console.error('Error:', error.message);
+      logWithTimestamp('error', 'Error:', error.message);
       throw new Error(`Failed to generate podcast text: ${error.message}`);
     }
     throw new Error('Unknown error occurred during podcast text generation');
@@ -336,8 +352,11 @@ export async function generatePodcastAudio(podcast: AssessmentData): Promise<Pod
     throw new Error(`Invalid dialog: ${podcast.ssml_dialog}`);
   }
 
+  logWithTimestamp('log', `GOOGLE_APPLICATION_CREDENTIALS: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`);
+
   const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   if (!credentialsPath) {
+    logWithTimestamp('error', 'GOOGLE_APPLICATION_CREDENTIALS environment variable not set.');
     throw new Error('GOOGLE_APPLICATION_CREDENTIALS environment variable not set.');
   }
 
@@ -376,7 +395,7 @@ export async function generatePodcastAudio(podcast: AssessmentData): Promise<Pod
       description,
     };
   } catch (error) {
-    console.error('Error in generatePodcastAudio:', error);
+    logWithTimestamp('error', 'Error in generatePodcastAudio:', error);
     throw error;
   }
 }

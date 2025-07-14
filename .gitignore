@@ -38,3 +38,6 @@ entries.json
 treatments.json
 *tar
 *gz
+
+# Ignore Python virtual environments
+venv/

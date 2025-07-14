@@ -25,6 +25,19 @@ import Headline from '../atoms/Headline';
 import WidgetWrapper from '../atoms/WidgetWrapper';
 import { checkPodcastStatus } from '@/actions/gemini/services/podcastService';
 
+// Helper function for logging with timestamps
+function logWithTimestamp(level: 'log' | 'warn' | 'error', message: string, ...args: any[]) {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}`;
+  if (level === 'log') {
+    console.log(logMessage, ...args);
+  } else if (level === 'warn') {
+    console.warn(logMessage, ...args);
+  } else if (level === 'error') {
+    console.error(logMessage, ...args);
+  }
+}
+
 // Function to check if debug mode is enabled via URL parameter
 function isDebugMode(): boolean {
   if (typeof window !== 'undefined') {
@@ -33,7 +46,7 @@ function isDebugMode(): boolean {
       return urlParams.get('debug') === '1';
     } catch (e) {
       // If there's an error parsing URL params, default to false
-      console.error('Error checking debug mode:', e);
+      logWithTimestamp('error', 'Error checking debug mode:', e);
       return false;
     }
   }
@@ -77,7 +90,7 @@ const NightscoutComponent = ({
   // Debug assessment data at component level
   useEffect(() => {
     if (debugMode && assessmentData) {
-      console.log('Nightscout component assessment data:', {
+      logWithTimestamp('log', 'Nightscout component assessment data:', {
         hasAssessmentData: Boolean(assessmentData),
         hasDialog: Boolean(assessmentData?.ssml_dialog),
         dialogLength: assessmentData?.ssml_dialog?.length || 0,
@@ -145,7 +158,7 @@ const NightscoutComponent = ({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     if (debugMode) {
-      console.log('Form submission started');
+      logWithTimestamp('log', 'Form submission started');
     }
 
     e.preventDefault();
@@ -153,8 +166,10 @@ const NightscoutComponent = ({
 
     // First handle the Nightscout data fetch
     updateProgress(25, 'Collecting Nightscout data...');
+    logWithTimestamp('log', 'Fetching Nightscout data...');
     fetchNightscoutData({ url: formData.nightscout_url, token: formData.nightscout_token })
       .then((nightscoutData: NightscoutData) => {
+        logWithTimestamp('log', 'Nightscout data fetched. Compressing and generating hash...');
         // if (debugMode) {
         //   debugger; // Only trigger debugger in debug mode
         // }
@@ -170,6 +185,7 @@ const NightscoutComponent = ({
 
         // Store the compressed entries and treatments in localStorage for future reference by cluster visualization
         return createHash(formData.nightscout_url, formData.nightscout_token).then((hash) => {
+          logWithTimestamp('log', `Hash created: ${hash}. Storing data locally and generating assessments...`);
           // Save entries data separately with the hash as reference
           const entriesStorageKey = `goodnumbers-nightscout-entries-${hash}`;
           localStorage.setItem(
@@ -200,6 +216,7 @@ const NightscoutComponent = ({
         });
       })
       .then((data) => {
+        logWithTimestamp('log', 'Assessments generated. Updating UI...');
         const now = new Date();
         const formattedTimestamp = now
           .toLocaleString('en-GB', {
@@ -229,9 +246,11 @@ const NightscoutComponent = ({
         }
       })
       .catch((error) => {
+        logWithTimestamp('error', 'Form submission error:', error);
         setLoadingError(error instanceof Error ? error.message : 'An unexpected error occurred');
       })
       .finally(() => {
+        logWithTimestamp('log', 'Form submission process finished.');
         stopLoading();
       });
   };
