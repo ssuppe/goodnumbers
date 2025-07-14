@@ -104,7 +104,8 @@ echo ""
 echo ">>> Step 4: Transferring files to VM (${VM_USER}@${VM_IP})..."
 
 echo "  - Transferring image tarball..."
-scp "${LOCAL_PROJECT_ROOT}/${TARBALL_NAME}" "${VM_USER}@${VM_IP}:${VM_TMP_DIR}/"
+  # scp "${LOCAL_PROJECT_ROOT}/${TARBALL_NAME}" "${VM_USER}@${VM_IP}:${VM_TMP_DIR}/"
+rsync -avzhP "${LOCAL_PROJECT_ROOT}/${TARBALL_NAME}" "${VM_USER}@${VM_IP}:${VM_TMP_DIR}/"
 
 echo "  - Transferring docker-compose.yml..."
 scp "$LOCAL_COMPOSE_FILE" "${VM_USER}@${VM_IP}:${VM_APP_DIR}/"
