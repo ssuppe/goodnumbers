@@ -1,9 +1,5 @@
 {
   "mcpServers": {
-    "my-tools": {
-      "command": "./tools/gemini-mcp-server/venv/bin/python",
-      "args": ["tools/gemini-mcp-server/server.py"]
-    },
     "github": {
       "httpUrl": "https://api.githubcopilot.com/mcp/",
       "headers": {
