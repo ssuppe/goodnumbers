@@ -78,7 +78,10 @@ echo "SA Key (Local):     $LOCAL_SERVICE_ACCOUNT_KEY"
 echo "SA Key (Remote):    ${VM_SECRETS_DIR}/${REMOTE_SERVICE_ACCOUNT_KEY_NAME}"
 echo "=============================="
 
-read -p "Proceed with deployment? (y/N) " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
+# Check for -yes flag to skip confirmation
+if [[ "${1-}" != "-yes" ]]; then
+  read -p "Proceed with deployment? (y/N) " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
+fi
 
 # === Deployment Steps ===
 
