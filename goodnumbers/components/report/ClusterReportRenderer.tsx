@@ -66,13 +66,13 @@ export function ClusterReportRenderer({
             if (parsedData && parsedData.entries) {
               const decompressedEntries = decompress(parsedData.entries);
               setEntries(decompressedEntries);
-              console.log('Retrieved entries for cluster:', {
-                count: decompressedEntries.length,
-                firstEntry: decompressedEntries.length > 0 ? 
-                  new Date(decompressedEntries[0].date).toISOString() : 'none',
-                lastEntry: decompressedEntries.length > 0 ? 
-                  new Date(decompressedEntries[decompressedEntries.length - 1].date).toISOString() : 'none'
-              });
+              // console.log('Retrieved entries for cluster:', {
+              //   count: decompressedEntries.length,
+              //   firstEntry: decompressedEntries.length > 0 ? 
+              //     new Date(decompressedEntries[0].date).toISOString() : 'none',
+              //   lastEntry: decompressedEntries.length > 0 ? 
+              //     new Date(decompressedEntries[decompressedEntries.length - 1].date).toISOString() : 'none'
+              // });
             } else {
               setError('Invalid entries data in storage');
             }
@@ -87,10 +87,10 @@ export function ClusterReportRenderer({
               if (parsedTreatmentsData && parsedTreatmentsData.treatments) {
                 const decompressedTreatments = decompress(parsedTreatmentsData.treatments);
                 setTreatments(decompressedTreatments);
-                console.log('Retrieved treatments for cluster:', {
-                  count: decompressedTreatments.length,
-                  hasMealData: decompressedTreatments.some((t: NightscoutTreatment) => t.carbs && t.carbs > 0)
-                });
+                // console.log('Retrieved treatments for cluster:', {
+                //   count: decompressedTreatments.length,
+                //   hasMealData: decompressedTreatments.some((t: NightscoutTreatment) => t.carbs && t.carbs > 0)
+                // });
               }
             } catch (treatmentError) {
               // Just log but don't set error state - treatments are optional
