@@ -55,13 +55,11 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
           logWithTimestamp('log', 'Cached SSML is valid.');
           // Optionally log warnings from re-validation
           if (validationResult.warnings.length > 0) {
-            logWithTimestamp('warn',
-              'Warnings during re-validation of cached SSML:',
-              validationResult.warnings,
-            );
+            logWithTimestamp('warn', 'Warnings during re-validation of cached SSML:', validationResult.warnings);
           }
         } else {
-          logWithTimestamp('warn',
+          logWithTimestamp(
+            'warn',
             'Cached SSML is invalid or could not be fixed. Proceeding with generation.',
             validationResult.error,
           );
@@ -85,7 +83,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
         maxOutputTokens: 128000, // Adjust as needed, consider SSML size limits
         responseMimeType: 'text/plain',
       };
-      const initialModel = getGeminiModel('gemini-1.5-pro', initialGenConfig);
+      const initialModel = getGeminiModel('gemini-2.5-pro', initialGenConfig);
 
       const template3 = await loadTemplate('pass3.txt');
       const initialPrompt = interpolate(template3, {
@@ -101,7 +99,7 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
         maxOutputTokens: 128000, // Ensure enough tokens for potentially longer enhanced SSML
         responseMimeType: 'text/plain', // Assuming enhancement also returns plain text SSML
       };
-      const enhancementModel = getGeminiModel('gemini-1.5-flash', enhancedGenConfig);
+      const enhancementModel = getGeminiModel('gemini-2.5-flash', enhancedGenConfig);
 
       const template4 = await loadTemplate('pass4.txt');
 
@@ -137,7 +135,8 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
         initialValidationResult = validateAndFixSsml(initialSsml);
 
         if (initialValidationResult.warnings.length > 0) {
-          logWithTimestamp('warn',
+          logWithTimestamp(
+            'warn',
             `Warnings during initial SSML validation (Attempt ${attempt}):`,
             initialValidationResult.warnings,
           );
@@ -145,7 +144,8 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
 
         if (initialValidationResult.error !== null) {
           // Initial SSML is invalid and could NOT be fixed
-          logWithTimestamp('error',
+          logWithTimestamp(
+            'error',
             `Attempt ${attempt}: Invalid initial SSML that couldn't be fixed. Error: ${initialValidationResult.error}`,
           );
           if (canWriteLocal()) {
@@ -166,7 +166,8 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
           correctedInitialSsml = initialValidationResult.correctedSsml!;
 
           if (!correctedInitialSsml) {
-            logWithTimestamp('error',
+            logWithTimestamp(
+              'error',
               `Attempt ${attempt}: Initial SSML validation succeeded but corrected SSML is unexpectedly empty.`,
             );
             continue; // Treat as failure for this attempt
@@ -204,7 +205,8 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
           const enhancedValidationResult = validateAndFixSsml(enhancedSsml);
 
           if (enhancedValidationResult.warnings.length > 0) {
-            logWithTimestamp('warn',
+            logWithTimestamp(
+              'warn',
               `Warnings during enhanced SSML validation (Attempt ${attempt}):`,
               enhancedValidationResult.warnings,
             );
@@ -232,7 +234,8 @@ export async function generatePodcastText(data: AssessmentData): Promise<Assessm
             break;
           } else {
             // Enhanced SSML failed validation and couldn't be fixed
-            logWithTimestamp('error',
+            logWithTimestamp(
+              'error',
               `Attempt ${attempt}: Enhanced SSML failed validation or fixing. Error: ${enhancedValidationResult.error}`,
             );
             if (canWriteLocal()) {
@@ -313,7 +316,7 @@ export async function generatePodcastDescription(data: AssessmentData): Promise<
       responseSchema: description_schema,
     };
 
-    let model = getGeminiModel('gemini-1.5-flash', generationConfig);
+    let model = getGeminiModel('gemini-2.5-flash', generationConfig);
 
     var response: Description = await asyncGenerateJson<Description>(prompt, model);
     response = response;
