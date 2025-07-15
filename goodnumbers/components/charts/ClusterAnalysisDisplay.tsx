@@ -124,23 +124,23 @@ export function ClusterAnalysisDisplay({
   };
 
   // Log cluster details for debugging (keeping this as is)
-  React.useEffect(() => {
-    console.log('Cluster analysis data:', {
-      eventType: cluster.eventType,
-      count: cluster.count,
-      meanTime: minutesToTimeString(cluster.meanTime),
-      timeRange: {
-        earliest: minutesToTimeString(cluster.startTimeRange.earliest),
-        latest: minutesToTimeString(cluster.startTimeRange.latest),
-      },
-      events: cluster.events.map((e) => ({
-        start: e.start_timestamp,
-        end: e.end_timestamp,
-        duration: e.duration_minutes,
-        extreme: e.extreme_bg_mgdl,
-      })),
-    });
-  }, [cluster]);
+  // React.useEffect(() => {
+  //   console.log('Cluster analysis data:', {
+  //     eventType: cluster.eventType,
+  //     count: cluster.count,
+  //     meanTime: minutesToTimeString(cluster.meanTime),
+  //     timeRange: {
+  //       earliest: minutesToTimeString(cluster.startTimeRange.earliest),
+  //       latest: minutesToTimeString(cluster.startTimeRange.latest),
+  //     },
+  //     events: cluster.events.map((e) => ({
+  //       start: e.start_timestamp,
+  //       end: e.end_timestamp,
+  //       duration: e.duration_minutes,
+  //       extreme: e.extreme_bg_mgdl,
+  //     })),
+  //   });
+  // }, [cluster]);
 
   // Generate a cluster summary
   const clusterSummary = `${cluster.count} ${getEventTypeName(cluster.eventType)} events
