@@ -18,17 +18,17 @@ VM_TMP_DIR="/home/${VM_USER}"         # Temp directory on VM for the tarball
 
 # --- Docker Details ---
 DOCKER_IMAGE_NAME="goodnumbers:latest" # Tag for your Docker image
-TARBALL_NAME="goodnumbers.tar"         # Filename for the saved image tarball
+TARBALL_NAME="goodnumbers.tar.gz"         # Filename for the saved image tarball
 
 # --- Local File Paths ---
 # Assuming script is run from the project root where Dockerfile is located
-LOCAL_PROJECT_ROOT=$(pwd) # Get current directory
+LOCAL_PROJECT_ROOT="$(pwd)/goodnumbers" # Get current directory
 LOCAL_ENV_FILE="${LOCAL_PROJECT_ROOT}/.env.production"
 LOCAL_SECRETS_FILE="${LOCAL_PROJECT_ROOT}/.env.secrets"
 LOCAL_COMPOSE_FILE="${LOCAL_PROJECT_ROOT}/docker-compose.yml"
 
 # IMPORTANT: Set the correct path to your Service Account key file
-LOCAL_SERVICE_ACCOUNT_KEY="../../envs/goodnumbersmain-446416-eff174c6bc72.json"
+LOCAL_SERVICE_ACCOUNT_KEY="/home/ssuppe/vscode/envs/goodnumbersmain-446416-eff174c6bc72.json"
 
 # --- Remote File Names ---
 REMOTE_SERVICE_ACCOUNT_KEY_NAME="gcp-key.json" # Name you want the key file to have on the VM
@@ -78,7 +78,10 @@ echo "SA Key (Local):     $LOCAL_SERVICE_ACCOUNT_KEY"
 echo "SA Key (Remote):    ${VM_SECRETS_DIR}/${REMOTE_SERVICE_ACCOUNT_KEY_NAME}"
 echo "=============================="
 
-read -p "Proceed with deployment? (y/N) " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
+# Check for -yes flag to skip confirmation
+if [[ "${1-}" != "-yes" ]]; then
+  read -p "Proceed with deployment? (y/N) " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
+fi
 
 # === Deployment Steps ===
 
@@ -91,7 +94,8 @@ echo ""
 echo ">>> Step 2: Saving Docker image to tarball ($TARBALL_NAME)..."
 # Remove existing tarball if it exists to avoid confusion
 rm -f "${LOCAL_PROJECT_ROOT}/${TARBALL_NAME}"
-docker save -o "${LOCAL_PROJECT_ROOT}/${TARBALL_NAME}" "$DOCKER_IMAGE_NAME"
+docker save "$DOCKER_IMAGE_NAME" | gzip > "${LOCAL_PROJECT_ROOT}/${TARBALL_NAME}" 
+
 echo "Docker image saved successfully."
 
 echo ""
@@ -103,7 +107,8 @@ echo ""
 echo ">>> Step 4: Transferring files to VM (${VM_USER}@${VM_IP})..."
 
 echo "  - Transferring image tarball..."
-scp "${LOCAL_PROJECT_ROOT}/${TARBALL_NAME}" "${VM_USER}@${VM_IP}:${VM_TMP_DIR}/"
+  # scp "${LOCAL_PROJECT_ROOT}/${TARBALL_NAME}" "${VM_USER}@${VM_IP}:${VM_TMP_DIR}/"
+rsync -avzhP "${LOCAL_PROJECT_ROOT}/${TARBALL_NAME}" "${VM_USER}@${VM_IP}:${VM_TMP_DIR}/"
 
 echo "  - Transferring docker-compose.yml..."
 scp "$LOCAL_COMPOSE_FILE" "${VM_USER}@${VM_IP}:${VM_APP_DIR}/"

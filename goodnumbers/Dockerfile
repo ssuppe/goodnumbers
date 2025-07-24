@@ -20,6 +20,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/gemini/comprehensive/ ./gemini/comprehensive/
+COPY --from=builder --chown=nextjs:nodejs /app/actions ./actions
 
 USER nextjs
 EXPOSE 3000
