@@ -15,11 +15,11 @@ export const useAssessmentState = () => {
       const storedData = loadAssessmentData();
       
       if (storedData) {
-        console.log('Setting assessment data with ssml_dialog:', storedData.ssml_dialog ? 'Present' : 'Not present');
-        console.log(
-          'Setting assessment data with report_items:',
-          storedData.report_items ? `Present (${storedData.report_items.length} items)` : 'Not present',
-        );
+        // console.log('Setting assessment data with ssml_dialog:', storedData.ssml_dialog ? 'Present' : 'Not present');
+        // console.log(
+        //   'Setting assessment data with report_items:',
+        //   storedData.report_items ? `Present (${storedData.report_items.length} items)` : 'Not present',
+        // );
         setAssessmentData(storedData);
       }
 
