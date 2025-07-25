@@ -1,27 +1,53 @@
 # Goodnumbers Weekly Health Journal PRD
 
-GoodNumbers is a weekly health journal that is a combination of a diary/bullet journal, statistical analyzer and AI coach. The goal of GoodNumbers is to give Type 1 Diabetics a weekly practice of self-reflection:
+Revision: v0.1
+
+GoodNumbers is a weekly health journal that is a combination of a diary/bullet journal, statistical analyzer and AI coach. The goal of GoodNumbers is to give Type 1 Diabetics a weekly practice of self-reflection, including:
 
 - A pause in the week to look back over the last week, see how they are feeling, and celebrate wins and places to improve
-- Utilizing statistical analyses to take the work out of finding the problem areas and hotspots in their blood glucose management.
+- Reviewing trends, ‘problem areas’ and ‘hotspots’ in their blood glucose number s(eg, highs and lows). GoodNumbers will provide statistical analyses to take the work out of finding the problem areas and hotspots in their blood glucose management.
 - Use AI to take in their personal experiences, correlate to the data, and provide a report (in the form of text/charts as well as a personal podcast) so they can improve for the next week.
 
 GoodNumbers is meant to be motivating \- there is no judgement \- just recognition of a hard job well done (managing blood glucose) and providing real data and feedback on how to improve.
 
 It should be noted that GoodNumbers does NOT provide medical advice \- rather, it recognizes patterns and makes /general/ recommendations that the patient should then take to their doctor or medical healthcare team.
 
-Here is a textual description of the workflow and basic functionality.
-
 # Home page
 
-- I have code for this already. It's a standard landing page that explains what good numbers is, and has two calls to action \- see a demo (which links to a single report page with static saved data in the client, it's not a live demo tied to the backend), and Login, which leads to the login page
-- There is a banner across the top in red that explains this is an experimental website and very likely wrong . I have copy for this and can provide a demo. This banner would be on all pages, even logged in ones
+<a id="homepage-screenshot"></a>
+![Home page screenshot](imgs/goodnumbers_homepage.png 'Goodnumbers homepage')
 
-# Login
+- I have code for this already which we can use as inspiration (but does not need to be followed exactly, as we are moving from [Next.js](http://Next.js) to [Express.js](http://Express.js))
 
-- This should be a simple page with the ability to log in or create an account
-- Before being able to sign up, there are two checkboxes they need to click to accept the terms of service and the fact this is all experimental and should not take the place of
-- For now, let's just support logging in with Google oauth using passport.us
+| Name of component/area | Description for PM/AI reader                                                                                                | String                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| :--------------------- | :-------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Banner component       | There is a reusable banner component that we will render on most pages. It is described in detail in another section below. | NOTE: GoodNumbers is an experiment and is for educational use only. Do not make any changes to your diabetic healthcare plan without speaking to your doctor.                                                                                                                                                                                                                                                                                |
+| Headline               |                                                                                                                             | A smart weekly journal for type 1 diabetics                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Paragraph              |                                                                                                                             | **GoodNumbers** is an experimental weekly journal to help type 1 diabetics reflect and improve their blood sugar levels week to week. It uses a mix of good old statistical analysis to help you zero in on troublesome trends and identify patterns. It then leverages AI to help you reflect on strategies to address them. Use it for self-reflection, to find your blind spots in your diabetes management, and to continuously improve. |
+| Button 1               | Links the [Demo Page](#demo-page) with static saved data in the client, it's not a live demo tied to the backend            | See a demo                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Button 2               | Leads to the[Login page](#login-page)                                                                                       | Login / Register                                                                                                                                                                                                                                                                                                                                                                                                                             |
+
+# Banner component
+
+The banner component is a reusable component of the following attributes:
+
+export const announcementData: AnnouncementProps = {
+title: 'NOTE',
+callToAction: {
+text: 'GoodNumbers is an experiment and is for educational use only. Do not make any changes to your diabetic healthcare plan without speaking to your doctor.',
+href: 'https://nextjs.org/blog/next-14'
+}
+};
+
+The title gets a special UI treatment you can see in [Homepage Screenshot](#homepage-screenshot).
+
+# Login page {#login-page}
+
+Login page PRD and specification can be found at [Login page](LOGIN.md).
+
+# Demo Page
+
+TBD, but will essentially be a flat single report from an example user.
 
 # Setup Account
 
@@ -29,10 +55,9 @@ Here is a textual description of the workflow and basic functionality.
   - CGM Provider \- this should be a dropdown where the user can choose which CGM system they use, so we can query for historical blood glucose, meal times, insulin profiles, etc
     - Currently we only support one CGM provider \- Nightscout
   - After choosing the Provider, we should show the required fields for that provider
-    - For Nightscout, the following fields are required:
+    - For Nightscout, the following fields are required
       - Nightscout URL (text field)
-      - Nightscout Token (text field)
-      - A "Test" button will be provided to validate the Nightscout credentials. This will trigger a server-side call to `https://<nightscout_url>/api/v1/status?token=<nightscout_token>` and confirm a successful (HTTP 200) response.
+  - Nightscout Toekn
 
 # Dashboard
 
@@ -41,7 +66,6 @@ Here is a textual description of the workflow and basic functionality.
   - Users shouldn’t be able to create new Journals all the time. This will be costly to the platform, and also the user needs to spend roughly a week or more between Journals so they have new behavior and data to reflect on. Therefore the “Start Journal” button should only be enabled if one or more of the following pieces of logic are true:
     - It’s been 5 or more days since the last Journal
     - There are no other Journals
-  - When the "Start Journal" button is disabled, a clear, persistent text banner will be displayed near the button explaining when the user can create their next entry (e.g., "You have another X days before you can write your next journal entry").
 - Underneath it should have “Past weeks”, which is a list of cards with dates, a small summary (which will be created when the journal is created), and a view button.
   - If there are no Historical Journals, this section shouldn’t be shown
   - Historical Journals should be shown in reverse chronological order (newest first)
@@ -57,27 +81,16 @@ Here is a textual description of the workflow and basic functionality.
 
 ## Loading phase
 
-- When a new Journal is first created, the user is taken to a dedicated loading page while the analysis is performed. This page will display:
-  - The GoodNumbers logo or name.
-  - A rotating motivational quote to create a positive waiting experience.
-  - A progress bar and text that updates to reflect the current stage of the analysis (e.g., "Fetching data," "Analyzing patterns," "Generating podcast").
-  - If the CGM data fetch fails, the loading screen will display the full error message and a link to the "Account Settings" page to help with debugging.
-  - If any part of the AI analysis or podcast generation fails, the entire process will be halted. The loading screen will display the full error message, and the journal will not be created.
-- During this phase, the following data is queried and processed:
+- When a new Journal is first created (not edited from draft, but first time), a number of things have to be queried, created and saved for this Journal. This data is NOT user input. This includes:
   - Blood glucose data for the last 7 days
   - Treatments (insulin, meals) for the last 7 days
   - Profile data (for the last 7 days)
   - Currently all this data is pulled _client side_ and then prepared/passed to the server. This is a TBD decision if this is the right way to do it.
 - Once all that data is collected, then there is a pre-analysis that is done on the server. This means the above data needs to be sent to the backend to do the following:
-  - Run through non-AI data analysis tools to do timeseries analysis. This generates a structured text document called "Notes" that is passed to the AI. The "Notes" document begins with the date range of the analysis and the user's preferred glucose units (mg/dL or mmol/L) and is divided into two main sections:
-    - **Weekly Overview:** A summary of high-level statistics for the entire period, including:
-        - Average blood glucose
-        - GMI (Glucose Management Indicator, an A1c estimate)
-        - Time in Range (TIR), Time Above Range (TAR), and Time Below Range (TBR) percentages.
-        - Key measures of glycemic variability.
-    - **Glycemic Pattern Analysis:** This section identifies and describes recurring "hotspots" of high or low blood glucose. For each significant pattern, it provides a summary like:
-        - "Pattern 1: 4 high events detected, typically occurring around 9:45 AM."
-        - It also includes an initial AI-generated insight that attempts to identify the potential cause of the pattern (e.g., relating a high to meal times).
+  - Run through non-AI data analysis tools to do timeseries analysis (averages, finding low and high periods, and more). I have working code for this, we can get into the details later. We will call this “Notes”. This analysis is structured \- it includes
+    - A weekly overview
+    - Summaries of hotspots (ie, common times of day over the last week where the patient was high or low)
+    - Currently these summaries are created using non-AI (ie, hardcoded text)
   - Send the data to Gemini for additional analysis which creates an audio podcast
     - This is actually a server-side pipeline that calls Gemini several times in order to:
       - Pass 1: Your job is to look at the patient's clinical notes and create a thorough assessment with recommendations on how the patient might improvement their blood sugar numbers, including control, variability, and overall quality of life.
@@ -99,7 +112,7 @@ After the loading phase, the user now gets to review the data and review their w
 - AGP for the last seven days. I have code examples for the AGP, it also has a general overview of different points/text.
 - After that there are questions:
   - How did you feel about your diabetes this week? (Happy face, neutral face, sad face)
-  - Chips that are all unselected by default, but can be clicked and enabled. These selections are passed to the AI for analysis and to provide context for the report and podcast.:
+  - Chips that are all unselected by default, but can be clicked and enabled:
     - Stressful or relaxed
     - Busy or quiet
     - Sick or healthy
@@ -115,22 +128,9 @@ After the loading phase, the user now gets to review the data and review their w
 - Next section: Goals for the week
   - Prompt: What are your goals for the week? Any big life challenges coming up? How do you think that will affect your diabetes, and is there anything you can do mentally or physically to prepare?
   - Input: Text box (paragraph) (optional)
-- Button Bar:
-  - "Save as Draft": Saves the journal entry and returns the user to the Dashboard. A confirmation toast message ("Saved draft!") will be displayed for 10 seconds.
-  - "Save": Saves the journal as a final version, making it a Historical Journal, and redirects the user to the Dashboard.
+- Save button, and “Save as Draft”
 
 # Historical Journals
 
 - Historical Journals can be viewed. When one is clicked on, it should show a read-only view of all the same data when it was the Weekly Journal, but all the text fields and buttons are read-only.
 - Historical Journals can be deleted but not edited. There should be a “Delete” icon on the top right of the header (aligned right to the screen), and when pressed, there should be a warning dialog “Are you sure, etc…”, with “Cancel” or “Delete” buttons
-
-# Account Settings
-
-- Users can access this page to manage their account settings.
-- The first section allows users to manage their CGM provider.
-  - A dropdown will allow them to select their CGM provider (e.g., Nightscout).
-  - Based on the selection, the necessary fields for that provider will be displayed for editing (e.g., Nightscout URL and Token).
-  - A "Test" button will be available to validate the credentials.
-- The second section will be for account deletion.
-  - A "Delete Account" button will be present.
-  - Clicking this button will trigger a confirmation dialog to prevent accidental deletion.
