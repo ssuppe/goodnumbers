@@ -118,7 +118,7 @@ TBD, but will essentially be a flat single report from an example user.
   - Blood glucose data for the last 7 days
   - Treatments (insulin, meals) for the last 7 days
   - Profile data (for the last 7 days)
-  - Currently all this data is pulled _client side_ and then prepared/passed to the server. This is a TBD decision if this is the right way to do it.
+  - Currently all this data is pulled _client side_ and then prepared/passed to the server. This is a TBD decision if this is the right way to do it, feel free to recommend something else.
 - Once all that data is collected, then there is a pre-analysis that is done on the server. This means the above data needs to be sent to the backend to do the following:
   - Run through non-AI data analysis tools to do timeseries analysis (averages, finding low and high periods, and more). I have working code for this, we can get into the details later. We will call this “Notes”. This analysis is structured \- it includes
     - A weekly overview
@@ -174,7 +174,7 @@ After the loading phase, the user now gets to review the data and review their w
 - New Medications
 - Menstrual Cycle
 
-* Out of Range Hotspots. For each hotspot, show a card of:
+* Out of Range Glycemic Event Clusters. For each cluster, show a card of its details. These are covered in the [Glycemic Event Cluster Analysis](#glycemic-event-cluster-analysis) section
   - Time of Day: [e.g., Mornings (7:00 AM - 10:00 AM)]
   - Average BG: [e.g., 12.5 mmol/L (225 mg/dL)] [only in the patient's preferred units]
   - Daily Trend Chart: More information found in the Daily Trend Chart section.
@@ -185,101 +185,91 @@ After the loading phase, the user now gets to review the data and review their w
   - Input: Text box (paragraph) (optional)
 * Save button, and “Save as Draft”
 
-# Glycemic Event Cluster Visualization
+# Glycemic Event Cluster Analysis
 
 1. Overview
 
-The Glycemic Event Cluster Visualization is a time-series chart designed to help users identify and analyze
-recurring patterns of significant glycemic excursions (either high or low). When the system detects that
-multiple glycemic events of the same type (e.g., 'High Glucose') tend to occur around the same time of day, it
-groups them into a "cluster." This feature displays all events from a single cluster on one consolidated chart,
-making it easy to compare them, spot trends, and understand the context surrounding these patterns.
+The Glycemic Event Cluster Analysis feature is a comprehensive tool designed to automatically identify,
+visualize, and explain recurring patterns of high or low glycemic events. When the system detects that multiple
+events of the same type (e.g., "Hypoglycemia") consistently occur around the same time of day, it groups them
+into a "cluster." This feature then presents the cluster as a single, integrated component composed of four
+parts: a high-level Cluster Summary, an interactive Glycemic Event Cluster Visualization, a list of prioritized
+Associated Insights, and a User Notes text box for patient reflection. The goal is to provide the user with a
+clear, actionable understanding of their glycemic patterns while encouraging personal engagement.
 
-2. Functional Description
+2. Components
 
-The feature is composed of a primary chart for glucose visualization, an optional secondary chart for meal
-data, and a set of interactive elements for in-depth analysis.
+##### 2.1. Cluster Summary
 
-##### 2.1. Chart Composition & Display
+The Cluster Summary provides an at-a-glance overview of the pattern's key characteristics. It is displayed
+prominently above the visualization.
 
-- Primary Display (Glucose Chart):
+- Functionality:
+  - Title: A clear, dynamically generated title describes the pattern (e.g., "High Glucose Pattern Analysis").
+  - Key Metrics: Two primary statistics are highlighted with icons for quick recognition:
+    - Time of Day: (Icon: Clock) The average time of day around which the events in the cluster occur.
+    - Event Count: (Icon: Repeat) The total number of individual glycemic events included in the cluster.
+  - Descriptive Summary: A concise, plain-language sentence synthesizes the key metrics. It explicitly states
+    the number of events, the event type, the average time, and the earliest and latest times the events have
+    started, providing a complete picture of the pattern's timing. (e.g., "12 High Glucose events typically
+    occur around 8:30 PM (between 7:15 PM and 9:00 PM)").
 
-  - X-Axis (Time of Day): The horizontal axis represents a normalized 24-hour time window. All individual
-    glycemic events are plotted on this same time axis according to their time of day, regardless of the
-    specific date they occurred. This alignment is the core mechanism for visualizing the pattern. The time
-    window is dynamically calculated to show the full duration of all events, plus a 60-minute buffer before
-    the earliest event and a 30-minute buffer after the latest one.
-  - Y-Axis (Glucose Level): The vertical axis represents blood glucose levels. It automatically adjusts its
-    scale (min/max) to fit the glucose values present in the plotted events, ensuring the data is clearly
-    visible. The axis label and all values correctly reflect the user's preferred units (mg/dL or mmol/L).
+##### 2.2. Glycemic Event Cluster Visualization
 
-- Secondary Display (Carbohydrate Chart):
-  - This chart appears automatically at the bottom of the glucose chart only if meal (carbohydrate) data is
-    available for the displayed events.
-  - It shares the same normalized X-axis (Time of Day) as the glucose chart.
-  - Its Y-axis represents "Carbs (g)" and is used to plot meal events as a bar chart.
+This is an interactive, multi-series time-series chart that allows for detailed exploration of the individual
+events that form the cluster.
 
-##### 2.2. Data Representation
+- Functional Description:
+  - Primary Display (Glucose Chart):
+    - X-Axis (Time of Day): The horizontal axis represents a normalized 24-hour time window. All individual
+      glycemic events are plotted on this same time axis according to their time of day, regardless of the
+      specific date they occurred.
+    - Y-Axis (Glucose Level): The vertical axis represents blood glucose levels, with units (mg/dL or mmol/L)
+      and scale automatically adjusted for clarity.
+  - Secondary Display (Carbohydrate Chart):
+    - This chart appears automatically at the bottom of the glucose chart only if meal (carbohydrate) data is
+      available for the displayed events. It shares the same time axis.
+  - Data Representation:
+    - Glucose Event Series: Each individual glycemic event is rendered as a distinct line with a unique color
+      and/or line style (solid, dashed).
+    - Carbohydrate Event Series: Meals are shown as vertical bars, colored to match the glucose line from the
+      same day.
+    - Reference Range Lines: The chart displays horizontal dashed lines for standard clinical high/low
+      thresholds (red) and the user's personal target range (green).
+  - User Interactions & Interactivity:
+    - Legend: A scrollable legend allows users to toggle the visibility of individual event lines.
+    - Tooltip on Hover: Hovering over any data point reveals a tooltip with precise values, date, and time.
+    - Event Isolation (Highlight on Hover): Hovering over any part of an event highlights the complete event
+      instance while fading all others, enabling "focus mode" for detailed analysis.
 
-- Glucose Event Series:
+##### 2.3. Associated Insights
 
-  - Each individual glycemic event from the cluster is rendered as a distinct line on the primary chart.
-  - To ensure legibility, each line is assigned a unique color and/or line style (e.g., solid, dashed,
-    dotted). This visual distinction allows the user to follow a single event's trajectory from beginning to
-    end.
-  - Data points on the line that fall within the official start and end time of the glycemic event are
-    emphasized with a larger symbol size. Data points in the buffer periods before and after the event are
-    shown with a smaller symbol.
+Displayed directly below the visualization, this component provides a list of contextual, prioritized, and
+machine-generated observations about the cluster.
 
-- Carbohydrate Event Series:
+- Functionality:
+  - Purpose: To provide actionable, plain-language explanations, contributing factors, or potential
+    consequences related to the visualized pattern.
+  - Prioritization & Visual Indicators: Each insight is assigned a priority (Critical, Serious, Important, Key
+    Insight) and displayed with a corresponding icon and color highlight to draw the user's attention
+    appropriately.
+  - Accessibility: Each icon is paired with screen-reader-only text (e.g., "Critical insight:") to ensure the
+    level of importance is conveyed to all users.
+  - Empty State: If no specific insights are generated, the message "No insights available for this cluster" is
+    displayed.
 
-  - When the secondary chart is displayed, meals are shown as vertical bars.
-  - The color of each carb bar matches the color of the glucose line for that same day, visually linking a
-    meal to its subsequent glycemic impact.
+##### 2.4. User Notes
 
-- Reference Range Lines:
-  - To provide clinical context, the chart displays several horizontal reference lines:
-    - Clinical Thresholds: Dashed red lines indicate the standard clinical thresholds for high (180 mg/dL)
-      and low (70 mg/dL) glucose.
-    - Patient Goals: If configured, dashed green lines indicate the user's personal target range (Target
-      Low, Target High).
+This component provides a dedicated space for the user to reflect on the presented pattern and document their
+own thoughts, context, or action plans. It is displayed at the bottom of the feature, after the Associated
+Insights.
 
-##### 2.3. User Interactions & Interactivity
-
-- Legend:
-
-  - A scrollable legend is displayed at the bottom of the chart.
-  - Each entry corresponds to a single glycemic event, labeled with an identifier (e.g., "Event 1") and its
-    original date and start time.
-  - The user can click on legend items to toggle the visibility of individual event lines on the chart,
-    allowing them to reduce clutter or focus on specific instances.
-
-- Tooltip on Hover:
-
-  - Hovering the cursor over any data point (on a glucose line or a carb bar) displays a detailed tooltip.
-  - The tooltip provides context-specific information:
-    - For Glucose: Shows the exact glucose value, the full date and time of the reading, and the series name
-      (e.g., "Event 1...").
-    - For Carbs: Shows the grams of carbohydrates, the time of the meal, and any notes the user logged with
-      the meal.
-
-- Event Isolation (Highlight on Hover):
-  - This is a key analysis feature. When the user hovers over any part of an event (its glucose line, carb bar,
-    or legend entry), the chart enters a "focus mode."
-  - The entire event instance (both the full glucose line and any associated carb bars for that day) is
-    highlighted at full opacity.
-  - All other event series on the chart are "downplayed" (faded to a low opacity).
-  - This interaction allows the user to instantly isolate a single, complete event from the cluster to analyze
-    it without distraction. Moving the cursor off the chart restores all series to their default view.
-
-3. Associated Information
-
-The chart is presented within a container that provides additional context for the cluster:
-
-- Cluster Summary: A text summary above the chart states the number of events in the cluster, the type of event
-  (e.g., "High Glucose"), the average time of day they occur, and the time range of the cluster.
-- Insights: A list of plain-language, prioritized insights generated by the system is displayed below the chart.
-  These insights offer potential explanations or observations related to the visualized pattern.
+- Functionality:
+  _ Component: A multi-line text input field (textarea).
+  _ Prompt: The text box will be empty by default but will contain the following instructional prompt: > "Why do you think this happened? Leave some notes on what you think the issue is, or how you can
+  improve next week. If you don’t know, that's ok! Leave it blank."
+  _ Behavior:
+  _ Input is optional and the field can be left blank. \* Notes entered by the user will be saved and associated with the specific cluster for future review by the user or their clinician. It will also be used by AI when creating insights in the Loading phase for subsequent weeks (ie, subsequent weeks may look at this data).
 
 # Historical Journals
 
