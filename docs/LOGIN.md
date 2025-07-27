@@ -40,20 +40,20 @@ This document outlines the product requirements for the user Login and Registrat
 ![Login page - disabled](<imgs/Login Page-disabled.png> 'Goodnumbers homepage')
 
 - Users MUST be able to register and log in using their Google account.
-- Before being able to sign in/authenticate, Users MUST explicitly agree to the following before their account can be fully provisioned/accessed (e.g., after the first successful Google sign-in, presented as checkboxes on the Agreements Page):
+- Before being able to sign in/authenticate, **for new users**, an Agreements Page MUST be presented immediately after a successful Google sign-in and right before successful login to the dashboard. Users MUST explicitly agree to the following on this page (presented as checkboxes):
 
-  - Terms and Conditions and acknowledge the experimental nature of the project
+  - Terms and Conditions (which includes acknowledgment of the experimental nature of the project and software disclaimer)
   - Privacy Policy
 
-The 'Login' button MUST be disabled unless both of the above checkboxes are checked by the user (as seen in [Login Page-disabled](#login-page-disabled)).
+The 'Login' button MUST be disabled unless both of the above checkboxes are checked by the user (as seen in [Login Page-disabled](#login-page-disabled)). If the user does not check the required agreement checkboxes, the login button remains disabled, preventing them from proceeding.
 
-Once a user checks the boxes of both the T&Cs and the Pricacy Policy, the "Login" button becomes enabled (as seen below in [Login Page-enabled](#login-page-enabled))
+Once a user checks the boxes of both the T&Cs and the Privacy Policy, the "Login" button becomes enabled (as seen below in [Login Page-enabled](#login-page-enabled))
 
 <a id="login-page-enabled"></a>
 ![Login page - enabled](<imgs/Login Page-enabled.png> 'Goodnumbers homepage')
 
 - A prominent "Sign in with Google" button MUST be available on the page, as provided by Auth.js.
-- When pressed, it should load a page or popup with the standard Google OAuth consent screen (NOTE TO GEMINI: Help me define what's needed here, if anything)
+- When pressed, it should load a page or popup with the standard Google OAuth consent screen (Auth.js default consent screen is sufficient, no specific product requirements beyond this).
 - Upon successful Google authentication, the system MUST:
 
   - **For New Users:** Create a new user account linked to their Google profile.
