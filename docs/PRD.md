@@ -212,7 +212,17 @@ TBD, but will essentially be a flat single report from an example user.
       - Nightscout API version (for now, this is hardcoded to 1)
       - Nightscout URL (text field)
       - Nightscout Token (text field)
-      - Test button - when pressed, it should issue a GET request to the /status endpoint, eg https://<nightscout_url>/status?token=<nightscout_token>, and check to see if we get a valid response (HTTP error code 200, and an apiEnabled=TRUE response in the json)
+  - **Connection Flow:**
+    1.  The user fills in their Nightscout URL and Token.
+    2.  A "Test Connection" button is displayed. Next to it, a "Save and Continue" button is also visible but is **disabled** by default.
+    3.  The user clicks "Test Connection."
+    4.  **On Success:**
+        *   A small success message (e.g., "Connection successful!") appears near the test button.
+        *   The "Save and Continue" button becomes **enabled**.
+    5.  **On Failure:**
+        *   A clear error message is displayed (e.g., "Connection failed. Please check your URL and token and try again.").
+        *   The "Save and Continue" button remains disabled.
+    6.  Once the "Save and Continue" button is enabled, the user can click it to save their settings and be redirected to the Dashboard.
   - Preferred units: They can choose ONE of (but can be changed later):
     - mg/dL
     - mmol/L
@@ -229,7 +239,26 @@ TBD, but will essentially be a flat single report from an example user.
   - If there are no Historical Journals, this section shouldn’t be shown
   - Historical Journals should be shown in reverse chronological order (newest first)
 
+### Journal Generation Loading Screen
+
+Upon clicking "Start Journal," the user is navigated to a dedicated loading page that displays a progress bar and descriptive text to keep them informed.
+
+**Loading Steps & Progress Text:**
+
+*   **(0%) Initializing:** "Kicking things off..."
+*   **(20%) Fetching Data:** "Gathering your blood glucose, insulin, and meal data from the last 7 days."
+*   **(40%) Statistical Analysis:** "Running analysis to find trends and hotspots in your numbers."
+*   **(60%) AI Scripting:** "Writing the script for your personalized audio summary. This is the longest step, thanks for your patience!"
+*   **(80%) Audio Generation:** "Recording your podcast."
+*   **(95%) Finalizing:** "Putting the finishing touches on your journal."
+*   **(100%) Done:** The loading screen is replaced by the fully loaded "This week's journal" page.
+
 # This week's journal
+
+### Insufficient Data Handling
+When a user clicks "Start Journal," the system will proceed with the data analysis and journal generation, regardless of the amount of historical data available. If the system detects less than 7 days of CGM data, a prominent, non-blocking warning message will be displayed at the very top of the "This week's journal" page.
+
+**Warning Text:** "Heads up: This analysis is based on only [X] days of data. For the most complete insights, try to journal when you have at least 7 days of data logged."
 
 ## Weekly Podcast
 
