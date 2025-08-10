@@ -1,0 +1,294 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GoodNumbers - Design System Demo v5</title>
+    <style>
+      /* 
+         * ===============================================
+         * Design System: V5 - Final Palette
+         * ===============================================
+         * Unified soft green for primary actions.
+         * High-contrast red for the critical banner.
+        */
+      :root {
+        /* Primary Action & Growth Colors (Unified Green) */
+        --primary-color: #4caf50;
+        --primary-color-hover: #5cb85c;
+        --primary-color-active: #449d44;
+        --primary-background-light: #e8f5e9;
+
+        /* Feedback & Status Colors */
+        --feedback-critical-color: #d32f2f;
+
+        /* Neutral Colors */
+        --background-color: #f8f9fa;
+        --text-color-primary: #212529;
+        --text-color-secondary: #6c757d;
+        --border-color: #dee2e6;
+        --component-background-color: #ffffff;
+        --component-background-selected: var(--primary-background-light);
+        --border-color-selected: var(--primary-color);
+
+        /* Universal Styling Properties */
+        --border-radius-standard: 8px;
+        --border-radius-large: 12px;
+        --box-shadow-light: 0 2px 5px rgba(0, 0, 0, 0.07);
+        --box-shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Base Page Styles */
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background-color: var(--background-color);
+        color: var(--text-color-primary);
+        margin: 0;
+        padding: 2rem;
+      }
+
+      .section-title {
+        margin-top: 3rem;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.5rem;
+      }
+
+      .component-container {
+        padding: 1.5rem;
+        background-color: var(--component-background-color);
+        border-radius: var(--border-radius-large);
+        box-shadow: var(--box-shadow-light);
+        max-width: 600px;
+        margin-bottom: 1rem;
+      }
+
+      .flex-container {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      /* 
+         * ===============================================
+         * Component Demos
+         * ===============================================
+        */
+
+      /* 1. Banner Component (Critical Warning) - UPDATED */
+      .banner {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background-color: var(--feedback-critical-color);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--border-radius-standard);
+        margin-bottom: 2rem;
+      }
+      .banner__title {
+        font-size: 0.9rem;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+        flex-shrink: 0;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+      }
+      .banner__text {
+        font-size: 0.9rem;
+        line-height: 1.4;
+      }
+
+      /* 2. Buttons (Primary & Secondary) */
+      .btn {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        border-radius: var(--border-radius-standard);
+        cursor: pointer;
+        text-decoration: none;
+        border: 2px solid transparent;
+        transition: all 0.2s ease-in-out;
+      }
+      .btn-primary {
+        color: white;
+        background-color: var(--primary-color);
+      }
+      .btn-primary:hover {
+        background-color: var(--primary-color-hover);
+      }
+      .btn-secondary {
+        color: var(--primary-color);
+        background-color: transparent;
+        border-color: var(--primary-color);
+      }
+      .btn-secondary:hover {
+        background-color: var(--component-background-selected);
+        color: var(--primary-color-active);
+        border-color: var(--primary-color-active);
+      }
+
+      /* 3. Dashboard Journal Card */
+      .journal-card {
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-height: 100px;
+      }
+      .journal-card__date {
+        font-size: 0.9rem;
+        color: var(--text-color-secondary);
+      }
+      .journal-card__title {
+        font-size: 1.1rem;
+        font-weight: 600;
+      }
+      .journal-card__description {
+        flex-grow: 1;
+        line-height: 1.5;
+        color: var(--text-color-primary);
+      }
+      .journal-card__action {
+        align-self: flex-end;
+      }
+
+      /* 4. Insight Component */
+      .insight {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        border-radius: var(--border-radius-standard);
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+        background-color: #f5f5f5;
+      }
+      .insight__icon {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
+      .insight--critical .insight__icon {
+        color: var(--feedback-critical-color);
+      }
+      .insight--important .insight__icon {
+        color: #f57f17;
+      }
+      .insight--info .insight__icon {
+        color: var(--primary-color);
+      }
+
+      /* 5. Chart Placeholder */
+      .chart-placeholder {
+        height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px dashed var(--border-color);
+        border-radius: var(--border-radius-large);
+        color: var(--text-color-secondary);
+        background-color: #ffffff;
+      }
+
+      /* 6. Weekly Vibe Card */
+      .vibe-card {
+        padding: 1rem;
+        border: 2px solid var(--border-color);
+        border-radius: var(--border-radius-large);
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+        width: 120px;
+        background-color: #ffffff;
+      }
+      .vibe-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--box-shadow-medium);
+        border-color: #bdbdbd;
+      }
+      .vibe-card.selected {
+        border-color: var(--border-color-selected);
+        background-color: var(--component-background-selected);
+      }
+      .vibe-card__emoji {
+        font-size: 2.5rem;
+      }
+      .vibe-card__title {
+        font-weight: 600;
+        margin-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h2 class="section-title">1. Banner Component</h2>
+    <div class="banner">
+      <span class="banner__title">NOTE</span>
+      <span class="banner__text"
+        >GoodNumbers is an experiment and is for educational use only. Do not make any changes to your diabetic
+        healthcare plan without speaking to your doctor.</span
+      >
+    </div>
+
+    <h2 class="section-title">2. Buttons</h2>
+    <div class="flex-container">
+      <button class="btn btn-primary">Primary Action</button>
+      <button class="btn btn-secondary">Secondary Action</button>
+    </div>
+
+    <h2 class="section-title">3. Dashboard Journal Card</h2>
+    <div class="component-container journal-card">
+      <div class="journal-card__date">October 12-18, 2023</div>
+      <div class="journal-card__title">A Week of Progress</div>
+      <div class="journal-card__description">
+        This week showed improved time in range, though we identified a recurring pattern of evening highs after
+        dinner...
+      </div>
+      <div class="journal-card__action">
+        <button class="btn btn-secondary">View</button>
+      </div>
+    </div>
+
+    <h2 class="section-title">4. Insight Taxonomy</h2>
+    <div class="component-container">
+      <div class="insight insight--critical">
+        <span class="insight__icon">🚨</span>
+        <span>CRITICAL: 5 hypoglycemic events were detected this week.</span>
+      </div>
+      <div class="insight insight--important">
+        <span class="insight__icon">💡</span>
+        <span>IMPORTANT: Glucose variability was 15% higher on weekends.</span>
+      </div>
+      <div class="insight insight--info">
+        <span class="insight__icon">ℹ️</span>
+        <span>INFO: Average time in range was 75%, a 5% improvement.</span>
+      </div>
+    </div>
+
+    <h2 class="section-title">5. Chart Placeholder</h2>
+    <div class="component-container">
+      <div class="chart-placeholder">Chart Area (e.g., AGP or Cluster)</div>
+    </div>
+
+    <h2 class="section-title">6. "Weekly Vibe" Selection Cards</h2>
+    <div class="flex-container">
+      <div class="vibe-card">
+        <div class="vibe-card__emoji">🥀</div>
+        <div class="vibe-card__title">Wilted</div>
+      </div>
+      <div class="vibe-card selected">
+        <div class="vibe-card__emoji">🌱</div>
+        <div class="vibe-card__title">Sprouting</div>
+      </div>
+      <div class="vibe-card">
+        <div class="vibe-card__emoji">🌿</div>
+        <div class="vibe-card__title">Growing</div>
+      </div>
+      <div class="vibe-card">
+        <div class="vibe-card__emoji">🌻</div>
+        <div class="vibe-card__title">Thriving</div>
+      </div>
+    </div>
+  </body>
+</html>
