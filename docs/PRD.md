@@ -344,7 +344,7 @@ The page is designed as a vertical narrative that guides the user through a stru
 
 1.  **Listen & Prime:** The user is first encouraged to listen to their personalized podcast to get a high-level, narrative summary of their week.
 2.  **Analyze High-Level Data:** They then review the AGP chart and its key, prioritized insights.
-3.  **Record Subjective Feelings:** The user provides their personal context by selecting a "Weekly Vibe" and "Influencing Factors."
+3.  **Record Subjective Feelings:** The user provides their personal context byselecting a "Weekly Vibe" and "Influencing Factors."
 4.  **Deep-Dive into Patterns:** They explore specific, recurring glycemic patterns through detailed "Glycemic Event Cluster" cards.
 5.  **Set Future Intentions:** The user shifts focus to the week ahead by setting goals.
 6.  **Save Progress:** They save their complete journal entry.
@@ -361,12 +361,66 @@ The page is designed as a vertical narrative that guides the user through a stru
 ##### 2.2 Ambulatory Glucose Profile (AGP) & Insights
 
 - **Layout:** This section begins with the visual **AGP chart**. Directly below the chart is a list of prioritized, AI-generated insights.
-- **Insight Taxonomy & Visual Language:** Insights are styled to create a clear visual hierarchy of importance, using icons from a library like `react-icons`.
+
+###### AGP Chart: Visual Language & Interaction Model
+
+This section details the design principles for the Ambulatory Glucose Profile (AGP) chart to ensure it is clear, insightful, and emotionally supportive.
+
+**Overall Goal:** The chart's primary purpose is to help the user immediately understand their weekly glucose patterns, focusing on two key questions: "How well did I do keeping my blood glucose in range?" and "What times of day are hardest for me?"
+
+**Data Representation & Visual Hierarchy:**
+
+- **Median Glucose Line (Primary Story):**
+
+  - **Visuals:** Represented as a solid, prominent line with a thickness of `2.5px`.
+  - **Color:** A very dark, high-contrast color (`#212529`) to serve as the primary focal point.
+  - **Behavior:** The line will connect across any time slots with missing data (`connectNulls: true`) to show the overall trend. The 'Average' (mean) line will **not** be displayed, simplifying the view.
+
+- **Percentile Bands (Secondary Context):**
+
+  - **Visuals:** Two stacked, shaded areas representing the interquartile and interdecile ranges.
+  - **25th-75th Percentile:** A darker, neutral blue-grey (`rgba(90, 110, 150, 0.35)`).
+  - **5th-95th Percentile:** A lighter, harmonious neutral blue-grey (`rgba(120, 140, 180, 0.25)`).
+  - **Behavior:** The bands provide context for variability without competing visually with the median line.
+
+- **User's Personal Target Range (The "Success Zone"):**
+
+  - **Visuals:** A single, semi-transparent shaded area that spans the chart horizontally between the user's personal low and high glucose goals.
+  - **Color:** A soft, supportive green (`rgba(76, 175, 80, 0.2)`), visually distinct from all other data elements. This creates a "river of success" for the median line.
+
+- **Clinical Safety Thresholds:**
+  - **Visuals:** Represented as thin, dashed red lines (`#D32F2F`) at the standard clinical high and low values (e.g., 70 and 180 mg/dL).
+  - **Goal:** These lines act as clear safety boundaries, distinct from the user's personal goals, and use the established red alert color.
+
+**Interaction Model (Hover & Tooltip):**
+
+- **Spotlight Effect:** When a user hovers over the chart:
+
+  1.  A vertical "scrubber" line appears at the selected time point.
+  2.  All series elements (median line, percentile bands) not currently being hovered over will fade significantly (e.g., `opacity: 0.2`), creating a "spotlight" on the selected time.
+  3.  The hovered elements will remain fully vibrant and opaque.
+
+- **Tooltip Content:** A tooltip will appear with the following information in a clear hierarchy:
+  1.  **Time:** The specific time slot being inspected.
+  2.  **Median:** The precise median glucose value.
+  3.  **25th-75th Range:** The interquartile range.
+  4.  **5th-95th Range:** The interdecile range.
+  - The 'Average' (mean) value will **not** be included in the tooltip to maintain consistency with the visual display.
+
+**Mobile Responsiveness:**
+
+To ensure an optimal experience on smaller screens, the chart will adapt as follows:
+
+- **X-Axis (Time):** Labels will be displayed at a reduced frequency, showing a label every **four hours** to prevent clutter.
+- **Y-Axis (Glucose):** The axis title will use a compact format, displaying only the units (e.g., "mg/dl" or "mmol/L") instead of the full "Glucose (...)" label to save horizontal space.
+- **Legend:** The chart legend will remain visible at the bottom of the chart but will be contained within a **horizontally scrollable** container if its items overflow the screen width. This preserves vertical space while maintaining full functionality.
+
+* **Insight Taxonomy & Visual Language:** Insights are styled to create a clear visual hierarchy of importance, using icons from a library like `react-icons`.
   - `CRITICAL`: **Red warning icon** (e.g., `IconAlertCircle`) and **red text**.
   - `SERIOUS`: **Red warning icon** and **black text**.
   - `IMPORTANT`: **Lightbulb icon** (💡) and **black text**.
   - `INFO`: **Blue "i" icon** (e.g., `IconInfoCircle`) and **black text**.
-- **Interaction:** The insights list is read-only and does not interact with the chart above it.
+* **Interaction:** The insights list is read-only and does not interact with the chart above it.
 
 ##### 2.3 Subjective User Inputs
 
