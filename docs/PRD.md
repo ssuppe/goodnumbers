@@ -243,15 +243,30 @@ The Demo Page serves as an initial touchpoint for potential users to understand 
 
 ## Dashboard
 
-- Upon successful login, the dashboard is the landing page for all authenticated users
-- It has a larger card at the top to “Log this week's journal.” For now it will have an image, a paragraph of text, and a button for “Start Journal.”
-  - Users shouldn’t be able to create new Journals all the time. This will be costly to the platform, and also the user needs to spend roughly a week or more between Journals so they have new behavior and data to reflect on. Therefore the “Start Journal” button should only be enabled if one or more of the following pieces of logic are true:
-    - It’s been 3 or more days since the last Journal
-    - There are no other Journals
-- Underneath it should have “Past weeks”, which is a list of cards with dates, a small summary (which will be created when the journal is created), and a view button.
-  - The "View" button for each historical journal will lead to the editable journal page for that week.
-  - **Empty State:** If there are no Historical Journals, this section will display a message guiding the user on how to create their first journal or explaining that past journals will appear here.
-  - Historical Journals should be shown in reverse chronological order (newest first)
+- Upon successful login, the dashboard is the landing page for all authenticated users.
+
+### "Log this week's journal" Card (Primary Action)
+
+- **Functionality:** The "Start Journal" button is enabled only if it has been 3 or more days since the last journal was created, or if there are no journals yet. This encourages a weekly reflection cadence.
+- **Visual Hierarchy:** This card is styled as a "hero" component, making it visually distinct and more prominent than the historical journal cards.
+- **Enabled State Layout:**
+    - **Desktop:** A two-part horizontal layout. A square image is on the left, with the title "Reflect on your week" to its right. Below this, a "Start Journal" button is right-aligned.
+    - **Mobile:** A vertically stacked layout. The image appears first, followed by the title "Reflect on your week", and finally a full-width "Start Journal" button for a large, accessible tap target.
+- **Disabled State (Within 3 days of last journal):**
+    - **Content:** The card will display a seed icon and the text "Your next journal unlocks on [Date]. Come back then to reflect".
+    - **Layout:** It maintains the same layout as the enabled state, but with the icon and text replacing the image and title. A disabled "Start Journal" button is present and right-aligned on desktop (full-width on mobile) to provide a consistent spatial cue for the user.
+
+### "Past weeks" Section (Historical Journals)
+
+- **Ordering:** Historical Journals are shown in reverse chronological order (newest first).
+- **Visual Hierarchy:** This section has a more neutral, secondary visual treatment compared to the primary action card.
+- **Empty State:** If there are no past journals, the entire "Past weeks" section is hidden from view to simplify the UI.
+- **Card Layout (for each historical journal):**
+    - Each card has a fixed minimum height equivalent to four lines of text.
+    - **Date:** Displayed in the top-left corner.
+    - **Title:** Positioned below the date.
+    - **Description:** An AI-generated description appears below the title. If it exceeds the allocated space, it will be truncated with an ellipsis ("...").
+    - **Action:** A "View" button is right-aligned within the card. Clicking it leads to the editable journal page for that week.
 
 ## This week's journal
 
