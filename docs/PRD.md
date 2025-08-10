@@ -231,7 +231,6 @@ TBD, but will essentially be a flat single report from an example user.
 
 - Upon successful login, the dashboard is the landing page for all authenticated users
 - It has a larger card at the top to “Log this week's journal.” For now it will have an image, a paragraph of text, and a button for “Start Journal.”
-  - When the weekly AI-generated podcast is ready, this card's text should be updated to notify the user, for example: "Your weekly podcast is ready. Start your journal to listen." 
   - Users shouldn’t be able to create new Journals all the time. This will be costly to the platform, and also the user needs to spend roughly a week or more between Journals so they have new behavior and data to reflect on. Therefore the “Start Journal” button should only be enabled if one or more of the following pieces of logic are true:
     - It’s been 3 or more days since the last Journal
     - There are no other Journals
@@ -239,19 +238,7 @@ TBD, but will essentially be a flat single report from an example user.
   - If there are no Historical Journals, this section shouldn’t be shown
   - Historical Journals should be shown in reverse chronological order (newest first)
 
-### Journal Generation Loading Screen
 
-Upon clicking "Start Journal," the user is navigated to a dedicated loading page that displays a progress bar and descriptive text to keep them informed.
-
-**Loading Steps & Progress Text:**
-
-*   **(0%) Initializing:** "Kicking things off..."
-*   **(20%) Fetching Data:** "Gathering your blood glucose, insulin, and meal data from the last 7 days."
-*   **(40%) Statistical Analysis:** "Running analysis to find trends and hotspots in your numbers."
-*   **(60%) AI Scripting:** "Writing the script for your personalized audio summary. This is the longest step, thanks for your patience!"
-*   **(80%) Audio Generation:** "Recording your podcast."
-*   **(95%) Finalizing:** "Putting the finishing touches on your journal."
-*   **(100%) Done:** The loading screen is replaced by the fully loaded "This week's journal" page.
 
 # This week's journal
 
@@ -279,8 +266,24 @@ The top of the journal page will feature the podcast player, ordered as follows:
     - The Card shows “Edit Journal” when in Draft
   - Saved \- once saved, it becomes a Historical Journal and follows all the same logic as defined above
 
-## Loading phase
+## Journal Generation Process
 
+This section describes the process that occurs after a user clicks "Start Journal". It covers both the user-facing loading experience and the backend technical steps.
+
+### User Experience (Loading Screen)
+Upon clicking "Start Journal," the user is navigated to a dedicated loading page that displays a progress bar and descriptive text to keep them informed.
+
+**Loading Steps & Progress Text:**
+
+*   **(0%) Initializing:** "Kicking things off..."
+*   **(20%) Fetching Data:** "Gathering your blood glucose, insulin, and meal data from the last 7 days."
+*   **(40%) Statistical Analysis:** "Running analysis to find trends and hotspots in your numbers."
+*   **(60%) AI Scripting:** "Writing the script for your personalized audio summary. This is the longest step, thanks for your patience!"
+*   **(80%) Audio Generation:** "Recording your podcast."
+*   **(95%) Finalizing:** "Putting the finishing touches on your journal."
+*   **(100%) Done:** The loading screen is replaced by the fully loaded "This week's journal" page.
+
+### Backend Process
 - When a new Journal is first created (not edited from draft, but first time), a number of things have to be queried, created and saved for this Journal. This data is NOT user input. This includes:
   - Blood glucose data for the last 7 days
   - Treatments (insulin, meals) for the last 7 days
