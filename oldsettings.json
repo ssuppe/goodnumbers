@@ -1,0 +1,15 @@
+
+#     "github": {
+#      "command": "docker",
+#      "args": [
+#        "run",
+#        "-i",
+#        "--rm",
+#        "-e",
+#        "GITHUB_PERSONAL_ACCESS_TOKEN",
+#        "ghcr.io/github/github-mcp-server"
+#      ],
+#      "env": {
+#          "GITHUB_PERSONAL_ACCESS_TOKEN": "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"
+#        }
+#    },
