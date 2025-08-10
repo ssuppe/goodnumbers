@@ -1,6 +1,6 @@
 # Goodnumbers Weekly Health Journal PRD
 
-Revision: v0.2 (Updated based on PM discussions)
+**Revision:** v0.3 (Updated based on PM discussions)
 
 GoodNumbers is a weekly health journal that is a combination of a diary/bullet journal, statistical analyzer and AI coach.
 
@@ -14,8 +14,8 @@ GoodNumbers is a weekly health journal that is a combination of a diary/bullet j
 
 The goal of GoodNumbers is to give Type 1 Diabetics a weekly practice of self-reflection, including:
 
-- A pause in the week to look back over the last week, see how they are feeling, and celebrate wins and places to improve
-- Reviewing trends, ‘problem areas’ and ‘hotspots’ in their blood glucose number s(eg, highs and lows). GoodNumbers will provide statistical analyses to take the work out of finding the problem areas and hotspots in their blood glucose management.
+- A pause in the week to look back over the last week, see how they are feeling, and celebrate wins and places to improve.
+- Reviewing trends, ‘problem areas’ and ‘hotspots’ in their blood glucose numbers (e.g., highs and lows). GoodNumbers will provide statistical analyses to take the work out of finding the problem areas and hotspots in their blood glucose management.
 - Use AI to take in their personal experiences, correlate to the data, and provide a report (in the form of text/charts as well as a personal podcast) so they can improve for the next week.
 
 GoodNumbers is meant to be motivating - there is no judgement - just recognition of a hard job well done (managing blood glucose) and providing real data and feedback on how to improve.
@@ -29,13 +29,13 @@ It should be noted that GoodNumbers does NOT provide medical advice - rather, it
 
 - I have code for this already which we can use as inspiration (but does not need to be followed exactly, as we are moving from [Next.js](http://Next.js) to [Express.js](http://Express.js))
 
-| Name of component/area | Description for PM/AI reader | String |
+| Name of component/area | Description for PM/AI reader                                                                                                | String                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | :--------------------- | :-------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Banner component | There is a reusable banner component that we will render on most pages. It is described in detail in another section below. | NOTE: GoodNumbers is an experiment and is for educational use only. Do not make any changes to your diabetic healthcare plan without speaking to your doctor. |
-| Headline | | A smart weekly journal for type 1 diabetics |
-| Paragraph | | **GoodNumbers** is an experimental weekly journal to help type 1 diabetics reflect and improve their blood sugar levels week to week. It uses a mix of good old statistical analysis to help you zero in on troublesome trends and identify patterns. It then leverages AI to help you reflect on strategies to address them. Use it for self-reflection, to find your blind spots in your diabetes management, and to continuously improve. |
-| Button 1 | Links the [Demo Page](#demo-page) with static saved data in the client, it's not a live demo tied to the backend | See a demo |
-| Button 2 | Leads to the[Login page](#login-page) | Login / Register |
+| Banner component       | There is a reusable banner component that we will render on most pages. It is described in detail in another section below. | NOTE: GoodNumbers is an experiment and is for educational use only. Do not make any changes to your diabetic healthcare plan without speaking to your doctor.                                                                                                                                                                                                                                                                                |
+| Headline               |                                                                                                                             | A smart weekly journal for type 1 diabetics                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Paragraph              |                                                                                                                             | **GoodNumbers** is an experimental weekly journal to help type 1 diabetics reflect and improve their blood sugar levels week to week. It uses a mix of good old statistical analysis to help you zero in on troublesome trends and identify patterns. It then leverages AI to help you reflect on strategies to address them. Use it for self-reflection, to find your blind spots in your diabetes management, and to continuously improve. |
+| Button 1               | Links the [Demo Page](#demo-page) with static saved data in the client, it's not a live demo tied to the backend            | See a demo                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Button 2               | Leads to the[Login page](#login-page)                                                                                       | Login / Register                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 ### User Journey and Purpose
 
@@ -58,13 +58,15 @@ The homepage's primary purpose is new user acquisition and discovery. It serves 
 
 The banner component is a reusable component of the following attributes:
 
+```
 export const announcementData: AnnouncementProps = {
-title: 'NOTE',
-callToAction: {
-text: 'GoodNumbers is an experiment and is for educational use only. Do not make any changes to your diabetic healthcare plan without speaking to your doctor.',
-href: 'https://nextjs.org/blog/next-14'
-}
+  title: 'NOTE',
+  callToAction: {
+    text: 'GoodNumbers is an experiment and is for educational use only. Do not make any changes to your diabetic healthcare plan without speaking to your doctor.',
+    href: 'https://nextjs.org/blog/next-14'
+  }
 };
+```
 
 The title gets a special UI treatment you can see in [Homepage Screenshot](#homepage-screenshot).
 
@@ -72,7 +74,7 @@ The title gets a special UI treatment you can see in [Homepage Screenshot](#home
 
 This document outlines the product requirements for the user Login and Registration page for our SaaS application's Minimum Viable Product (MVP). The goal is to provide a secure, intuitive, and seamless experience for both new and existing users to access the application, **initially focusing solely on Google OAuth for authentication using Auth.js built-in pages** to accelerate development.
 
-## **2. Goals**
+## 2. Goals
 
 - **Enable Secure User Access:** Provide a robust and secure mechanism for users to log into their existing accounts.
 - **Facilitate Seamless Onboarding:** Allow new users to easily register and gain access to the application with minimal friction, leveraging Google's identity.
@@ -81,35 +83,34 @@ This document outlines the product requirements for the user Login and Registrat
 - **Maintain Brand Consistency (within Auth.js limitations):** Ensure the login/registration experience aligns with the overall application's design and user experience, leveraging the customization options provided by Auth.js built-in pages.
 - **Accelerate MVP Development:** Streamline authentication implementation by focusing on a single, widely-used OAuth provider and utilizing pre-built UI components.
 
-## **3. User Stories**
+## 3. User Stories
 
-### **New User Registration**
+### New User Registration
 
 - As a **new user**, I want to register quickly using my existing Google account, so I don't have to create new credentials.
 - As a **new user**, I want to understand and explicitly agree to the terms, privacy policy, and software disclaimer before I register, so I can make an informed decision and proceed.
 - As a **new user**, I want clear feedback if my registration attempt fails (e.g., Google authentication error), so I can correct my input.
 
-### **Existing User Login**
+### Existing User Login
 
 - As an **existing user**, I want to log in using my Google account, so I can access the application conveniently.
 - As an **existing user**, I want clear error messages if my Google login fails, so I know what to fix.
 
-## **4. Functional Requirements**
+## 4. Functional Requirements
 
-### **4.1. Authentication Interface**
+### 4.1. Authentication Interface
 
 - The authentication interface MUST primarily leverage Auth.js's built-in pages for login and registration.
 - The UI MUST clearly indicate that Google is the primary (and only) sign-in method.
 - **Authenticated User Handling:** Upon initial page load, the system will check for an active, valid user session. If a session is found, the user will be immediately redirected to the application's Dashboard.
 
-### **4.2. Google OAuth Integration (Primary Authentication)**
+### 4.2. Google OAuth Integration (Primary Authentication)
 
 <a id="login-page-disabled"></a>
 ![Login page - disabled](<imgs/Login Page-disabled.png> 'Goodnumbers homepage')
 
 - Users MUST be able to register and log in using their Google account.
 - Before being able to sign in/authenticate, **for new users**, an Agreements Page MUST be presented immediately after a successful Google sign-in and right before successful login to the dashboard. Users MUST explicitly agree to the following on this page (presented as checkboxes):
-
   - Terms and Conditions (which includes acknowledgment of the experimental nature of the project and software disclaimer)
   - Privacy Policy
 
@@ -123,68 +124,66 @@ Once a user checks the boxes of both the T&Cs and the Privacy Policy, the "Login
 - A prominent "Sign in with Google" button MUST be available on the page, as provided by Auth.js.
 - When pressed, it should load a page or popup with the standard Google OAuth consent screen (Auth.js default consent screen is sufficient, no specific product requirements beyond this).
 - Upon successful Google authentication, the system MUST:
-
   - **For New Users:** Create a new user account linked to their Google profile.
   - **For Existing Users:** Log the user directly into their account.
-
 - The system MUST handle potential errors during the OAuth flow (e.g., user declines permissions, network issues).
 
-### **4.3. Error States & Feedback**
+### 4.3. Error States & Feedback
 
 - **Authentication Errors:** For any issues during the Google OAuth flow (e.g., network issues, Google service errors, user denial), a generic but informative error message will be displayed on the Auth.js login page.
 - **Loading Indicators:** All asynchronous operations will be accompanied by appropriate loading indicators.
 
-### **4.4. Accessibility**
+### 4.4. Accessibility
 
 - The Auth.js built-in pages are expected to provide a reasonable level of accessibility.
 - All interactive elements will be keyboard navigable.
 - Color contrast and screen reader compatibility will be considered based on Auth.js defaults and any custom styling applied.
 
-### **4.5. Responsiveness**
+### 4.5. Responsiveness
 
 - The Auth.js built-in pages are expected to be responsive and adapt gracefully to various screen sizes.
 
-### **4.6. Session Management**
+### 4.6. Session Management
 
 - Upon successful login or registration via Google OAuth, a secure user session MUST be established by Auth.js.
 - The session MUST be managed securely (e.g., using JWTs or secure cookies).
 - Users MUST be automatically logged out after a period of inactivity (configurable session timeout).
 - Users MUST be able to explicitly log out of their account.
 
-### **4.7. User Interface & Experience (UI/UX)**
+### 4.7. User Interface & Experience (UI/UX)
 
 - The authentication pages MUST be fully responsive and adapt gracefully to various screen sizes (desktop, tablet, mobile), leveraging Auth.js's default responsiveness.
 - Loading indicators MUST be displayed during OAuth redirects to provide feedback to the user.
 - The design will largely follow Auth.js's default built-in page styling, with minimal custom branding to align with the overall SaaS application's branding where possible (e.g., logo, primary colors via CSS variables if supported by Auth.js theming).
 
-### **4.8. Authenticated User Redirection**
+### 4.8. Authenticated User Redirection
 
 - If an already authenticated user attempts to access the login/registration page, they MUST be automatically redirected to the application's main dashboard.
 
-## **6. Non-Functional Requirements**
+## 6. Non-Functional Requirements
 
-### **6.1. Security**
+### 6.1. Security
 
 - All data transmitted between the client and server MUST be encrypted (HTTPS/SSL).
 - The system MUST be protected against common web vulnerabilities (e.g., XSS, CSRF, SQL Injection).
 - Rate limiting SHOULD be considered on the initiation of the Google OAuth flow to prevent abuse.
 - Sensitive user data (e.g., tokens) MUST be stored securely.
 
-### **6.2. Performance**
+### 6.2. Performance
 
 - The login/registration page MUST load quickly (target < 2 seconds on average network conditions).
 - Authentication responses MUST be fast (target < 1 second).
 
-### **6.3. Usability & Accessibility**
+### 6.3. Usability & Accessibility
 
 - The page MUST be intuitive and easy to use for all users.
 - The page SHOULD adhere to WCAG 2.1 AA guidelines for accessibility (e.g., sufficient color contrast, proper ARIA attributes).
 
-### **6.4. Scalability**
+### 6.4. Scalability
 
 - The authentication system MUST be able to handle a growing number of concurrent users and registration requests without degradation in performance.
 
-### **6.5. Reliability**
+### 6.5. Reliability
 
 - The authentication system MUST have high availability and be resilient to failures.
 
@@ -196,26 +195,26 @@ This section defines the persistent navigation elements available to authenticat
 
 Upon successful login, the Dashboard and all subsequent authenticated pages will feature a persistent header with the following elements:
 
--   **Settings Button:** A button that links to the user's account settings page (the "Setup Account" page), allowing them to update their Nightscout connection details (URL, Token) and preferred glucose units (mg/dL or mmol/L).
--   **Logout Button:** A button that allows the user to explicitly log out of their account.
--   **Podcast Button:** A button that navigates to the dedicated Podcast Page.
+- **Settings Button:** A button that links to the user's account settings page (the "Setup Account" page), allowing them to update their Nightscout connection details (URL, Token) and preferred glucose units (mg/dL or mmol/L).
+- **Logout Button:** A button that allows the user to explicitly log out of their account.
+- **Podcast Button:** A button that navigates to the dedicated Podcast Page.
 
 ## Podcast Page
 
 This page is accessible via the "Podcast" button in the Dashboard header. Its primary purpose is to provide the user with their private RSS feed URL for use in third-party podcast applications.
 
--   **Content:** The page MUST display the user's unique, authenticated RSS feed URL.
--   **Copy Functionality:** A prominent "Copy" button MUST be provided next to the URL to facilitate easy copying.
--   **Usage Explanation:** A brief, clear explanation MUST be included on the page, guiding the user on how to use this URL in popular podcast applications (e.g., "Copy this URL and paste it into your favorite podcast app's 'Add by URL' or 'Private Feed' option").
--   **Regenerate URL:** This feature is out of scope for the MVP.
+- **Content:** The page MUST display the user's unique, authenticated RSS feed URL.
+- **Copy Functionality:** A prominent "Copy" button MUST be provided next to the URL to facilitate easy copying.
+- **Usage Explanation:** A brief, clear explanation MUST be included on the page, guiding the user on how to use this URL in popular podcast applications (e.g., "Copy this URL and paste it into your favorite podcast app's 'Add by URL' or 'Private Feed' option").
+- **Regenerate URL:** This feature is out of scope for the MVP.
 
 # Demo Page
 
 The Demo Page serves as an initial touchpoint for potential users to understand GoodNumbers' value proposition without requiring registration.
 
--   **Content Source:** The Demo Page will utilize the standard journal page structure and components, populated with pre-generated data from a specific "fake user" account.
--   **Interactivity:** The Demo Page MUST be presented as a read-only version of a journal. User input fields (e.g., notes, vibe selection) will be disabled or not present.
--   **Framing & Call to Action:** A prominent banner or header MUST be displayed at the top of the Demo Page. This banner MUST clearly explain that the user is viewing a demo and include a prominent "Sign up to create your own" call to action, linking to the Login/Registration page.
+- **Content Source:** The Demo Page will utilize the standard journal page structure and components, populated with pre-generated data from a specific "fake user" account.
+- **Interactivity:** The Demo Page MUST be presented as a read-only version of a journal. User input fields (e.g., notes, vibe selection) will be disabled or not present.
+- **Framing & Call to Action:** A prominent banner or header MUST be displayed at the top of the Demo Page. This banner MUST clearly explain that the user is viewing a demo and include a prominent "Sign up to create your own" call to action, linking to the Login/Registration page.
 
 # Setup Account
 
@@ -229,16 +228,16 @@ The Demo Page serves as an initial touchpoint for potential users to understand 
       - Nightscout URL (text field)
       - Nightscout Token (text field)
   - **Connection Flow:**
-    1.  The user fills in their Nightscout URL and Token.
-    2.  A "Test Connection" button is displayed. Next to it, a "Save and Continue" button is also visible but is **disabled** by default.
-    3.  The user clicks "Test Connection."
-    4.  **On Success:**
-        *   A small success message (e.g., "Connection successful!") appears near the test button.
-        *   The "Save and Continue" button becomes **enabled**.
-    5.  **On Failure:**
-        *   A clear error message is displayed (e.g., "Connection failed. Please check your URL and token and try again.").
-        *   The "Save and Continue" button remains disabled.
-    6.  Once the "Save and Continue" button is enabled, the user can click it to save their settings and be redirected to the Dashboard.
+    1. The user fills in their Nightscout URL and Token.
+    2. A "Test Connection" button is displayed. Next to it, a "Save and Continue" button is also visible but is **disabled** by default.
+    3. The user clicks "Test Connection."
+    4. **On Success:**
+       - A small success message (e.g., "Connection successful!") appears near the test button.
+       - The "Save and Continue" button becomes **enabled**.
+    5. **On Failure:**
+       - A clear error message is displayed (e.g., "Connection failed. Please check your URL and token and try again.").
+       - The "Save and Continue" button remains disabled.
+    6. Once the "Save and Continue" button is enabled, the user can click it to save their settings and be redirected to the Dashboard.
   - Preferred units: They can choose ONE of (but can be changed later):
     - mg/dL
     - mmol/L
@@ -258,9 +257,16 @@ The Demo Page serves as an initial touchpoint for potential users to understand 
 # This week's journal
 
 ### Insufficient Data Handling
+
 When a user clicks "Start Journal," the system will proceed with the data analysis and journal generation, regardless of the amount of historical data available. If the system detects less than 7 days of CGM data, a prominent, non-blocking warning message will be displayed at the very top of the "This week's journal" page.
 
 **Warning Text:** "Heads up: This analysis is based on only [X] days of data. For the most complete insights, try to journal when you have at least 7 days of data logged."
+
+### Journal State
+
+All journal entries, including historical ones, are always editable. The AI-generated content (podcast, analysis) is immutable once generated, but the user's notes can be edited and saved at any time.
+
+**Note on Edits:** For the MVP, editing the notes of a historical journal is for the user's personal record-keeping only. The new information will be saved, but it will **not** trigger a re-analysis or have any impact on the AI-generated content for subsequent new journals.
 
 ## Weekly Podcast
 
@@ -271,30 +277,29 @@ The top of the journal page will feature the podcast player, ordered as follows:
 1.  **Journal Title:** e.g., "My week" with the date range.
 2.  **Podcast Description:** A short, AI-generated description that matches the one used in the podcast's RSS feed entry.
 3.  **Audio Player:**
-    -   The player will be lazy-loaded to optimize page performance. It will initially appear as a placeholder (e.g., "Click to load AI discussion on your numbers") that the user must click to activate the full audio player.
-    -   **Error Handling:** If the audio file for the week cannot be found or fails to load, an explicit error message will be displayed in place of the audio player component.
-
-- Upon clicking “Start Journal”, they are taken to a new page for This week’s journal
-- **Journal State:** All journal entries are always editable. The AI-generated content (podcast, analysis) is immutable once generated, but the user's notes can be edited at any time.
+    - The player will be lazy-loaded to optimize page performance. It will initially appear as a placeholder (e.g., "Click to load AI discussion on your numbers") that the user must click to activate the full audio player.
+    - **Error Handling:** If the audio file for the week cannot be found or fails to load, an explicit error message will be displayed in place of the audio player component.
 
 ## Journal Generation Process
 
 This section describes the process that occurs after a user clicks "Start Journal". It covers both the user-facing loading experience and the backend technical steps.
 
 ### User Experience (Loading Screen)
-Upon clicking "Start Journal," the user is navigated to a dedicated loading page that displays a progress bar and descriptive text to keep them informed.
+
+Upon clicking "Start Journal," the user is navigated to a dedicated loading page that displays a progress bar and descriptive text to keep them informed. This is a synchronous process; the user will wait on this screen until all generation is complete.
 
 **Loading Steps & Progress Text:**
 
-*   (0%) Initializing: "Kicking things off..."
-*   (20%) Fetching Data: "Gathering your blood glucose, insulin, and meal data from the last 7 days."
-*   (40%) Statistical Analysis: "Running analysis to find trends and hotspots in your numbers."
-*   (60%) AI Scripting: "Writing the script for your personalized audio summary. This is the longest step, thanks for your patience!"
-*   (80%) Audio Generation: "Recording your podcast."
-*   (95%) Finalizing: "Putting the finishing touches on your journal."
-*   (100%) Done: The loading screen is replaced by the fully loaded "This week's journal" page.
+- (0%) Initializing: "Kicking things off..."
+- (20%) Fetching Data: "Gathering your blood glucose, insulin, and meal data from the last 7 days."
+- (40%) Statistical Analysis: "Running analysis to find trends and hotspots in your numbers."
+- (60%) AI Scripting: "Writing the script for your personalized audio summary. This is the longest step, thanks for your patience!"
+- (80%) Audio Generation: "Recording your podcast."
+- (95%) Finalizing: "Putting the finishing touches on your journal."
+- (100%) Done: The loading screen is replaced by the fully loaded "This week's journal" page.
 
 ### Backend Process
+
 - When a new Journal is first created (not edited from draft, but first time), a number of things have to be queried, created and saved for this Journal. This data is NOT user input. This includes:
   - Blood glucose data for the last 7 days
   - Treatments (insulin, meals) for the last 7 days
@@ -328,32 +333,30 @@ After the loading phase, the user now gets to review the data and review their w
   - 1. Weekly Vibe: How Was Your Week?
        Let's start with a quick check-in on your overall feeling about your diabetes management this past week.
        Prompt: "How do you feel about managing your diabetes this week?"
-       - Options (Tap one):
-         - 🥀 Wilted: Feeling completely drained, struggling to stand.
-         - 🌱 Sprouting: Getting by, some fragile growth, still needs a lot of care.
-         - 🌿 Healthy: Growing strong, managing well, feeling good.
-         - 🌻 Blooming: Feeling vibrant, flourishing, energy and positive outcomes.
-
-2. Influencing Factors
-   What might have influenced your diabetes management this week? Tap any that apply. Chips (Click to Select/Deselect):
-
-- Busy
-- Hectic
-- Quiet Week
-- Feeling Unwell
-- Feeling Healthy
-- Lots of Exercise
-- Running Around
-- Poor Sleep
-- Good Sleep
-- Great Diet
-- Different foods
-- Strange Meal Times
-- Changes to Routine
-- Travel
-- Social Events
-- New Medications
-- Menstrual Cycle
+    - Options (Tap one):
+      - 🥀 Wilted: Feeling completely drained, struggling to stand.
+      - 🌱 Sprouting: Getting by, some fragile growth, still needs a lot of care.
+      - 🌿 Healthy: Growing strong, managing well, feeling good.
+      - 🌻 Blooming: Feeling vibrant, flourishing, energy and positive outcomes.
+  - 2. Influencing Factors
+       What might have influenced your diabetes management this week? Tap any that apply. Chips (Click to Select/Deselect):
+    - Busy
+    - Hectic
+    - Quiet Week
+    - Feeling Unwell
+    - Feeling Healthy
+    - Lots of Exercise
+    - Running Around
+    - Poor Sleep
+    - Good Sleep
+    - Great Diet
+    - Different foods
+    - Strange Meal Times
+    - Changes to Routine
+    - Travel
+    - Social Events
+    - New Medications
+    - Menstrual Cycle
 
 * Out of Range Glycemic Event Clusters. For each cluster, show a card of its details. These are covered in the [Glycemic Event Cluster Analysis](#glycemic-event-cluster-analysis) section
   - Time of Day: [e.g., Mornings (7:00 AM - 10:00 AM)]
@@ -446,16 +449,16 @@ own thoughts, context, or action plans. It is displayed at the bottom of the fea
 Insights.
 
 - Functionality:
-  _ Component: A multi-line text input field (textarea).
-  _ Prompt: The text box will be empty by default but will contain the following instructional prompt: > "Why do you think this happened? Leave some notes on what you think the issue is, or how you can
-  improve next week. If you don’t know, that's ok! Leave it blank."
-  _ Behavior:
-  _ Input is optional and the field can be left blank. * Notes entered by the user will be saved and associated with the specific cluster for future review by the user or their clinician. It will also be used by AI when creating insights in the Loading phase for subsequent weeks (ie, subsequent weeks may look at this data).
+  - Component: A multi-line text input field (textarea).
+  - Prompt: The text box will be empty by default but will contain the following instructional prompt: > "Why do you think this happened? Leave some notes on what you think the issue is, or how you can
+    improve next week. If you don’t know, that's ok! Leave it blank."
+  - Behavior:
+  - Input is optional and the field can be left blank. \* Notes entered by the user will be saved and associated with the specific cluster for future review by the user or their clinician. It will also be used by AI when creating insights in the Loading phase for subsequent weeks (ie, subsequent weeks may look at this data).
 
 # Historical Journals
 
-- Historical Journals can be viewed but not edited. When one is clicked on, it should show a read-only view of all the same data when it was the Weekly Journal, but all the text fields and buttons are read-only.
-- Historical Journals can be deleted but not edited. There should be a “Delete” icon on the top right of the header (aligned right to the screen), and when pressed, there should be a warning dialog “Are you sure, etc…”, with “Cancel” or “Delete” buttons
+- When a historical journal is clicked on from the Dashboard, it will show the same view as the "Weekly Journal" page, allowing all user-input fields (notes, vibe, etc.) to be edited and saved.
+- Historical Journals can be deleted. There should be a “Delete” icon on the top right of the header (aligned right to the screen), and when pressed, there should be a warning dialog “Are you sure you want to permanently delete this journal entry?”, with “Cancel” or “Delete” buttons.
 
 # Error Handling
 
@@ -465,27 +468,27 @@ This section defines how the application handles critical errors to ensure a cle
 
 If a user's Nightscout connection fails after their initial setup (e.g., due to an expired token or an unreachable URL) when they attempt to create a new journal or view their data:
 
--   The application MUST redirect the user back to the Dashboard.
--   A persistent error banner MUST be displayed at the top of the Dashboard, clearly communicating the connection issue.
+- The application MUST redirect the user back to the Dashboard.
+- A persistent error banner MUST be displayed at the top of the Dashboard, clearly communicating the connection issue.
 
 ## Journal Creation with No Usable CGM Data
 
 If a user attempts to create a new journal but there is no usable CGM data available for the past week:
 
--   The system MUST prevent journal creation.
--   A specific, short message MUST be displayed to the user, explaining the lack of data.
--   This message MUST include a link to the Nightscout documentation URL: `https://nightscout.github.io/`, guiding the user on how to ensure data is flowing.
+- The system MUST prevent journal creation.
+- A specific, short message MUST be displayed to the user, explaining the lack of data.
+- This message MUST include a link to the Nightscout documentation URL: `https://nightscout.github.io/`, guiding the user on how to ensure data is flowing.
 
 # Monetization Strategy (Post-MVP)
 
 This section outlines the high-level monetization strategy envisioned for Goodnumbers beyond the Minimum Viable Product.
 
--   **Model:** A freemium model is planned.
--   **Free Tier Limitations:**
-    -   Free users will be able to log in and create an account.
-    -   They will be able to create only one report.
-    -   The "Save" button on the journal page will be disabled for free users, meaning their report will not be persistent.
-    -   The length of the personalized podcast will be limited for free users.
+- **Model:** A freemium model is planned.
+- **Free Tier Limitations:**
+  - Free users will be able to log in and create an account.
+  - They will be able to create only one report.
+  - The "Save" button on the journal page will be disabled for free users, meaning their report will not be persistent.
+  - The length of the personalized podcast will be limited for free users.
 
 # About Us
 
