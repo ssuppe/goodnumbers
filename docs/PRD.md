@@ -600,22 +600,32 @@ Insights.
 
 ## Error Handling
 
-This section defines how the application handles critical errors to ensure a clear and informative user experience.
+This section defines how the application handles critical errors to ensure a clear and informative user experience by providing immediate feedback and clear recovery paths.
 
 ### Nightscout Connection Failures
 
-If a user's Nightscout connection fails after their initial setup (e.g., due to an expired token or an unreachable URL) when they attempt to create a new journal or view their data:
+This error state is triggered when the application cannot connect to the user's configured Nightscout instance upon loading the Dashboard.
 
-- The application MUST redirect the user back to the Dashboard.
-- A persistent error banner MUST be displayed at the top of the Dashboard, clearly communicating the connection issue.
+- **UI State:**
+  - A persistent, critical red error banner (`--feedback-critical-color`) MUST be displayed at the top of the Dashboard. This banner is not dismissible.
+  - The banner MUST contain the text: "The Nightscout connection was unsuccessful. Please check your credentials." The text MUST include a link to the user's Account Settings page.
+  - The "Start Journal" button on the "Log this week's journal" card MUST be visually disabled.
+- **Interaction Model:**
+  - When a user hovers over the disabled "Start Journal" button, a tooltip MUST appear with the message: "Cannot start journal. Please resolve the Nightscout connection issue in your settings."
+  - This prevents the user from initiating a journal creation process that is guaranteed to fail.
 
 ### Journal Creation with No Usable CGM Data
 
-If a user attempts to create a new journal but there is no usable CGM data available for the past week:
+This error state is triggered if a user clicks "Start Journal" but the system, after a successful connection, finds no usable CGM data for the past 7 days.
 
-- The system MUST prevent journal creation.
-- A specific, short message MUST be displayed to the user, explaining the lack of data.
-- This message MUST include a link to the Nightscout documentation URL: `https://nightscout.github.io/`, guiding the user on how to ensure data is flowing.
+- **UI State:**
+  - Journal creation MUST be prevented, and the user MUST remain on the Dashboard.
+  - A persistent, critical red error banner (`--feedback-critical-color`) MUST be displayed at the top of the Dashboard. This banner is not dismissible.
+  - The banner MUST contain the text: "No data found. Check your Nightscout server if you think this is incorrect."
+  - The "Start Journal" button on the "Log this week's journal" card MUST be visually disabled.
+- **Interaction Model:**
+  - When a user hovers over the disabled "Start Journal" button, a tooltip MUST appear with the message: "Cannot start journal. No CGM data was found for the last 7 days."
+  - A link to the Nightscout documentation (`https://nightscout.github.io/`) should be provided within the banner to guide the user on ensuring data is flowing.
 
 ## Monetization Strategy (Post-MVP)
 
