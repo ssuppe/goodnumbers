@@ -42,3 +42,4 @@ treatments.json
 # Ignore Python virtual environments
 venv/
 .venv/
+.aicodeprep-gui
