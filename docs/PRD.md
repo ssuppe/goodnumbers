@@ -122,6 +122,62 @@ export const announcementData: AnnouncementProps = {
 
 The title gets a special UI treatment you can see in [Homepage Screenshot](#homepage-screenshot).
 
+Pre-Release Access Barrier
+
+This section defines the requirements for a site-wide access barrier. The primary goal of this feature is to restrict access to the entire
+application to a pre-approved list of users during the private beta/pre-release phase. This barrier serves as a first line of defense,
+preceding the application's main user authentication system.
+
+1. Overview & Goal
+
+- Goal: To implement a simple, secure gate that users must pass before accessing any page or API endpoint of the application.
+- User Story: As a pre-approved beta tester, I want to enter a shared password on a simple page so that I can gain access to the application
+  to begin testing.
+- Functionality: Any attempt to access a URL within the application will first be intercepted. If the user has not passed the barrier, they
+  will be redirected to a dedicated barrier login page. Upon successful entry of credentials, their access will be remembered for a set
+  duration, and they will be able to proceed to the main application, including the standard login/registration flows.
+
+2. User Experience & Design
+
+The barrier page will be minimal and professional, adhering to the established UX Design System to ensure brand consistency.
+
+- Layout: A clean, centered layout dominated by a single card containing the login form.
+- Page Elements:
+  - Headline: "Private Beta Access"
+  - Form: A card containing two input fields:
+    - Username
+    - Password
+  - Button: A primary action button labeled "Enter".
+- Styling (from Design System):
+  - The page background will use --background-color.
+  - The form will be contained within a standard Card component (--component-background-color, rounded corners, light box shadow).
+  - The "Enter" button will be a Primary Button (--primary-color).
+  - Typography will use the standard Font Stack.
+- Interaction Flow:
+  1.  User visits any page in the application.
+  2.  If not authenticated at the barrier level, they are redirected to the barrier page.
+  3.  User enters the shared username and password and clicks "Enter".
+  4.  On Success: The user is redirected to the page they originally intended to visit. They can now navigate the site freely.
+  5.  On Failure: A simple error message appears below the "Enter" button (e.g., "Invalid username or password."). The text should use
+      --feedback-critical-color.
+
+3. Functional & Technical Requirements
+
+- Tech Stack: The barrier will be implemented as a middleware within the Express.js framework.
+- Authentication Mechanism:
+  - An Express.js middleware will be applied globally to all routes.
+  - It will check for the presence of a valid session cookie on every incoming request.
+  - If the cookie is not present, it will redirect the request to the barrier page, except for the barrier page itself and its
+    authentication API endpoint.
+- Credential Management:
+  - The shared username and password MUST NOT be hardcoded in the source code.
+  - They will be supplied to the application via secure server-side environment variables.
+- Session Management:
+  - Upon successful authentication, the /api/barrier-login endpoint will set a secure, httpOnly cookie in the user's browser.
+  - This cookie will have a defined expiration (e.g., 7 days) to remember the user's session.
+- Separation of Concerns: This barrier is entirely distinct from the main application's user authentication (Google OAuth, managed via
+  Prisma). A user must pass this barrier before they can reach the page to log in or register as a standard application user
+
 ## Login page {#login-page}
 
 This document outlines the product requirements for the user Login and Registration page for our SaaS application's Minimum Viable Product (MVP). The goal is to provide a secure, intuitive, and seamless experience for both new and existing users to access the application, **initially focusing solely on Google OAuth for authentication using Auth.js built-in pages** to accelerate development.
