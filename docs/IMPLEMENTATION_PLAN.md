@@ -1,13 +1,40 @@
 # Goodnumbers Implementation Plan
 
-**Version:** 1.1
+**Version:** 1.2
 **Date:** 2025-08-13
 
 ## 1. Overview
 
 This document outlines the phased, step-by-step implementation plan for the Goodnumbers project. The plan follows a measured, test-driven approach, ensuring that each component is built and verified before moving to the next. Each task should be developed on a dedicated feature branch and merged into the `develop` branch via a Pull Request, as defined in `DEVELOPMENT_PROCESS.md`.
 
+## 2. Task-Level Workflow
+
+For each task listed in the implementation phases below, the following GitHub-integrated workflow must be followed:
+
+1.  **Create an Issue:** Before beginning work, create a GitHub Issue to track the task. This can be done via the `gh` command-line tool. The issue will serve as a central place for discussion and to document specific implementation details.
+    ```bash
+    # Example for Phase 1, Task 2
+    gh issue create --title "feat(db): Implement Database Schema" --body "Implement the Prisma schema as defined in the technical specification. Run the initial migration to set up the database."
+    ```
+
+2.  **Create a Branch:** Create a feature branch from the `develop` branch. It is recommended to include the issue number in the branch name for easy tracking.
+    ```bash
+    # Example assuming the issue created is #1
+    git checkout -b feat/1-database-schema
+    ```
+
+3.  **Implement and Test:** Perform the actions for the task, adhering to the test-driven principles. Make small, atomic commits using the Conventional Commit standard.
+
+4.  **Open a Pull Request:** Once the task is complete and all local tests are passing, open a Pull Request against the `develop` branch. The PR description should link to the issue it resolves using a keyword like `Closes #1`.
+    ```bash
+    gh pr create --title "feat(db): Implement Database Schema" --body "Closes #1. This PR adds the initial Prisma schema and migration."
+    ```
+
+5.  **Review and Merge:** Follow the PR review and merge process defined in `DEVELOPMENT_PROCESS.md`. The merge will automatically close the associated issue.
+
 ---
+
+## 3. Implementation Phases
 
 ### **Phase 0: Project Restructuring**
 
@@ -18,8 +45,6 @@ This document outlines the phased, step-by-step implementation plan for the Good
     *   **Action:** Move all contents of the existing `goodnumbers/` directory into the new `proof_of_concept/` directory.
     *   **Test:** Manually verify that the file move is complete and the `goodnumbers/` directory is gone.
     *   **Commit:** `chore: Archive existing proof-of-concept code`
-
----
 
 ### **Phase 1: Project Setup & Core Backend Foundation**
 
@@ -47,8 +72,6 @@ This document outlines the phased, step-by-step implementation plan for the Good
     *   **Test:** Write unit tests for the encryption utility. Ensure that `decrypt(encrypt(data))` returns the original data. Test edge cases like empty or null inputs.
     *   **Commit:** `feat(utils): create encryption utility for sensitive data`
 
----
-
 ### **Phase 2: Authentication & User Management**
 
 **Goal:** Implement all functionality related to user identity, from the initial access barrier to managing user-specific settings.
@@ -74,8 +97,6 @@ This document outlines the phased, step-by-step implementation plan for the Good
     *   **Test:** Write an integration test that gets a user's original token, calls the endpoint, and asserts that the token stored in the database has changed.
     *   **Commit:** `feat(api): add endpoint for rss token regeneration`
 
----
-
 ### **Phase 3: Core Journal Feature (Backend API)**
 
 **Goal:** Build out all the backend API endpoints related to the journal lifecycle. At the end of this phase, the backend will be ready, but the actual data processing will not be implemented yet.
@@ -97,8 +118,6 @@ This document outlines the phased, step-by-step implementation plan for the Good
     *   **Test:** Write an integration test that creates a journal and then calls this endpoint to check its initial `PENDING` status.
     *   **Commit:** `feat(api): implement journal status polling endpoint`
 
----
-
 ### **Phase 4: Frontend Implementation**
 
 **Goal:** Build the user interface, connecting it to the now-stable backend API.
@@ -116,8 +135,6 @@ This document outlines the phased, step-by-step implementation plan for the Good
     *   **Action:** Build the main journal view page with all its components (AGP chart, inputs, etc.), fetching data from the `GET /api/journals/:id` endpoint.
     *   **Test:** Write component and E2E tests for these pages to ensure data is displayed correctly and user interactions work as expected.
     *   **Commit:** `feat(ui): implement dashboard and journal view pages`
-
----
 
 ### **Phase 5: Background Processing Implementation**
 
