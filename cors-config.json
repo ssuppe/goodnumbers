@@ -1,8 +1,0 @@
-[
-  {
-    "origin": ["https://goodnumbers.net", "https://www.goodnumbers.net"],
-    "method": ["GET", "HEAD", "DELETE"],
-    "responseHeader": ["Content-Type", "Access-Control-Allow-Origin", "Cross-Origin-Resource-Policy"],
-    "maxAgeSeconds": 3600
-  }
-]
