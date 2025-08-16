@@ -1,7 +1,7 @@
 # Technical Specification: Goodnumbers Weekly Health Journal
 
-**Version:** 1.1
-**Date:** 2025-08-13
+**Version:** 1.2
+**Date:** 2025-08-16
 **Status:** Final
 
 ## 1. Introduction
@@ -22,7 +22,7 @@ The goal of this specification is to provide a developer-ready document that out
     - **Configuration:**
         - **Name:** The cookie will be named `barrier_session`.
         - **Secret:** The cookie will be cryptographically signed with a secret key. This key MUST be provided to the application via a `COOKIE_SECRET` environment variable.
-        - **Options:** The cookie will be configured with security best practices in mind: it will be `httpOnly` (to prevent access from client-side scripts), `secure` (to ensure it is only sent over HTTPS in a production environment), and will have a `maxAge` of 7 days (specified in milliseconds) to control the session duration.
+        - **Options:** The cookie will be configured with security best practices in mind: it will be `httpOnly` (to prevent access from client-side scripts), `secure` (to ensure it is only sent over HTTPS in a production environment), `sameSite: 'lax'` (to provide CSRF protection), and will have a `maxAge` of 7 days (specified in milliseconds) to control the session duration.
 - **User Experience Flow:**
     1. When a user first accesses any page, the barrier middleware checks for a valid, trusted `barrier_session` cookie.
     2. If the cookie is invalid or absent, the user is immediately redirected to `/barrier-login.html`.
@@ -296,9 +296,12 @@ All endpoints are protected by authentication middleware.
 - **`POST /api/barrier-login`**
   - **Purpose:** Authenticates a user for the pre-release beta access barrier.
   - **Request Body:** The endpoint expects a JSON body with the following structure, which must be validated using `zod`: `{ "username": "string", "password": "string" }`
+  - **Security:**
+      - **Rate Limiting:** This endpoint MUST be protected by a strict rate limiter (e.g., using `express-rate-limit`) to prevent brute-force password guessing attacks.
+      - **Constant-Time Comparison:** Credential comparison MUST be performed using a constant-time algorithm (e.g., Node.js's `crypto.timingSafeEqual`) to mitigate timing attacks.
   - **Logic:**
       1.  The handler receives the `username` and `password` from the request body.
-      2.  It securely compares these values against the `BARRIER_USERNAME` and `BARRIER_PASSWORD` environment variables.
+      2.  It securely compares these values against the `BARRIER_USERNAME` and `BARRIER_PASSWORD` environment variables using a constant-time comparison.
       3.  **On Success:** If the credentials match, it sets a property on the session object (e.g., `req.session.is_authorized = true`). The `cookie-session` middleware then automatically sends the updated, signed cookie to the client in the response headers. The endpoint returns a `200 OK` status with a success message.
       4.  **On Failure:** If the credentials do not match, it returns a `401 Unauthorized` status with an error message. It does not provide specifics on whether the username or password was incorrect.
 
@@ -399,8 +402,8 @@ An implementation timeline is not available from the source documents. This shou
 
 This section lists key areas for improvement identified during the critical analysis phase. They are slated for consideration in future iterations, post-MVP.
 
-- **[TODO] Re-architect for Asynchronous Journal Generation:** To improve user experience, the journal creation flow should be changed from synchronous to asynchronous. The system should inform the user their report is being generated and notify them upon completion (e.g., via an in-app flag or email) rather than making them wait on a loading screen.
-- **[TODO] Plan for Database Scalability:** The choice of SQLite presents a significant scalability risk. A plan should be made to migrate to a client-server database like PostgreSQL to handle increased concurrency and load as the user base grows.
+- **[TODO] Re-architect for Asynchronous Journal Generation:** The current synchronous flow (making the user wait on a loading screen) is fragile and provides a poor user experience. It is susceptible to network timeouts and provides no resilience if a step in the backend pipeline fails. This should be re-architected to be fully asynchronous: the API should accept the request and return immediately, allowing the user to leave the page while the backend processes the job. The user should be notified of completion via an in-app indicator or email.
+- **[TODO] Plan for Database Scalability:** The choice of SQLite, while simple for initial setup, presents a significant long-term scalability and reliability risk. Its file-based locking is not well-suited for highly concurrent access from multiple processes (web server and background worker), which can lead to `SQLITE_BUSY` errors and API failures under load. A formal plan should be created to migrate to a robust client-server database like PostgreSQL to ensure system stability as the user base grows.
 - **[TODO] Conduct a Cost Analysis:** A thorough cost analysis of the AI (Gemini) and TTS API calls should be performed to understand the financial viability of the service, especially concerning the planned freemium model.
 - **[TODO] Seek Legal Counsel on PHI/HIPAA:** Given the handling of sensitive health data (PHI), the project should seek advice from legal counsel specializing in digital health to fully understand regulatory risks and obligations (such as HIPAA in the US).
 - **[TODO] Improve AI Pipeline Resilience:** The background worker's multi-pass AI and TTS pipeline should be made more resilient. This includes implementing robust error-handling, state management, and a retry mechanism to handle transient failures in external API calls.
