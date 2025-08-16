@@ -67,7 +67,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 4.  **Open a Pull Request:** Once the task is complete and all local tests are passing, open a Pull Request against the `develop` branch. The PR description should link to the issue it resolves using a keyword like `Closes #1`.
 
     ```bash
-    gh pr create --title "feat(db): Implement Database Schema" --body "Closes #1. This PR adds the initial Prisma schema and migration."
+    gh pr create --base develop --title "feat(db): Implement Database Schema" --body "Closes #1. This PR adds the initial Prisma schema and migration."
     ```
 
 5.  **Review and Merge:** Follow the PR review and merge process defined in `DEVELOPMENT_PROCESS.md`. The merge will automatically close the associated issue.
