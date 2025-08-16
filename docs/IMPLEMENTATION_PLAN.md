@@ -36,6 +36,7 @@ To support the MVP goals of stability and quality without undue complexity, this
 ### 2.3. Testing Conventions
 
 - **Directory Structure:** All test files will reside in a top-level `tests/` directory within the `goodnumbers` project folder. This directory will be further organized into `unit/` and `integration/` subdirectories.
+- When running npm for the new goodnumbers project, always always always append "cd goodnumbers &&" first so it runs in the right folder.
 - **File Naming:** Test files should be named to correspond with the module they are testing (e.g., `database.test.ts`, `encryption.test.ts`).
 - **Database Files:** Local development database files (e.g., `goodnumbers/prisma/dev.db`) are ephemeral and must be added to the `.gitignore` file. The schema is managed solely through version-controlled migration files.
 
@@ -114,12 +115,15 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Action:** Set up a minimal Express server application that listens on a port.
     - **Action:** Add `helmet` and `express-rate-limit` middleware to set secure HTTP headers and provide basic DoS protection.
     - **Action:** Create a public `/health` endpoint that returns a `200 OK` with a JSON body like `{"status": "ok"}`.
+    - **Action:** Install `zod` and establish a pattern for API input validation, to be used by all endpoints that accept data.
+    - **Action:** Implement a global, catch-all error-handling middleware that logs errors server-side and returns a generic 500 error message to the client in production.
     - **Test:** In a new file at `goodnumbers/tests/integration/server.test.ts`, write a test using Jest and `supertest` that makes a request to the `/health` endpoint and asserts the response is correct.
     - **Commit:** `feat(server): add basic express server with health check and security hardening`
 
 4.  **Task: Build Credential Encryption Utility**
     - **Action:** Create a self-contained utility module (`encryption.ts`) with `encrypt` and `decrypt` functions using Node.js's built-in `crypto` module, as specified for handling Nightscout credentials.
-    - **Test:** Write unit tests using Jest for the encryption utility. Ensure that `decrypt(encrypt(data))` returns the original data. Test edge cases like empty or null inputs.
+    - **Action:** Install and configure `dotenv` to load the `ENCRYPTION_KEY` from a `.env` file in the application's entry point.
+    - **Test:** Write unit tests using Jest for the encryption utility. Ensure that `decrypt(encrypt(data))` returns the original data. Test edge cases like empty or null inputs and initialization failures.
     - **Commit:** `feat(utils): create encryption utility for sensitive data`
 
 ### **Phase 2: Authentication & User Management**
@@ -129,7 +133,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 1.  **Task: Implement Pre-Release Access Barrier**
 
     - **Action:** Implement the Express middleware to intercept all requests, check for a valid session cookie, and redirect to a login page if absent. Credentials should be loaded from environment variables.
-    - **Action:** Create the `POST /api/barrier-login` endpoint to validate credentials and set the cookie.
+    - **Action:** Create the `POST /api/barrier-login` endpoint to validate credentials and set the cookie. The request body must be validated using `zod`.
     - **Test:** Write integration tests using Jest and `supertest` for the middleware. Test that a protected route redirects. Test that the login endpoint correctly sets a cookie on success and returns an error on failure.
     - **Commit:** `feat(auth): implement pre-release site access barrier`
 
@@ -141,7 +145,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 3.  **Task: Implement User Settings API**
 
-    - **Action:** Create the `PUT /api/user/settings` endpoint. This endpoint will handle updates to `preferredUnits` and will use the encryption utility to securely save the `nightscoutUrl` and `nightscoutToken`.
+    - **Action:** Create the `PUT /api/user/settings` endpoint. This endpoint will handle updates to `preferredUnits` and will use the encryption utility to securely save the `nightscoutUrl` and `nightscoutToken`. The request body must be validated using `zod`.
     - **Test:** Write an integration test using Jest and `supertest` that mocks an authenticated user, calls the endpoint with new settings, and then queries the database directly to verify the data was saved correctly (and that credentials are encrypted).
     - **Commit:** `feat(api): implement endpoint for user settings`
 
@@ -156,7 +160,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 1.  **Task: Implement Journal CRUD APIs**
 
-    - **Action:** Implement the foundational journal endpoints: `POST`, `GET` (list), `GET` (by ID), `PUT`, and `DELETE` for `/api/journals`.
+    - **Action:** Implement the foundational journal endpoints: `POST`, `GET` (list), `GET` (by ID), `PUT`, and `DELETE` for `/api/journals`. All endpoints accepting data must use `zod` for validation.
     - **Test:** Write integration tests using Jest and `supertest` for each endpoint. Crucially, ensure that ownership is enforced (a user cannot access or modify another user's journals).
     - **Commit:** `feat(api): implement crud api for journals`
 
@@ -215,3 +219,11 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Action:** Implement the final step in the worker, where all generated artifacts (podcast URL, chart data, etc.) are saved to the `Journal` and `GlycemicEventCluster` tables in the database. The journal `status` should be updated to `COMPLETE`.
     - **Test:** Write a full integration test using Jest for the background worker that runs through the entire (mocked) process and verifies that the database is updated correctly at the end.
     - **Commit:** `feat(worker): finalize job by saving all generated data`
+
+## 5. Deployment and Security Hardening
+
+This section outlines high-level tasks that should be addressed as part of the production deployment process.
+
+-   **Production Secrets Management:** For the production GCE instance, secrets such as the `ENCRYPTION_KEY` and session secrets should be managed via Google Secret Manager, not from a `.env` file. The application should be configured with the appropriate permissions to fetch these secrets at startup.
+
+-   **Database File Permissions:** The deployment process must include a step to configure the file system permissions of the SQLite database file (e.g., `chmod 600 prisma/dev.db`). The file should only be readable and writable by the user account running the application.
