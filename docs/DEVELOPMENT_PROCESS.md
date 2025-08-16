@@ -80,7 +80,7 @@ The Pull Request is the central mechanism for quality control. All code must be 
 ### 4.1. Step-by-Step Workflow
 
 1.  **Branch:** Create your feature branch from the latest `develop`.
-2.  **Work & Commit:** Complete a single, discrete task from the implementation plan. Make small, logical commits on your branch using the Conventional Commit format.
+2.  **Work & Commit:** Complete a single, discrete task from the implementation plan. Tests always come first. Make small, logical commits on your branch using the Conventional Commit format. If after 3 attempts, use Google Search or the context7 MCP tool to find more information.
 3.  **Push:** Push your completed feature branch to the remote repository.
 4.  **Open a Pull Request:** Open a PR to merge your feature branch into the **`develop`** branch. When using a command-line tool like `gh`, always specify the target branch explicitly (e.g., `gh pr create --base develop`).
 
