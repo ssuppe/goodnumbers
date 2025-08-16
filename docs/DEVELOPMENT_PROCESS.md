@@ -109,3 +109,9 @@ The repository must be configured with a CI/CD pipeline to run the following che
 2.  **Merge:** Once the PR is approved and all automated checks have passed, it can be merged into `develop`.
 3.  **Merge Strategy:** Use **"Squash and Merge"**. This condenses the PR's commit history into a single, clean commit on the `develop` branch, keeping the main branch history tidy and meaningful.
 4.  **Clean Up:** After merging, the feature branch should be deleted from the remote repository.
+
+### 4.5. Security Checks
+
+Before a PR is merged, the author must perform the following security check:
+
+1.  **Dependency Audit:** Run `npm audit` from the `goodnumbers/` directory to check for known vulnerabilities in third-party packages. Any **high** or **critical** severity vulnerabilities must be addressed (either by updating the package or through a documented mitigation) before the PR can be merged.
