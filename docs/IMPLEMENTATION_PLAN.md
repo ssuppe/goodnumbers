@@ -132,9 +132,37 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 1.  **Task: Implement Pre-Release Access Barrier**
 
-    - **Action:** Implement the Express middleware to intercept all requests, check for a valid session cookie, and redirect to a login page if absent. Credentials should be loaded from environment variables.
-    - **Action:** Create the `POST /api/barrier-login` endpoint to validate credentials and set the cookie. The request body must be validated using `zod`.
-    - **Test:** Write integration tests using Jest and `supertest` for the middleware. Test that a protected route redirects. Test that the login endpoint correctly sets a cookie on success and returns an error on failure.
+    - **Goal:** Create a site-wide password barrier to restrict access during the private beta, following a strict Test-Driven Development (TDD) approach as outlined in the project's development process.
+
+    - **Step 1: Create Test File and Initial Failing Tests (The "Red" Step)**
+        - **Action:** First, create a new integration test file at `goodnumbers/tests/integration/barrier.test.ts`.
+        - **Action:** Inside this file, write your first test case using Jest and `supertest`. This test should define the primary requirement: "a request to a protected route (e.g., `/health`) without a session cookie should redirect to the login page". The test will attempt to make a GET request and will expect a 302 redirect status code to `/barrier-login.html`.
+        - **Action:** Write a second failing test case: "a POST request to `/api/barrier-login` with incorrect credentials should return a 401 Unauthorized status".
+        - **Action:** Run the test suite (`cd goodnumbers && npm test`) and watch it fail. This is the expected and desired outcome of the "Red" step.
+
+    - **Step 2: Minimal Implementation to Pass Tests (The "Green" Step)**
+        - **Action:** Install the required dependencies in the `goodnumbers/` directory: `npm install cookie-session @types/cookie-session`.
+        - **Action:** Create the stub login page at `goodnumbers/public/barrier-login.html` and configure `express.static` in `src/index.ts`. This ensures the redirect target exists.
+        - **Action:** Update the `.env.example` file with `BARRIER_USERNAME`, `BARRIER_PASSWORD`, and `COOKIE_SECRET`.
+        - **Action:** Now, write the *absolute minimum* amount of code in `src/index.ts` to make the tests pass. This includes:
+            - Adding the `cookie-session` middleware.
+            - Creating a basic barrier middleware that redirects all unauthorized traffic.
+            - Creating the `POST /api/barrier-login` route that initially might just return a hardcoded 401 error.
+        - **Action:** Run the tests (`cd goodnumbers && npm test`) again. Iterate on your minimal implementation until the initial tests turn green.
+
+    - **Step 3: Add Remaining Test Cases and Implement Logic (Repeat Red->Green)**
+        - **Action:** Now, add the remaining test cases to `barrier.test.ts`:
+            - A test for a *successful* login, asserting a 200 status and that the `Set-Cookie` header is present for `barrier_session`.
+            - A test to ensure that after a successful login, a subsequent request to a protected route returns a 200 OK status instead of redirecting.
+        - **Action:** Run the tests again; the new ones should fail.
+        - **Action:** Now, implement the complete logic for the middleware and the API endpoint. This includes `zod` validation, checking credentials against environment variables, and setting `req.session.is_authorized = true` on success.
+        - **Action:** Continue to run the tests until all of them pass.
+
+    - **Step 4: Refactor**
+        - **Action:** With a full suite of passing tests as your safety net, you can now refactor the implementation for clarity and quality.
+        - **Action:** Review the code in `src/index.ts`. Consider moving the barrier middleware and the auth route handler to their own dedicated files (e.g., `src/middleware/auth.ts`, `src/routes/barrier.ts`) to keep the main application file clean.
+        - **Action:** After each refactoring change, run the test suite (`cd goodnumbers && npm test`) to ensure you haven't broken anything.
+
     - **Commit:** `feat(auth): implement pre-release site access barrier`
 
 2.  **Task: Integrate User Authentication (Auth.js)**
