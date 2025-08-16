@@ -100,7 +100,7 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Test:** Confirm the project compiles (`tsc`), lints, and the test runner executes without errors.
     - **Commit:** `chore: Initial project setup and configuration`
 
-2.  **Task: Implement Database Schema**
+2.  **Task: Implement Database Schema** - COMPLETE
 
     - **Action:** Create the `goodnumbers/prisma/schema.prisma` file and populate it with the models from the technical specification.
     - **Action:** Add `*.db` to the `goodnumbers/prisma/.gitignore` file to ensure local database files are not committed.
@@ -109,7 +109,7 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Refactor:** Review the schema and test for correctness and clarity.
     - **Commit:** `feat(db): implement initial prisma schema`
 
-3.  **Task: Create Basic Express Server**
+3.  **Task: Create Basic Express Server** - COMPLETE
 
     - **Action:** Set up a minimal Express server application that listens on a port.
     - **Action:** Add `helmet` and `express-rate-limit` middleware to set secure HTTP headers and provide basic DoS protection.
