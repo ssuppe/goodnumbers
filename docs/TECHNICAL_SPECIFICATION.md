@@ -15,14 +15,26 @@ The goal of this specification is to provide a developer-ready document that out
 ### 2.1. Functional Requirements
 
 #### 2.1.1. Pre-Release Access Barrier
-- **Goal:** Restrict site-wide access to a pre-approved list of beta testers.
-- **Mechanism:** An Express.js middleware will intercept all requests.
-- **User Experience:**
-    - Unauthenticated users are redirected to a minimal barrier login page.
-    - The page will have a "Private Beta Access" headline and fields for a shared username and password.
-    - On successful login, a secure, httpOnly cookie is set (e.g., 7-day expiry), and the user is redirected to their original destination.
-    - On failure, an error message is displayed.
-- **Credential Management:** The shared username and password MUST be supplied via server-side environment variables and NOT hardcoded.
+- **Goal:** Restrict site-wide access to a pre-approved list of beta testers before they can reach the main application's login page.
+- **Mechanism:** An Express.js middleware will be applied to all routes to intercept all incoming requests and check the user's authorization status.
+- **Session Management:**
+    - **Library:** The barrier will use the `cookie-session` Express middleware. This library is chosen for its simplicity, as it stores session data directly on the client in a secure, signed cookie, avoiding the need for server-side session storage.
+    - **Configuration:**
+        - **Name:** The cookie will be named `barrier_session`.
+        - **Secret:** The cookie will be cryptographically signed with a secret key. This key MUST be provided to the application via a `COOKIE_SECRET` environment variable.
+        - **Options:** The cookie will be configured with security best practices in mind: it will be `httpOnly` (to prevent access from client-side scripts), `secure` (to ensure it is only sent over HTTPS in a production environment), and will have a `maxAge` of 7 days (specified in milliseconds) to control the session duration.
+- **User Experience Flow:**
+    1. When a user first accesses any page, the barrier middleware checks for a valid, trusted `barrier_session` cookie.
+    2. If the cookie is invalid or absent, the user is immediately redirected to `/barrier-login.html`.
+    3. For the initial implementation, `/barrier-login.html` will be a static HTML file containing a simple placeholder message and a basic form. The full, styled UI will be built in a later phase (Phase 4).
+    4. A user can submit their credentials via the form on this page, which sends a `POST` request to the `/api/barrier-login` endpoint.
+    5. On successful login, the `barrier_session` cookie is created and sent to the user's browser, and they are redirected to their originally requested URL.
+    6. On failure, an error is returned from the API, and the frontend will be responsible for displaying it.
+- **Credential Management:**
+    - The shared username and password for the barrier MUST be supplied via server-side environment variables to avoid hardcoding sensitive data.
+    - **Variable Names:** The application will expect the following environment variables to be present:
+        - `BARRIER_USERNAME`
+        - `BARRIER_PASSWORD`
 
 #### 2.1.2. User Authentication (Auth.js)
 - **Provider:** Google OAuth is the sole and primary authentication method for the MVP.
@@ -282,9 +294,13 @@ The `analysisInsights` and `clusterDataJson` fields use the `Json` type to allow
 All endpoints are protected by authentication middleware.
 
 - **`POST /api/barrier-login`**
-  - **Purpose:** Authenticates a user for the pre-release beta.
-  - **Request Body:** `{ "username": "...", "password": "..." }`
-  - **Logic:** Validates credentials against environment variables. On success, sets a session cookie.
+  - **Purpose:** Authenticates a user for the pre-release beta access barrier.
+  - **Request Body:** The endpoint expects a JSON body with the following structure, which must be validated using `zod`: `{ "username": "string", "password": "string" }`
+  - **Logic:**
+      1.  The handler receives the `username` and `password` from the request body.
+      2.  It securely compares these values against the `BARRIER_USERNAME` and `BARRIER_PASSWORD` environment variables.
+      3.  **On Success:** If the credentials match, it sets a property on the session object (e.g., `req.session.is_authorized = true`). The `cookie-session` middleware then automatically sends the updated, signed cookie to the client in the response headers. The endpoint returns a `200 OK` status with a success message.
+      4.  **On Failure:** If the credentials do not match, it returns a `401 Unauthorized` status with an error message. It does not provide specifics on whether the username or password was incorrect.
 
 - **`POST /api/journals`**
   - **Purpose:** Initiates the generation of a new weekly journal.
