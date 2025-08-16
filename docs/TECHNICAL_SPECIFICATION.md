@@ -329,6 +329,7 @@ All endpoints are protected by authentication middleware.
 - **No Usable CGM Data:** If a user starts a journal but no data is found for the last 7 days, the creation is aborted. A red banner is shown on the Dashboard explaining that no data was found.
 - **Insufficient Data Warning:** If < 7 days of data are found, the journal is still generated, but a non-blocking warning banner is displayed at the top of the journal page.
 - **Audio File Failure:** If the podcast audio file fails to generate or load, an error message is displayed in place of the audio player.
+- **Secure Production Error Handling:** The application MUST include a global error-handling middleware in Express. In a production environment, this middleware MUST prevent leaking technical details or stack traces. It should log the full error server-side for debugging and return a generic, non-revealing error message to the client (e.g., `{"error": "An internal server error occurred."}`).
 
 ## 7. Performance Considerations
 
@@ -339,12 +340,15 @@ All endpoints are protected by authentication middleware.
 
 ## 8. Security Measures
 
+- **Input Validation:** All API endpoints that accept client-side input (e.g., request bodies, query parameters) MUST use a schema-based validation library (e.g., `zod`) to rigorously validate the data's shape, type, and constraints. This is a primary defense against data corruption and injection attacks.
 - **Credential Encryption:** Sensitive user credentials, specifically the `nightscoutUrl` and `nightscoutToken`, will be encrypted at rest in the database.
-    - **Method:** Symmetric encryption will be used via Node.js's built-in `crypto` module (e.g., AES-256-GCM).
-    - **Key Management:** A single, strong, 256-bit secret encryption key will be generated and stored exclusively as an environment variable (`ENCRYPTION_KEY`) on the production server. This key will not be checked into source control.
+    - **Method:** Symmetric encryption will be used via Node.js's built-in `crypto` module (AES-256-GCM).
+    - **Key Management:** For local development, a 256-bit secret encryption key will be supplied via an `ENCRYPTION_KEY` environment variable. For production, this key SHOULD be managed by a dedicated secrets management service (e.g., Google Secret Manager) and fetched at application startup, rather than being stored in a file on the server.
 - **Authentication:** Handled by Auth.js, providing robust session management and protection against common authentication vulnerabilities.
 - **CSRF Protection:** API endpoints that modify state (e.g., `POST`, `PUT`, `DELETE`) will use anti-CSRF tokens.
 - **Data Segregation:** All database queries enforce ownership checks, ensuring a user can only access their own data.
+- **Secure HTTP Headers:** The application MUST use middleware like `helmet` to set various security-related HTTP headers, mitigating common attacks like XSS and clickjacking.
+- **Database File Security:** In the production environment, the SQLite database file (`.db`) MUST have its file system permissions configured to be readable and writable only by the application's user account.
 - **Pre-Release Barrier:** A site-wide password prevents unauthorized access during the beta phase.
 
 ## 9. Testing Plan
