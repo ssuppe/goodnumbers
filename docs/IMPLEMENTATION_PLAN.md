@@ -120,7 +120,7 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Test:** In a new file at `goodnumbers/tests/integration/server.test.ts`, write a test using Jest and `supertest` that makes a request to the `/health` endpoint and asserts the response is correct.
     - **Commit:** `feat(server): add basic express server with health check and security hardening`
 
-4.  **Task: Build Credential Encryption Utility**
+4.  **Task: Build Credential Encryption Utility** - COMPLETE
     - **Action:** Create a self-contained utility module (`encryption.ts`) with `encrypt` and `decrypt` functions using Node.js's built-in `crypto` module, as specified for handling Nightscout credentials.
     - **Action:** Install and configure `dotenv` to load the `ENCRYPTION_KEY` from a `.env` file in the application's entry point.
     - **Test:** Write unit tests using Jest for the encryption utility. Ensure that `decrypt(encrypt(data))` returns the original data. Test edge cases like empty or null inputs and initialization failures.
@@ -224,6 +224,6 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 This section outlines high-level tasks that should be addressed as part of the production deployment process.
 
--   **Production Secrets Management:** For the production GCE instance, secrets such as the `ENCRYPTION_KEY` and session secrets should be managed via Google Secret Manager, not from a `.env` file. The application should be configured with the appropriate permissions to fetch these secrets at startup.
+- **Production Secrets Management:** For the production GCE instance, secrets such as the `ENCRYPTION_KEY` and session secrets should be managed via Google Secret Manager, not from a `.env` file. The application should be configured with the appropriate permissions to fetch these secrets at startup.
 
--   **Database File Permissions:** The deployment process must include a step to configure the file system permissions of the SQLite database file (e.g., `chmod 600 prisma/dev.db`). The file should only be readable and writable by the user account running the application.
+- **Database File Permissions:** The deployment process must include a step to configure the file system permissions of the SQLite database file (e.g., `chmod 600 prisma/dev.db`). The file should only be readable and writable by the user account running the application.
