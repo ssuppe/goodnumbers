@@ -7,7 +7,39 @@
 
 This document outlines the phased, step-by-step implementation plan for the Goodnumbers project. The plan follows a measured, test-driven approach, ensuring that each component is built and verified before moving to the next. Each task should be developed on a dedicated feature branch and merged into the `develop` branch via a Pull Request, as defined in `DEVELOPMENT_PROCESS.md`.
 
-## 2. Task-Level Workflow
+## 2. Testing Strategy
+
+To support the MVP goals of stability and quality without undue complexity, this project will adopt a pragmatic, multi-layered testing strategy that introduces tools and techniques incrementally as features are developed.
+
+### 2.1. Philosophy
+
+- **Pragmatic for MVP:** The focus is on creating a robust safety net for core logic and preventing regressions, not achieving 100% test coverage.
+- **Incremental Complexity:** Testing tools and patterns will be introduced in the phase where they are first needed, avoiding upfront overhead.
+
+### 2.2. Levels of Testing & Tooling
+
+1.  **Unit Testing:**
+
+    - **Goal:** To test the smallest pieces of logic (e.g., a single utility function) in complete isolation.
+    - **Tool:** **Jest** will be used for its test runner, assertion library (`expect`), and mocking capabilities.
+
+2.  **Integration Testing:**
+
+    - **Goal:** To test how multiple units work together.
+    - **Backend Tools:** **Jest** and **`supertest`** will be used to test Express API endpoints, ensuring the HTTP layer, middleware, and service logic function correctly as a group.
+    - **Frontend Tools:** **Jest** and **React Testing Library** will be used to test React components, ensuring they render and behave correctly from a user's perspective.
+
+3.  **End-to-End (E2E) Testing:**
+    - **Goal:** To test critical user journeys from start to finish in a real browser environment.
+    - **Tool:** **Playwright** will be used to automate browser actions and validate complete workflows (e.g., login -> create journal -> view result). This will be introduced in Phase 4.
+
+### 2.3. Testing Conventions
+
+- **Directory Structure:** All test files will reside in a top-level `tests/` directory within the `goodnumbers` project folder. This directory will be further organized into `unit/` and `integration/` subdirectories.
+- **File Naming:** Test files should be named to correspond with the module they are testing (e.g., `database.test.ts`, `encryption.test.ts`).
+- **Database Files:** Local development database files (e.g., `goodnumbers/prisma/dev.db`) are ephemeral and must be added to the `.gitignore` file. The schema is managed solely through version-controlled migration files.
+
+## 3. Task-Level Workflow
 
 For each task listed in the implementation phases below, the following GitHub-integrated workflow must be followed:
 
@@ -25,7 +57,12 @@ For each task listed in the implementation phases below, the following GitHub-in
     git checkout -b feat/1-database-schema
     ```
 
-3.  **Implement and Test:** Perform the actions for the task, adhering to the test-driven principles. Make small, atomic commits using the Conventional Commit standard.
+3.  **Implement and Test:** Adhere to a "test-first" approach. The general workflow for a task should be:
+    a. **Red:** Write a failing test that defines the desired functionality.
+    b. **Green:** Write the simplest implementation code to make the test pass.
+    c. **Refactor:** Clean up the implementation, ensuring the test still passes.
+
+    Make small, atomic commits using the Conventional Commit standard.
 
 4.  **Open a Pull Request:** Once the task is complete and all local tests are passing, open a Pull Request against the `develop` branch. The PR description should link to the issue it resolves using a keyword like `Closes #1`.
 
@@ -37,7 +74,9 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 ---
 
-## 3. Implementation Phases
+## 4. Implementation Phases
+
+**Note:** All tasks outlined below are expected to be developed following the "Red-Green-Refactor" cycle as described in the "Implement and Test" step of the Task-Level Workflow.
 
 ### **Phase 0: Project Restructuring** - COMPLETE
 
@@ -53,30 +92,33 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 **Goal:** Establish a runnable server, a database schema, and core utilities. This phase ensures the absolute fundamentals are working before any feature logic is added.
 
-1.  **Task: Initialize Project & Dependencies**
+1.  **Task: Initialize Project & Dependencies** - COMPLETE
 
     - Make a new subfolder calld 'goodnumbers' which will be the project root
     - **Action:** Set up the Node.js project (`npm init`), install core dependencies (Express, Prisma, TypeScript), and configure project files (`tsconfig.json`, `.pylintrc`, `.prettierrc`).
-    - **Test:** Confirm the project compiles (`tsc`) and lints without errors.
+    - **Action:** Install testing dependencies: `jest`, `ts-jest`, `@types/jest`, `supertest`.
+    - **Test:** Confirm the project compiles (`tsc`), lints, and the test runner executes without errors.
     - **Commit:** `chore: Initial project setup and configuration`
 
 2.  **Task: Implement Database Schema**
 
-    - **Action:** Create the `prisma/schema.prisma` file with the `User`, `Journal`, `GlycemicEventCluster`, and Auth.js models as specified.
-    - **Action:** Run the initial database migration (`prisma migrate dev`) to create the SQLite database file and generate the Prisma client.
-    - **Test:** Write a simple automated test that uses the Prisma client to connect to the database and perform a basic query (e.g., `prisma.user.count()`).
+    - **Action:** Create the `goodnumbers/prisma/schema.prisma` file and populate it with the models from the technical specification.
+    - **Action:** Add `*.db` to the `goodnumbers/prisma/.gitignore` file to ensure local database files are not committed.
+    - **Test (Red):** Create a new integration test file at `goodnumbers/tests/integration/database.test.ts`. Write a test that attempts to connect to the database via the Prisma client and query the user table. This test will fail initially.
+    - **Action (Green):** Run `npx prisma migrate dev --name init` in the `goodnumbers` directory. This will create the migration, set up the database, and generate the Prisma client, allowing the test to pass.
+    - **Refactor:** Review the schema and test for correctness and clarity.
     - **Commit:** `feat(db): implement initial prisma schema`
 
 3.  **Task: Create Basic Express Server**
 
     - **Action:** Set up a minimal Express server application that listens on a port.
     - **Action:** Create a public `/health` endpoint that returns a `200 OK` with a JSON body like `{"status": "ok"}`.
-    - **Test:** Write an integration test (e.g., using `supertest`) that makes a request to the `/health` endpoint and asserts the response is correct.
+    - **Test:** In a new file at `goodnumbers/tests/integration/server.test.ts`, write a test using Jest and `supertest` that makes a request to the `/health` endpoint and asserts the response is correct.
     - **Commit:** `feat(server): add basic express server with health check`
 
 4.  **Task: Build Credential Encryption Utility**
     - **Action:** Create a self-contained utility module (`encryption.ts`) with `encrypt` and `decrypt` functions using Node.js's built-in `crypto` module, as specified for handling Nightscout credentials.
-    - **Test:** Write unit tests for the encryption utility. Ensure that `decrypt(encrypt(data))` returns the original data. Test edge cases like empty or null inputs.
+    - **Test:** Write unit tests using Jest for the encryption utility. Ensure that `decrypt(encrypt(data))` returns the original data. Test edge cases like empty or null inputs.
     - **Commit:** `feat(utils): create encryption utility for sensitive data`
 
 ### **Phase 2: Authentication & User Management**
@@ -87,7 +129,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 
     - **Action:** Implement the Express middleware to intercept all requests, check for a valid session cookie, and redirect to a login page if absent. Credentials should be loaded from environment variables.
     - **Action:** Create the `POST /api/barrier-login` endpoint to validate credentials and set the cookie.
-    - **Test:** Write integration tests for the middleware. Test that a protected route redirects. Test that the login endpoint correctly sets a cookie on success and returns an error on failure.
+    - **Test:** Write integration tests using Jest and `supertest` for the middleware. Test that a protected route redirects. Test that the login endpoint correctly sets a cookie on success and returns an error on failure.
     - **Commit:** `feat(auth): implement pre-release site access barrier`
 
 2.  **Task: Integrate User Authentication (Auth.js)**
@@ -99,12 +141,12 @@ For each task listed in the implementation phases below, the following GitHub-in
 3.  **Task: Implement User Settings API**
 
     - **Action:** Create the `PUT /api/user/settings` endpoint. This endpoint will handle updates to `preferredUnits` and will use the encryption utility to securely save the `nightscoutUrl` and `nightscoutToken`.
-    - **Test:** Write an integration test that mocks an authenticated user, calls the endpoint with new settings, and then queries the database directly to verify the data was saved correctly (and that credentials are encrypted).
+    - **Test:** Write an integration test using Jest and `supertest` that mocks an authenticated user, calls the endpoint with new settings, and then queries the database directly to verify the data was saved correctly (and that credentials are encrypted).
     - **Commit:** `feat(api): implement endpoint for user settings`
 
 4.  **Task: Implement RSS Token Regeneration**
     - **Action:** Create the `POST /api/user/regenerate-rss-token` endpoint.
-    - **Test:** Write an integration test that gets a user's original token, calls the endpoint, and asserts that the token stored in the database has changed.
+    - **Test:** Write an integration test using Jest and `supertest` that gets a user's original token, calls the endpoint, and asserts that the token stored in the database has changed.
     - **Commit:** `feat(api): add endpoint for rss token regeneration`
 
 ### **Phase 3: Core Journal Feature (Backend API)**
@@ -114,7 +156,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 1.  **Task: Implement Journal CRUD APIs**
 
     - **Action:** Implement the foundational journal endpoints: `POST`, `GET` (list), `GET` (by ID), `PUT`, and `DELETE` for `/api/journals`.
-    - **Test:** Write integration tests for each endpoint. Crucially, ensure that ownership is enforced (a user cannot access or modify another user's journals).
+    - **Test:** Write integration tests using Jest and `supertest` for each endpoint. Crucially, ensure that ownership is enforced (a user cannot access or modify another user's journals).
     - **Commit:** `feat(api): implement crud api for journals`
 
 2.  **Task: Set Up Background Job Queue**
@@ -127,7 +169,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 3.  **Task: Implement Journal Status API**
     - **Action:** Create the `GET /api/journal-status/:id` endpoint to allow the frontend to poll for job progress.
-    - **Test:** Write an integration test that creates a journal and then calls this endpoint to check its initial `PENDING` status.
+    - **Test:** Write an integration test using Jest and `supertest` that creates a journal and then calls this endpoint to check its initial `PENDING` status.
     - **Commit:** `feat(api): implement journal status polling endpoint`
 
 ### **Phase 4: Frontend Implementation**
@@ -138,7 +180,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 
     - **Action:** Set up the React project, routing, and a main layout component (header, footer).
     - **Action:** Build the UI for the login flow, the post-login agreements page, and the account setup page. Wire these up to the corresponding backend APIs.
-    - **Test:** Use component tests (e.g., React Testing Library) and E2E tests (e.g., Playwright/Cypress) to validate the forms and user flows.
+    - **Test:** Use Jest and React Testing Library for component tests. Use Playwright for E2E tests to validate the forms and user flows.
     - **Commit:** `feat(ui): implement core layout and authentication flow`
 
 2.  **Task: Build Dashboard & Journal Pages**
@@ -146,7 +188,7 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Action:** Implement the "Start Journal" button, which navigates to the loading page.
     - **Action:** Build the journal loading page that polls the status endpoint.
     - **Action:** Build the main journal view page with all its components (AGP chart, inputs, etc.), fetching data from the `GET /api/journals/:id` endpoint.
-    - **Test:** Write component and E2E tests for these pages to ensure data is displayed correctly and user interactions work as expected.
+    - **Test:** Write component tests with Jest/React Testing Library and E2E tests with Playwright for these pages to ensure data is displayed correctly and user interactions work as expected.
     - **Commit:** `feat(ui): implement dashboard and journal view pages`
 
 ### **Phase 5: Background Processing Implementation**
@@ -157,7 +199,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 
     - **Action:** In the background worker, implement the logic to fetch data from a user's Nightscout instance (decrypting credentials first).
     - **Action:** Integrate the existing analysis scripts to process the raw data into structured insights and `TimeCluster` objects.
-    - **Test:** Write unit tests for the data fetching and analysis pipeline, heavily mocking the external Nightscout API.
+    - **Test:** Write unit tests using Jest for the data fetching and analysis pipeline, heavily mocking the external Nightscout API.
     - **Commit:** `feat(worker): implement nightscout data fetching and statistical analysis`
 
 2.  **Task: Implement AI & TTS Pipeline**
@@ -165,10 +207,10 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Action:** Implement the multi-pass Gemini calls to generate the script and description.
     - **Action:** Implement the call to the TTS service to generate the audio file.
     - **Action:** Implement robust error handling for each step of this pipeline.
-    - **Test:** Write integration tests for this pipeline, mocking the Gemini and TTS APIs to ensure the flow works and that errors are handled gracefully.
+    - **Test:** Write integration tests using Jest for this pipeline, mocking the Gemini and TTS APIs to ensure the flow works and that errors are handled gracefully.
     - **Commit:** `feat(worker): implement ai and tts generation pipeline`
 
 3.  **Task: Finalize Job and Update Database**
     - **Action:** Implement the final step in the worker, where all generated artifacts (podcast URL, chart data, etc.) are saved to the `Journal` and `GlycemicEventCluster` tables in the database. The journal `status` should be updated to `COMPLETE`.
-    - **Test:** Write a full integration test for the background worker that runs through the entire (mocked) process and verifies that the database is updated correctly at the end.
+    - **Test:** Write a full integration test using Jest for the background worker that runs through the entire (mocked) process and verifies that the database is updated correctly at the end.
     - **Commit:** `feat(worker): finalize job by saving all generated data`

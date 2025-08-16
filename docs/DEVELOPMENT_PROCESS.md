@@ -13,28 +13,31 @@ Our branching model is designed for clarity and stability, centered around a pri
 
 ### 2.1. Core Branches
 
-*   **`main`:** This branch represents the official, production-ready release history. It should only be updated from the `develop` branch during a formal release process. Direct commits to `main` are strictly forbidden.
+- **`main`:** This branch represents the official, production-ready release history. It should only be updated from the `develop` branch during a formal release process. Direct commits to `main` are strictly forbidden.
 
-*   **`develop`:** This is the primary integration branch for day-to-day development. It contains the latest delivered development changes for the next release. It must always compile and pass all tests, but it is not considered production-stable until formally promoted to `main`.
+- **`develop`:** This is the primary integration branch for day-to-day development. It contains the latest delivered development changes for the next release. It must always compile and pass all tests, but it is not considered production-stable until formally promoted to `main`.
 
 ### 2.2. Feature Branches
 
 All new work, including features, bug fixes, and chores, must be done on a dedicated feature branch.
 
-*   **Creation:** Always create a new feature branch from the latest version of `develop`.
-    ```bash
-    git checkout develop
-    git pull origin develop
-    git checkout -b <branch-name>
-    ```
+- **Creation:** Always create a new feature branch from the latest version of `develop`.
 
-*   **Naming Convention:** To maintain clarity, branches must be named using the format `type/short-description`. The `type` should align with our commit conventions (see below).
-    *   **Examples:**
-        *   `feat/database-schema`
-        *   `test/add-encryption-utils`
-        *   `fix/user-settings-endpoint`
-        *   `chore/update-dependencies`
-        *   `refactor/auth-middleware`
+  ```bash
+  git checkout develop
+  git pull origin develop
+  git checkout -b <branch-name>
+  ```
+
+- **Naming Convention:** To maintain clarity, branches must be named using the format `type/short-description`. The `type` should align with our commit conventions (see below).
+  - **Examples:**
+    - `feat/database-schema`
+    - `test/add-encryption-utils`
+    - `fix/user-settings-endpoint`
+    - `chore/update-dependencies`
+    - `refactor/auth-middleware`
+
+The short-description should always start with "Phase #, Task #:" (which will be given to you when we start).
 
 ## 3. Commit Strategy: Conventional Commits
 
@@ -50,24 +53,25 @@ We will adhere to the **Conventional Commits** specification for all commit mess
 [optional footer]
 ```
 
-*   **`<type>`:** Describes the kind of change.
-    *   `feat`: A new feature.
-    *   `fix`: A bug fix.
-    *   `test`: Adding or correcting tests.
-    *   `refactor`: A code change that neither fixes a bug nor adds a feature.
-    *   `docs`: Documentation only changes.
-    *   `style`: Changes that do not affect the meaning of the code (white-space, formatting, etc).
-    *   `chore`: Changes to the build process, dependency updates, or other auxiliary tools.
+- **`<type>`:** Describes the kind of change.
 
-*   **`<scope>` (optional):** The section of the codebase affected (e.g., `api`, `db`, `ui`, `auth`).
+  - `feat`: A new feature.
+  - `fix`: A bug fix.
+  - `test`: Adding or correcting tests.
+  - `refactor`: A code change that neither fixes a bug nor adds a feature.
+  - `docs`: Documentation only changes.
+  - `style`: Changes that do not affect the meaning of the code (white-space, formatting, etc).
+  - `chore`: Changes to the build process, dependency updates, or other auxiliary tools.
 
-*   **`<subject>`:** A concise, imperative-mood description of the change (e.g., "add health check endpoint").
+- **`<scope>` (optional):** The section of the codebase affected (e.g., `api`, `db`, `ui`, `auth`).
+
+- **`<subject>`:** A concise, imperative-mood description of the change (e.g., "add health check endpoint").
 
 ### 3.2. Example Commits
 
-*   `feat(db): implement initial prisma schema`
-*   `test(server): add integration test for /health endpoint`
-*   `fix(api): enforce ownership on journal deletion endpoint`
+- `feat(db): implement initial prisma schema`
+- `test(server): add integration test for /health endpoint`
+- `fix(api): enforce ownership on journal deletion endpoint`
 
 ## 4. The Pull Request (PR) Process
 
@@ -82,12 +86,12 @@ The Pull Request is the central mechanism for quality control. All code must be 
 
 ### 4.2. PR Quality Standards
 
-*   **Title:** The PR title should be clear and follow the Conventional Commit format.
-*   **Description:** The description must include:
-    *   A brief summary of **what** was changed and **why**.
-    *   A link to the related task or issue.
-    *   A **"How to Test"** section explaining the steps a reviewer can take to verify the changes.
-*   **Scope:** A PR should be small and focused, representing a single unit of work.
+- **Title:** The PR title should be clear and follow the Conventional Commit format.
+- **Description:** The description must include:
+  - A brief summary of **what** was changed and **why**.
+  - A link to the related task or issue.
+  - A **"How to Test"** section explaining the steps a reviewer can take to verify the changes.
+- **Scope:** A PR should be small and focused, representing a single unit of work.
 
 ### 4.3. Automated Quality Gates
 
