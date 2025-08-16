@@ -33,6 +33,12 @@ To support the MVP goals of stability and quality without undue complexity, this
     - **Goal:** To test critical user journeys from start to finish in a real browser environment.
     - **Tool:** **Playwright** will be used to automate browser actions and validate complete workflows (e.g., login -> create journal -> view result). This will be introduced in Phase 4.
 
+### 2.3. Testing Conventions
+
+- **Directory Structure:** All test files will reside in a top-level `tests/` directory within the `goodnumbers` project folder. This directory will be further organized into `unit/` and `integration/` subdirectories.
+- **File Naming:** Test files should be named to correspond with the module they are testing (e.g., `database.test.ts`, `encryption.test.ts`).
+- **Database Files:** Local development database files (e.g., `goodnumbers/prisma/dev.db`) are ephemeral and must be added to the `.gitignore` file. The schema is managed solely through version-controlled migration files.
+
 ## 3. Task-Level Workflow
 
 For each task listed in the implementation phases below, the following GitHub-integrated workflow must be followed:
@@ -96,16 +102,18 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 2.  **Task: Implement Database Schema**
 
-    - **Action:** Create the `prisma/schema.prisma` file with the `User`, `Journal`, `GlycemicEventCluster`, and Auth.js models as specified.
-    - **Action:** Run the initial database migration (`prisma migrate dev`) to create the SQLite database file and generate the Prisma client.
-    - **Test:** Write a simple integration test using Jest that uses the Prisma client to connect to the database and perform a basic query (e.g., `prisma.user.count()`).
+    - **Action:** Create the `goodnumbers/prisma/schema.prisma` file and populate it with the models from the technical specification.
+    - **Action:** Add `*.db` to the `goodnumbers/prisma/.gitignore` file to ensure local database files are not committed.
+    - **Test (Red):** Create a new integration test file at `goodnumbers/tests/integration/database.test.ts`. Write a test that attempts to connect to the database via the Prisma client and query the user table. This test will fail initially.
+    - **Action (Green):** Run `npx prisma migrate dev --name init` in the `goodnumbers` directory. This will create the migration, set up the database, and generate the Prisma client, allowing the test to pass.
+    - **Refactor:** Review the schema and test for correctness and clarity.
     - **Commit:** `feat(db): implement initial prisma schema`
 
 3.  **Task: Create Basic Express Server**
 
     - **Action:** Set up a minimal Express server application that listens on a port.
     - **Action:** Create a public `/health` endpoint that returns a `200 OK` with a JSON body like `{"status": "ok"}`.
-    - **Test:** Write an integration test using Jest and `supertest` that makes a request to the `/health` endpoint and asserts the response is correct.
+    - **Test:** In a new file at `goodnumbers/tests/integration/server.test.ts`, write a test using Jest and `supertest` that makes a request to the `/health` endpoint and asserts the response is correct.
     - **Commit:** `feat(server): add basic express server with health check`
 
 4.  **Task: Build Credential Encryption Utility**
