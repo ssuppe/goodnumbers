@@ -112,9 +112,10 @@ For each task listed in the implementation phases below, the following GitHub-in
 3.  **Task: Create Basic Express Server**
 
     - **Action:** Set up a minimal Express server application that listens on a port.
+    - **Action:** Add `helmet` and `express-rate-limit` middleware to set secure HTTP headers and provide basic DoS protection.
     - **Action:** Create a public `/health` endpoint that returns a `200 OK` with a JSON body like `{"status": "ok"}`.
     - **Test:** In a new file at `goodnumbers/tests/integration/server.test.ts`, write a test using Jest and `supertest` that makes a request to the `/health` endpoint and asserts the response is correct.
-    - **Commit:** `feat(server): add basic express server with health check`
+    - **Commit:** `feat(server): add basic express server with health check and security hardening`
 
 4.  **Task: Build Credential Encryption Utility**
     - **Action:** Create a self-contained utility module (`encryption.ts`) with `encrypt` and `decrypt` functions using Node.js's built-in `crypto` module, as specified for handling Nightscout credentials.
