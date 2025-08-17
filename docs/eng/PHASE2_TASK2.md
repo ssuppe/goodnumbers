@@ -2,7 +2,7 @@
 
 **Author:** Gemini, Technical Lead
 **Date:** 2025-08-17
-**Version:** 1.0
+**Version:** 1.1
 
 ## 1. Overview
 
@@ -53,29 +53,93 @@ We will implement this feature in four distinct stages. Please complete them in 
     npm install @auth/core @auth/prisma-adapter
     ```
 
-2.  **Configure Google OAuth Credentials:**
-    *   Go to the [Google Cloud Console](https://console.cloud.google.com/).
-    *   Create a new project or use an existing one.
-    *   Navigate to "APIs & Services" > "Credentials".
-    *   Create new "OAuth 2.0 Client IDs".
-    *   Select "Web application" as the type.
-    *   Under "Authorized redirect URIs", add the following URL: `http://localhost:3000/api/auth/callback/google`.
-    *   Once created, Google will provide you with a **Client ID** and a **Client Secret**.
+2.  **Detailed Guide: Configure Google OAuth Credentials**
 
-3.  **Update Environment File:** Add the credentials you just received to your `.env` file. Also, add a new secret for Auth.js itself. Your `.env` file should now include these lines:
+    This is the most detailed part of the setup. Follow these steps carefully to get the `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` needed for the application.
+
+    **Step 1: Navigate to Google Cloud Console**
+    *   Open your web browser and go to the [Google Cloud Console](https://console.cloud.google.com/).
+    *   Log in with your Google account.
+
+    **Step 2: Create or Select a Project**
+    *   At the top of the page, next to the "Google Cloud" logo, you'll see a project dropdown.
+    *   If you have an existing project for this work, select it. Otherwise, click the dropdown and select **"New Project"**.
+    *   Give your project a descriptive name, like `Goodnumbers-Dev`, and click **"Create"**.
+
+    **Step 3: Enable the Necessary API**
+    *   In the search bar at the top, type **"Google People API"** and press Enter.
+    *   Click on the "Google People API" result from the marketplace.
+    *   Click the blue **"Enable"** button. This is a crucial step that allows our application to request basic profile information (like name and email) after a user signs in.
+
+    **Step 4: Configure the OAuth Consent Screen**
+    *   This screen is what your users will see when they are asked to grant permission to your application.
+    *   In the navigation menu on the left (you may need to click the "hamburger" icon ☰), go to **"APIs & Services"** > **"OAuth consent screen"**.
+    *   You will be asked to choose a "User Type". Select **"External"** and click **"Create"**.
+    *   On the next page, fill out the required information:
+        *   **App name:** `Goodnumbers`
+        *   **User support email:** Select your email address from the dropdown.
+        *   **Developer contact information:** Enter your email address again.
+    *   Click **"Save and Continue"**. You can skip the "Scopes" and "Test users" sections for now by clicking **"Save and Continue"** on each page.
+    *   Finally, on the "Summary" page, click **"Back to Dashboard"**.
+
+    **Step 5: Create the OAuth 2.0 Credentials**
+    *   In the navigation menu on the left, go to **"APIs & Services"** > **"Credentials"**.
+    *   At the top of the page, click **"+ Create Credentials"** and select **"OAuth client ID"**.
+    *   On the next page, configure the following:
+        *   **Application type:** Select **"Web application"** from the dropdown.
+        *   **Name:** You can leave the default or name it `Goodnumbers Web Client`.
+        *   Under **"Authorized redirect URIs"**, click **"+ Add URI"**. This is a critical security step that tells Google where it's allowed to send users back to after they sign in. For our local development, enter the following exact URI:
+            ```
+            http://localhost:3000/api/auth/callback/google
+            ```
+    *   Click the blue **"Create"** button.
+
+    **Step 6: Get Your Client ID and Secret**
+    *   A pop-up window will appear titled "OAuth client created".
+    *   This window contains your **`Client ID`** and **`Client Secret`**. You will now copy these into your project's `.env` file.
+
+    **Alternative: Using the `gcloud` CLI**
+
+    If you have the `gcloud` CLI installed and authenticated, you can perform steps 4, 5, and 6 with a single command. Ensure you have the correct project selected (`gcloud config set project YOUR_PROJECT_ID`).
+
+The command requires a unique identifier for the `OAUTH_CLIENT`. We will use `goodnumbers-web-client` but you can choose your own.
+
+Run the following command:
+
+    ```bash
+    gcloud iam oauth-clients create goodnumbers-web-client \
+        --location=global \
+        --client-type=web \
+        --display-name="Goodnumbers Web Client" \
+        --allowed-grant-types=authorization_code \
+        --allowed-scopes=openid,email,profile \
+        --allowed-redirect-uris="http://localhost:3000/api/auth/callback/google"
+    ```
+
+    **Command Breakdown:**
+    *   **`goodnumbers-web-client`**: This is the positional `OAUTH_CLIENT` argument, a unique ID for the client.
+    *   **`--location`**: `global` is used for non-regional resources.
+    *   **`--client-type`**: `web` specifies a web application.
+    *   **`--allowed-grant-types`**: `authorization_code` is the standard flow for web apps to get an access token.
+    *   **`--allowed-scopes`**: `openid,email,profile` are standard scopes to request basic user information.
+    *   **`--allowed-redirect-uris`**: The URI that Google is allowed to redirect to after authentication.
+
+The command will output the `clientId` and `clientSecret`. Use these to update your `.env` file in the next step.
+
+3.  **Update Environment File:** Add the credentials you just received to your `goodnumbers/.env` file. Also, add a new secret for Auth.js itself. Your `.env` file should now include these lines:
 
     ```dotenv
     # ... existing variables
     
     # Auth.js
     AUTH_SECRET="YOUR_AUTH_SECRET_HERE" # Generate a strong random string, e.g., openssl rand -hex 32
-    GOOGLE_CLIENT_ID="YOUR_GOOGLE_CLIENT_ID_HERE"
-    GOOGLE_CLIENT_SECRET="YOUR_GOOGLE_CLIENT_SECRET_HERE"
+    GOOGLE_CLIENT_ID="PASTE_YOUR_GOOGLE_CLIENT_ID_HERE"
+    GOOGLE_CLIENT_SECRET="PASTE_YOUR_GOOGLE_CLIENT_SECRET_HERE"
     ```
 
 4.  **IMPORTANT: Security Best Practices for Secrets**
     *   **DO NOT COMMIT THE `.env` FILE:** The `.env` file contains sensitive credentials. You must ensure it is listed in the `goodnumbers/.gitignore` file. Committing this file to version control will expose your application's secrets and create a severe security vulnerability.
-    *   **PRODUCTION SECRET MANAGEMENT:** For a production environment, secrets must **not** be stored in a `.env` file on the server. They should be injected securely using a dedicated secret manager, such as Google Secret Manager, AWS Secrets Manager, or HashiCorp Vault. This plan is for local development only.
+    *   **PRODUCTION SECRET MANAGEMENT:** For a production environment, secrets must **not** be stored in a `.env` file on the server. As stated in the `TECHNICAL_SPECIFICATION.md`, they should be injected securely using a dedicated secret manager, such as Google Secret Manager. This setup is for local development only.
 
 **Verification:**
 *   Run `npm install` again to ensure all packages are correctly installed.
@@ -99,6 +163,7 @@ We will implement this feature in four distinct stages. Please complete them in 
     const prisma = new PrismaClient();
 
     export const authOptions: AuthOptions = {
+      basePath: "/api/auth",
       adapter: PrismaAdapter(prisma),
       providers: [
         GoogleProvider({
@@ -327,6 +392,24 @@ Follow these steps carefully.
 
 **Note on the "Agreements Page":** This task provides the foundational authentication mechanism. The specific server-side logic to enforce the agreement gate (i.e., checking the `agreementsSigned` flag and redirecting the user) will be implemented in the next task, **Phase 2, Task 3**. The user-facing UI for the agreements page will be built in **Phase 4**.
 
+## 3.5. STATUS UPDATE
+
+As of **2025-08-17**, the implementation is in progress. The following stages have been completed:
+
+*   **Stage 1: Install Dependencies and Configure Environment** - **Completed**. All necessary Auth.js packages are installed, and environment variables are updated with placeholder values.
+*   **Stage 2: Create the Auth.js Configuration** - **Completed**. The `auth.ts` configuration file has been created.
+*   **Stage 2.5: Update Session Type Definitions** - **Completed**. The TypeScript type definitions for the session have been updated, and the Prisma `User` model has been migrated to include the `agreementsSigned` field.
+*   **Stage 4: Write Integration Tests (The "Red" Step)** - **Completed**. The integration tests for authentication routes have been written and are failing as expected.
+
+**Pending Stages:**
+
+*   **Stage 5: Implement to Pass Tests (The "Green" Step)** - **In Progress**. The `auth.ts` route handler is about to be created and integrated into `index.ts`.
+*   **Stage 6: Manual End-to-End Verification** - **Not Started**.
+
+**Important Note on Google Cloud Configuration:**
+
+The original plan's "Configure Google OAuth Credentials" section (Stage 1, Step 2) provided high-level instructions but **did not include detailed steps for setting up the Google Cloud Platform project, enabling the Google People API, or configuring the OAuth consent screen**. These are the crucial prerequisites that this updated document now provides, ensuring a junior engineer can successfully obtain the `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
 ## 4. Final Steps
 
 1.  **Review Your Code:** Read through all the changes you have made. Ensure the code is clean, commented where necessary, and follows project conventions.
@@ -334,14 +417,14 @@ Follow these steps carefully.
 
     ```bash
     git add .
-    git commit -m "feat(auth): P2_T2 integrate auth.js with google provider"
+    git commit -m "docs(auth): P2_T2 add detailed gcloud oauth steps"
     ```
 
 3.  **Create a Pull Request:** Push your branch and open a Pull Request against the `develop` branch.
 
     ```bash
-    git push --set-upstream origin feat/P2_T2-authjs-integration
-    gh pr create --base develop --title "feat(auth): P2_T2 integrate auth.js" --body "This PR integrates Auth.js for user authentication using the Google provider and Prisma adapter, as outlined in the Phase 2, Task 2 implementation plan."
+    git push --set-upstream origin feat/ISSUE_NUMBER-authjs-integration
+    gh pr create --base develop --title "docs(auth): P2_T2 add detailed gcloud oauth steps" --body "This PR updates the implementation plan for Phase 2, Task 2 with highly detailed, step-by-step instructions for configuring Google Cloud OAuth credentials. This addresses the knowledge gap for junior engineers and ensures a smoother setup process. Closes #ISSUE_NUMBER"
     ```
 
-You have now completed the backend integration for user authentication.
+You have now completed the documentation update for this task. The junior engineer now has a clear and comprehensive guide to follow.
