@@ -67,8 +67,8 @@ First, we set up our branch and create our initial, failing tests.
     import { app } from '../../src/index'; // We will create this import later
 
     describe('Pre-Release Access Barrier', () => {
-      it('should redirect to the barrier login page for an unauthenticated request', async () => {
-        const response = await request(app).get('/health');
+      it('should redirect to the barrier login page for an unauthenticated request to a protected route', async () => {
+        const response = await request(app).get('/api/some-protected-api');
         expect(response.status).toBe(302);
         expect(response.headers.location).toBe('/barrier-login.html');
       });
@@ -78,6 +78,12 @@ First, we set up our branch and create our initial, failing tests.
           .post('/api/barrier-login')
           .send({ username: 'wrong', password: 'user' });
         expect(response.status).toBe(401);
+      });
+
+      it('should allow unauthenticated access to /health and return 200 OK', async () => {
+        const response = await request(app).get('/health');
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ status: 'ok' });
       });
     });
     ```
@@ -101,7 +107,7 @@ Now, we'll write the minimum code needed to make our first two tests pass.
     We need `cookie-session` to manage the barrier session and `express-rate-limit` for security.
 
     ```bash
-    npm install cookie-session @types/cookie-session express-rate-limit
+    npm install cookie-session @types/cookie-session express-rate-limit zod
     ```
 
 2.  **Create the Stub Login Page:**
@@ -139,12 +145,7 @@ Now, we'll write the minimum code needed to make our first two tests pass.
     COOKIE_SECRET=
     ```
 
-    Now, create your own local `.env` file. Use the following command to generate a secure, random string for your `COOKIE_SECRET` and add it to the file.
-
-    ```bash
-    echo "COOKIE_SECRET=$(openssl rand -base64 32)" >> .env
-    ```
-    Then, manually add your desired `BARRIER_USERNAME` and `BARRIER_PASSWORD` to the `.env` file.
+    Now, create your own local `.env` file. You will need to manually add your `BARRIER_USERNAME` and `BARRIER_PASSWORD` to this file. For `COOKIE_SECRET`, generate a secure, random string (e.g., using `openssl rand -base64 32` in your terminal) and add it to the file.
 
 4.  **Create TypeScript Declaration File:**
     To avoid using `@ts-ignore`, we need to tell TypeScript about our new session property. Create a new file for this.
@@ -167,12 +168,13 @@ Now, we'll write the minimum code needed to make our first two tests pass.
     ```
 
 5.  **Write Minimal Implementation:**
-    Now, let's modify `src/index.ts`. We will export `app` for our tests and add the minimal middleware and route.
+    Now, let's modify `src/index.ts`. We will export `app` for our tests and add the minimal middleware and route. Ensure `dotenv/config` is imported at the top to load environment variables.
 
     ```typescript
     // src/index.ts
     import express from 'express';
     import cookieSession from 'cookie-session';
+    import 'dotenv/config'; // Explicitly import dotenv/config
 
     const app = express();
     app.use(express.json());
@@ -182,7 +184,7 @@ Now, we'll write the minimum code needed to make our first two tests pass.
     app.use(
       cookieSession({
         name: 'barrier_session',
-        secret: process.env.COOKIE_SECRET,
+        secret: process.env.COOKIE_SECRET!,
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax', // Protect against CSRF attacks
@@ -192,7 +194,7 @@ Now, we'll write the minimum code needed to make our first two tests pass.
 
     // Barrier Middleware (Minimal)
     app.use((req, res, next) => {
-      if (req.path === '/barrier-login.html' || req.path === '/api/barrier-login') {
+      if (req.path === '/barrier-login.html' || req.path.startsWith('/api/barrier-login') || req.path === '/health') {
         return next();
       }
       if (req.session && req.session.is_authorized) {
@@ -260,9 +262,8 @@ Now we repeat the cycle: add more tests, watch them fail, and then implement the
         });
 
       // Then, access the protected route
-      const response = await agent.get('/health');
-      expect(response.status).toBe(200);
-      expect(response.body.status).toBe('ok');
+      const response = await agent.get('/api/some-protected-api');
+      expect(response.status).toBe(404); // Expect 404 as the route does not exist yet
     });
     ```
 
@@ -329,8 +330,8 @@ Our tests are all passing, which gives us a safety net to clean up our code with
     import { Request, Response, NextFunction } from 'express';
 
     export const barrierMiddleware = (req: Request, res: Response, next: NextFunction) => {
-      // Allow access to the login page and the API endpoint
-      if (req.path === '/barrier-login.html' || req.path.startsWith('/api/barrier-login')) {
+      // Allow access to the login page, the API endpoint, and the health check
+      if (req.path === '/barrier-login.html' || req.path.startsWith('/api/barrier-login') || req.path === '/health') {
         return next();
       }
 
@@ -428,7 +429,7 @@ Our tests are all passing, which gives us a safety net to clean up our code with
 
     // Use the middleware and router
     app.use(barrierMiddleware);
-    app.use('/api', barrierRouter); // Mount the router at /api
+    app.use('/', barrierRouter); // Mount the router at the root
 
     app.get('/health', (req, res) => {
       res.status(200).json({ status: 'ok' });
