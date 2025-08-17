@@ -40,15 +40,13 @@ The goal of this specification is to provide a developer-ready document that out
 #### 2.1.2. User Authentication (Auth.js)
 - **Provider:** Google OAuth is the sole and primary authentication method for the MVP.
 - **UI:** Auth.js built-in pages will be used for the login/registration flow.
-- **New User Flow:**
-    1. User signs in with Google.
-    2. After successful Google authentication, they are presented with an "Agreements Page".
-    3. User MUST check boxes to agree to the "Terms and Conditions" and "Privacy Policy".
-    4. The "Login" button is disabled until both boxes are checked.
-    5. Upon agreement, the user account is created, and they are redirected to the Dashboard.
-- **Existing User Flow:**
-    1. User signs in with Google.
-    2. Upon successful authentication, they are redirected to the Dashboard.
+- **Authentication and Agreement Flow:** The system handles all users through a unified, stateful flow.
+    1. **Google Sign-In:** A user (whether new or returning) signs in with Google. Upon successful authentication, the Auth.js Prisma adapter finds or creates a `User` record in the database. If the user is new, the `agreementsSigned` field defaults to `false`.
+    2. **Agreement Gate:** After sign-in, a mandatory check is performed on every authenticated action. This check, implemented via middleware or Auth.js callbacks, inspects the `agreementsSigned` flag in the user's session data.
+    3. **Redirection:** If `agreementsSigned` is `false`, the user is immediately redirected to a dedicated `/agreements` page. They cannot access any other part of the application.
+    4. **Agreement Page:** On this page, the user is presented with the "Terms and Conditions" and "Privacy Policy" checkboxes. The "Continue to Dashboard" button is disabled until both are checked.
+    5. **Consent Persistence:** When the user checks the boxes and clicks the "Continue" button, a specific API call is made (e.g., `POST /api/user/sign-agreements`) which sets the `agreementsSigned` flag to `true` in the database.
+    6. **Dashboard Access:** Once the flag is true, the user is redirected to the Dashboard. On all subsequent visits, the check in Step 2 will pass, and they will proceed directly to the application without seeing the agreements page again.
 - **Session Management:**
     - If an authenticated user visits the login page, they are redirected to the Dashboard.
     - Secure sessions are managed by Auth.js.

@@ -4,6 +4,8 @@ You are an expert software engineer technical lead with a PhD in computer scienc
 
 Before we start, please take a look at @docs/PRD.me, @docs/TECHNICAL_SPECIFICATION.md , @docs/DEVELOPMENT_PROCESS.md and @docs/IMPLEMENTATION_PLAN.md. 
 
+Be sure to include branch setup, github issue creation, and of course a test-driven approach.
+
 Because this is for a junior engineer, any documents you write should be verbose and extremely detailed.
 
 Be sure to include your thought process while you answer the request.
