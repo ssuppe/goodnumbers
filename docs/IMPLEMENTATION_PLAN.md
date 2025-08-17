@@ -263,3 +263,13 @@ This section outlines high-level tasks that should be addressed as part of the p
 - **Production Secrets Management:** For the production GCE instance, secrets such as the `ENCRYPTION_KEY` and session secrets should be managed via Google Secret Manager, not from a `.env` file. The application should be configured with the appropriate permissions to fetch these secrets at startup.
 
 - **Database File Permissions:** The deployment process must include a step to configure the file system permissions of the SQLite database file (e.g., `chmod 600 prisma/dev.db`). The file should only be readable and writable by the user account running the application.
+
+- **Auth.js Production Configuration:**
+    - **Google Cloud Project:** Ensure you are using the correct Google Cloud project for production (`goodnumbers`, not `goodnumbers-dev`).
+    - **OAuth Credentials:**
+        - In the Google Cloud Console, under "APIs & Services" -> "Credentials", create a new OAuth 2.0 Client ID for the production application.
+        - The `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` environment variables for the production instance **must** be sourced from this new credential. These should be stored securely in Google Secret Manager.
+    - **Authorized Redirect URIs:**
+        - When creating the new OAuth credential, you must add the production application's redirect URI to the "Authorized redirect URIs" list. The URI follows the format: `https://<your-production-domain>/api/auth/callback/google`. For example: `https://goodnumbers.io/api/auth/callback/google`.
+    - **AUTH_SECRET:** For security, Auth.js uses a secret to sign cookies and tokens. Ensure a strong, unique `AUTH_SECRET` environment variable is set in the production environment, managed via Google Secret Manager.
+    - **NODE_ENV:** The `NODE_ENV` environment variable must be set to `production`. This enables various optimizations and security features within Express and Auth.js.
