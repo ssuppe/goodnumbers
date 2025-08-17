@@ -16,11 +16,7 @@ This plan strictly follows the project's established `DEVELOPMENT_PROCESS.md`. A
 
 Before you begin, ensure you have completed the following:
 
-1.  **Create a GitHub Issue:** As per the `DEVELOPMENT_PROCESS.md`, every task must start with an issue. Create one for this task now.
-
-    ```bash
-    gh issue create --title "feat(auth): P2_T2 integrate auth.js" --body "Integrate Auth.js with Google Provider and Prisma Adapter. See docs/eng/PHASE2_TASK2.md for the full implementation plan."
-    ```
+1.  **GitHub Issue:** This task is tracked by GitHub Issue #27.
 
 2.  **Pull Latest Changes:** Make sure your local `develop` branch is up-to-date with the remote repository.
 
@@ -32,8 +28,7 @@ Before you begin, ensure you have completed the following:
 3.  **Create a Feature Branch:** Create a new branch for this task, following our naming conventions. Include the issue number in the branch name for easy tracking.
 
     ```bash
-    # Replace 'ISSUE_NUMBER' with the actual issue number you just created
-    git checkout -b feat/ISSUE_NUMBER-authjs-integration
+    git checkout -b feat/27-authjs-integration
     ```
 
 4.  **Verify Environment:** Ensure your `.env` file in the `goodnumbers/` directory is correctly configured with the variables from `.env.example`, including `DATABASE_URL`, `COOKIE_SECRET`, etc.
@@ -394,16 +389,13 @@ Follow these steps carefully.
 
 ## 3.5. STATUS UPDATE
 
-As of **2025-08-17**, the implementation is in progress. The following stages have been completed:
+As of **2025-08-17**, the implementation has not yet started. The following stages are pending:
 
-*   **Stage 1: Install Dependencies and Configure Environment** - **Completed**. All necessary Auth.js packages are installed, and environment variables are updated with placeholder values.
-*   **Stage 2: Create the Auth.js Configuration** - **Completed**. The `auth.ts` configuration file has been created.
-*   **Stage 2.5: Update Session Type Definitions** - **Completed**. The TypeScript type definitions for the session have been updated, and the Prisma `User` model has been migrated to include the `agreementsSigned` field.
-*   **Stage 4: Write Integration Tests (The "Red" Step)** - **Completed**. The integration tests for authentication routes have been written and are failing as expected.
-
-**Pending Stages:**
-
-*   **Stage 5: Implement to Pass Tests (The "Green" Step)** - **In Progress**. The `auth.ts` route handler is about to be created and integrated into `index.ts`.
+*   **Stage 1: Install Dependencies and Configure Environment** - **Not Started**.
+*   **Stage 2: Create the Auth.js Configuration** - **Not Started**.
+*   **Stage 2.5: Update Session Type Definitions** - **Not Started**.
+*   **Stage 4: Write Integration Tests (The "Red" Step)** - **Not Started**.
+*   **Stage 5: Implement to Pass Tests (The "Green" Step)** - **Not Started**.
 *   **Stage 6: Manual End-to-End Verification** - **Not Started**.
 
 **Important Note on Google Cloud Configuration:**
@@ -417,14 +409,14 @@ The original plan's "Configure Google OAuth Credentials" section (Stage 1, Step 
 
     ```bash
     git add .
-    git commit -m "docs(auth): P2_T2 add detailed gcloud oauth steps"
+    git commit -m "docs(auth): P2_T2 update plan with existing issue #27"
     ```
 
 3.  **Create a Pull Request:** Push your branch and open a Pull Request against the `develop` branch.
 
     ```bash
     git push --set-upstream origin feat/ISSUE_NUMBER-authjs-integration
-    gh pr create --base develop --title "docs(auth): P2_T2 add detailed gcloud oauth steps" --body "This PR updates the implementation plan for Phase 2, Task 2 with highly detailed, step-by-step instructions for configuring Google Cloud OAuth credentials. This addresses the knowledge gap for junior engineers and ensures a smoother setup process. Closes #ISSUE_NUMBER"
+    gh pr create --base develop --title "docs(auth): P2_T2 update plan with existing issue #27" --body "This PR updates the implementation plan for Phase 2, Task 2 to reflect that GitHub Issue #27 already exists for this task. Closes #27"
     ```
 
 You have now completed the documentation update for this task. The junior engineer now has a clear and comprehensive guide to follow.
