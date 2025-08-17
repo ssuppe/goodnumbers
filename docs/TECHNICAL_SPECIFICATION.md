@@ -35,6 +35,7 @@ The goal of this specification is to provide a developer-ready document that out
     - **Variable Names:** The application will expect the following environment variables to be present:
         - `BARRIER_USERNAME`
         - `BARRIER_PASSWORD`
+- **Health Check Exclusion:** Requests to the `/health` endpoint are explicitly excluded from the barrier and are publicly accessible.
 
 #### 2.1.2. User Authentication (Auth.js)
 - **Provider:** Google OAuth is the sole and primary authentication method for the MVP.

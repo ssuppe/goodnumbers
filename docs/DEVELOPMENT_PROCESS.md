@@ -37,7 +37,7 @@ All new work, including features, bug fixes, and chores, must be done on a dedic
     - `chore/update-dependencies`
     - `refactor/auth-middleware`
 
-The short-description should always start with "Phase #, Task #:" (which will be given to you when we start).
+The `<subject>` of the commit message should always start with "Phase #, Task #:". This helps in tracing changes back to specific tasks in the implementation plan.
 
 ## 3. Commit Strategy: Conventional Commits
 
@@ -65,13 +65,13 @@ We will adhere to the **Conventional Commits** specification for all commit mess
 
 - **`<scope>` (optional):** The section of the codebase affected (e.g., `api`, `db`, `ui`, `auth`).
 
-- **`<subject>`:** A concise, imperative-mood description of the change (e.g., "add health check endpoint").
+- **`<subject>`:** A concise, imperative-mood description of the change, always starting with "Phase #, Task #:".
 
 ### 3.2. Example Commits
 
-- `feat(db): implement initial prisma schema`
-- `test(server): add integration test for /health endpoint`
-- `fix(api): enforce ownership on journal deletion endpoint`
+- `feat(db): P1_T2 implement initial prisma schema`
+- `test(server): P1_T3 add integration test for /health endpoint`
+- `fix(api): P2_T1 enforce ownership on journal deletion endpoint`
 
 ## 4. The Pull Request (PR) Process
 
@@ -101,7 +101,9 @@ The repository must be configured with a CI/CD pipeline to run the following che
 2.  **Type Checking:** Ensure the code is type-safe (`tsc --noEmit`).
 3.  **Automated Tests:** Run the entire test suite (`npm test`).
 
-**A PR must be blocked from merging if any of these checks fail.**
+**A PR must be blocked from merging if any of these checks fail.
+
+    **Environment Variables:** Ensure all necessary environment variables (e.g., `ENCRYPTION_KEY`, `COOKIE_SECRET`) are correctly configured and loaded (e.g., via `dotenv/config`) in the local `.env` file for tests to run successfully.**
 
 ### 4.4. Review and Merge Process
 
