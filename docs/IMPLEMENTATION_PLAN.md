@@ -171,13 +171,21 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Test:** This is primarily a manual test. Run the application, go through the Google sign-in flow, and verify in the database that the user records are created correctly.
     - **Commit:** `feat(auth): integrate auth.js for user authentication`
 
-3.  **Task: Implement User Settings API**
+3.  **Task: Implement Agreement Gate Logic**
+
+    - **Action:** Add the `agreementsSigned` boolean field to the `User` model in `prisma/schema.prisma`. Run a new database migration.
+    - **Action:** Create a new `POST /api/user/sign-agreements` endpoint. This endpoint will set the `agreementsSigned` flag to `true` for the currently authenticated user.
+    - **Action:** Implement a global middleware that checks if a user is authenticated but `agreementsSigned` is false. If so, it should redirect them to a placeholder `/agreements` page.
+    - **Test:** Write an integration test for the new API endpoint. Manually test that a newly signed-up user is redirected, and after hitting the new endpoint, they are no longer redirected.
+    - **Commit:** `feat(auth): implement backend logic for agreement gate`
+
+4.  **Task: Implement User Settings API**
 
     - **Action:** Create the `PUT /api/user/settings` endpoint. This endpoint will handle updates to `preferredUnits` and will use the encryption utility to securely save the `nightscoutUrl` and `nightscoutToken`. The request body must be validated using `zod`.
     - **Test:** Write an integration test using Jest and `supertest` that mocks an authenticated user, calls the endpoint with new settings, and then queries the database directly to verify the data was saved correctly (and that credentials are encrypted).
     - **Commit:** `feat(api): implement endpoint for user settings`
 
-4.  **Task: Implement RSS Token Regeneration**
+5.  **Task: Implement RSS Token Regeneration**
     - **Action:** Create the `POST /api/user/regenerate-rss-token` endpoint.
     - **Test:** Write an integration test using Jest and `supertest` that gets a user's original token, calls the endpoint, and asserts that the token stored in the database has changed.
     - **Commit:** `feat(api): add endpoint for rss token regeneration`

@@ -217,11 +217,12 @@ This document outlines the product requirements for the user Login and Registrat
 <a id="login-page-disabled"></a>![Login page - disabled](<imgs/Login Page-disabled.png> 'Goodnumbers homepage')
 
 - Users MUST be able to register and log in using their Google account.
-- Before being able to sign in/authenticate, **for new users**, an Agreements Page MUST be presented immediately after a successful Google sign-in and right before successful login to the dashboard. Users MUST explicitly agree to the following on this page (presented as checkboxes):
+- Before a user can access the application dashboard, they MUST consent to the terms of service. An Agreements Page MUST be presented immediately after a successful Google sign-in for any user who has not yet provided consent.
+- This page is a mandatory gate. Users MUST explicitly agree to the following by checking boxes:
   - Terms and Conditions (which includes acknowledgment of the experimental nature of the project and software disclaimer)
   - Privacy Policy
-
-The 'Login' button MUST be disabled unless both of the above checkboxes are checked by the user (as seen in [Login Page-disabled](#login-page-disabled)). If the user does not check the required agreement checkboxes, the login button remains disabled, preventing them from proceeding.
+- The 'Login' / 'Continue' button MUST be disabled unless both of the above checkboxes are checked by the user (as seen in [Login Page-disabled](#login-page-disabled)).
+- If a user authenticates via Google but closes the page before agreeing, they MUST be presented with the Agreements Page again on their next visit. Access to all other application functionality is blocked until consent is given.
 
 Once a user checks the boxes of both the T&Cs and the Privacy Policy, the "Login" button becomes enabled (as seen below in [Login Page-enabled](#login-page-enabled))
 
