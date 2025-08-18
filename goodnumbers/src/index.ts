@@ -1,66 +1,39 @@
-// src/index.ts
-import express from 'express';
-import cookieSession from 'cookie-session';
 import 'dotenv/config';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { barrierMiddleware } from './middleware/barrier.ts';
-import { barrierRouter } from './routes/barrier.ts';
-
-// ESM-compatible way to get __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import express from 'express';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const PORT = process.env.PORT || 3000;
 
-// Temporary route for debugging static file serving
-app.get('/test.html', (req, res) => {
-  console.log('>>> /test.html route handler reached');
-  const testFilePath = path.join(__dirname, '../public/test.html');
-  res.sendFile(testFilePath, (err) => {
-    if (err) {
-      console.error('Error sending file:', err);
-      res.status(500).send('Error sending file');
-    }
-  });
+// --- Security Middlewares ---
+
+// Set various security HTTP headers
+app.use(helmet());
+
+// Basic rate limiting to prevent brute-force attacks
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
-const publicPath = path.join(__dirname, '../public');
-console.log('Serving static files from:', publicPath);
-app.use(express.static(publicPath));
+app.use(limiter);
 
-app.use(
-  cookieSession({
-    name: 'barrier_session',
-    secret: process.env.COOKIE_SECRET!,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  }),
-);
+// --- Core Middlewares ---
+app.use(express.json());
 
-// --- ROUTES ---
-
-// Use the middleware and router
-app.use(barrierMiddleware);
-app.use('/', barrierRouter); // Mount the router at the root
-
+// Define the /health endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
-// New: Handle the root path after barrier authentication
-app.get('/', (req, res) => {
-  res.send(
-    '<h1>Welcome to Goodnumbers!</h1><p>You have successfully passed the barrier.</p>',
-  );
-});
+// Only start listening if the file is run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+}
 
-const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
-
-export { app, server };
+// Export the app for testing purposes
+export { app };
