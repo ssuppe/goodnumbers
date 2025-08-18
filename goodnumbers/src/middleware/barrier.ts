@@ -1,11 +1,13 @@
 // src/middleware/barrier.ts
-import { Request, Response, NextFunction } from 'express';
+
+import type { Request, Response, NextFunction } from 'express';
 
 export const barrierMiddleware = (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
+  console.log('>>> Barrier middleware reached for path:', req.path);
   // Allow access to the login page, the API endpoint, and the health check
   if (
     req.path === '/barrier-login.html' ||
