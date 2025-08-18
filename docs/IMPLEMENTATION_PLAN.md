@@ -130,44 +130,18 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 **Goal:** Implement all functionality related to user identity, from the initial access barrier to managing user-specific settings.
 
-1.  **Task: Implement Pre-Release Access Barrier**
+1.  **Task: Implement Pre-Release Access Barrier (Unblocked)**
 
-    - **Goal:** Create a site-wide password barrier to restrict access during the private beta, following a strict Test-Driven Development (TDD) approach as outlined in the project's development process.
-
-    - **Step 1: Create Test File and Initial Failing Tests (The "Red" Step)**
-        - **Action:** First, create a new integration test file at `goodnumbers/tests/integration/barrier.test.ts`.
-        - **Action:** Inside this file, write your first test case using Jest and `supertest`. This test should define the primary requirement: "a request to a protected route (e.g., `/health`) without a session cookie should redirect to the login page". The test will attempt to make a GET request and will expect a 302 redirect status code to `/barrier-login.html`.
-        - **Action:** Write a second failing test case: "a POST request to `/api/barrier-login` with incorrect credentials should return a 401 Unauthorized status".
-        - **Action:** Run the test suite (`cd goodnumbers && npm test`) and watch it fail. This is the expected and desired outcome of the "Red" step.
-
-    - **Step 2: Minimal Implementation to Pass Tests (The "Green" Step)**
-        - **Action:** Install the required dependencies in the `goodnumbers/` directory: `npm install cookie-session @types/cookie-session`.
-        - **Action:** Create the stub login page at `goodnumbers/public/barrier-login.html` and configure `express.static` in `src/index.ts`. This ensures the redirect target exists.
-        - **Action:** Update the `.env.example` file with `BARRIER_USERNAME`, `BARRIER_PASSWORD`, and `COOKIE_SECRET`.
-        - **Action:** Now, write the *absolute minimum* amount of code in `src/index.ts` to make the tests pass. This includes:
-            - Adding the `cookie-session` middleware.
-            - Creating a basic barrier middleware that redirects all unauthorized traffic.
-            - Creating the `POST /api/barrier-login` route that initially might just return a hardcoded 401 error.
-        - **Action:** Run the tests (`cd goodnumbers && npm test`) again. Iterate on your minimal implementation until the initial tests turn green.
-
-    - **Step 3: Add Remaining Test Cases and Implement Logic (Repeat Red->Green)**
-        - **Action:** Now, add the remaining test cases to `barrier.test.ts`:
-            - A test for a *successful* login, asserting a 200 status and that the `Set-Cookie` header is present for `barrier_session`.
-            - A test to ensure that after a successful login, a subsequent request to a protected route returns a 200 OK status instead of redirecting.
-        - **Action:** Run the tests again; the new ones should fail.
-        - **Action:** Now, implement the complete logic for the middleware and the API endpoint. This includes `zod` validation, checking credentials against environment variables, and setting `req.session.is_authorized = true` on success.
-        - **Action:** Continue to run the tests until all of them pass.
-
-    - **Step 4: Refactor**
-        - **Action:** With a full suite of passing tests as your safety net, you can now refactor the implementation for clarity and quality.
-        - **Action:** Review the code in `src/index.ts`. Consider moving the barrier middleware and the auth route handler to their own dedicated files (e.g., `src/middleware/auth.ts`, `src/routes/barrier.ts`) to keep the main application file clean.
-        - **Action:** After each refactoring change, run the test suite (`cd goodnumbers && npm test`) to ensure you haven't broken anything.
-
+    - **Goal:** Create a site-wide password barrier to restrict access during the private beta.
+    - **Status:** This task was initially blocked by several critical development environment issues. These issues have been diagnosed and resolved.
+    - **Debugging Summary:** For a detailed breakdown of the issues encountered (including `__dirname` errors, `nodemon` configuration, middleware order, and ES Module import resolution) and their resolutions, please refer to the "Debugging Notes and Resolutions" section at the end of **[docs/eng/PHASE2_TASK2.md](eng/PHASE2_TASK2.md)**.
+    - **Action:** Proceed with the implementation of the pre-release access barrier as originally outlined in **[docs/eng/PHASE2_TASK2.md](eng/PHASE2_TASK2.md)**, following the strict Test-Driven Development (TDD) approach.
+    - **Action:** Implement the frontend login form in `goodnumbers/public/barrier-login.html` to allow users to input credentials for the barrier.
     - **Commit:** `feat(auth): implement pre-release site access barrier`
 
 2.  **Task: Integrate User Authentication (Auth.js)**
 
-    - **Action:** Configure Auth.js with the Google Provider and the Prisma adapter. This will handle the user-facing login flow and the creation of `User`, `Account`, and `Session` records.
+    - **Action:** Integrate Auth.js using the `@auth/express` package with the Google Provider and the Prisma adapter. This will handle the user-facing login flow and the creation of `User`, `Account`, and `Session` records. Refer to `docs/eng/PHASE2_TASK2.md` for detailed steps.
     - **Test:** This is primarily a manual test. Run the application, go through the Google sign-in flow, and verify in the database that the user records are created correctly.
     - **Commit:** `feat(auth): integrate auth.js for user authentication`
 
