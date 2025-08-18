@@ -1,475 +1,498 @@
-# Implementation Plan: Phase 2, Task 1 - Pre-Release Access Barrier
+# Implementation Plan: Phase 2, Task 1 - User Authentication with Email Allowlist
 
-**Author:** Dr. Gemini, Technical Lead
-**Audience:** Junior Engineer
-**Date:** 2025-08-16
+**Author:** Tech Lead
+**Date:** 2025-08-15
+**Task:** [Phase 2, Task 1: Implement User Authentication with Email Allowlist](@docs/IMPLEMENTATION_PLAN.md)
+**Related Docs:** [SSO Allowlist Proposal](@docs/eng/SSO_ALLOWLIST_PROPOSAL.md), [Development Process](@docs/DEVELOPMENT_PROCESS.md)
 
-## 1. Overview and Goal
+## 1. Overview & Goal
 
-Welcome! This document will guide you through the process of implementing the pre-release access barrier for the Goodnumbers application.
+Welcome to your next task! The primary goal of this task is to replace our temporary, site-wide password barrier with a robust, secure, and more maintainable user authentication system. We will integrate **Auth.js** (using the `@auth/express` package) with the Google OAuth provider.
 
-**The primary goal of this task is to create a site-wide password barrier to restrict access to the application during our private beta phase.** This is a critical first step in our authentication system. We will follow a strict Test-Driven Development (TDD) workflow, which is a cornerstone of our development process. This means we will write tests *before* we write the implementation code.
+Instead of a shared password, we will restrict access to a specific list of pre-approved beta testers using an **email allowlist**. This is a critical step in moving our application towards a production-ready state. This task involves removing old code, adding new configuration, implementing the core authentication logic, and thoroughly testing the new flow.
 
-This task is broken down into four major steps:
-1.  **The "Red" Step:** Write tests that define the functionality we want, and watch them fail.
-2.  **The "Green" Step:** Write the absolute minimum amount of code required to make our tests pass.
-3.  **Repeat Red->Green:** Add the remaining tests for the feature and implement the full logic to make them pass.
-4.  **The "Refactor" Step:** Clean up our code to make it more maintainable, relying on our tests to ensure we don't break anything.
+This plan will guide you through the entire process, from setting up your local environment to creating the final Pull Request. Please follow each step carefully.
 
-## 2. Security & Best Practices
+## 2. Step-by-Step Implementation Guide
 
-Before we write any code, it's important to understand the security principles we'll be applying. Writing secure code is not an afterthought; it's a core part of the development process.
+### Step 0: Prepare Your Local Environment
 
--   **Secure Credential Comparison:** We will not use a simple `===` check to compare passwords. This can be vulnerable to timing attacks. Instead, we will use Node.js's built-in `crypto.timingSafeEqual` function, which takes a constant amount of time to execute, regardless of the input.
--   **Brute-Force Protection:** We must protect our login endpoint from automated password guessing attacks. We will implement rate limiting to slow down and block attackers.
--   **Secure Session Cookies:** Cookies are a common target for attackers. We will configure our session cookies with the `httpOnly`, `secure`, and `sameSite` flags to protect them from various attacks like XSS and CSRF.
--   **Type Safety:** We will avoid using `@ts-ignore`. Instead, we will properly extend TypeScript's types using a declaration file (`.d.ts`) to ensure our code is fully type-safe and easier to maintain.
--   **Secret Management:** We will never commit secrets to version control. We will use a `.env` file for local development and ensure it is listed in our `.gitignore` file.
+First, let's ensure your local environment is up-to-date. It is crucial to start any new work from the latest version of the `develop` branch to avoid merge conflicts.
 
-## 3. Prerequisites
+```bash
+# Navigate to the project root
+cd goodnumbers-workspace
 
-Before you begin, please ensure you have read and understood the following documents. They provide the essential context for this task:
+# Switch to the main development branch
+git checkout develop
 
-1.  `docs/PRD.md`: Understands the "why" behind the feature.
-2.  `docs/TECHNICAL_SPECIFICATION.md`: Details the technical requirements for the barrier.
-3.  `docs/DEVELOPMENT_PROCESS.md`: Explains our Git workflow and commit standards.
-4.  `docs/IMPLEMENTATION_PLAN.md`: Shows where this task fits into the overall project plan.
+# Pull the latest changes from the remote repository
+git pull origin develop
+```
 
-## 4. Step-by-Step Implementation Guide
+### Step 1: Create a GitHub Issue
 
-Let's begin the implementation. Follow these steps precisely.
+As per our `DEVELOPMENT_PROCESS.md`, every task must be tracked with a GitHub issue. This provides visibility and a place for discussion.
 
-### Step 4.1: Create Test File and Initial Failing Tests (The "Red" Step)
+Execute the following command from your terminal (ensure you have the `gh` CLI tool installed and configured). This will create the issue and link it to our plan.
 
-First, we set up our branch and create our initial, failing tests.
+```bash
+# Remember to run this from the goodnumbers-workspace directory
+gh issue create \
+  --title "feat(auth): P2_T1 implement Auth.js with email allowlist" \
+  --body "### Task Description
+This task implements Phase 2, Task 1 from the implementation plan.
+It involves:
+- Removing the `cookie-session` based barrier middleware and associated routes/files.
+- Implementing an email-based allowlist check within the Auth.js `signIn` callback.
+- Reading allowed emails from a new `config/allowed_emails.txt` file.
 
-1.  **Create a Feature Branch:**
-    Following our development process, create a new branch from the `develop` branch.
+This change replaces the temporary site-wide password with a secure, user-specific authentication system for our beta testers.
 
-    ```bash
-    git checkout develop
-    git pull origin develop
-    git checkout -b feat/P2_T1-access-barrier
-    ```
+**Reference:** `docs/eng/PHASE2_TASK1.md`"
+```
 
-2.  **Create the Test File:**
-    Create a new integration test file for our barrier feature.
+After running this, the `gh` tool will output the number of the issue it created. Make a note of it. For this guide, let's assume it created **issue #23**.
 
-    ```bash
-    touch goodnumbers/tests/integration/barrier.test.ts
-    ```
+### Step 2: Create a New Feature Branch
 
-3.  **Write the Initial Failing Tests:**
-    Open `goodnumbers/tests/integration/barrier.test.ts` and add the following code. This code imports the necessary tools and defines our first two test cases.
+Now, create a dedicated branch for this work from the `develop` branch. Follow the naming convention `type/issue-number-short-description`.
 
-    ```typescript
-    import request from 'supertest';
-    import { app } from '../../src/index'; // We will create this import later
+```bash
+# Make sure you are still on the `develop` branch before running this
+# The issue number is an example; use the real one you just created.
+git checkout -b feat/23-authjs-email-allowlist
+```
 
-    describe('Pre-Release Access Barrier', () => {
-      it('should redirect to the barrier login page for an unauthenticated request to a protected route', async () => {
-        const response = await request(app).get('/api/some-protected-api');
-        expect(response.status).toBe(302);
-        expect(response.headers.location).toBe('/barrier-login.html');
-      });
+You are now on a clean branch, ready to start making changes.
 
-      it('should return 401 for a login attempt with incorrect credentials', async () => {
-        const response = await request(app)
-          .post('/api/barrier-login')
-          .send({ username: 'wrong', password: 'user' });
-        expect(response.status).toBe(401);
-      });
+### Step 3: Implementation (Verification-Driven)
 
-      it('should allow unauthenticated access to /health and return 200 OK', async () => {
-        const response = await request(app).get('/health');
-        expect(response.status).toBe(200);
-        expect(response.body).toEqual({ status: 'ok' });
-      });
-    });
-    ```
-    *Note: The import for `app` will show an error right now. That is expected.*
+We will follow the spirit of Test-Driven Development (TDD). Since setting up automated tests for the full authentication flow is complex for this specific change, our "test" will be a manual, behavior-driven verification process outlined in Step 4. Our goal is to first observe the failure (the old barrier is gone), then write the code to make the new system pass.
 
-4.  **Run the Tests and Watch Them Fail:**
-    This is the "Red" step. Run the test command from the `goodnumbers` directory.
+#### Sub-step 3.1: Cleanup - Remove the Old Barrier Code
 
-    ```bash
-    cd goodnumbers
-    npm test
-    ```
+This is the "Red" step. We are intentionally removing the old barrier system. This is a destructive change that will temporarily remove all access control from the application until we add the new Auth.js logic.
 
-    The tests will fail. This is good! It means our tests are correctly identifying that the feature is not yet implemented.
+First, delete the obsolete files. Run these commands from the `goodnumbers-workspace` directory:
 
-### Step 4.2: Minimal Implementation to Pass Tests (The "Green" Step)
+```bash
+rm goodnumbers/src/middleware/barrier.ts
+rm goodnumbers/src/routes/barrier.ts
+rm goodnumbers/public/barrier-login.html
+```
 
-Now, we'll write the minimum code needed to make our first two tests pass.
+Next, remove the barrier middleware from the main server file. This is crucial as the old `cookie-session` middleware conflicts with the session management of `@auth/express`.
 
-1.  **Install Dependencies:**
-    We need `cookie-session` to manage the barrier session and `express-rate-limit` for security.
+Replace the entire content of `goodnumbers/src/index.ts` with the following code. The key change is removing the imports and `app.use()` calls for `cookieSession`, `barrierMiddleware`, and `barrierRouter`.
 
-    ```bash
-    npm install cookie-session @types/cookie-session express-rate-limit zod
-    ```
+```typescript
+// goodnumbers/src/index.ts
+import "dotenv/config";
+import express from "express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import { ExpressAuth } from "@auth/express";
+import { authConfig } from "./lib/auth"; // We will modify authConfig later
 
-2.  **Create the Stub Login Page:**
-    The redirect test needs a file to redirect to. Create a placeholder HTML file.
+const app = express();
+const port = process.env.PORT || 3000;
 
-    ```bash
-    touch public/barrier-login.html
-    ```
+// --- Security Middleware ---
+app.use(helmet());
 
-    Open `public/barrier-login.html` and add this content:
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
 
-    ```html
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>Private Beta Access</title>
-    </head>
-    <body>
-        <h1>Private Beta Access</h1>
-        <p>This is a placeholder for the barrier login page.</p>
-    </body>
-    </html>
-    ```
+// --- Static Files ---
+app.use(express.static("public"));
 
-3.  **Configure Environment Variables:**
-    First, ensure your `.env` file is ignored by git. Check your root `.gitignore` file and add `.env` if it's not there.
+// --- Auth.js Middleware ---
+// All requests to /api/auth/* will be handled by Auth.js
+app.use("/api/auth/*", ExpressAuth(authConfig));
 
-    Next, update `.env.example` with the new variables required for the barrier.
+// --- API Routes ---
+// Example placeholder for future API routes
+app.get("/api/protected-data", (req, res) => {
+  // In a real scenario, you'd check req.auth here to ensure user is logged in
+  res.json({ message: "This is protected data." });
+});
 
-    ```
-    # .env.example
-    BARRIER_USERNAME=
-    BARRIER_PASSWORD=
-    COOKIE_SECRET=
-    ```
+// --- Health Check Endpoint ---
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
 
-    Now, create your own local `.env` file. You will need to manually add your `BARRIER_USERNAME` and `BARRIER_PASSWORD` to this file. For `COOKIE_SECRET`, generate a secure, random string (e.g., using `openssl rand -base64 32` in your terminal) and add it to the file.
+// --- Global Error Handler ---
+app.use(
+  (
+    err: Error,
+    req: express.Request,
+    res: express.Response,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    next: express.NextFunction
+  ) => {
+    console.error("--- Global Error Handler Caught an Error ---");
+    console.error(err.stack);
+    res.status(500).send("Something broke!");
+  }
+);
 
-4.  **Create TypeScript Declaration File:**
-    To avoid using `@ts-ignore`, we need to tell TypeScript about our new session property. Create a new file for this.
+app.listen(port, () => {
+  console.log(`Server is running at http://localhost:${port}`);
+});
+```
 
-    ```bash
-    mkdir -p src/types
-    touch src/types/express-session.d.ts
-    ```
+At this point, the old barrier is completely gone.
 
-    Add the following content to `src/types/express-session.d.ts`:
+#### Sub-step 3.2: Configuration - Create the Allowlist File
 
-    ```typescript
-    import 'cookie-session';
+We need a place to store the email addresses of our approved beta testers.
 
-    declare module 'cookie-session' {
-      interface SessionData {
-        is_authorized?: boolean;
-      }
-    }
-    ```
+First, create a new directory named `config` inside the `goodnumbers/` directory. Then, create the `allowed_emails.txt` file inside it.
 
-5.  **Write Minimal Implementation:**
-    Now, let's modify `src/index.ts`. We will export `app` for our tests and add the minimal middleware and route. Ensure `dotenv/config` is imported at the top to load environment variables.
+```bash
+# Create the directory from the workspace root
+mkdir goodnumbers/config
+```
 
-    ```typescript
-    // src/index.ts
-    import express from 'express';
-    import cookieSession from 'cookie-session';
-    import 'dotenv/config'; // Explicitly import dotenv/config
+Now, create the file `goodnumbers/config/allowed_emails.txt` and add your Google email address and one or two other test emails. This is crucial for testing later.
 
-    const app = express();
-    app.use(express.json());
-    app.use(express.static('public'));
+```markdown
+<!-- goodnumbers/config/allowed_emails.txt -->
 
-    // Configure cookie session with security best practices
-    app.use(
-      cookieSession({
-        name: 'barrier_session',
-        secret: process.env.COOKIE_SECRET!,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax', // Protect against CSRF attacks
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      })
+# This file contains the list of email addresses allowed to sign in.
+
+# Lines starting with # are comments and will be ignored.
+
+# Add one email per line.
+
+your-google-email@gmail.com
+another-allowed-user@example.com
+```
+
+#### Sub-step 3.3: Implementation - Add the Allowlist Logic
+
+This is the "Green" step, where we implement the new access control. We will modify `goodnumbers/src/lib/auth.ts` to read our new config file and use the `signIn` callback to check if a user's email is on the list.
+
+Replace the entire contents of `goodnumbers/src/lib/auth.ts` with the code below. I have added detailed comments to explain each new section.
+
+```typescript
+// goodnumbers/src/lib/auth.ts
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import { PrismaClient } from "@prisma/client";
+import type { JWT } from "@auth/core/jwt";
+import type { Session, DefaultUser } from "@auth/core/types";
+import GoogleProvider from "@auth/express/providers/google";
+
+// --- NEW IMPORTS: Node.js modules for file system and path handling ---
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const prisma = new PrismaClient();
+
+// --- NEW: File path and cache configuration ---
+// ESM-compatible way to get the directory name of the current file.
+// This is necessary because __dirname is not available in ES Modules by default.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Define the absolute path to the allowlist file.
+// We go up two directories from 'src/lib/' to the 'goodnumbers/' root, then into 'config/'.
+const ALLOWLIST_FILE_PATH = path.join(
+  __dirname,
+  "../../config/allowed_emails.txt"
+);
+
+// Cache variables to store the allowlist in memory.
+// This prevents reading the file from disk on every single sign-in attempt, which improves performance.
+let cachedAllowedEmails: string[] | null = null;
+let lastReadTime: number = 0;
+const CACHE_DURATION_MS = 5 * 60 * 1000; // Cache for 5 minutes
+
+/**
+ * --- NEW: Utility function to read and cache the email allowlist ---
+ * This function reads the allowed emails from the configuration file.
+ * It uses a simple in-memory cache to avoid excessive file I/O.
+ * @returns A Promise that resolves to an array of allowed email strings.
+ */
+async function readAllowedEmails(): Promise<string[]> {
+  const now = Date.now();
+  // If the cache exists and is still fresh, return the cached data immediately.
+  if (cachedAllowedEmails && now - lastReadTime < CACHE_DURATION_MS) {
+    console.log("[Auth.js] Using cached email allowlist.");
+    return cachedAllowedEmails;
+  }
+
+  try {
+    // If cache is stale or doesn't exist, read the file from disk.
+    console.log(`[Auth.js] Reading allowlist from: ${ALLOWLIST_FILE_PATH}`);
+    const data = await fs.readFile(ALLOWLIST_FILE_PATH, "utf8");
+    const emails = data
+      .split("\n")
+      .map((line) => line.trim()) // Remove leading/trailing whitespace
+      .filter((line) => line.length > 0 && !line.startsWith("#")); // Filter out empty lines and comments
+
+    // Update cache and timestamp
+    cachedAllowedEmails = emails;
+    lastReadTime = now;
+    console.log(`[Auth.js] SUCCESS: Loaded ${emails.length} allowed emails.`);
+    return // goodnumbers/src/lib/auth.ts
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import { PrismaClient } from "@prisma/client";
+import type { JWT } from "@auth/core/jwt";
+import type { Session, DefaultUser } from "@auth/core/types";
+import GoogleProvider from "@auth/express/providers/google";
+
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const prisma = new PrismaClient();
+
+// --- File path and cache configuration ---
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const ALLOWLIST_FILE_PATH = path.join(
+  __dirname,
+  "../../config/allowed_emails.txt"
+);
+
+// Cache variables to store the allowlist in memory.
+let cachedAllowedEmails: Set<string> | null = null;
+let lastReadTime: number = 0;
+const CACHE_DURATION_MS = 5 * 60 * 1000; // Cache for 5 minutes
+
+/**
+ * --- NEW: Utility function to read and cache the email allowlist ---
+ * This function reads the allowed emails from the configuration file.
+ * It uses a simple in-memory cache to avoid excessive file I/O.
+ * @returns A Promise that resolves to a Set of allowed email strings, normalized to lowercase.
+ */
+async function getAllowedEmails(): Promise<Set<string>> {
+  const now = Date.now();
+  if (cachedAllowedEmails && now - lastReadTime < CACHE_DURATION_MS) {
+    console.log("[Auth.js] Using cached email allowlist.");
+    return cachedAllowedEmails;
+  }
+
+  try {
+    console.log(`[Auth.js] Reading allowlist from: ${ALLOWLIST_FILE_PATH}`);
+    const data = await fs.readFile(ALLOWLIST_FILE_PATH, "utf8");
+    const emails = data
+      .split("\n")
+      .map((line) => line.trim().toLowerCase()) // SECURITY: Normalize to lowercase for case-insensitive matching.
+      .filter((line) => line.length > 0 && !line.startsWith("#"));
+
+    // Using a Set provides a minor performance boost for the `.has()` check.
+    cachedAllowedEmails = new Set(emails);
+    lastReadTime = now;
+    console.log(`[Auth.js] SUCCESS: Loaded ${emails.length} allowed emails.`);
+    return cachedAllowedEmails;
+  } catch (error) {
+    console.error(
+      `[Auth.js] CRITICAL ERROR: Could not read allowlist file at ${ALLOWLIST_FILE_PATH}. Defaulting to deny all access.`,
+      error
     );
+    // SECURITY: If the file cannot be read, we must default to a secure state: deny all access.
+    cachedAllowedEmails = new Set(); // Cache an empty set to prevent further read attempts
+    lastReadTime = now;
+    return cachedAllowedEmails;
+  }
+}
 
-    // Barrier Middleware (Minimal)
-    app.use((req, res, next) => {
-      if (req.path === '/barrier-login.html' || req.path.startsWith('/api/barrier-login') || req.path === '/health') {
-        return next();
-      }
-      if (req.session && req.session.is_authorized) {
-        return next();
-      }
-      return res.redirect('/barrier-login.html');
-    });
+export const authConfig = {
+  adapter: PrismaAdapter(prisma),
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    }),
+  ],
+  session: {
+    strategy: "jwt",
+  },
+  callbacks: {
+    /**
+     * --- signIn callback for email allowlist validation ---
+     * This callback is executed every time a user attempts to sign in via any provider.
+     */
+    async signIn({ user, account, profile }) {
+      const userEmail = profile?.email;
 
-    // Barrier Login Route (Minimal)
-    app.post('/api/barrier-login', (req, res) => {
-      res.status(401).send({ message: 'Unauthorized' });
-    });
-    
-    app.get('/health', (req, res) => {
-        res.status(200).json({ status: 'ok' });
-    });
-
-    const PORT = process.env.PORT || 3000;
-    const server = app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-    });
-
-    export { app, server }; // Export for testing
-    ```
-
-6.  **Run Tests and Watch Them Pass:**
-    This is the "Green" step.
-
-    ```bash
-    npm test
-    ```
-
-    Your first two tests should now pass!
-
-### Step 4.3: Add Remaining Tests and Implement Full Logic
-
-Now we repeat the cycle: add more tests, watch them fail, and then implement the logic to make them pass.
-
-1.  **Add Remaining Test Cases:**
-    Add the following tests to `goodnumbers/tests/integration/barrier.test.ts`. These will test for a *successful* login and verify that a logged-in user can bypass the barrier.
-
-    ```typescript
-    // Add these inside the describe block in barrier.test.ts
-
-    it('should return 200 and set a cookie for a successful login', async () => {
-      const response = await request(app)
-        .post('/api/barrier-login')
-        .send({
-          username: process.env.BARRIER_USERNAME,
-          password: process.env.BARRIER_PASSWORD,
-        });
-      expect(response.status).toBe(200);
-      expect(response.headers['set-cookie']).toBeDefined();
-    });
-
-    it('should allow access to a protected route after a successful login', async () => {
-      const agent = request.agent(app); // Use an agent to maintain the session cookie
-      
-      // First, log in
-      await agent
-        .post('/api/barrier-login')
-        .send({
-          username: process.env.BARRIER_USERNAME,
-          password: process.env.BARRIER_PASSWORD,
-        });
-
-      // Then, access the protected route
-      const response = await agent.get('/api/some-protected-api');
-      expect(response.status).toBe(404); // Expect 404 as the route does not exist yet
-    });
-    ```
-
-2.  **Run Tests and Watch New Tests Fail:**
-    Run `npm test` again. The two new tests will fail.
-
-3.  **Implement the Full Logic:**
-    Now, update the `/api/barrier-login` route in `src/index.ts` with the complete, secure logic.
-
-    ```typescript
-    // In src/index.ts, replace the minimal POST /api/barrier-login with this:
-    import { z } from 'zod';
-    import { timingSafeEqual } from 'crypto';
-
-    const barrierLoginSchema = z.object({
-      username: z.string(),
-      password: z.string(),
-    });
-
-    app.post('/api/barrier-login', (req, res) => {
-      try {
-        const { username, password } = barrierLoginSchema.parse(req.body);
-
-        // Securely compare credentials using a constant-time algorithm
-        const storedUser = Buffer.from(process.env.BARRIER_USERNAME!);
-        const providedUser = Buffer.from(username);
-        const storedPass = Buffer.from(process.env.BARRIER_PASSWORD!);
-        const providedPass = Buffer.from(password);
-
-        const isUserMatch = storedUser.length === providedUser.length && timingSafeEqual(storedUser, providedUser);
-        const isPassMatch = storedPass.length === providedPass.length && timingSafeEqual(storedPass, providedPass);
-
-        if (isUserMatch && isPassMatch) {
-          req.session!.is_authorized = true;
-          return res.status(200).json({ message: 'Login successful' });
-        }
-
-        return res.status(401).json({ message: 'Invalid username or password' });
-      } catch (error) {
-        return res.status(400).json({ message: 'Invalid request body' });
-      }
-    });
-    ```
-
-4.  **Run All Tests:**
-    Run `npm test` one more time. All four tests should now be passing. Congratulations!
-
-### Step 4.4: Refactor for Maintainability
-
-Our tests are all passing, which gives us a safety net to clean up our code without fear of breaking it.
-
-1.  **Create a Middleware File:**
-    Let's move the barrier middleware logic into its own file.
-
-    ```bash
-    mkdir -p src/middleware
-    touch src/middleware/barrier.ts
-    ```
-
-    Add the following content to `src/middleware/barrier.ts`:
-
-    ```typescript
-    // src/middleware/barrier.ts
-    import { Request, Response, NextFunction } from 'express';
-
-    export const barrierMiddleware = (req: Request, res: Response, next: NextFunction) => {
-      // Allow access to the login page, the API endpoint, and the health check
-      if (req.path === '/barrier-login.html' || req.path.startsWith('/api/barrier-login') || req.path === '/health') {
-        return next();
+      if (!userEmail) {
+        console.log(
+          "[Auth.js] DENIED: Sign-in attempt failed because no email was returned from provider."
+        );
+        return false;
       }
 
-      if (req.session && req.session.is_authorized) {
-        return next();
+      // TODO: Before production, remove the logging of PII (userEmail) to protect user privacy.
+      // Replace with anonymous logging, e.g., "Sign-in attempt for an allowlisted user succeeded."
+      console.log(`[Auth.js] INFO: Attempting sign-in for user: ${userEmail}`);
+      const allowedEmails = await getAllowedEmails();
+
+      // SECURITY: Normalize the user's email to lowercase for a case-insensitive check.
+      const isAllowed = allowedEmails.has(userEmail.toLowerCase());
+
+      if (isAllowed) {
+        console.log(
+          `[Auth.js] ALLOWED: User is in the allowlist.`
+        );
+        return true;
+      } else {
+        console.log(
+          `[Auth.js] DENIED: User is NOT in the allowlist.`
+        );
+        return false;
       }
-
-      // If not authorized, redirect to the login page
-      return res.redirect('/barrier-login.html');
-    };
-    ```
-
-2.  **Create a Route File:**
-    Let's move the route handler to its own file, now including rate limiting.
-
-    ```bash
-    mkdir -p src/routes
-    touch src/routes/barrier.ts
-    ```
-
-    Add the following content to `src/routes/barrier.ts`:
-
-    ```typescript
-    // src/routes/barrier.ts
-    import { Router } from 'express';
-    import { z } from 'zod';
-    import { timingSafeEqual } from 'crypto';
-    import rateLimit from 'express-rate-limit';
-
-    export const barrierRouter = Router();
-
-    const barrierLoginSchema = z.object({
-      username: z.string(),
-      password: z.string(),
-    });
-
-    // Apply rate limiting to the login route to prevent brute-force attacks
-    const barrierLimiter = rateLimit({
-        windowMs: 15 * 60 * 1000, // 15 minutes
-        max: 10, // Limit each IP to 10 login requests per window
-        message: 'Too many login attempts from this IP, please try again after 15 minutes',
-        standardHeaders: true,
-        legacyHeaders: false,
-    });
-
-    barrierRouter.post('/api/barrier-login', barrierLimiter, (req, res) => {
-      try {
-        const { username, password } = barrierLoginSchema.parse(req.body);
-
-        const storedUser = Buffer.from(process.env.BARRIER_USERNAME!);
-        const providedUser = Buffer.from(username);
-        const storedPass = Buffer.from(process.env.BARRIER_PASSWORD!);
-        const providedPass = Buffer.from(password);
-
-        const isUserMatch = storedUser.length === providedUser.length && timingSafeEqual(storedUser, providedUser);
-        const isPassMatch = storedPass.length === providedPass.length && timingSafeEqual(storedPass, providedPass);
-
-        if (isUserMatch && isPassMatch) {
-          req.session!.is_authorized = true;
-          return res.status(200).json({ message: 'Login successful' });
-        }
-
-        return res.status(401).json({ message: 'Invalid username or password' });
-      } catch (error) {
-        return res.status(400).json({ message: 'Invalid request body' });
+    },
+    async jwt({ token, user }: { token: JWT; user?: DefaultUser }) {
+      if (user && user.id) {
+        token.id = user.id;
       }
-    });
-    ```
+      return token;
+    },
+    async session({ session, token }: { session: Session; token: JWT }) {
+      if (session.user && token.id) {
+        session.user.id = token.id as string;
+      }
+      return session;
+    },
+  },
+};
+```
 
-3.  **Update `src/index.ts`:**
-    Now, update the main application file to use our new, refactored modules. It will be much cleaner.
+Your implementation work is now complete!
 
-    ```typescript
-    // src/index.ts
-    import express from 'express';
-    import cookieSession from 'cookie-session';
-    import 'dotenv/config';
-    import { barrierMiddleware } from './middleware/barrier';
-    import { barrierRouter } from './routes/barrier';
+### Step 4: Verification and Manual Testing
 
-    const app = express();
-    app.use(express.json());
-    app.use(express.static('public'));
+Now, we will rigorously test the changes to ensure everything works as expected. Restart your development server (`cd goodnumbers && npm run dev`).
 
-    app.use(
-      cookieSession({
-        name: 'barrier_session',
-        secret: process.env.COOKIE_SECRET!,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      })
-    );
+**Test Case 1: Positive Test (Allowed User)**
 
-    // Use the middleware and router
-    app.use(barrierMiddleware);
-    app.use('/', barrierRouter); // Mount the router at the root
+1.  **Action:** Make sure your primary Google email address is listed in `goodnumbers/config/allowed_emails.txt`. Try using mixed-case letters (e.g., Your-Email@gmail.com) in the file to test our case-insensitive fix.
+2.  **Action:** Open your browser in an incognito window and navigate to `http://localhost:3000`. You should see the Auth.js login page.
+3.  **Action:** Attempt to sign in with the Google account corresponding to your allowed email.
+4.  **Expected Result:** You should be successfully authenticated and redirected into the application (e.g., to the dashboard).
+5.  **Verification:** Check your server console logs. You should see the message: `[Auth.js] ALLOWED: User your-google-email@gmail.com is in the allowlist.`
 
-    app.get('/health', (req, res) => {
-      res.status(200).json({ status: 'ok' });
-    });
+**Test Case 2: Negative Test (Denied User)**
 
-    const PORT = process.env.PORT || 3000;
-    const server = app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-    });
+1.  **Action:** Use a different Google account whose email is **NOT** in `goodnumbers/config/allowed_emails.txt`.
+2.  **Action:** Open a new incognito window and navigate to `http://localhost:3000`.
+3.  **Action:** Attempt to sign in with the disallowed Google account.
+4.  **Expected Result:** After the Google login screen, you should be redirected back to an Auth.js error page stating that access is denied. You should **not** be able to access the application.
+5.  **Verification:** Check your server console logs. You should see the message: `[Auth.js] DENIED: User some-other-user@gmail.com is NOT in the allowlist.`
 
-    export { app, server };
-    ```
+**Test Case 3: Security Test (Missing Allowlist File)**
 
-4.  **Final Test Run:**
-    Run the tests one last time to ensure our refactoring didn't break anything.
+This test ensures our "deny by default" security posture is working.
 
-    ```bash
-    npm test
-    ```
-    All tests should still pass.
+1.  **Action:** Stop your server.
+2.  **Action:** Temporarily rename the `allowed_emails.txt` file to `allowed_emails.txt.bak`.
+3.  **Action:** Start your server again.
+4.  **Action:** Attempt to log in with ANY account (even one that was previously allowed).
+5.  **Expected Result:** You should be denied access and see the Auth.js error page.
+6.  **Verification:** Check the server console logs. You should see the critical error message: `[Auth.js] CRITICAL ERROR: Could not read allowlist file...` followed by the `DENIED` message. This confirms our secure-by-default logic is correct.
+7.  **Cleanup:** Don't forget to stop the server and rename the file back to `allowed_emails.txt`.
 
-## 5. Final Steps
+### Step 5: Commit Your Changes
 
-You have successfully implemented the feature with robust security measures! The final steps are to commit your work and create a Pull Request.
+Once you have verified that all test cases pass, it's time to commit your work. We will create a single, clean commit as per our process.
 
-1.  **Commit Your Work:**
-    Stage and commit your changes using our conventional commit format.
+```bash
+# Add all the changed, new, and deleted files to the staging area
+git add .
 
-    ```bash
-    git add .
-    git commit -m "feat(auth): implement secure pre-release site access barrier"
-    ```
+# Commit the changes with a message that follows the Conventional Commit standard
+git commit -m "feat(auth): P2_T1 implement Auth.js with email allowlist" -m "This commit replaces the legacy site-wide password barrier with a secure email allowlist integrated into the Auth.js signIn callback. It removes old barrier files and middleware, adds a new configuration file for allowed emails, and implements caching and secure-by-default error handling. The allowlist check is now case-insensitive, and the config file is ignored by Git to protect PII."
+```
 
-2.  **Create a Pull Request:**
-    Push your branch and open a Pull Request against the `develop` branch.
+### Step 6: Final Quality & Security Checks
 
-    ```bash
-    git push origin feat/P2_T1-access-barrier
-    gh pr create --base develop --title "feat(auth): implement secure pre-release site access barrier" --body "Closes #<issue-number>. Implements the site-wide password barrier for private beta access as per Phase 2, Task 1. Includes rate limiting, secure credential comparison, and hardened session cookie configuration."
-    ```
-    *(Remember to replace `<issue-number>` with the actual issue number for this task.)*
+Before pushing, run the required checks from the `goodnumbers` directory as specified in `DEVELOPMENT_PROCESS.md`.
 
-Excellent work. You've completed a critical feature while adhering to our quality and process standards.
+```bash
+# Navigate into the project folder
+cd goodnumbers
+
+# Run the dependency audit
+npm audit
+```
+
+Address any high or critical vulnerabilities if found. If none are found, you are clear to proceed. Then, run the test suite to ensure no regressions were introduced.
+
+```bash
+# Run all automated tests
+npm test
+```
+
+If all checks pass, return to the workspace root.
+
+```bash
+cd ..
+```
+
+### Step 7: Create the Pull Request
+
+Your code is complete, tested, and committed. Now, push your branch to the remote repository and open a Pull Request (PR) to merge it into `develop`.
+
+```bash
+# Push your branch to the remote repository (e.g., GitHub)
+git push origin feat/23-authjs-email-allowlist
+
+# Create the Pull Request using the gh CLI
+# Note the --base flag to ensure it targets the `develop` branch
+gh pr create \
+  --base develop \
+  --title "feat(auth): P2_T1 implement Auth.js with email allowlist" \
+  --body "### Description
+This PR replaces the temporary `cookie-session` based site barrier with a more robust email allowlist integrated directly into the Auth.js `signIn` callback. This resolves the technical conflict between the two session middlewares and improves the security of access control for beta testers.
+
+The implementation reads approved emails from `goodnumbers/config/allowed_emails.txt` and uses a 5-minute cache to improve performance. For security, if the configuration file cannot be read, all sign-in attempts are denied by default.
+
+**Closes #23** (Replace with the actual issue number you created)
+
+### How to Test
+1.  Add your Google email to `goodnumbers/config/allowed_emails.txt`.
+2.  Run the application (`cd goodnumbers && npm run dev`).
+3.  Log in with your allowed Google account. **Verify you are granted access.**
+4.  Use a different Google account whose email is *not* on the list.
+5.  Log in with that account. **Verify you are denied access and see an error page.**
+6.  Stop the server, rename `allowed_emails.txt`, and restart. Attempt to log in with an allowed account. **Verify you are still denied access** and a critical error appears in the server logs."
+```
+
+# Push your branch to the remote repository
+
+git push origin feat/23-authjs-email-allowlist
+
+# Create the Pull Request using the gh CLI
+
+gh pr create \
+ --base develop \
+ --title "feat(auth): P2_T1 implement Auth.js with email allowlist" \
+ --body "### Description
+This PR replaces the temporary `cookie-session` based site barrier with a more robust email allowlist integrated directly into the Auth.js `signIn` callback. This resolves the technical conflict between the two session middlewares and improves the security of access control for beta testers.
+
+The implementation reads approved emails from `goodnumbers/config/allowed_emails.txt` (which is properly `.gitignore`d) and uses a 5-minute cache. The email check is now **case-insensitive**. For security, if the configuration file cannot be read, all sign-in attempts are denied by default.
+
+**Closes #23** (Replace with the actual issue number you created)
+
+### How to Test
+
+1.  Create `goodnumbers/config/allowed_emails.txt` and add your Google email to it (try using mixed case).
+2.  Run the application (`cd goodnumbers && npm run dev`).
+3.  Log in with your allowed Google account. **Verify you are granted access.**
+4.  Use a different Google account whose email is _not_ on the list.
+5.  Log in with that account. **Verify you are denied access and see an error page.**
+6.  Stop the server, rename `allowed_emails.txt`, and restart. Attempt to log in with an allowed account. **Verify you are still denied access** and a critical error appears in the server logs."
+
+Once the PR is created, please post the link in our team's Slack channel for review. Excellent work!

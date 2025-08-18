@@ -1,7 +1,7 @@
 # Goodnumbers Implementation Plan
 
-**Version:** 1.2
-**Date:** 2025-08-13
+**Version:** 1.3
+**Date:** 2025-08-14
 
 ## 1. Overview
 
@@ -47,15 +47,15 @@ For each task listed in the implementation phases below, the following GitHub-in
 1.  **Create an Issue:** Before beginning work, create a GitHub Issue to track the task. This can be done via the `gh` command-line tool. The issue will serve as a central place for discussion and to document specific implementation details.
 
     ```bash
-    # Example for Phase 1, Task 2
-    gh issue create --title "feat(db): Implement Database Schema" --body "Implement the Prisma schema as defined in the technical specification. Run the initial migration to set up the database."
+    # Example for Phase 2, Task 1
+    gh issue create --title "feat(auth): Implement Auth.js with Email Allowlist" --body "Integrate Auth.js with Google SSO and an email allowlist as per docs/eng/SSO_ALLOWLIST_PROPOSAL.md. This replaces the old password barrier."
     ```
 
 2.  **Create a Branch:** Create a feature branch from the `develop` branch. It is recommended to include the issue number in the branch name for easy tracking.
 
     ```bash
-    # Example assuming the issue created is #1
-    git checkout -b feat/1-database-schema
+    # Example assuming the issue created is #15
+    git checkout -b feat/15-authjs-allowlist
     ```
 
 3.  **Implement and Test:** Adhere to a "test-first" approach. The general workflow for a task should be:
@@ -65,10 +65,10 @@ For each task listed in the implementation phases below, the following GitHub-in
 
     Make small, atomic commits using the Conventional Commit standard.
 
-4.  **Open a Pull Request:** Once the task is complete and all local tests are passing, open a Pull Request against the `develop` branch. The PR description should link to the issue it resolves using a keyword like `Closes #1`.
+4.  **Open a Pull Request:** Once the task is complete and all local tests are passing, open a Pull Request against the `develop` branch. The PR description should link to the issue it resolves using a keyword like `Closes #15`.
 
     ```bash
-    gh pr create --base develop --title "feat(db): Implement Database Schema" --body "Closes #1. This PR adds the initial Prisma schema and migration."
+    gh pr create --base develop --title "feat(auth): P2_T1 Implement Auth.js with Email Allowlist" --body "Closes #15. This PR integrates Auth.js and replaces the site barrier with an email allowlist."
     ```
 
 5.  **Review and Merge:** Follow the PR review and merge process defined in `DEVELOPMENT_PROCESS.md`. The merge will automatically close the associated issue.
@@ -89,7 +89,7 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Test:** Manually verify that the file move is complete and the `goodnumbers/` directory is gone.
     - **Commit:** `chore: Archive existing proof-of-concept code`
 
-### **Phase 1: Project Setup & Core Backend Foundation**
+### **Phase 1: Project Setup & Core Backend Foundation** - COMPLETE
 
 **Goal:** Establish a runnable server, a database schema, and core utilities. This phase ensures the absolute fundamentals are working before any feature logic is added.
 
@@ -128,41 +128,49 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 ### **Phase 2: Authentication & User Management**
 
-**Goal:** Implement all functionality related to user identity, from the initial access barrier to managing user-specific settings.
+**Goal:** Implement all functionality related to user identity, from initial access control to managing user-specific settings.
 
-1.  **Task: Implement Pre-Release Access Barrier (Unblocked)**
+1.  **Task: Implement User Authentication with Email Allowlist**
 
-    - **Goal:** Create a site-wide password barrier to restrict access during the private beta.
-    - **Status:** This task was initially blocked by several critical development environment issues. These issues have been diagnosed and resolved.
-    - **Debugging Summary:** For a detailed breakdown of the issues encountered (including `__dirname` errors, `nodemon` configuration, middleware order, and ES Module import resolution) and their resolutions, please refer to the "Debugging Notes and Resolutions" section at the end of **[docs/eng/PHASE2_TASK2.md](eng/PHASE2_TASK2.md)**.
-    - **Action:** Proceed with the implementation of the pre-release access barrier as originally outlined in **[docs/eng/PHASE2_TASK2.md](eng/PHASE2_TASK2.md)**, following the strict Test-Driven Development (TDD) approach.
-    - **Action:** Implement the frontend login form in `goodnumbers/public/barrier-login.html` to allow users to input credentials for the barrier.
-    - **Commit:** `feat(auth): implement pre-release site access barrier`
+    - **Goal:** Integrate Auth.js using the `@auth/express` package with the Google Provider. Crucially, we will replace the old concept of a site-wide password barrier with a more secure email-based allowlist. This ensures only pre-approved beta testers can sign in. This task merges and replaces the previous "barrier" and "Auth.js integration" tasks.
+    - **Reference:** This implementation should precisely follow the detailed guide in `docs/eng/SSO_ALLOWLIST_PROPOSAL.md`.
+    - **Action (Cleanup):** Begin by completely removing the old barrier implementation. Delete the following files if they exist:
+      - `goodnumbers/src/middleware/barrier.ts`
+      - `goodnumbers/src/routes/barrier.ts`
+      - `goodnumbers/public/barrier-login.html`
+    - **Action (Cleanup):** In `goodnumbers/src/index.ts`, remove all imports and `app.use()` calls related to `cookie-session`, `barrierMiddleware`, and `barrierRouter`.
+    - **Action (Configuration):** Create a new configuration file at `goodnumbers/config/allowed_emails.txt`. Add your own Google email address to this file for testing purposes.
+    - **Test (Red - Manual Verification):** At this point, no access control exists. The next step is to add Auth.js.
+    - **Action (Green - Implementation):** Modify `goodnumbers/src/lib/auth.ts`. Implement the `signIn` callback as described in the proposal. This callback will:
+      1.  Read the emails from `config/allowed_emails.txt`.
+      2.  Check if the email of the user attempting to sign in is present in the list.
+      3.  Return `true` if the email is on the list (allowing sign-in) or `false` if it is not (denying sign-in).
+      4.  Implement caching to avoid reading the file on every single login attempt.
+      5.  Implement robust error handling: if the file cannot be read, it must default to denying all access for security.
+    - **Test (Green - Manual Verification):**
+      1.  **Positive Test:** Run the application and attempt to sign in with the Google account you added to the allowlist. Verify you are granted access. Check server logs for the "ALLOWED" message.
+      2.  **Negative Test:** Use a different Google account that is **not** on the list. Verify you are denied access and redirected. Check server logs for the "DENIED" message.
+      3.  **Error Test:** Temporarily rename the allowlist file and restart the server. Attempt to log in with any account. Verify you are denied access and see the "CRITICAL ERROR" in the logs. This confirms our secure-by-default posture.
+    - **Commit:** `feat(auth): P2_T1 implement Auth.js with email allowlist`
 
-2.  **Task: Integrate User Authentication (Auth.js)**
-
-    - **Action:** Integrate Auth.js using the `@auth/express` package with the Google Provider and the Prisma adapter. This will handle the user-facing login flow and the creation of `User`, `Account`, and `Session` records. Refer to `docs/eng/PHASE2_TASK2.md` for detailed steps.
-    - **Test:** This is primarily a manual test. Run the application, go through the Google sign-in flow, and verify in the database that the user records are created correctly.
-    - **Commit:** `feat(auth): integrate auth.js for user authentication`
-
-3.  **Task: Implement Agreement Gate Logic**
+2.  **Task: Implement Agreement Gate Logic**
 
     - **Action:** Add the `agreementsSigned` boolean field to the `User` model in `prisma/schema.prisma`. Run a new database migration.
     - **Action:** Create a new `POST /api/user/sign-agreements` endpoint. This endpoint will set the `agreementsSigned` flag to `true` for the currently authenticated user.
     - **Action:** Implement a global middleware that checks if a user is authenticated but `agreementsSigned` is false. If so, it should redirect them to a placeholder `/agreements` page.
     - **Test:** Write an integration test for the new API endpoint. Manually test that a newly signed-up user is redirected, and after hitting the new endpoint, they are no longer redirected.
-    - **Commit:** `feat(auth): implement backend logic for agreement gate`
+    - **Commit:** `feat(auth): P2_T2 implement backend logic for agreement gate`
 
-4.  **Task: Implement User Settings API**
+3.  **Task: Implement User Settings API**
 
     - **Action:** Create the `PUT /api/user/settings` endpoint. This endpoint will handle updates to `preferredUnits` and will use the encryption utility to securely save the `nightscoutUrl` and `nightscoutToken`. The request body must be validated using `zod`.
     - **Test:** Write an integration test using Jest and `supertest` that mocks an authenticated user, calls the endpoint with new settings, and then queries the database directly to verify the data was saved correctly (and that credentials are encrypted).
-    - **Commit:** `feat(api): implement endpoint for user settings`
+    - **Commit:** `feat(api): P2_T3 implement endpoint for user settings`
 
-5.  **Task: Implement RSS Token Regeneration**
+4.  **Task: Implement RSS Token Regeneration**
     - **Action:** Create the `POST /api/user/regenerate-rss-token` endpoint.
     - **Test:** Write an integration test using Jest and `supertest` that gets a user's original token, calls the endpoint, and asserts that the token stored in the database has changed.
-    - **Commit:** `feat(api): add endpoint for rss token regeneration`
+    - **Commit:** `feat(api): P2_T4 add endpoint for rss token regeneration`
 
 ### **Phase 3: Core Journal Feature (Backend API)**
 
@@ -172,7 +180,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 
     - **Action:** Implement the foundational journal endpoints: `POST`, `GET` (list), `GET` (by ID), `PUT`, and `DELETE` for `/api/journals`. All endpoints accepting data must use `zod` for validation.
     - **Test:** Write integration tests using Jest and `supertest` for each endpoint. Crucially, ensure that ownership is enforced (a user cannot access or modify another user's journals).
-    - **Commit:** `feat(api): implement crud api for journals`
+    - **Commit:** `feat(api): P3_T1 implement crud api for journals`
 
 2.  **Task: Set Up Background Job Queue**
 
@@ -180,12 +188,12 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Action:** Modify the `POST /api/journals` endpoint to enqueue a new job with the `journalId` upon successful creation.
     - **Action:** Create a skeleton background worker that listens to the queue and logs the ID of any received job.
     - **Test:** Write an integration test that calls the journal creation API and then checks the queue (via a Redis client) to confirm a job was successfully enqueued.
-    - **Commit:** `feat(worker): integrate bullmq for background job processing`
+    - **Commit:** `feat(worker): P3_T2 integrate bullmq for background job processing`
 
 3.  **Task: Implement Journal Status API**
     - **Action:** Create the `GET /api/journal-status/:id` endpoint to allow the frontend to poll for job progress.
     - **Test:** Write an integration test using Jest and `supertest` that creates a journal and then calls this endpoint to check its initial `PENDING` status.
-    - **Commit:** `feat(api): implement journal status polling endpoint`
+    - **Commit:** `feat(api): P3_T3 implement journal status polling endpoint`
 
 ### **Phase 4: Frontend Implementation**
 
@@ -196,7 +204,7 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Action:** Set up the React project, routing, and a main layout component (header, footer).
     - **Action:** Build the UI for the login flow, the post-login agreements page, and the account setup page. Wire these up to the corresponding backend APIs.
     - **Test:** Use Jest and React Testing Library for component tests. Use Playwright for E2E tests to validate the forms and user flows.
-    - **Commit:** `feat(ui): implement core layout and authentication flow`
+    - **Commit:** `feat(ui): P4_T1 implement core layout and authentication flow`
 
 2.  **Task: Build Dashboard & Journal Pages**
     - **Action:** Create the Dashboard page, fetching and displaying the list of past journals.
@@ -204,7 +212,7 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Action:** Build the journal loading page that polls the status endpoint.
     - **Action:** Build the main journal view page with all its components (AGP chart, inputs, etc.), fetching data from the `GET /api/journals/:id` endpoint.
     - **Test:** Write component tests with Jest/React Testing Library and E2E tests with Playwright for these pages to ensure data is displayed correctly and user interactions work as expected.
-    - **Commit:** `feat(ui): implement dashboard and journal view pages`
+    - **Commit:** `feat(ui): P4_T2 implement dashboard and journal view pages`
 
 ### **Phase 5: Background Processing Implementation**
 
@@ -215,7 +223,7 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Action:** In the background worker, implement the logic to fetch data from a user's Nightscout instance (decrypting credentials first).
     - **Action:** Integrate the existing analysis scripts to process the raw data into structured insights and `TimeCluster` objects.
     - **Test:** Write unit tests using Jest for the data fetching and analysis pipeline, heavily mocking the external Nightscout API.
-    - **Commit:** `feat(worker): implement nightscout data fetching and statistical analysis`
+    - **Commit:** `feat(worker): P5_T1 implement nightscout data fetching and statistical analysis`
 
 2.  **Task: Implement AI & TTS Pipeline**
 
@@ -223,12 +231,12 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Action:** Implement the call to the TTS service to generate the audio file.
     - **Action:** Implement robust error handling for each step of this pipeline.
     - **Test:** Write integration tests using Jest for this pipeline, mocking the Gemini and TTS APIs to ensure the flow works and that errors are handled gracefully.
-    - **Commit:** `feat(worker): implement ai and tts generation pipeline`
+    - **Commit:** `feat(worker): P5_T2 implement ai and tts generation pipeline`
 
 3.  **Task: Finalize Job and Update Database**
     - **Action:** Implement the final step in the worker, where all generated artifacts (podcast URL, chart data, etc.) are saved to the `Journal` and `GlycemicEventCluster` tables in the database. The journal `status` should be updated to `COMPLETE`.
     - **Test:** Write a full integration test using Jest for the background worker that runs through the entire (mocked) process and verifies that the database is updated correctly at the end.
-    - **Commit:** `feat(worker): finalize job by saving all generated data`
+    - **Commit:** `feat(worker): P5_T3 finalize job by saving all generated data`
 
 ## 5. Deployment and Security Hardening
 
@@ -239,11 +247,11 @@ This section outlines high-level tasks that should be addressed as part of the p
 - **Database File Permissions:** The deployment process must include a step to configure the file system permissions of the SQLite database file (e.g., `chmod 600 prisma/dev.db`). The file should only be readable and writable by the user account running the application.
 
 - **Auth.js Production Configuration:**
-    - **Google Cloud Project:** Ensure you are using the correct Google Cloud project for production (`goodnumbers`, not `goodnumbers-dev`).
-    - **OAuth Credentials:**
-        - In the Google Cloud Console, under "APIs & Services" -> "Credentials", create a new OAuth 2.0 Client ID for the production application.
-        - The `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` environment variables for the production instance **must** be sourced from this new credential. These should be stored securely in Google Secret Manager.
-    - **Authorized Redirect URIs:**
-        - When creating the new OAuth credential, you must add the production application's redirect URI to the "Authorized redirect URIs" list. The URI follows the format: `https://<your-production-domain>/api/auth/callback/google`. For example: `https://goodnumbers.io/api/auth/callback/google`.
-    - **AUTH_SECRET:** For security, Auth.js uses a secret to sign cookies and tokens. Ensure a strong, unique `AUTH_SECRET` environment variable is set in the production environment, managed via Google Secret Manager.
-    - **NODE_ENV:** The `NODE_ENV` environment variable must be set to `production`. This enables various optimizations and security features within Express and Auth.js.
+  - **Google Cloud Project:** Ensure you are using the correct Google Cloud project for production (`goodnumbers`, not `goodnumbers-dev`).
+  - **OAuth Credentials:**
+    - In the Google Cloud Console, under "APIs & Services" -> "Credentials", create a new OAuth 2.0 Client ID for the production application.
+    - The `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` environment variables for the production instance **must** be sourced from this new credential. These should be stored securely in Google Secret Manager.
+  - **Authorized Redirect URIs:**
+    - When creating the new OAuth credential, you must add the production application's redirect URI to the "Authorized redirect URIs" list. The URI follows the format: `https://<your-production-domain>/api/auth/callback/google`. For example: `https://goodnumbers.io/api/auth/callback/google`.
+  - **AUTH_SECRET:** For security, Auth.js uses a secret to sign cookies and tokens. Ensure a strong, unique `AUTH_SECRET` environment variable is set in the production environment, managed via Google Secret Manager.
+  - **NODE_ENV:** The `NODE_ENV` environment variable must be set to `production`. This enables various optimizations and security features within Express and Auth.js.

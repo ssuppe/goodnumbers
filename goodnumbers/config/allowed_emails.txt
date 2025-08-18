@@ -1,0 +1,6 @@
+# This file contains the list of email addresses allowed to sign in.
+# Lines starting with # are comments and will be ignored.
+# Add one email per line.
+
+your-google-email@gmail.com
+Another-Allowed-User@example.com

@@ -43,3 +43,5 @@ treatments.json
 venv/
 .venv/
 .aicodeprep-gui
+
+goodnumbers/config/
