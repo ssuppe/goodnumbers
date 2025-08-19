@@ -1,4 +1,4 @@
-// goodnumbers/src/lib/auth.ts
+// file: goodnumbers/src/lib/auth.ts
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import { PrismaClient } from '@prisma/client';
 import type { JWT } from '@auth/core/jwt';
@@ -11,53 +11,37 @@ import { fileURLToPath } from 'url';
 
 const prisma = new PrismaClient();
 
-// --- File path and cache configuration ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const ALLOWLIST_FILE_PATH = path.join(
   __dirname,
   '../../config/allowed_emails.txt',
 );
-
-// Cache variables to store the allowlist in memory.
 let cachedAllowedEmails: Set<string> | null = null;
 let lastReadTime: number = 0;
-const CACHE_DURATION_MS = 5 * 60 * 1000; // Cache for 5 minutes
+const CACHE_DURATION_MS = 5 * 60 * 1000;
 
-/**
- * --- NEW: Utility function to read and cache the email allowlist ---
- * This function reads the allowed emails from the configuration file.
- * It uses a simple in-memory cache to avoid excessive file I/O.
- * @returns A Promise that resolves to a Set of allowed email strings, normalized to lowercase.
- */
-async function getAllowedEmails(): Promise<Set<string>> {
+export async function getAllowedEmails(): Promise<Set<string>> {
   const now = Date.now();
   if (cachedAllowedEmails && now - lastReadTime < CACHE_DURATION_MS) {
-    console.log('[Auth.js] Using cached email allowlist.');
     return cachedAllowedEmails;
   }
-
   try {
-    console.log(`[Auth.js] Reading allowlist from: ${ALLOWLIST_FILE_PATH}`);
     const data = await fs.readFile(ALLOWLIST_FILE_PATH, 'utf8');
     const emails = data
       .split('\n')
-      .map((line) => line.trim().toLowerCase()) // SECURITY: Normalize to lowercase for case-insensitive matching.
+      .map((line) => line.trim().toLowerCase())
       .filter((line) => line.length > 0 && !line.startsWith('#'));
-
-    // Using a Set provides a minor performance boost for the `.has()` check.
     cachedAllowedEmails = new Set(emails);
     lastReadTime = now;
     console.log(`[Auth.js] SUCCESS: Loaded ${emails.length} allowed emails.`);
     return cachedAllowedEmails;
   } catch (error) {
     console.error(
-      `[Auth.js] CRITICAL ERROR: Could not read allowlist file at ${ALLOWLIST_FILE_PATH}. Defaulting to deny all access.`,
+      `[Auth.js] CRITICAL ERROR: Could not read allowlist file at ${ALLOWLIST_FILE_PATH}.`,
       error,
     );
-    // SECURITY: If the file cannot be read, we must default to a secure state: deny all access.
-    cachedAllowedEmails = new Set(); // Cache an empty set to prevent further read attempts
+    cachedAllowedEmails = new Set();
     lastReadTime = now;
     return cachedAllowedEmails;
   }
@@ -76,42 +60,73 @@ export const authConfig = {
     strategy: 'jwt',
   },
   callbacks: {
-    /**
-     * --- signIn callback for email allowlist validation ---
-     * This callback is executed every time a user attempts to sign in via any provider.
-     */
-    async signIn({ _user, _account, profile }) {
+    async signIn({ user, profile }) {
+      // SECURITY IMPROVEMENT: Use the user ID from the user object for logging,
+      // not the email. The `user` object is guaranteed to be present here after
+      // the Prisma adapter has found or created the user.
+      const userId = user?.id;
       const userEmail = profile?.email;
 
-      if (!userEmail) {
+      if (!userEmail || !userId) {
         console.log(
-          '[Auth.js] DENIED: Sign-in attempt failed because no email was returned from provider.',
+          '[Auth.js] DENIED: Sign-in failed, no email or user ID from provider/adapter.',
         );
         return false;
       }
 
-      // TODO: Before production, remove the logging of PII (userEmail) to protect user privacy.
-      // Replace with anonymous logging, e.g., "Sign-in attempt for an allowlisted user succeeded."
-      console.log(`[Auth.js] INFO: Attempting sign-in for user: ${userEmail}`);
       const allowedEmails = await getAllowedEmails();
-
-      // SECURITY: Normalize the user's email to lowercase for a case-insensitive check.
       const isAllowed = allowedEmails.has(userEmail.toLowerCase());
 
-      if (isAllowed) {
-        console.log(`[Auth.js] ALLOWED: User is in the allowlist.`);
-        return true;
-      } else {
-        console.log(`[Auth.js] DENIED: User is NOT in the allowlist.`);
+      if (!isAllowed) {
+        // PRIVACY IMPROVEMENT: Log the user ID, not the email, to prevent leaking PII.
+        console.log(
+          `[Auth.js] DENIED: User with ID ${userId} is NOT in the allowlist.`,
+        );
         return false;
       }
+
+      // --- NEW LOGIC FOR AGREEMENT GATE (with Security Improvements) ---
+      // If the user is on the allowlist, we ensure their agreement flag is set to true.
+      // This is idempotent: it works for newly created users and safely re-asserts
+      // for existing users on every login.
+      try {
+        // ROBUSTNESS IMPROVEMENT: Update the user by their primary key (`id`) instead of email.
+        // This is more direct and less ambiguous than relying on a non-primary key field.
+        await prisma.user.update({
+          where: { id: userId },
+          data: { agreementsSigned: true },
+        });
+
+        // PRIVACY IMPROVEMENT: Log the user ID, not the email.
+        console.log(
+          `[Auth.js] INFO: Ensured agreementsSigned is true for user ID ${userId}.`,
+        );
+      } catch (error) {
+        // SECURITY IMPROVEMENT: Log a controlled error message and avoid logging the raw error object,
+        // which could contain sensitive information.
+        console.error(
+          `[Auth.js] CRITICAL: Failed to update agreementsSigned for user ID ${userId}. Denying login.`,
+          { errorMessage: (error as Error).message },
+        );
+        // SECURITY: If we can't update the database to confirm agreement,
+        // we must not allow the user to log in.
+        return false;
+      }
+      // --- END OF NEW LOGIC ---
+
+      console.log(
+        `[Auth.js] ALLOWED: User with ID ${userId} is in the allowlist.`,
+      );
+      return true; // Allow sign-in
     },
+
     async jwt({ token, user }: { token: JWT; user?: DefaultUser }) {
       if (user && user.id) {
         token.id = user.id;
       }
       return token;
     },
+
     async session({ session, token }: { session: Session; token: JWT }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
