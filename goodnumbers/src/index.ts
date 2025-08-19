@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { errorHandler } from './middleware/errorHandler'; // <-- IMPORT HERE
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +28,10 @@ app.use(express.json());
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
+
+// --- Global Error Handler ---
+// This MUST be the last middleware added to the app.
+app.use(errorHandler); // <-- USE IT HERE
 
 // Only start listening if the file is run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
