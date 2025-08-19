@@ -14,45 +14,43 @@ The goal of this specification is to provide a developer-ready document that out
 
 ### 2.1. Functional Requirements
 
-#### 2.1.1. Pre-Release Access Barrier
-- **Goal:** Restrict site-wide access to a pre-approved list of beta testers before they can reach the main application's login page.
-- **Mechanism:** An Express.js middleware will be applied to all routes to intercept all incoming requests and check the user's authorization status.
-- **Session Management:**
-    - **Library:** The barrier will use the `cookie-session` Express middleware. This library is chosen for its simplicity, as it stores session data directly on the client in a secure, signed cookie, avoiding the need for server-side session storage.
-    - **Configuration:**
-        - **Name:** The cookie will be named `barrier_session`.
-        - **Secret:** The cookie will be cryptographically signed with a secret key. This key MUST be provided to the application via a `COOKIE_SECRET` environment variable.
-        - **Options:** The cookie will be configured with security best practices in mind: it will be `httpOnly` (to prevent access from client-side scripts), `secure` (to ensure it is only sent over HTTPS in a production environment), `sameSite: 'lax'` (to provide CSRF protection), and will have a `maxAge` of 7 days (specified in milliseconds) to control the session duration.
-- **User Experience Flow:**
-    1. When a user first accesses any page, the barrier middleware checks for a valid, trusted `barrier_session` cookie.
-    2. If the cookie is invalid or absent, the user is immediately redirected to `/barrier-login.html`.
-    3. For the initial implementation, `/barrier-login.html` will be a static HTML file containing a simple placeholder message and a basic form. The full, styled UI will be built in a later phase (Phase 4).
-    4. A user can submit their credentials via the form on this page, which sends a `POST` request to the `/api/barrier-login` endpoint.
-    5. On successful login, the `barrier_session` cookie is created and sent to the user's browser, and they are redirected to their originally requested URL.
-    6. On failure, an error is returned from the API, and the frontend will be responsible for displaying it.
-- **Credential Management:**
-    - The shared username and password for the barrier MUST be supplied via server-side environment variables to avoid hardcoding sensitive data.
-    - **Variable Names:** The application will expect the following environment variables to be present:
-        - `BARRIER_USERNAME`
-        - `BARRIER_PASSWORD`
-- **Health Check Exclusion:** Requests to the `/health` endpoint are explicitly excluded from the barrier and are publicly accessible.
+#### 2.1.1. MVP Access Control (Email Allowlist)
+
+- **Goal:** To restrict application access during the MVP/beta phase to a pre-approved list of testers by integrating access control directly into the authentication layer.
+- **Mechanism:** The access control will be implemented within the `signIn` callback provided by Auth.js. This callback is executed every time a user attempts to authenticate via any provider (in our case, Google), making it the ideal choke point for authorization.
+- **Configuration:**
+  - A plain text file, `config/allowed_emails.txt`, will be created in the `goodnumbers/` directory. This file is the single source of truth for which users are permitted to access the application.
+  - This file MUST be excluded from version control (via `.gitignore`) to protect the Personally Identifiable Information (PII) of beta testers.
+  - The file will contain one email address per line. Lines starting with `#` will be treated as comments and ignored.
+- **Implementation Logic:**
+  1. When a user attempts to sign in with Google, the Auth.js `signIn` callback is triggered, receiving the user's profile data, including their email address.
+  2. A dedicated function will be responsible for reading the `config/allowed_emails.txt` file.
+  3. **Performance Caching:** To prevent excessive disk I/O on every login attempt, the list of allowed emails will be held in a simple in-memory cache with a Time-To-Live (TTL) of 5 minutes. The function will only read the file from disk if the cache is empty or stale.
+  4. **Case-Insensitive Check:** The user's email from their Google profile and all emails from the allowlist file will be normalized to lowercase before comparison to ensure the check is case-insensitive.
+  5. **Authorization:**
+     - If the user's normalized email exists in the cached allowlist, the `signIn` callback will return `true`, and the authentication process will proceed as normal (e.g., creating a user record, establishing a session).
+     - If the user's email is not on the list, the callback will return `false`. Auth.js will then halt the sign-in process and redirect the user to a default error page indicating access is denied.
+- **Security & Error Handling:**
+  - The system MUST be secure by default. If the `config/allowed_emails.txt` file cannot be read for any reason (e.g., it is missing, or there are file permission issues), the allowlist function MUST return an empty list. This ensures that a configuration error results in denying all access rather than permitting it. A critical error will be logged to the server console in this event.
 
 #### 2.1.2. User Authentication (Auth.js)
+
 - **Provider:** Google OAuth is the sole and primary authentication method for the MVP.
 - **UI:** Auth.js built-in pages will be used for the login/registration flow.
 - **Authentication and Agreement Flow:** The system handles all users through a unified, stateful flow.
-    1. **Google Sign-In:** A user (whether new or returning) signs in with Google. Upon successful authentication, the Auth.js Prisma adapter finds or creates a `User` record in the database. If the user is new, the `agreementsSigned` field defaults to `false`.
-    2. **Agreement Gate:** After sign-in, a mandatory check is performed on every authenticated action. This check, implemented via middleware or Auth.js callbacks, inspects the `agreementsSigned` flag in the user's session data.
-    3. **Redirection:** If `agreementsSigned` is `false`, the user is immediately redirected to a dedicated `/agreements` page. They cannot access any other part of the application.
-    4. **Agreement Page:** On this page, the user is presented with the "Terms and Conditions" and "Privacy Policy" checkboxes. The "Continue to Dashboard" button is disabled until both are checked.
-    5. **Consent Persistence:** When the user checks the boxes and clicks the "Continue" button, a specific API call is made (e.g., `POST /api/user/sign-agreements`) which sets the `agreementsSigned` flag to `true` in the database.
-    6. **Dashboard Access:** Once the flag is true, the user is redirected to the Dashboard. On all subsequent visits, the check in Step 2 will pass, and they will proceed directly to the application without seeing the agreements page again.
+  1. **Google Sign-In:** A user (whether new or returning) signs in with Google. Upon successful authentication, the Auth.js Prisma adapter finds or creates a `User` record in the database. If the user is new, the `agreementsSigned` field defaults to `false`.
+  2. **Agreement Gate:** After sign-in, a mandatory check is performed on every authenticated action. This check, implemented via middleware or Auth.js callbacks, inspects the `agreementsSigned` flag in the user's session data.
+  3. **Redirection:** If `agreementsSigned` is `false`, the user is immediately redirected to a dedicated `/agreements` page. They cannot access any other part of the application.
+  4. **Agreement Page:** On this page, the user is presented with the "Terms and Conditions" and "Privacy Policy" checkboxes. The "Continue to Dashboard" button is disabled until both are checked.
+  5. **Consent Persistence:** When the user checks the boxes and clicks the "Continue" button, a specific API call is made (e.g., `POST /api/user/sign-agreements`) which sets the `agreementsSigned` flag to `true` in the database.
+  6. **Dashboard Access:** Once the flag is true, the user is redirected to the Dashboard. On all subsequent visits, the check in Step 2 will pass, and they will proceed directly to the application without seeing the agreements page again.
 - **Session Management:**
-    - If an authenticated user visits the login page, they are redirected to the Dashboard.
-    - Secure sessions are managed by Auth.js.
-    - A "Logout" button must be available in the authenticated header.
+  - If an authenticated user visits the login page, they are redirected to the Dashboard.
+  - Secure sessions are managed by Auth.js.
+  - A "Logout" button must be available in the authenticated header.
 
 #### 2.1.3. Homepage
+
 - A static, public-facing page that describes the application's value proposition.
 - Contains a "See a demo" button linking to the Demo Page.
 - Contains a "Login / Register" button linking to the Auth.js login page.
@@ -60,90 +58,98 @@ The goal of this specification is to provide a developer-ready document that out
 - Must be fully mobile-responsive.
 
 #### 2.1.4. Account Setup
+
 - **Trigger:** This is the first page a user sees after their initial login and agreement.
 - **Fields:**
-    - CGM Provider: A dropdown, initially containing only "Nightscout".
-    - Nightscout URL: Text input.
-    - Nightscout Token: Text input (password type).
-    - Preferred Units: Radio buttons for "mg/dL" or "mmol/L".
+  - CGM Provider: A dropdown, initially containing only "Nightscout".
+  - Nightscout URL: Text input.
+  - Nightscout Token: Text input (password type).
+  - Preferred Units: Radio buttons for "mg/dL" or "mmol/L".
 - **Connection Flow:**
-    1. A "Test Connection" button validates the provided Nightscout credentials.
-    2. A "Save and Continue" button is disabled by default.
-    3. On successful connection test, the "Save and Continue" button is enabled.
-    4. On failure, a clear error message is displayed.
-    5. Clicking "Save and Continue" persists the settings and redirects to the Dashboard.
+  1. A "Test Connection" button validates the provided Nightscout credentials.
+  2. A "Save and Continue" button is disabled by default.
+  3. On successful connection test, the "Save and Continue" button is enabled.
+  4. On failure, a clear error message is displayed.
+  5. Clicking "Save and Continue" persists the settings and redirects to the Dashboard.
 
 #### 2.1.5. Dashboard
+
 - **Primary Action Card ("Log this week's journal"):**
-    - Styled as a prominent "hero" component.
-    - The "Start Journal" button is enabled only if it has been 3+ days since the last journal was created or if no journals exist.
-    - When disabled, it displays a message like "Your next journal unlocks on [Date]".
+  - Styled as a prominent "hero" component.
+  - The "Start Journal" button is enabled only if it has been 3+ days since the last journal was created or if no journals exist.
+  - When disabled, it displays a message like "Your next journal unlocks on [Date]".
 - **Historical Journals ("Past weeks"):**
-    - A list of past journals in reverse chronological order.
-    - Each journal is a card displaying its date, title, and a truncated description.
-    - Each card has a "View" button to navigate to the full journal page.
-    - This section is hidden if no past journals exist.
+  - A list of past journals in reverse chronological order.
+  - Each journal is a card displaying its date, title, and a truncated description.
+  - Each card has a "View" button to navigate to the full journal page.
+  - This section is hidden if no past journals exist.
 
 #### 2.1.6. Journal Generation Process
+
 - **Trigger:** User clicks the "Start Journal" button on the Dashboard.
 - **User Experience:**
-    - User is navigated to a synchronous loading screen.
-    - A progress bar and descriptive text show the status (e.g., "Fetching Data", "Statistical Analysis", "AI Scripting", "Audio Generation").
-    - Upon completion, the user is redirected to the newly created journal page.
+  - User is navigated to a synchronous loading screen.
+  - A progress bar and descriptive text show the status (e.g., "Fetching Data", "Statistical Analysis", "AI Scripting", "Audio Generation").
+  - Upon completion, the user is redirected to the newly created journal page.
 - **Backend Process:** A background job is initiated to:
-    1. Fetch the last 7 days of blood glucose and treatment data from the user's Nightscout.
-    2. Run statistical analysis to identify trends, hotspots, and generate structured "Notes".
-    3. Execute a multi-pass AI pipeline (using Gemini) to generate an in-depth assessment, a podcast script, and an RSS feed description.
-    4. Synthesize the podcast audio using a Text-to-Speech service.
-    5. Update the journal record in the database with all generated content.
+  1. Fetch the last 7 days of blood glucose and treatment data from the user's Nightscout.
+  2. Run statistical analysis to identify trends, hotspots, and generate structured "Notes".
+  3. Execute a multi-pass AI pipeline (using Gemini) to generate an in-depth assessment, a podcast script, and an RSS feed description.
+  4. Synthesize the podcast audio using a Text-to-Speech service.
+  5. Update the journal record in the database with all generated content.
 
 #### 2.1.7. Journal Page ("This week's journal")
+
 - **State:** All user-input fields are always editable. AI-generated content is immutable.
 - **Layout:** A vertical, narrative-driven page.
 - **Components:**
-    - **Personalized Podcast Player:** Displays title and description. Lazily loads the audio player on click. Collapses to a sticky, compact player at the top of the viewport on scroll.
-    - **Ambulatory Glucose Profile (AGP) Chart:** A detailed, interactive chart visualizing the week's glucose data (median, percentiles) against the user's target range. Includes a "spotlight" hover effect and detailed tooltips. Must be mobile-responsive.
-    - **AI-Generated Insights:** A list of prioritized insights (Critical, Serious, Important, Info) with corresponding icons and colors.
-    - **Subjective Inputs:**
-        - "Weekly Vibe": Tappable cards with emojis (🥀, 🌱, 🌿, 🌻).
-        - "Influencing Factors": Categorized, tappable chips for factors like sleep, diet, and stress.
-    - **Glycemic Event Cluster Analysis:** For each detected pattern, a dedicated card displays a summary, an interactive visualization, associated insights, and a "User Notes" textarea.
-    - **Goals for Next Week:** A distinct card with a text area for the user to write their goals.
-    - **Save Action Bar:** A floating bar at the bottom of the screen with an always-enabled "Save and Close" button. Provides "Saving..." feedback on click.
+  - **Personalized Podcast Player:** Displays title and description. Lazily loads the audio player on click. Collapses to a sticky, compact player at the top of the viewport on scroll.
+  - **Ambulatory Glucose Profile (AGP) Chart:** A detailed, interactive chart visualizing the week's glucose data (median, percentiles) against the user's target range. Includes a "spotlight" hover effect and detailed tooltips. Must be mobile-responsive.
+  - **AI-Generated Insights:** A list of prioritized insights (Critical, Serious, Important, Info) with corresponding icons and colors.
+  - **Subjective Inputs:**
+    - "Weekly Vibe": Tappable cards with emojis (🥀, 🌱, 🌿, 🌻).
+    - "Influencing Factors": Categorized, tappable chips for factors like sleep, diet, and stress.
+  - **Glycemic Event Cluster Analysis:** For each detected pattern, a dedicated card displays a summary, an interactive visualization, associated insights, and a "User Notes" textarea.
+  - **Goals for Next Week:** A distinct card with a text area for the user to write their goals.
+  - **Save Action Bar:** A floating bar at the bottom of the screen with an always-enabled "Save and Close" button. Provides "Saving..." feedback on click.
 
 #### 2.1.8. Historical Journals
+
 - Viewing a historical journal uses the same page/layout as "This week's journal".
 - User can edit their subjective inputs (vibe, factors, notes, goals) and save changes.
 - A "Delete" icon is present. On click, a confirmation dialog appears before permanent deletion.
 
 #### 2.1.9. Demo Page
+
 - A read-only version of the journal page populated with static, pre-generated data.
 - All user input fields are disabled.
 - A prominent banner explains it's a demo and includes a "Sign up" call to action.
 
 #### 2.1.10. Podcast Page
+
 - Accessible from the authenticated header.
 - Displays the user's unique, private RSS feed URL.
 - Includes a "Copy" button and a brief explanation of how to use the URL in a podcast app.
 - Includes a "Regenerate URL" button. When clicked, a confirmation dialog should appear. On confirmation, the backend generates a new `rssToken` for the user, invalidating the old URL.
 
 ### 2.2. Non-Functional Requirements
+
 - **Security:**
-    - All data in transit must be encrypted (HTTPS/SSL).
-    - System must be protected against common web vulnerabilities (XSS, CSRF).
-    - Sensitive credentials (`nightscoutUrl`, `nightscoutToken`) MUST be encrypted at rest.
-    - Rate limiting should be applied to authentication and journal creation endpoints.
+  - All data in transit must be encrypted (HTTPS/SSL).
+  - System must be protected against common web vulnerabilities (XSS, CSRF).
+  - Sensitive credentials (`nightscoutUrl`, `nightscoutToken`) MUST be encrypted at rest.
+  - Rate limiting should be applied to authentication and journal creation endpoints.
 - **Performance:**
-    - Pages should load in < 2 seconds on average networks.
-    - API responses should be < 1 second.
-    - The resource-intensive journal generation process must not block the main web server.
+  - Pages should load in < 2 seconds on average networks.
+  - API responses should be < 1 second.
+  - The resource-intensive journal generation process must not block the main web server.
 - **Usability & Accessibility:**
-    - The application must be intuitive and easy to use.
-    - It must be fully mobile-responsive.
-    - It should adhere to WCAG 2.1 AA guidelines where possible.
+  - The application must be intuitive and easy to use.
+  - It must be fully mobile-responsive.
+  - It should adhere to WCAG 2.1 AA guidelines where possible.
 - **Scalability & Reliability:**
-    - The system must handle a growing number of users.
-    - The authentication and journal systems must be highly available and resilient.
+  - The system must handle a growing number of users.
+  - The authentication and journal systems must be highly available and resilient.
 
 ## 3. Architecture
 
@@ -156,7 +162,9 @@ The system is a monolithic application designed to run in a single Docker contai
 - **Deployment:** The entire application (web server, worker, Redis) is containerized with Docker and deployed on a single Google Compute Engine (GCE) instance.
 
 ### 3.1. Analysis Pipeline
+
 The backend analysis pipeline processes raw Nightscout data into insights.
+
 1.  **Data Preparation (`gn-autotune-prep.ts`):** Raw data is cleaned and structured.
 2.  **Event Detection (`detect_events.ts`):** Individual glycemic events (e.g., `HYPOGLYCEMIA`) are identified.
 3.  **Event Classification (`event_classifier.ts`):** Events are given context (e.g., `HIGH_AFTER_UNCOVERED_MEAL`).
@@ -280,59 +288,55 @@ model VerificationToken {
 
 ### 4.2. Model Documentation
 
-- **User:** Stores user identity, Auth.js relations, and application-specific settings like encrypted Nightscout credentials and the private RSS token. The `rssToken` can be regenerated by the user via the API.
+- **User:** Stores user identity, Auth.js relations, and application-specific settings like encrypted Nightscout credentials, the private RSS token, and a flag indicating if they have signed the necessary agreements. The `rssToken` can be regenerated by the user via the API.
 - **Journal:** The central model for a weekly entry. It tracks the background generation job's status, stores all user inputs, and holds references to the AI-generated content (podcast URL, chart data, insights).
 - **GlycemicEventCluster:** Represents a specific, recurring pattern of high or low blood sugar. It stores summary data for querying and the full, detailed analysis object (`TimeCluster`) as JSON for visualization.
 - **Auth.js Models:** Standard `Account`, `Session`, and `VerificationToken` models required by Auth.js.
 
 ### 4.3. Flexible JSON Fields
+
 The `analysisInsights` and `clusterDataJson` fields use the `Json` type to allow for rapid iteration on the analysis pipeline without requiring database migrations. The API layer is responsible for validating the structure of this data (e.g., using Zod) before sending it to the frontend, ensuring a strict contract with the client.
 
 ## 5. API Design
 
 All endpoints are protected by authentication middleware.
 
-- **`POST /api/barrier-login`**
-  - **Purpose:** Authenticates a user for the pre-release beta access barrier.
-  - **Request Body:** The endpoint expects a JSON body with the following structure, which must be validated using `zod`: `{ "username": "string", "password": "string" }`
-  - **Security:**
-      - **Rate Limiting:** This endpoint MUST be protected by a strict rate limiter (e.g., using `express-rate-limit`) to prevent brute-force password guessing attacks.
-      - **Constant-Time Comparison:** Credential comparison MUST be performed using a constant-time algorithm (e.g., Node.js's `crypto.timingSafeEqual`) to mitigate timing attacks.
-  - **Logic:**
-      1.  The handler receives the `username` and `password` from the request body.
-      2.  It securely compares these values against the `BARRIER_USERNAME` and `BARRIER_PASSWORD` environment variables using a constant-time comparison.
-      3.  **On Success:** If the credentials match, it sets a property on the session object (e.g., `req.session.is_authorized = true`). The `cookie-session` middleware then automatically sends the updated, signed cookie to the client in the response headers. The endpoint returns a `200 OK` status with a success message.
-      4.  **On Failure:** If the credentials do not match, it returns a `401 Unauthorized` status with an error message. It does not provide specifics on whether the username or password was incorrect.
-
 - **`POST /api/journals`**
+
   - **Purpose:** Initiates the generation of a new weekly journal.
   - **Logic:** Creates a `Journal` record and enqueues a job in BullMQ for the background worker.
   - **Security:** Requires anti-CSRF token.
 
 - **`GET /api/journal-status/:id`**
+
   - **Purpose:** Allows the client to poll for the progress of a journal being generated.
   - **Logic:** Returns the `status`, `progress`, and `statusMessage` fields for the specified journal.
   - **Security:** Enforces ownership check; a user can only query the status of their own journals.
 
 - **`GET /api/journals`**
+
   - **Purpose:** Fetches a summarized list of all completed journals for the user's dashboard.
   - **Logic:** Returns an array of `Journal` objects for the authenticated user, ordered newest first.
 
 - **`GET /api/journals/:id`**
+
   - **Purpose:** Fetches the complete data for a single journal report.
   - **Logic:** Returns the full `Journal` object, including its related `GlycemicEventCluster` records.
   - **Security:** Enforces ownership check.
 
 - **`PUT /api/journals/:id`**
+
   - **Purpose:** Updates a journal with user-provided notes and subjective inputs.
   - **Request Body:** `{ "weeklyVibe": "...", "influencingFactors": [...], "goalsForNextWeek": "...", "clusterNotes": { "clusterId1": "note1", ... } }`
   - **Security:** Enforces ownership check.
 
 - **`DELETE /api/journals/:id`**
+
   - **Purpose:** Permanently deletes a journal.
   - **Security:** Enforces ownership check.
 
 - **`PUT /api/user/settings`**
+
   - **Purpose:** Updates user settings (Nightscout credentials, preferred units).
   - **Request Body:** `{ "nightscoutUrl": "...", "nightscoutToken": "...", "preferredUnits": "MGDL" }`
 
@@ -360,31 +364,31 @@ All endpoints are protected by authentication middleware.
 
 - **Input Validation:** All API endpoints that accept client-side input (e.g., request bodies, query parameters) MUST use a schema-based validation library (e.g., `zod`) to rigorously validate the data's shape, type, and constraints. This is a primary defense against data corruption and injection attacks.
 - **Credential Encryption:** Sensitive user credentials, specifically the `nightscoutUrl` and `nightscoutToken`, will be encrypted at rest in the database.
-    - **Method:** Symmetric encryption will be used via Node.js's built-in `crypto` module (AES-256-GCM).
-    - **Key Management:** For local development, a 256-bit secret encryption key will be supplied via an `ENCRYPTION_KEY` environment variable. For production, this key SHOULD be managed by a dedicated secrets management service (e.g., Google Secret Manager) and fetched at application startup, rather than being stored in a file on the server.
+  - **Method:** Symmetric encryption will be used via Node.js's built-in `crypto` module (AES-256-GCM).
+  - **Key Management:** For local development, a 256-bit secret encryption key will be supplied via an `ENCRYPTION_KEY` environment variable. For production, this key SHOULD be managed by a dedicated secrets management service (e.g., Google Secret Manager) and fetched at application startup, rather than being stored in a file on the server.
 - **Authentication:** Handled by Auth.js, providing robust session management and protection against common authentication vulnerabilities.
+- **MVP Access Control (Email Allowlist):** During the beta phase, access is restricted at the authentication level to a managed list of approved email addresses, preventing unauthorized sign-ups.
 - **CSRF Protection:** API endpoints that modify state (e.g., `POST`, `PUT`, `DELETE`) will use anti-CSRF tokens.
 - **Data Segregation:** All database queries enforce ownership checks, ensuring a user can only access their own data.
 - **Secure HTTP Headers:** The application MUST use middleware like `helmet` to set various security-related HTTP headers, mitigating common attacks like XSS and clickjacking.
 - **Database File Security:** In the production environment, the SQLite database file (`.db`) MUST have its file system permissions configured to be readable and writable only by the application's user account.
-- **Pre-Release Barrier:** A site-wide password prevents unauthorized access during the beta phase.
 
 ## 9. Testing Plan
 
 - **Unit Testing:**
-    - The data analysis and event detection logic (`detect_events.ts`, etc.) should have comprehensive unit tests to ensure correctness.
-    - Utility functions (e.g., encryption/decryption) must be unit-tested.
+  - The data analysis and event detection logic (`detect_events.ts`, etc.) should have comprehensive unit tests to ensure correctness.
+  - Utility functions (e.g., encryption/decryption) must be unit-tested.
 - **Integration Testing:**
-    - API endpoints will be tested to verify authentication, authorization, data validation, and correct responses.
-    - The "Test Connection" feature for Nightscout setup is a key integration test case.
-    - Test the interaction between the web server, BullMQ, and the background worker to ensure jobs are enqueued and processed correctly.
+  - API endpoints will be tested to verify authentication, authorization, data validation, and correct responses.
+  - The "Test Connection" feature for Nightscout setup is a key integration test case.
+  - Test the interaction between the web server, BullMQ, and the background worker to ensure jobs are enqueued and processed correctly.
 - **End-to-End (E2E) Testing:**
-    - Simulate key user flows, such as:
-        1. New user registration, including the agreement page.
-        2. Setting up a Nightscout connection.
-        3. Creating a new journal and waiting on the loading screen.
-        4. Interacting with the final journal page (playing the podcast, viewing charts, adding notes).
-        5. Editing and deleting a historical journal.
+  - Simulate key user flows, such as:
+    1. New user registration, including the agreement page.
+    2. Setting up a Nightscout connection.
+    3. Creating a new journal and waiting on the loading screen.
+    4. Interacting with the final journal page (playing the podcast, viewing charts, adding notes).
+    5. Editing and deleting a historical journal.
 
 ## 10. Implementation Timeline
 

@@ -48,14 +48,14 @@ For each task listed in the implementation phases below, the following GitHub-in
 
     ```bash
     # Example for Phase 2, Task 1
-    gh issue create --title "feat(auth): Implement Auth.js with Email Allowlist" --body "Integrate Auth.js with Google SSO and an email allowlist as per docs/eng/SSO_ALLOWLIST_PROPOSAL.md. This replaces the old password barrier."
+    gh issue create --title "feat(auth): Implement Auth.js with Email Allowlist" --body "Integrate Auth.js with Google SSO and an email allowlist as per docs/eng/PHASE2_TASK1.md. This replaces the old password barrier."
     ```
 
 2.  **Create a Branch:** Create a feature branch from the `develop` branch. It is recommended to include the issue number in the branch name for easy tracking.
 
     ```bash
-    # Example assuming the issue created is #15
-    git checkout -b feat/15-authjs-allowlist
+    # Example assuming the issue created is #23
+    git checkout -b feat/23-authjs-allowlist
     ```
 
 3.  **Implement and Test:** Adhere to a "test-first" approach. The general workflow for a task should be:
@@ -65,10 +65,10 @@ For each task listed in the implementation phases below, the following GitHub-in
 
     Make small, atomic commits using the Conventional Commit standard.
 
-4.  **Open a Pull Request:** Once the task is complete and all local tests are passing, open a Pull Request against the `develop` branch. The PR description should link to the issue it resolves using a keyword like `Closes #15`.
+4.  **Open a Pull Request:** Once the task is complete and all local tests are passing, open a Pull Request against the `develop` branch. The PR description should link to the issue it resolves using a keyword like `Closes #23`.
 
     ```bash
-    gh pr create --base develop --title "feat(auth): P2_T1 Implement Auth.js with Email Allowlist" --body "Closes #15. This PR integrates Auth.js and replaces the site barrier with an email allowlist."
+    gh pr create --base develop --title "feat(auth): P2_T1 Implement Auth.js with Email Allowlist" --body "Closes #23. This PR integrates Auth.js and replaces the site barrier with an email allowlist."
     ```
 
 5.  **Review and Merge:** Follow the PR review and merge process defined in `DEVELOPMENT_PROCESS.md`. The merge will automatically close the associated issue.
@@ -128,7 +128,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 ### **Phase 2: Authentication & User Management**
 
-**Goal:** Implement all functionality related to user identity, from initial access control to managing user-specific settings.
+**Goal:** The goal of this phase is to implement all functionality related to user identity, from initial access control to managing user-specific settings.
 
 1.  **Task: Implement User Authentication with Email Allowlist**
 
