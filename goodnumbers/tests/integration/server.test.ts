@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { app } from '../../src/index'; // We will export 'app' from our server file
+import app from '../../src/index';
 import * as http from 'http';
 
 // We need a way to close the server after tests are done

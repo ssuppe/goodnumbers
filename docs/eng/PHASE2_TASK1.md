@@ -68,119 +68,193 @@ You are now on a clean branch, ready to start making changes.
 
 ### Step 3: Implementation (Verification-Driven)
 
-We will follow the spirit of Test-Driven Development (TDD). Since setting up automated tests for the full authentication flow is complex for this specific change, our "test" will be a manual, behavior-driven verification process outlined in Step 4. Our goal is to first observe the failure (the old barrier is gone), then write the code to make the new system pass.
+We will follow the spirit of Test-Driven Development (TDD). Since setting up automated tests for the full authentication flow is complex for this
+specific change, our "test" will be a manual, behavior-driven verification process outlined in Step 4. Our goal is to first observe the failure (the
+old barrier is gone), then write the code to make the new system pass.
 
-#### Sub-step 3.1: Cleanup - Remove the Old Barrier Code
+#### Sub-step 3.1: Cleanup, Dependency Installation, and Initial Server Setup
 
-This is the "Red" step. We are intentionally removing the old barrier system. This is a destructive change that will temporarily remove all access control from the application until we add the new Auth.js logic.
+This is the "Red" step. We are intentionally removing the old barrier system. This is a destructive change that will temporarily remove all access
+control from the application until we add the new Auth.js logic.
 
-First, delete the obsolete files. Run these commands from the `goodnumbers-workspace` directory:
-
-```bash
+First, delete the obsolete files. Run these commands from the
+goodnumbers-workspace
+directory:
 rm goodnumbers/src/middleware/barrier.ts
 rm goodnumbers/src/routes/barrier.ts
+Note: goodnumbers/public/barrier-login.html will be recreated later.
 rm goodnumbers/public/barrier-login.html
-```
 
-Next, remove the barrier middleware from the main server file. This is crucial as the old `cookie-session` middleware conflicts with the session management of `@auth/express`.
+Next, install the necessary Auth.js dependencies. Navigate into the
+goodnumbers
+directory and run
+npm install
+.
+cd goodnumbers
+npm install @auth/express @auth/prisma-adapter next-auth
+cd ..
 
-Replace the entire content of `goodnumbers/src/index.ts` with the following code. The key change is removing the imports and `app.use()` calls for `cookieSession`, `barrierMiddleware`, and `barrierRouter`.
+Now, remove the barrier middleware from the main server file and set up the initial server structure. This is crucial as the old
+cookie-session
 
-```typescript
+     middleware conflicts with the session management of
+
+@auth/express
+.
+
+Replace the entire content of
+goodnumbers/src/index.ts
+with the following code. This includes the correct imports, the
+ExpressAuth
+route, and a
+comprehensive
+helmet
+CSP configuration.
 // goodnumbers/src/index.ts
 import "dotenv/config";
 import express from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { ExpressAuth } from "@auth/express";
-import { authConfig } from "./lib/auth"; // We will modify authConfig later
+import { authConfig } from "./lib/auth.ts"; // Note: .ts extension for ESM
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // --- Security Middleware ---
-app.use(helmet());
+app.use(
+helmet({
+contentSecurityPolicy: {
+directives: {
+defaultSrc: ["'self'"],
+scriptSrc: ["'self'"], // Add CDN domains if you use them
+styleSrc: ["'self'", "'unsafe-inline'"], // Add CDNs if needed. 'unsafe-inline' is often needed for some libraries.
+imgSrc: ["'self'", "https://authjs.dev", "https://lh3.googleusercontent.com"], // Auth.js provider images
+connectSrc: [
+"'self'",
+"https://accounts.google.com",
+"https://oauth2.googleapis.com",
+"https://www.googleapis.com"
+], // For Google OAuth communication
+formAction: ["'self'", "https://accounts.google.com"], // For Auth.js form submissions and Google OAuth
+frameSrc: ["'self'", "https://accounts.google.com"], // For Google OAuth iframes
+},
+},
+})
+);
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  standardHeaders: true,
-  legacyHeaders: false,
+windowMs: 15 60 1000, // 15 minutes
+max: 100, // Limit each IP to 100 requests per windowMs
+standardHeaders: true,
+legacyHeaders: false,
 });
 app.use(limiter);
 
 // --- Static Files ---
+// Ensure the 'public' directory exists and contains an index.html
 app.use(express.static("public"));
 
 // --- Auth.js Middleware ---
-// All requests to /api/auth/* will be handled by Auth.js
-app.use("/api/auth/*", ExpressAuth(authConfig));
+// All requests to /api/auth/\* will be handled by Auth.js
+app.use("/api/auth", ExpressAuth(authConfig)); // Note: No wildcard needed here
 
 // --- API Routes ---
 // Example placeholder for future API routes
 app.get("/api/protected-data", (req, res) => {
-  // In a real scenario, you'd check req.auth here to ensure user is logged in
-  res.json({ message: "This is protected data." });
+// In a real scenario, you'd check req.auth here to ensure user is logged in
+res.json({ message: "This is protected data." });
 });
 
 // --- Health Check Endpoint ---
 app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok" });
+res.status(200).json({ status: "ok" });
 });
 
 // --- Global Error Handler ---
 app.use(
-  (
-    err: Error,
-    req: express.Request,
-    res: express.Response,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    next: express.NextFunction
-  ) => {
-    console.error("--- Global Error Handler Caught an Error ---");
-    console.error(err.stack);
-    res.status(500).send("Something broke!");
-  }
+(
+err: Error,
+req: express.Request,
+res: express.Response,
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+next: express.NextFunction
+) => {
+console.error("--- Global Error Handler Caught an Error ---");
+console.error(err.stack);
+res.status(500).send("Something broke!");
+}
 );
 
 app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port}`);
+console.log(Server is running at http://localhost:${port});
 });
-```
 
-#### Sub-step 3.2: Configuration - Create the Allowlist File
+Finally, create the
+public
+directory and a basic
+index.html
+file.
+Create the public directory
+mkdir goodnumbers/public
 
-We need a place to store the email addresses of our approved beta testers.
+Create a basic index.html
+echo '<!DOCTYPE html>
 
-First, create a new directory named `config` inside the `goodnumbers/` directory. Then, create the `allowed_emails.txt` file inside it.
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Goodnumbers</title>
+  </head>
+  <body>
+      <h1>Welcome to Goodnumbers!</h1>
+      <p>This is a placeholder page.</p>
+      <p>Please navigate to <a href="/api/auth/signin">/api/auth/signin</a> to log in.</p>
+  </body>
+  </html>' > goodnumbers/public/index.html
+ 
+ #### Sub-step 3.2: Configuration - Create the Allowlist File
+ 
+ We need a place to store the email addresses of our approved beta testers.
+ 
+ First, create a new directory named 
+config
+ inside the 
+goodnumbers/
+ directory. Then, create the 
+allowed_emails.txt
+ file inside it.
+  Create the directory from the workspace root
+  mkdir goodnumbers/config
+ 
+ Now, create the file 
+goodnumbers/config/allowed_emails.txt
+ and add your Google email address and one or two other test emails. This is crucial for
+     testing later.
+  <!-- goodnumbers/config/allowed_emails.txt -->
 
-```bash
-# Create the directory from the workspace root
-mkdir goodnumbers/config
-```
+This file contains the list of email addresses allowed to sign in.
 
-Now, create the file `goodnumbers/config/allowed_emails.txt` and add your Google email address and one or two other test emails. This is crucial for testing later.
+Lines starting with # are comments and will be ignored.
 
-```markdown
-<!-- goodnumbers/config/allowed_emails.txt -->
-
-# This file contains the list of email addresses allowed to sign in.
-
-# Lines starting with # are comments and will be ignored.
-
-# Add one email per line.
+Add one email per line.
 
 your-google-email@gmail.com
 another-allowed-user@example.com
-```
 
 #### Sub-step 3.3: Implementation - Add the Allowlist Logic
 
-This is the "Green" step, where we implement the new access control. We will modify `goodnumbers/src/lib/auth.ts` to read our new config file and use the `signIn` callback to check if a user's email is on the list.
+This is the "Green" step, where we implement the new access control. We will modify
+goodnumbers/src/lib/auth.ts
+to read our new config file and use
+the
+signIn
+callback to check if a user's email is on the list.
 
-Replace the entire contents of `goodnumbers/src/lib/auth.ts` with the code below. The code includes detailed comments to explain each new section.
-
-```typescript
+Replace the entire contents of
+goodnumbers/src/lib/auth.ts
+with the code below. The code includes detailed comments to explain each new section.
 // goodnumbers/src/lib/auth.ts
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
@@ -189,129 +263,147 @@ import type { Session, DefaultUser } from "@auth/core/types";
 import GoogleProvider from "@auth/express/providers/google";
 
 import fs from "fs/promises";
-import path from "path";
+import \* as path from "path"; // Corrected: import as namespace for ESM compatibility
 import { fileURLToPath } from "url";
 
 const prisma = new PrismaClient();
 
 // --- File path and cache configuration ---
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const **filename = fileURLToPath(import.meta.url);
+const **dirname = path.dirname(\_\_filename);
 
 const ALLOWLIST_FILE_PATH = path.join(
-  __dirname,
-  "../../config/allowed_emails.txt"
+\_\_dirname,
+"../../config/allowed_emails.txt"
 );
 
 // Cache variables to store the allowlist in memory.
 let cachedAllowedEmails: Set<string> | null = null;
 let lastReadTime: number = 0;
-const CACHE_DURATION_MS = 5 * 60 * 1000; // Cache for 5 minutes
+const CACHE_DURATION_MS = 5 60 1000; // Cache for 5 minutes
 
-/**
- * --- NEW: Utility function to read and cache the email allowlist ---
- * This function reads the allowed emails from the configuration file.
- * It uses a simple in-memory cache to avoid excessive file I/O.
- * @returns A Promise that resolves to a Set of allowed email strings, normalized to lowercase.
- */
+/\*\*
+_ --- NEW: Utility function to read and cache the email allowlist ---
+_ This function reads the allowed emails from the configuration file.
+_ It uses a simple in-memory cache to avoid excessive file I/O.
+_ @returns A Promise that resolves to a Set of allowed email strings, normalized to lowercase.
+\*/
 async function getAllowedEmails(): Promise<Set<string>> {
-  const now = Date.now();
-  if (cachedAllowedEmails && now - lastReadTime < CACHE_DURATION_MS) {
-    console.log("[Auth.js] Using cached email allowlist.");
-    return cachedAllowedEmails;
-  }
+const now = Date.now();
+if (cachedAllowedEmails && now - lastReadTime < CACHE_DURATION_MS) {
+console.log("[Auth.js] Using cached email allowlist.");
+return cachedAllowedEmails;
+}
 
-  try {
-    console.log(`[Auth.js] Reading allowlist from: ${ALLOWLIST_FILE_PATH}`);
-    const data = await fs.readFile(ALLOWLIST_FILE_PATH, "utf8");
-    const emails = data
-      .split("\n")
-      .map((line) => line.trim().toLowerCase()) // SECURITY: Normalize to lowercase for case-insensitive matching.
-      .filter((line) => line.length > 0 && !line.startsWith("#"));
+    try {
+      console.log([Auth.js] Reading allowlist from: ${ALLOWLIST_FILE_PATH});
+      const data = await fs.readFile(ALLOWLIST_FILE_PATH, "utf8");
+      const emails = data
+        .split("
 
-    // Using a Set provides a minor performance boost for the `.has()` check.
-    cachedAllowedEmails = new Set(emails);
-    lastReadTime = now;
-    console.log(`[Auth.js] SUCCESS: Loaded ${emails.length} allowed emails.`);
-    return cachedAllowedEmails;
-  } catch (error) {
-    console.error(
-      `[Auth.js] CRITICAL ERROR: Could not read allowlist file at ${ALLOWLIST_FILE_PATH}. Defaulting to deny all access.`,
-      error
-    );
-    // SECURITY: If the file cannot be read, we must default to a secure state: deny all access.
-    cachedAllowedEmails = new Set(); // Cache an empty set to prevent further read attempts
-    lastReadTime = now;
-    return cachedAllowedEmails;
-  }
+")
+.map((line) => line.trim().toLowerCase()) // SECURITY: Normalize to lowercase for case-insensitive matching.
+.filter((line) => line.length > 0 && !line.startsWith("#"));
+
+      // Using a Set provides a minor performance boost for the .has() check.
+      cachedAllowedEmails = new Set(emails);
+      lastReadTime = now;
+      console.log([Auth.js] SUCCESS: Loaded ${emails.length} allowed emails.);
+      return cachedAllowedEmails;
+    } catch (error) {
+      console.error(
+        [Auth.js] CRITICAL ERROR: Could not read allowlist file at ${ALLOWLIST_FILE_PATH}. Defaulting to deny all access.,
+        error
+      );
+      // SECURITY: If the file cannot be read, we must default to a secure state: deny all access.
+      cachedAllowedEmails = new Set(); // Cache an empty set to prevent further read attempts
+      lastReadTime = now;
+      return cachedAllowedEmails;
+    }
+
 }
 
 export const authConfig = {
-  adapter: PrismaAdapter(prisma),
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-    }),
-  ],
-  session: {
-    strategy: "jwt",
-  },
-  callbacks: {
-    /**
-     * --- signIn callback for email allowlist validation ---
-     * This callback is executed every time a user attempts to sign in via any provider.
-     */
-    async signIn({ user, account, profile }) {
-      const userEmail = profile?.email;
+adapter: PrismaAdapter(prisma),
+providers: [
+GoogleProvider({
+clientId: process.env.GOOGLE_CLIENT_ID as string,
+clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+authorization: { params: { prompt: "select_account" } }, // Added: Forces Google account selection
+}),
+],
+session: {
+strategy: "jwt",
+},
+callbacks: {
+/\*\*
+_ --- signIn callback for email allowlist validation ---
+_ This callback is executed every time a user attempts to sign in via any provider.
+\*/
+async signIn({ user, account, profile }) {
+const userEmail = profile?.email;
 
-      if (!userEmail) {
-        console.log(
-          "[Auth.js] DENIED: Sign-in attempt failed because no email was returned from provider."
-        );
-        return false;
-      }
+        if (!userEmail) {
+          console.log(
+            "[Auth.js] DENIED: Sign-in attempt failed because no email was returned from provider."
+          );
+          return false;
+        }
 
-      // TODO: Before production, remove the logging of PII (userEmail) to protect user privacy.
-      // Replace with anonymous logging, e.g., "Sign-in attempt for an allowlisted user succeeded."
-      console.log(`[Auth.js] INFO: Attempting sign-in for user: ${userEmail}`);
-      const allowedEmails = await getAllowedEmails();
+        // TODO: Before production, remove the logging of PII (userEmail) to protect user privacy.
+        // Replace with anonymous logging, e.g., "Sign-in attempt for an allowlisted user succeeded."
+        console.log([Auth.js] INFO: Attempting sign-in for user: ${userEmail});
+        const allowedEmails = await getAllowedEmails();
 
-      // SECURITY: Normalize the user's email to lowercase for a case-insensitive check.
-      const isAllowed = allowedEmails.has(userEmail.toLowerCase());
+        // SECURITY: Normalize the user\'s email to lowercase for a case-insensitive check.
+        const isAllowed = allowedEmails.has(userEmail.toLowerCase());
 
-      if (isAllowed) {
-        console.log(`[Auth.js] ALLOWED: User is in the allowlist.`);
-        return true;
-      } else {
-        console.log(`[Auth.js] DENIED: User is NOT in the allowlist.`);
-        return false;
-      }
+        if (isAllowed) {
+          console.log([Auth.js] ALLOWED: User is in the allowlist.);
+          return true;
+        } else {
+          console.log([Auth.js] DENIED: User is NOT in the allowlist.);
+          return false;
+        }
     },
     async jwt({ token, user }: { token: JWT; user?: DefaultUser }) {
       if (user && user.id) {
         token.id = user.id;
       }
-      return token;
-    },
-    async session({ session, token }: { session: Session; token: JWT }) {
-      if (session.user && token.id) {
-        session.user.id = token.id as string;
-      }
-      return session;
-    },
-  },
+
+return token;
+},
+async session({ session, token }: { session: Session; token: JWT }) {
+if (session.user && token.id) {
+
+session.user.id = token.id as string;
+}
+return session;
+},
+},
 };
-```
 
 ### Step 4: Verification and Manual Testing
 
 Now, rigorously test the changes to ensure everything works as expected. Restart your development server (`cd goodnumbers && npm run dev`).
 
+**Important Testing Notes:**
+
+*   **Clean Testing Environment:** Always use an incognito/private browsing window for testing. If you need to switch accounts or re-test a scenario, close and reopen the incognito window to ensure a clean session.
+*   **Environment Variables:** Ensure your `.env` file in the `goodnumbers` directory is correctly configured with `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET`. For debugging, you can add `AUTH_DEBUG=true` to your `.env` file to get more verbose logs from Auth.js.
+*   **Google Cloud Console Configuration:** Double-check your OAuth 2.0 Client ID settings in the Google Cloud Console:
+    *   "Web application" type.
+    *   "Authorized JavaScript origins": `http://localhost:3000`
+    *   "Authorized redirect URIs": `http://localhost:3000/api/auth/callback/google`
+*   **Troubleshooting `TypeError: fetch failed`:** If you encounter a `TypeError: fetch failed` on the server side, this indicates a network connectivity issue between your Node.js server and Google's APIs.
+    *   **Diagnostic:** Run `curl -v https://oauth2.googleapis.com/token` from the *exact same terminal and environment* where your Node.js server is running. Look for `Could not resolve host`, `Connection timed out`, or `SSL certificate problem`.
+    *   **Common Causes:** Firewall, proxy, Docker networking issues, or incorrect Google OAuth credentials/API enablement.
+    *   **Resolution:** Address the underlying network issue or Google Cloud Console configuration.
+
 **Test Case 1: Positive Test (Allowed User)**
 
 1.  **Action:** Make sure your primary Google email address is listed in `goodnumbers/config/allowed_emails.txt`. Try using mixed-case letters (e.g., Your-Email@gmail.com) in the file to test the case-insensitive logic.
-2.  **Action:** Open your browser in an incognito window and navigate to `http://localhost:3000`. You should see the Auth.js login page.
+2.  **Action:** Open your browser in an incognito window and navigate to `http://localhost:3000/api/auth/signin`. You should see the Auth.js login page.
 3.  **Action:** Attempt to sign in with the Google account corresponding to your allowed email.
 4.  **Expected Result:** You should be successfully authenticated and redirected into the application (e.g., to the dashboard).
 5.  **Verification:** Check your server console logs. You should see a message similar to: `[Auth.js] ALLOWED: User is in the allowlist.`
@@ -319,7 +411,7 @@ Now, rigorously test the changes to ensure everything works as expected. Restart
 **Test Case 2: Negative Test (Denied User)**
 
 1.  **Action:** Use a different Google account whose email is **NOT** in `goodnumbers/config/allowed_emails.txt`.
-2.  **Action:** Open a new incognito window and navigate to `http://localhost:3000`.
+2.  **Action:** Open a new incognito window and navigate to `http://localhost:3000/api/auth/signin`.
 3.  **Action:** Attempt to sign in with the disallowed Google account.
 4.  **Expected Result:** After the Google login screen, you should be redirected back to an Auth.js error page stating that access is denied. You should **not** be able to access the application.
 5.  **Verification:** Check your server console logs. You should see a message similar to: `[Auth.js] DENIED: User is NOT in the allowlist.`
@@ -336,7 +428,52 @@ This test ensures our "deny by default" security posture is working.
 6.  **Verification:** Check the server console logs. You should see the critical error message: `[Auth.js] CRITICAL ERROR: Could not read allowlist file...` followed by the `DENIED` message. This confirms the secure-by-default logic is correct.
 7.  **Cleanup:** Don't forget to stop the server and rename the file back to `allowed_emails.txt`.
 
-### Step 5: Commit Your Changes
+## 3.4 Troubleshooting Common Issues
+
+During the implementation of this task, several common issues were encountered. This section provides guidance on diagnosing and resolving them.
+
+### Module Not Found Errors (`ERR_MODULE_NOT_FOUND`)
+
+*   **Symptom:** Server crashes with `Error: Cannot find package '@auth/express'` or `Error: Cannot find module './lib/auth'` (or similar).
+*   **Diagnosis:**
+    *   **Missing Dependencies:** Ensure all required `npm` packages (e.g., `@auth/express`, `@auth/prisma-adapter`, `next-auth`) are installed by running `npm install` in the `goodnumbers` directory.
+    *   **ESM Module Resolution:** If using ES Modules (`"type": "module"` in `package.json`), ensure local imports include the `.ts` file extension (e.g., `import { authConfig } from "./lib/auth.ts";`).
+    *   **Incorrect `path` Import:** Verify that the `path` module is correctly imported as a namespace for ESM compatibility (`import * as path from "path";`).
+
+### `path-to-regexp` Errors (`TypeError: Missing parameter name`)
+
+*   **Symptom:** Server crashes with errors originating from `path-to-regexp` when defining Express routes.
+*   **Diagnosis:** This typically occurs when wildcards (`*`) in route paths are not named.
+*   **Resolution:** Ensure that any wildcards in `app.use()` or `app.get()` routes are named (e.g., `"/api/auth/*all"`). However, note that `ExpressAuth` expects its base path to be exactly `"/api/auth"` without wildcards.
+
+### 404 Not Found at Root (`Cannot GET /`)
+
+*   **Symptom:** Accessing `http://localhost:3000` results in a 404 error.
+*   **Diagnosis:** The `public` directory, which serves static files, is likely missing or empty.
+*   **Resolution:** Ensure the `goodnumbers/public` directory exists and contains a basic `index.html` file.
+
+### Content Security Policy (CSP) Violations
+
+*   **Symptom:** Browser console shows `Refused to load the image...` (`img-src`) or `Refused to send form data...` (`form-action`).
+*   **Diagnosis:** `helmet`'s default CSP is too restrictive for Auth.js.
+*   **Resolution:** Configure `helmet`'s `contentSecurityPolicy` directives to explicitly allow necessary sources. Refer to the `index.ts` code for the comprehensive configuration. Common directives to check: `imgSrc` (for `https://authjs.dev`, `https://lh3.googleusercontent.com`), `connectSrc` (for Google OAuth domains), `formAction` (for `'self'` and `https://accounts.google.com`), and `frameSrc` (for Google OAuth iframes).
+
+### Server-Side `TypeError: fetch failed`
+
+*   **Symptom:** Server crashes with `TypeError: fetch failed` when attempting to sign in, often accompanied by a 500 status code.
+*   **Diagnosis:** This indicates a failure in the Node.js server to make an outgoing HTTPS request to Google's OAuth endpoints. This is often due to incorrect parameters being sent to Google, or a misconfiguration in the Google Cloud Console.
+*   **Diagnostic Steps:**
+    *   Run `curl -v https://oauth2.googleapis.com/token` from the *exact same terminal and environment* where your Node.js server is running. Look for network errors (`Could not resolve host`, `Connection timed out`, `SSL certificate problem`) or HTTP error codes (e.g., 400, 404 from Google).
+    *   **Verify Google OAuth Credentials:** Double-check `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, "Authorized JavaScript origins" (`http://localhost:3000`), and "Authorized redirect URIs" (`http://localhost:3000/api/auth/callback/google`) in your Google Cloud Console.
+    *   **Enable Google APIs:** Ensure necessary Google APIs (e.g., Google People API) are enabled in your Google Cloud Project.
+*   **Resolution:** Address the underlying network issue or Google Cloud Console configuration.
+
+### Persistent Google Session / Account Switching Issues
+
+*   **Symptom:** After logging out from Auth.js, the browser automatically re-authenticates with the last used Google account, preventing full logout or switching to a different Google account.
+*   **Diagnosis:** Google maintains its own session in the browser.
+*   **Resolution:** Configure the `GoogleProvider` in `auth.ts` to include `authorization: { params: { prompt: "select_account" } }`. This forces Google to present the account selection screen on every sign-in attempt.
+
 
 Once you have verified that all test cases pass, it's time to commit your work. Create a single, clean commit as per our process.
 
