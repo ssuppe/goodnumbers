@@ -1,7 +1,7 @@
 // file: goodnumbers/tests/integration/auth.test.ts
 import 'dotenv/config';
 import { PrismaClient, User } from '@prisma/client';
-import { authConfig, getAllowedEmails } from '../../src/lib/auth'; // We will test our actual config
+import { authConfig } from '../../src/lib/auth'; // We will test our actual config
 
 // Mock the getAllowedEmails function to isolate our test
 // For this test, we assume the user is always on the allowlist.
@@ -12,6 +12,7 @@ jest.mock('../../src/lib/auth', () => {
     // This mock ensures our test doesn't depend on the file system.
     __esModule: true,
     // Mock the specific named export
+
     getAllowedEmails: jest
       .fn()
       .mockResolvedValue(new Set(['test.user@example.com'])),
@@ -70,7 +71,7 @@ describe('Auth.js Callbacks', () => {
 
       // Directly call the signIn function from our auth configuration
       if (authConfig.callbacks && authConfig.callbacks.signIn) {
-        // @ts-ignore - We are simulating the call with only the necessary properties
+        // @ts-expect-error - We are simulating the call with only the necessary properties
         const result = await authConfig.callbacks.signIn(signInParams);
 
         // The callback should return true to allow the sign-in to complete
@@ -101,7 +102,7 @@ describe('Auth.js Callbacks', () => {
 
       // Act: Directly call the signIn function
       if (authConfig.callbacks && authConfig.callbacks.signIn) {
-        // @ts-ignore
+        // @ts-expect-error Simulating call
         const result = await authConfig.callbacks.signIn(signInParams);
         // Assert: The callback should return false
         expect(result).toBe(false);
