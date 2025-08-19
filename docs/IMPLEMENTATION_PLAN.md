@@ -255,3 +255,20 @@ This section outlines high-level tasks that should be addressed as part of the p
     - When creating the new OAuth credential, you must add the production application's redirect URI to the "Authorized redirect URIs" list. The URI follows the format: `https://<your-production-domain>/api/auth/callback/google`. For example: `https://goodnumbers.io/api/auth/callback/google`.
   - **AUTH_SECRET:** For security, Auth.js uses a secret to sign cookies and tokens. Ensure a strong, unique `AUTH_SECRET` environment variable is set in the production environment, managed via Google Secret Manager.
   - **NODE_ENV:** The `NODE_ENV` environment variable must be set to `production`. This enables various optimizations and security features within Express and Auth.js.
+
+### Phase 6: Operational Hardening
+
+**Goal:** Enhance application observability and security posture by implementing a robust, production-grade logging solution.
+
+1.  **Task: Implement Production Logging Solution**
+    - **Action:** Research and select a suitable logging library (e.g., Winston, Pino) for Node.js.
+    - **Action:** Integrate the chosen library into the application, replacing all `console.log` and `console.error` calls with the new logger.
+    - **Action:** Configure the logger for structured logging (e.g., JSON format).
+    - **Action:** Ensure logs include relevant context (e.g., request ID, user ID, timestamp, log level).
+    - **Action:** Configure log transport to a persistent storage solution (e.g., file system, cloud logging service like Google Cloud Logging).
+    - **Action:** Update the global error handler (`errorHandler.ts`) to use the new logging solution.
+    - **Test:**
+        - Verify that logs are generated in the correct format and contain expected context.
+        - Confirm that errors are properly captured and logged by the new system.
+        - (Manual) Verify logs are accessible in the chosen storage solution.
+    - **Commit:** `feat(ops): P6_T1 implement production logging solution`
