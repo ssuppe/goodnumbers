@@ -2,8 +2,8 @@
 
 **Author:** Tech Lead
 **Date:** 2025-08-15
-**Task:** [Phase 2, Task 1: Implement User Authentication with Email Allowlist](@docs/IMPLEMENTATION_PLAN.md)
-**Related Docs:** [SSO Allowlist Proposal](@docs/eng/SSO_ALLOWLIST_PROPOSAL.md), [Development Process](@docs/DEVELOPMENT_PROCESS.md)
+**Task:** [Phase 2, Task 1: Implement User Authentication with Email Allowlist](../IMPLEMENTATION_PLAN.md)
+**Related Docs:** [SSO Allowlist Proposal](./SSO_ALLOWLIST_PROPOSAL.md), [Development Process](../DEVELOPMENT_PROCESS.md)
 
 ## 1. Overview & Goal
 
@@ -52,7 +52,7 @@ This change replaces the temporary site-wide password with a secure, user-specif
 **Reference:** `docs/eng/PHASE2_TASK1.md`"
 ```
 
-After running this, the `gh` tool will output the number of the issue it created. Make a note of it. For this guide, let's assume it created **issue #23**.
+After running this, the `gh` tool will output the number of the newly created issue. Make a note of this number. For the remainder of this guide, we will use `#XX` as a placeholder for your actual issue number.
 
 ### Step 2: Create a New Feature Branch
 
@@ -60,8 +60,8 @@ Now, create a dedicated branch for this work from the `develop` branch. Follow t
 
 ```bash
 # Make sure you are still on the `develop` branch before running this
-# The issue number is an example; use the real one you just created.
-git checkout -b feat/23-authjs-email-allowlist
+# Use the real issue number from the previous step.
+git checkout -b feat/XX-authjs-email-allowlist
 ```
 
 You are now on a clean branch, ready to start making changes.
@@ -148,8 +148,6 @@ app.listen(port, () => {
 });
 ```
 
-At this point, the old barrier is completely gone.
-
 #### Sub-step 3.2: Configuration - Create the Allowlist File
 
 We need a place to store the email addresses of our approved beta testers.
@@ -180,70 +178,10 @@ another-allowed-user@example.com
 
 This is the "Green" step, where we implement the new access control. We will modify `goodnumbers/src/lib/auth.ts` to read our new config file and use the `signIn` callback to check if a user's email is on the list.
 
-Replace the entire contents of `goodnumbers/src/lib/auth.ts` with the code below. I have added detailed comments to explain each new section.
+Replace the entire contents of `goodnumbers/src/lib/auth.ts` with the code below. The code includes detailed comments to explain each new section.
 
 ```typescript
 // goodnumbers/src/lib/auth.ts
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { PrismaClient } from "@prisma/client";
-import type { JWT } from "@auth/core/jwt";
-import type { Session, DefaultUser } from "@auth/core/types";
-import GoogleProvider from "@auth/express/providers/google";
-
-// --- NEW IMPORTS: Node.js modules for file system and path handling ---
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const prisma = new PrismaClient();
-
-// --- NEW: File path and cache configuration ---
-// ESM-compatible way to get the directory name of the current file.
-// This is necessary because __dirname is not available in ES Modules by default.
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Define the absolute path to the allowlist file.
-// We go up two directories from 'src/lib/' to the 'goodnumbers/' root, then into 'config/'.
-const ALLOWLIST_FILE_PATH = path.join(
-  __dirname,
-  "../../config/allowed_emails.txt"
-);
-
-// Cache variables to store the allowlist in memory.
-// This prevents reading the file from disk on every single sign-in attempt, which improves performance.
-let cachedAllowedEmails: string[] | null = null;
-let lastReadTime: number = 0;
-const CACHE_DURATION_MS = 5 * 60 * 1000; // Cache for 5 minutes
-
-/**
- * --- NEW: Utility function to read and cache the email allowlist ---
- * This function reads the allowed emails from the configuration file.
- * It uses a simple in-memory cache to avoid excessive file I/O.
- * @returns A Promise that resolves to an array of allowed email strings.
- */
-async function readAllowedEmails(): Promise<string[]> {
-  const now = Date.now();
-  // If the cache exists and is still fresh, return the cached data immediately.
-  if (cachedAllowedEmails && now - lastReadTime < CACHE_DURATION_MS) {
-    console.log("[Auth.js] Using cached email allowlist.");
-    return cachedAllowedEmails;
-  }
-
-  try {
-    // If cache is stale or doesn't exist, read the file from disk.
-    console.log(`[Auth.js] Reading allowlist from: ${ALLOWLIST_FILE_PATH}`);
-    const data = await fs.readFile(ALLOWLIST_FILE_PATH, "utf8");
-    const emails = data
-      .split("\n")
-      .map((line) => line.trim()) // Remove leading/trailing whitespace
-      .filter((line) => line.length > 0 && !line.startsWith("#")); // Filter out empty lines and comments
-
-    // Update cache and timestamp
-    cachedAllowedEmails = emails;
-    lastReadTime = now;
-    console.log(`[Auth.js] SUCCESS: Loaded ${emails.length} allowed emails.`);
-    return // goodnumbers/src/lib/auth.ts
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import type { JWT } from "@auth/core/jwt";
@@ -343,14 +281,10 @@ export const authConfig = {
       const isAllowed = allowedEmails.has(userEmail.toLowerCase());
 
       if (isAllowed) {
-        console.log(
-          `[Auth.js] ALLOWED: User is in the allowlist.`
-        );
+        console.log(`[Auth.js] ALLOWED: User is in the allowlist.`);
         return true;
       } else {
-        console.log(
-          `[Auth.js] DENIED: User is NOT in the allowlist.`
-        );
+        console.log(`[Auth.js] DENIED: User is NOT in the allowlist.`);
         return false;
       }
     },
@@ -370,19 +304,17 @@ export const authConfig = {
 };
 ```
 
-Your implementation work is now complete!
-
 ### Step 4: Verification and Manual Testing
 
-Now, we will rigorously test the changes to ensure everything works as expected. Restart your development server (`cd goodnumbers && npm run dev`).
+Now, rigorously test the changes to ensure everything works as expected. Restart your development server (`cd goodnumbers && npm run dev`).
 
 **Test Case 1: Positive Test (Allowed User)**
 
-1.  **Action:** Make sure your primary Google email address is listed in `goodnumbers/config/allowed_emails.txt`. Try using mixed-case letters (e.g., Your-Email@gmail.com) in the file to test our case-insensitive fix.
+1.  **Action:** Make sure your primary Google email address is listed in `goodnumbers/config/allowed_emails.txt`. Try using mixed-case letters (e.g., Your-Email@gmail.com) in the file to test the case-insensitive logic.
 2.  **Action:** Open your browser in an incognito window and navigate to `http://localhost:3000`. You should see the Auth.js login page.
 3.  **Action:** Attempt to sign in with the Google account corresponding to your allowed email.
 4.  **Expected Result:** You should be successfully authenticated and redirected into the application (e.g., to the dashboard).
-5.  **Verification:** Check your server console logs. You should see the message: `[Auth.js] ALLOWED: User your-google-email@gmail.com is in the allowlist.`
+5.  **Verification:** Check your server console logs. You should see a message similar to: `[Auth.js] ALLOWED: User is in the allowlist.`
 
 **Test Case 2: Negative Test (Denied User)**
 
@@ -390,7 +322,7 @@ Now, we will rigorously test the changes to ensure everything works as expected.
 2.  **Action:** Open a new incognito window and navigate to `http://localhost:3000`.
 3.  **Action:** Attempt to sign in with the disallowed Google account.
 4.  **Expected Result:** After the Google login screen, you should be redirected back to an Auth.js error page stating that access is denied. You should **not** be able to access the application.
-5.  **Verification:** Check your server console logs. You should see the message: `[Auth.js] DENIED: User some-other-user@gmail.com is NOT in the allowlist.`
+5.  **Verification:** Check your server console logs. You should see a message similar to: `[Auth.js] DENIED: User is NOT in the allowlist.`
 
 **Test Case 3: Security Test (Missing Allowlist File)**
 
@@ -401,12 +333,12 @@ This test ensures our "deny by default" security posture is working.
 3.  **Action:** Start your server again.
 4.  **Action:** Attempt to log in with ANY account (even one that was previously allowed).
 5.  **Expected Result:** You should be denied access and see the Auth.js error page.
-6.  **Verification:** Check the server console logs. You should see the critical error message: `[Auth.js] CRITICAL ERROR: Could not read allowlist file...` followed by the `DENIED` message. This confirms our secure-by-default logic is correct.
+6.  **Verification:** Check the server console logs. You should see the critical error message: `[Auth.js] CRITICAL ERROR: Could not read allowlist file...` followed by the `DENIED` message. This confirms the secure-by-default logic is correct.
 7.  **Cleanup:** Don't forget to stop the server and rename the file back to `allowed_emails.txt`.
 
 ### Step 5: Commit Your Changes
 
-Once you have verified that all test cases pass, it's time to commit your work. We will create a single, clean commit as per our process.
+Once you have verified that all test cases pass, it's time to commit your work. Create a single, clean commit as per our process.
 
 ```bash
 # Add all the changed, new, and deleted files to the staging area
@@ -443,39 +375,14 @@ cd ..
 
 ### Step 7: Create the Pull Request
 
-Your code is complete, tested, and committed. Now, push your branch to the remote repository and open a Pull Request (PR) to merge it into `develop`.
+Push your branch to the remote repository and open a Pull Request (PR) to merge it into `develop`.
 
 ```bash
 # Push your branch to the remote repository (e.g., GitHub)
-git push origin feat/23-authjs-email-allowlist
+git push origin feat/XX-authjs-email-allowlist
 
 # Create the Pull Request using the gh CLI
 # Note the --base flag to ensure it targets the `develop` branch
-gh pr create \
-  --base develop \
-  --title "feat(auth): P2_T1 implement Auth.js with email allowlist" \
-  --body "### Description
-This PR replaces the temporary `cookie-session` based site barrier with a more robust email allowlist integrated directly into the Auth.js `signIn` callback. This resolves the technical conflict between the two session middlewares and improves the security of access control for beta testers.
-
-The implementation reads approved emails from `goodnumbers/config/allowed_emails.txt` and uses a 5-minute cache to improve performance. For security, if the configuration file cannot be read, all sign-in attempts are denied by default.
-
-**Closes #23** (Replace with the actual issue number you created)
-
-### How to Test
-1.  Add your Google email to `goodnumbers/config/allowed_emails.txt`.
-2.  Run the application (`cd goodnumbers && npm run dev`).
-3.  Log in with your allowed Google account. **Verify you are granted access.**
-4.  Use a different Google account whose email is *not* on the list.
-5.  Log in with that account. **Verify you are denied access and see an error page.**
-6.  Stop the server, rename `allowed_emails.txt`, and restart. Attempt to log in with an allowed account. **Verify you are still denied access** and a critical error appears in the server logs."
-```
-
-# Push your branch to the remote repository
-
-git push origin feat/23-authjs-email-allowlist
-
-# Create the Pull Request using the gh CLI
-
 gh pr create \
  --base develop \
  --title "feat(auth): P2_T1 implement Auth.js with email allowlist" \
@@ -484,7 +391,7 @@ This PR replaces the temporary `cookie-session` based site barrier with a more r
 
 The implementation reads approved emails from `goodnumbers/config/allowed_emails.txt` (which is properly `.gitignore`d) and uses a 5-minute cache. The email check is now **case-insensitive**. For security, if the configuration file cannot be read, all sign-in attempts are denied by default.
 
-**Closes #23** (Replace with the actual issue number you created)
+**Closes #XX** (Replace with the actual issue number you created)
 
 ### How to Test
 
@@ -494,5 +401,6 @@ The implementation reads approved emails from `goodnumbers/config/allowed_emails
 4.  Use a different Google account whose email is _not_ on the list.
 5.  Log in with that account. **Verify you are denied access and see an error page.**
 6.  Stop the server, rename `allowed_emails.txt`, and restart. Attempt to log in with an allowed account. **Verify you are still denied access** and a critical error appears in the server logs."
+```
 
-Once the PR is created, please post the link in our team's Slack channel for review. Excellent work!
+Once the PR is created, please post the link in the team's communication channel for review.
