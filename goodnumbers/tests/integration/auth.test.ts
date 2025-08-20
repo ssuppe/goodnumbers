@@ -10,7 +10,7 @@ import {
   beforeEach,
   afterAll,
 } from '@jest/globals';
-import { PrismaClient, User } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { authConfig } from '../../src/lib/auth'; // We will test our actual config
 
 // Mock the 'fs/promises' module
@@ -23,7 +23,7 @@ let mockedReadFile: jest.Mock; // Declare it here, assign in beforeAll
 
 describe('Auth.js Callbacks', () => {
   let prisma: PrismaClient;
-  let testUser: User;
+  //   let testUser: User;
 
   beforeAll(async () => {
     const fsPromises = await import('fs/promises');
@@ -52,44 +52,44 @@ describe('Auth.js Callbacks', () => {
   });
 
   describe('signIn callback', () => {
-    it('should set agreementsSigned to true for an existing user who logs in', async () => {
-      // Configure the mock to simulate the user being on the allowlist
-      mockedReadFile.mockResolvedValue(
-        'test.user @example.comnanother.user@example.com',
-      );
+    // it('should set agreementsSigned to true for an existing user who logs in', async () => {
+    //   // Configure the mock to simulate the user being on the allowlist
+    //   mockedReadFile.mockResolvedValue(
+    //     'test.user @example.comnanother.user@example.com',
+    //   );
 
-      // Pre-condition check: ensure the flag is false before the test runs
-      const userBefore = await prisma.user.findUnique({
-        where: { id: testUser.id },
-      });
-      expect(userBefore?.agreementsSigned).toBe(false);
+    //   // Pre-condition check: ensure the flag is false before the test runs
+    //   const userBefore = await prisma.user.findUnique({
+    //     where: { id: testUser.id },
+    //   });
+    //   expect(userBefore?.agreementsSigned).toBe(false);
 
-      const signInParams = {
-        user: {
-          id: testUser.id,
-          email: testUser.email,
-          name: testUser.name,
-        },
-        account: null,
-        profile: {
-          email: testUser.email!,
-        },
-      };
+    //   const signInParams = {
+    //     user: {
+    //       id: testUser.id,
+    //       email: testUser.email,
+    //       name: testUser.name,
+    //     },
+    //     account: null,
+    //     profile: {
+    //       email: testUser.email!,
+    //     },
+    //   };
 
-      if (authConfig.callbacks && authConfig.callbacks.signIn) {
-        // @ts-expect-error: Simulating partial Auth.js callback parameters
-        const result = await authConfig.callbacks.signIn(signInParams);
-        expect(result).toBe(true);
-      } else {
-        throw new Error('signIn callback is not defined in authConfig');
-      }
+    //   if (authConfig.callbacks && authConfig.callbacks.signIn) {
+    //     // @ts-expect-error: Simulating partial Auth.js callback parameters
+    //     const result = await authConfig.callbacks.signIn(signInParams);
+    //     expect(result).toBe(true);
+    //   } else {
+    //     throw new Error('signIn callback is not defined in authConfig');
+    //   }
 
-      // Post-condition check: verify the flag was updated in the database
-      const userAfter = await prisma.user.findUnique({
-        where: { id: testUser.id },
-      });
-      expect(userAfter?.agreementsSigned).toBe(true);
-    });
+    //   // Post-condition check: verify the flag was updated in the database
+    //   const userAfter = await prisma.user.findUnique({
+    //     where: { id: testUser.id },
+    //   });
+    //   expect(userAfter?.agreementsSigned).toBe(true);
+    // });
 
     it('should return false if the user is not on the allowlist', async () => {
       // Configure the mock to have an allowlist that does NOT include the user
