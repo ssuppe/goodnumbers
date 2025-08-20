@@ -4,7 +4,10 @@ import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { ExpressAuth } from '@auth/express';
-import { authConfig } from './lib/auth.ts'; // We will modify authConfig later
+import { authConfig } from './lib/auth.ts'; // Note: .ts extension for ESM
+
+// Import the new user router
+import userRouter from './routes/user.ts';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -51,11 +54,8 @@ app.use(express.static('public'));
 app.use('/api/auth', ExpressAuth(authConfig));
 
 // --- API Routes ---
-// Example placeholder for future API routes
-app.get('/api/protected-data', (req, res) => {
-  // In a real scenario, you'd check req.auth here to ensure user is logged in
-  res.json({ message: 'This is protected data.' });
-});
+// Use the new user router for all routes starting with /api/user
+app.use('/api/user', userRouter);
 
 // --- Health Check Endpoint ---
 app.get('/health', (req, res) => {
@@ -71,9 +71,18 @@ app.use(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     next: express.NextFunction,
   ) => {
+    // --- RECOMMENDATION: SECURE LOGGING ---
+    // In a production environment, never log the entire raw error object (`err`) or stack (`err.stack`),
+    // as it may contain sensitive user data or system information. Use a structured,
+    // production-ready logger (like Pino or Winston) that can sanitize output.
+    // For now, we log a more controlled message.
     console.error('--- Global Error Handler Caught an Error ---');
-    console.error(err.stack);
-    res.status(500).send('Something broke!');
+    console.error(`Error Message: ${err.message}`);
+    // For debugging, you might log the stack, but be aware of the risk of leaking PII.
+    // console.error(`Stack: ${err.stack}`);
+
+    // Always send a generic, non-revealing error message to the client.
+    res.status(500).json({ message: 'An internal server error occurred.' });
   },
 );
 
