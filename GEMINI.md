@@ -151,3 +151,4 @@ When multiple valid approaches exist, choose based on:
 - Update plan documentation as you go
 - Learn from existing implementations
 - Stop after 3 failed attempts and reassess
+- Remember that to run things in other folder (such as goodnumbers subfolder), run the command "cd goodnumbers && <command>"
