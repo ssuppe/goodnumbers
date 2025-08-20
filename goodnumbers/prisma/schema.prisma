@@ -32,6 +32,9 @@ model User {
   nightscoutToken String?
   preferredUnits  GlucoseUnit @default(MGDL)
   rssToken        String    @unique @default(cuid())
+
+  // NEW: Field to track if user has signed the agreements
+  agreementsSigned Boolean @default(false)
 }
 
 model Journal {
