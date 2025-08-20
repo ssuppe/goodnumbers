@@ -1,23 +1,22 @@
 // file: goodnumbers/tests/integration/auth.test.ts
 import 'dotenv/config';
+import {
+  jest,
+  describe,
+  it,
+  expect,
+  beforeAll,
+  beforeEach,
+  afterAll,
+} from '@jest/globals';
 import { PrismaClient, User } from '@prisma/client';
-import { authConfig } from '../../src/lib/auth'; // We will test our actual config
 
-// Mock the getAllowedEmails function to isolate our test
-// For this test, we assume the user is always on the allowlist.
-jest.mock('../../src/lib/auth', () => {
-  const originalModule = jest.requireActual('../../src/lib/auth');
-  return {
-    ...originalModule,
-    // This mock ensures our test doesn't depend on the file system.
-    __esModule: true,
-    // Mock the specific named export
+jest.unstable_mockModule('fs/promises', () => ({
+  readFile: jest.fn(),
+}));
 
-    getAllowedEmails: jest
-      .fn()
-      .mockResolvedValue(new Set(['test.user@example.com'])),
-  };
-});
+const { readFile } = await import('fs/promises');
+const { authConfig, __test_reset_cache } = await import('../../src/lib/auth');
 
 describe('Auth.js Callbacks', () => {
   let prisma: PrismaClient;
@@ -37,6 +36,11 @@ describe('Auth.js Callbacks', () => {
         agreementsSigned: false, // Explicitly start as false
       },
     });
+    // After creating the user, clear the mock history and stats
+    // to ensure a clean slate for each test.
+    jest.clearAllMocks();
+    // Reset the cache in auth.ts before each test
+    __test_reset_cache();
   });
 
   afterAll(async () => {
@@ -54,6 +58,9 @@ describe('Auth.js Callbacks', () => {
         where: { id: testUser.id },
       });
       expect(userBefore?.agreementsSigned).toBe(false);
+
+      // Mock the readFile function to return the allowed user's email
+      (readFile as jest.Mock).mockResolvedValue('test.user@example.com\n');
 
       // Simulate the data Auth.js provides to the signIn callback
       // This includes the full `user` object with the `id` as the Prisma adapter would provide it.
@@ -88,6 +95,9 @@ describe('Auth.js Callbacks', () => {
     });
 
     it('should return false if the user is not on the allowlist', async () => {
+      // Mock the readFile function to return a different email
+      (readFile as jest.Mock).mockResolvedValue('another.user@example.com\n');
+
       // Arrange: Set up a user whose email is NOT on the mocked allowlist
       const disallowedUser = {
         id: 'disallowed-id',

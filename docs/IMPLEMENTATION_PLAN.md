@@ -40,6 +40,43 @@ To support the MVP goals of stability and quality without undue complexity, this
 - **File Naming:** Test files should be named to correspond with the module they are testing (e.g., `database.test.ts`, `encryption.test.ts`).
 - **Database Files:** Local development database files (e.g., `goodnumbers/prisma/dev.db`) are ephemeral and must be added to the `.gitignore` file. The schema is managed solely through version-controlled migration files.
 
+### 2.4. Mocking with ES Modules
+
+When using ES Modules (`"type": "module"` in `package.json`), the standard `jest.mock()` function can be unreliable for mocking modules, especially built-in Node.js modules like `fs/promises`. This is due to the way ES Modules are loaded and how Jest's hoisting mechanism works.
+
+**Recommended Approach:**
+
+To reliably mock modules in an ES Module environment, use the experimental `jest.unstable_mockModule()` API combined with dynamic `import()`.
+
+**Example:**
+
+```typescript
+// tests/integration/some.test.ts
+import { jest, describe, it, expect } from '@jest/globals';
+
+// 1. Mock the module *before* any imports
+jest.unstable_mockModule('fs/promises', () => ({
+  readFile: jest.fn(),
+}));
+
+// 2. Dynamically import the mocked module and the module you are testing
+const { readFile } = await import('fs/promises');
+const { yourFunction } = await import('../../src/lib/your-module');
+
+describe('yourFunction', () => {
+  it('should do something', async () => {
+    // 3. Configure the mock's behavior for the specific test
+    (readFile as jest.Mock).mockResolvedValue('mocked content');
+
+    // 4. Call your function and assert the result
+    const result = await yourFunction();
+    expect(result).toBe('expected result');
+  });
+});
+```
+
+This approach ensures that the mock is registered before your code imports the module, providing a reliable way to isolate dependencies in your tests.
+
 ## 3. Task-Level Workflow
 
 For each task listed in the implementation phases below, the following GitHub-integrated workflow must be followed:

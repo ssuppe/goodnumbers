@@ -5,7 +5,7 @@ import type { JWT } from '@auth/core/jwt';
 import type { Session, DefaultUser } from '@auth/core/types';
 import GoogleProvider from '@auth/express/providers/google';
 
-import fs from 'fs/promises';
+import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -20,6 +20,11 @@ const ALLOWLIST_FILE_PATH = path.join(
 let cachedAllowedEmails: Set<string> | null = null;
 let lastReadTime: number = 0;
 const CACHE_DURATION_MS = 5 * 60 * 1000;
+
+export function __test_reset_cache() {
+  cachedAllowedEmails = null;
+  lastReadTime = 0;
+}
 
 export async function getAllowedEmails(): Promise<Set<string>> {
   const now = Date.now();

@@ -468,6 +468,38 @@ During the implementation of this task, several common issues were encountered. 
     *   **Enable Google APIs:** Ensure necessary Google APIs (e.g., Google People API) are enabled in your Google Cloud Project.
 *   **Resolution:** Address the underlying network issue or Google Cloud Console configuration.
 
+### Mocking `fs/promises` or other built-in modules in tests
+
+*   **Symptom:** Tests that rely on mocking built-in Node.js modules (like `fs/promises` to test the allowlist logic) fail, and the console logs show that the real implementation of the module is being called instead of the mock.
+*   **Diagnosis:** This is a known issue when using Jest with ES Modules (`--experimental-vm-modules`). The standard `jest.mock()` does not work reliably in this environment.
+*   **Resolution:** Use the `jest.unstable_mockModule()` API along with dynamic `import()`.
+
+    This ensures the mock is set up before the module is imported by your code.
+
+    **Example (`auth.test.ts`):**
+
+    ```typescript
+    import { jest, describe, it, expect } from '@jest/globals';
+
+    // Mock fs/promises *before* importing the auth module
+    jest.unstable_mockModule('fs/promises', () => ({
+      readFile: jest.fn(),
+    }));
+
+    // Dynamically import the modules
+    const { readFile } = await import('fs/promises');
+    const { authConfig, __test_reset_cache } = await import('../../src/lib/auth');
+
+describe('signIn callback', () => {
+      it('should allow a user on the allowlist', async () => {
+        // Configure the mock for this test
+        (readFile as jest.Mock).mockResolvedValue('user@example.com\n');
+
+        // ... rest of the test
+      });
+    });
+    ```
+
 ### Persistent Google Session / Account Switching Issues
 
 *   **Symptom:** After logging out from Auth.js, the browser automatically re-authenticates with the last used Google account, preventing full logout or switching to a different Google account.
