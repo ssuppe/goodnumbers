@@ -1,22 +1,27 @@
 // auth.test.ts
 
-import "dotenv/config";
-import { jest, describe, it, expect, beforeAll, beforeEach, afterAll } from '@jest/globals';
-import { PrismaClient, User } from "@prisma/client";
-import { authConfig } from "../../src/lib/auth"; // We will test our actual config
+import 'dotenv/config';
+import {
+  jest,
+  describe,
+  it,
+  expect,
+  beforeAll,
+  beforeEach,
+  afterAll,
+} from '@jest/globals';
+import { PrismaClient, User } from '@prisma/client';
+import { authConfig } from '../../src/lib/auth'; // We will test our actual config
 
 // Mock the 'fs/promises' module
 jest.unstable_mockModule('fs/promises', () => ({
   readFile: jest.fn(),
 }));
 
-
-
-
 // Cast the mocked function to make TypeScript happy
 let mockedReadFile: jest.Mock; // Declare it here, assign in beforeAll
 
-describe("Auth.js Callbacks", () => {
+describe('Auth.js Callbacks', () => {
   let prisma: PrismaClient;
   let testUser: User;
 
@@ -31,8 +36,8 @@ describe("Auth.js Callbacks", () => {
     await prisma.user.deleteMany({});
     testUser = await prisma.user.create({
       data: {
-        email: "test.user @example.com",
-        name: "Test User",
+        email: 'test.user @example.com',
+        name: 'Test User',
         agreementsSigned: false, // Explicitly start as false
       },
     });
@@ -40,16 +45,18 @@ describe("Auth.js Callbacks", () => {
 
   afterAll(async () => {
     // Guard against running in a non-test environment
-    if (process.env.NODE_ENV === "test") {
+    if (process.env.NODE_ENV === 'test') {
       await prisma.user.deleteMany({});
     }
     await prisma.$disconnect();
   });
 
-  describe("signIn callback", () => {
-    it("should set agreementsSigned to true for an existing user who logs in", async () => {
+  describe('signIn callback', () => {
+    it('should set agreementsSigned to true for an existing user who logs in', async () => {
       // Configure the mock to simulate the user being on the allowlist
-      mockedReadFile.mockResolvedValue('test.user @example.comnanother.user@example.com');
+      mockedReadFile.mockResolvedValue(
+        'test.user @example.comnanother.user@example.com',
+      );
 
       // Pre-condition check: ensure the flag is false before the test runs
       const userBefore = await prisma.user.findUnique({
@@ -70,11 +77,11 @@ describe("Auth.js Callbacks", () => {
       };
 
       if (authConfig.callbacks && authConfig.callbacks.signIn) {
-        // @ts-ignore - We are simulating the call with only the necessary properties
+        // @ts-expect-error: Simulating partial Auth.js callback parameters
         const result = await authConfig.callbacks.signIn(signInParams);
         expect(result).toBe(true);
       } else {
-        throw new Error("signIn callback is not defined in authConfig");
+        throw new Error('signIn callback is not defined in authConfig');
       }
 
       // Post-condition check: verify the flag was updated in the database
@@ -84,14 +91,14 @@ describe("Auth.js Callbacks", () => {
       expect(userAfter?.agreementsSigned).toBe(true);
     });
 
-    it("should return false if the user is not on the allowlist", async () => {
+    it('should return false if the user is not on the allowlist', async () => {
       // Configure the mock to have an allowlist that does NOT include the user
       mockedReadFile.mockResolvedValue('allowed.user @example.com');
 
       const disallowedUser = {
-        id: "disallowed-id",
-        email: "disallowed.user @example.com",
-        name: "Disallowed User",
+        id: 'disallowed-id',
+        email: 'disallowed.user @example.com',
+        name: 'Disallowed User',
       };
       const signInParams = {
         user: disallowedUser,
@@ -102,12 +109,12 @@ describe("Auth.js Callbacks", () => {
       };
 
       if (authConfig.callbacks && authConfig.callbacks.signIn) {
-        // @ts-ignore
+        // @ts-expect-error: Simulating partial Auth.js callback parameters
         const result = await authConfig.callbacks.signIn(signInParams);
         // The callback should return false to deny the sign-in
         expect(result).toBe(false);
       } else {
-        throw new Error("signIn callback is not defined in authConfig");
+        throw new Error('signIn callback is not defined in authConfig');
       }
     });
   });
