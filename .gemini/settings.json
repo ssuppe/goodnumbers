@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-	"in-memoria": {
+    "in-memoria": {
       "command": "npx",
       "args": ["in-memoria", "server"]
     }
