@@ -1,4 +1,5 @@
-// file: goodnumbers/tests/integration/auth.test.ts
+// auth.test.ts
+
 import 'dotenv/config';
 import {
   jest,
@@ -10,19 +11,23 @@ import {
   afterAll,
 } from '@jest/globals';
 import { PrismaClient, User } from '@prisma/client';
+import { authConfig } from '../../src/lib/auth'; // We will test our actual config
 
+// Mock the 'fs/promises' module
 jest.unstable_mockModule('fs/promises', () => ({
   readFile: jest.fn(),
 }));
 
-const { readFile } = await import('fs/promises');
-const { authConfig, __test_reset_cache } = await import('../../src/lib/auth');
+// Cast the mocked function to make TypeScript happy
+let mockedReadFile: jest.Mock; // Declare it here, assign in beforeAll
 
 describe('Auth.js Callbacks', () => {
   let prisma: PrismaClient;
   let testUser: User;
 
-  beforeAll(() => {
+  beforeAll(async () => {
+    const fsPromises = await import('fs/promises');
+    mockedReadFile = fsPromises.readFile as jest.Mock;
     prisma = new PrismaClient();
   });
 
@@ -31,16 +36,11 @@ describe('Auth.js Callbacks', () => {
     await prisma.user.deleteMany({});
     testUser = await prisma.user.create({
       data: {
-        email: 'test.user@example.com',
+        email: 'test.user @example.com',
         name: 'Test User',
         agreementsSigned: false, // Explicitly start as false
       },
     });
-    // After creating the user, clear the mock history and stats
-    // to ensure a clean slate for each test.
-    jest.clearAllMocks();
-    // Reset the cache in auth.ts before each test
-    __test_reset_cache();
   });
 
   afterAll(async () => {
@@ -53,35 +53,32 @@ describe('Auth.js Callbacks', () => {
 
   describe('signIn callback', () => {
     it('should set agreementsSigned to true for an existing user who logs in', async () => {
+      // Configure the mock to simulate the user being on the allowlist
+      mockedReadFile.mockResolvedValue(
+        'test.user @example.comnanother.user@example.com',
+      );
+
       // Pre-condition check: ensure the flag is false before the test runs
       const userBefore = await prisma.user.findUnique({
         where: { id: testUser.id },
       });
       expect(userBefore?.agreementsSigned).toBe(false);
 
-      // Mock the readFile function to return the allowed user's email
-      (readFile as jest.Mock).mockResolvedValue('test.user@example.com\n');
-
-      // Simulate the data Auth.js provides to the signIn callback
-      // This includes the full `user` object with the `id` as the Prisma adapter would provide it.
       const signInParams = {
         user: {
           id: testUser.id,
           email: testUser.email,
           name: testUser.name,
         },
-        account: null, // Not needed for our logic
+        account: null,
         profile: {
           email: testUser.email!,
         },
       };
 
-      // Directly call the signIn function from our auth configuration
       if (authConfig.callbacks && authConfig.callbacks.signIn) {
-        // @ts-expect-error - We are simulating the call with only the necessary properties
+        // @ts-expect-error: Simulating partial Auth.js callback parameters
         const result = await authConfig.callbacks.signIn(signInParams);
-
-        // The callback should return true to allow the sign-in to complete
         expect(result).toBe(true);
       } else {
         throw new Error('signIn callback is not defined in authConfig');
@@ -95,26 +92,26 @@ describe('Auth.js Callbacks', () => {
     });
 
     it('should return false if the user is not on the allowlist', async () => {
-      // Mock the readFile function to return a different email
-      (readFile as jest.Mock).mockResolvedValue('another.user@example.com\n');
+      // Configure the mock to have an allowlist that does NOT include the user
+      mockedReadFile.mockResolvedValue('allowed.user @example.com');
 
-      // Arrange: Set up a user whose email is NOT on the mocked allowlist
       const disallowedUser = {
         id: 'disallowed-id',
-        email: 'disallowed.user@example.com',
+        email: 'disallowed.user @example.com',
         name: 'Disallowed User',
       };
       const signInParams = {
         user: disallowedUser,
         account: null,
-        profile: { email: disallowedUser.email },
+        profile: {
+          email: disallowedUser.email,
+        },
       };
 
-      // Act: Directly call the signIn function
       if (authConfig.callbacks && authConfig.callbacks.signIn) {
-        // @ts-expect-error Simulating call
+        // @ts-expect-error: Simulating partial Auth.js callback parameters
         const result = await authConfig.callbacks.signIn(signInParams);
-        // Assert: The callback should return false
+        // The callback should return false to deny the sign-in
         expect(result).toBe(false);
       } else {
         throw new Error('signIn callback is not defined in authConfig');
