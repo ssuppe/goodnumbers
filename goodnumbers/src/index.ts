@@ -8,6 +8,7 @@ import { authConfig } from './lib/auth.ts'; // Note: .ts extension for ESM
 
 // Import the new user router
 import userRouter from './routes/user.ts';
+import { journalsRouter } from './routes/journals.ts'; // Import the new journals router
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -56,6 +57,7 @@ app.use('/api/auth', ExpressAuth(authConfig));
 // --- API Routes ---
 // Use the new user router for all routes starting with /api/user
 app.use('/api/user', userRouter);
+app.use('/api/journals', journalsRouter); // Use the new journals router
 
 // --- Health Check Endpoint ---
 app.get('/health', (req, res) => {
