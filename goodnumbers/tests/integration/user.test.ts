@@ -169,4 +169,50 @@ describe('User API', () => {
       expect(response.body.errors.preferredUnits).toBeDefined();
     });
   });
+
+  describe('POST /api/user/regenerate-rss-token', () => {
+    it('should regenerate the RSS token for an authenticated user', async () => {
+      // Arrange
+      const user = await prisma.user.create({
+        data: {
+          email: 'rss_test@example.com',
+          name: 'RSS Test User',
+          rssToken: 'initial-rss-token-123', // Set an initial token
+        },
+      });
+      mockUserForAuth = user;
+
+      // Get the initial token from the database
+      const initialUser = await prisma.user.findUnique({
+        where: { id: user.id },
+      });
+      const initialRssToken = initialUser!.rssToken;
+      expect(initialRssToken).toBe('initial-rss-token-123');
+
+      // Act
+      const response = await request.post('/api/user/regenerate-rss-token');
+
+      // Assert - API response
+      expect(response.status).toBe(200);
+      expect(response.body.newRssToken).toBeDefined();
+      expect(response.body.newRssToken).not.toBe(initialRssToken);
+
+      // Assert - Database state
+      const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+      expect(dbUser).not.toBeNull();
+      expect(dbUser!.rssToken).toBe(response.body.newRssToken);
+      expect(dbUser!.rssToken).not.toBe(initialRssToken);
+    });
+
+    it('should return 401 Unauthorized if the user is not authenticated', async () => {
+      // Arrange: No user is set for the mock middleware (mockUserForAuth is null)
+
+      // Act
+      const response = await request.post('/api/user/regenerate-rss-token');
+
+      // Assert
+      expect(response.status).toBe(401);
+      expect(response.body.message).toBe('Not authorized');
+    });
+  });
 });
