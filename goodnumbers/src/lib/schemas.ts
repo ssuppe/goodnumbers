@@ -21,9 +21,7 @@ export const userSettingsSchema = z.object({
 
     // The preferred units must be one of the two allowed values.
     preferredUnits: z.enum(PREFERRED_UNITS, {
-      errorMap: () => ({
-        message: 'Preferred units must be either MGDL or MMOL.',
-      }),
+      message: 'Preferred units must be either MGDL or MMOL.',
     }),
   }),
 });

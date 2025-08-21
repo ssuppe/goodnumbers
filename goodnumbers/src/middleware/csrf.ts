@@ -14,7 +14,7 @@ export const {
   generateCsrfToken,
   doubleCsrfProtection,
 } = doubleCsrf({
-  getSecret: (_req: Request) => process.env.CSRF_SECRET as string,
+  getSecret: (_req: Request | undefined) => process.env.CSRF_SECRET as string,
   getSessionIdentifier: (req: Request) => req.session?.id || '',
   cookieName: isProduction ? '__Host-csrf-token' : 'csrf-token',
   cookieOptions: {
@@ -23,5 +23,6 @@ export const {
     path: '/',
     secure: isProduction,
   },
-  getTokenFromRequest: (req: Request) => req.headers['x-csrf-token'] as string,
+  getCsrfTokenFromRequest: (req: Request) =>
+    req.headers['x-csrf-token'] as string,
 });

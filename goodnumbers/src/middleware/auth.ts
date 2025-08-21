@@ -8,7 +8,12 @@ import { Request, Response, NextFunction } from 'express';
 export const protect = (req: Request, res: Response, next: NextFunction) => {
   // For testing purposes, allow authentication via x-test-user-id header
   if (process.env.NODE_ENV === 'test' && req.headers['x-test-user-id']) {
-    req.auth = { user: { id: req.headers['x-test-user-id'] as string } };
+    req.auth = {
+      user: {
+        id: req.headers['x-test-user-id'] as string,
+        email: 'test@example.com',
+      },
+    };
   }
 
   if (!req.auth?.user?.id) {

@@ -6,16 +6,16 @@ import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 
 import { ExpressAuth } from '@auth/express';
-import { authConfig } from './lib/auth';
-import { protect } from './middleware/auth';
+import { authConfig } from './lib/auth.js';
+import { protect } from './middleware/auth.js';
 import {
   doubleCsrfProtection,
   generateCsrfToken,
   invalidCsrfTokenError,
-} from './middleware/csrf';
-import { errorHandler } from './middleware/errorHandler'; // <-- IMPORT ERROR HANDLER
-import userRouter from './routes/user';
-import { journalsRouter } from './routes/journals';
+} from './middleware/csrf.js';
+import { errorHandler } from './middleware/errorHandler.js'; // <-- IMPORT ERROR HANDLER
+import userRouter from './routes/user.js';
+import { journalsRouter } from './routes/journals.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -59,7 +59,8 @@ app.use(cookieParser());
 app.use(express.static('public'));
 
 // --- Auth.js Middleware ---
-app.use('/api/auth', ExpressAuth(authConfig));
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+app.use('/api/auth', ExpressAuth(authConfig as any));
 
 // API route for the frontend to get a CSRF token
 app.get('/api/csrf-token', (req, res) => {

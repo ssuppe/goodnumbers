@@ -1,13 +1,14 @@
-// file: goodnumbers/src/lib/auth.ts
 import { PrismaAdapter } from '@auth/prisma-adapter';
-import type { JWT } from '@auth/core/jwt';
-import type { Session, DefaultUser, User, Profile } from '@auth/core/types';
+import type { JWT } from 'next-auth/jwt';
+import type { Session, DefaultUser, User, Profile } from 'next-auth';
+import type { AuthOptions } from 'next-auth';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import GoogleProvider from '@auth/express/providers/google';
 
 import { readFile } from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { prisma } from '../db'; // Import the shared Prisma client
+import { prisma } from '../db.js'; // Import the shared Prisma client
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,23 +46,31 @@ export async function getAllowedEmails(): Promise<Set<string>> {
   }
 }
 
-export const authConfig = {
+export const authConfig: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
-    GoogleProvider({
+    {
+      id: 'google',
+      name: 'Google',
+      type: 'oauth',
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
       authorization: { params: { prompt: 'select_account' } },
-    }),
+      profile(profile: Profile) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: profile.picture,
+        };
+      },
+    },
   ],
   session: {
     strategy: 'jwt',
   },
   callbacks: {
     async signIn({ user, profile }: { user: User; profile?: Profile }) {
-      // SECURITY IMPROVEMENT: Use the user ID from the user object for logging,
-      // not the email. The `user` object is guaranteed to be present here after
-      // the Prisma adapter has found or created the user.
       const userId = user?.id;
       const userEmail = profile?.email;
 
@@ -76,49 +85,36 @@ export const authConfig = {
       const isAllowed = allowedEmails.has(userEmail.toLowerCase());
 
       if (!isAllowed) {
-        // PRIVACY IMPROVEMENT: Log the user ID, not the email, to prevent leaking PII.
         console.log(
           `[Auth.js] DENIED: User with ID ${userId} is NOT in the allowlist.`,
         );
         return false;
       }
 
-      // --- NEW LOGIC FOR AGREEMENT GATE (with Security Improvements) ---
-      // If the user is on the allowlist, we ensure their agreement flag is set to true.
-      // This is idempotent: it works for newly created users and safely re-asserts
-      // for existing users on every login.
+      // If the user is on the allowlist, ensure their agreement flag is set to true.
       try {
-        // ROBUSTNESS IMPROVEMENT: Update the user by their primary key (`id`) instead of email.
-        // This is more direct and less ambiguous than relying on a non-primary key field.
         await prisma.user.update({
           where: { id: userId },
           data: { agreementsSigned: true },
         });
 
-        // PRIVACY IMPROVEMENT: Log the user ID, not the email.
         console.log(
           `[Auth.js] INFO: Ensured agreementsSigned is true for user ID ${userId}.`,
         );
-        return true; // ALLOW LOGIN
       } catch (error) {
-        // SECURITY IMPROVEMENT: Log a controlled error message and avoid logging the raw error object,
-        // which could contain sensitive information.
         console.error(
           `[Auth.js] CRITICAL: Failed to update agreementsSigned for user ID ${userId}. Denying login.`,
           { errorMessage: (error as Error).message },
         );
-        // SECURITY: If we can't update the database to confirm agreement,
-        // we must not allow the user to log in.
+        // If we can't update the database, we must not allow the user to log in.
         return false;
       }
-      // --- END OF NEW LOGIC ---
 
       console.log(
         `[Auth.js] ALLOWED: User with ID ${userId} is in the allowlist.`,
       );
-      // This line should ideally not be reached if the above logic is correct
-      // It's kept for now to match the original structure, but will be removed if redundant
-      return true; // Allow sign-in
+      // Allow sign-in
+      return true;
     },
 
     async jwt({ token, user }: { token: JWT; user?: DefaultUser }) {

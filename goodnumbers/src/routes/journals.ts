@@ -1,8 +1,9 @@
 // file: goodnumbers-workspace/src/server/routes/journals.ts
 import { Router } from 'express';
 import { z } from 'zod';
-import { prisma } from '../db'; // Corrected path to prisma
-import { protect } from '../middleware/auth';
+import { Prisma } from '@prisma/client';
+import { prisma } from '../db.js'; // Corrected path to prisma
+import { protect } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -14,16 +15,20 @@ const paramsSchema = z.object({
 // GET /api/journals - Fetch all journals for the logged-in user
 router.get('/', protect, async (req, res) => {
   try {
+    if (!req.auth?.user?.id) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
     const userId = req.auth.user.id;
     const journals = await prisma.journal.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
     res.status(200).json(journals);
-  } catch (error) {
+  } catch (error: unknown) {
     // Secure Logging: Log the full error for internal review.
+    const userIdForLog = req.session?.user?.id || 'unknown';
     console.error(
-      `[ERROR] Failed to fetch journals for user ${req.session.user.id}:`,
+      `[ERROR] Failed to fetch journals for user ${userIdForLog}:`,
       error,
     );
     // Generic Response: Do not leak error details to the client.
@@ -39,8 +44,11 @@ router.get('/:id', protect, async (req, res) => {
     if (!validation.success) {
       return res.status(400).json({
         error: 'Invalid request parameter',
-        details: validation.error.errors,
+        details: validation.error.flatten().fieldErrors,
       });
+    }
+    if (!req.auth?.user?.id) {
+      return res.status(401).json({ message: 'Not authorized' });
     }
     const { id } = validation.data;
     const userId = req.auth.user.id;
@@ -59,9 +67,10 @@ router.get('/:id', protect, async (req, res) => {
       return res.status(404).json({ error: 'Journal not found' });
     }
     res.status(200).json(journal);
-  } catch (error) {
+  } catch (error: unknown) {
+    const userIdForLog = req.auth?.user?.id || 'unknown';
     console.error(
-      `[ERROR] Failed to fetch journal ${req.params.id} for user ${req.auth.user.id}:`,
+      `[ERROR] Failed to fetch journal ${req.params.id} for user ${userIdForLog}:`,
       error,
     );
     res.status(500).json({ error: 'An internal server error occurred.' });
@@ -71,6 +80,9 @@ router.get('/:id', protect, async (req, res) => {
 // POST /api/journals - Create a new journal entry
 router.post('/', protect, async (req, res) => {
   try {
+    if (!req.auth?.user?.id) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
     const userId = req.auth.user.id;
     const newJournal = await prisma.journal.create({
       data: {
@@ -81,9 +93,10 @@ router.post('/', protect, async (req, res) => {
     });
 
     res.status(201).json(newJournal);
-  } catch (error) {
+  } catch (error: unknown) {
+    const userIdForLog = req.auth?.user?.id || 'unknown';
     console.error(
-      `[ERROR] Failed to create journal for user ${req.auth.user.id}:`,
+      `[ERROR] Failed to create journal for user ${userIdForLog}:`,
       error,
     );
     res.status(500).json({ error: 'An internal server error occurred.' });
@@ -97,8 +110,11 @@ router.get('/status/:id', protect, async (req, res) => {
     if (!validation.success) {
       return res.status(400).json({
         error: 'Invalid request parameter',
-        details: validation.error.errors,
+        details: validation.error.flatten().fieldErrors,
       });
+    }
+    if (!req.auth?.user?.id) {
+      return res.status(401).json({ message: 'Not authorized' });
     }
     const { id } = validation.data;
     const userId = req.auth.user.id;
@@ -116,9 +132,10 @@ router.get('/status/:id', protect, async (req, res) => {
       return res.status(404).json({ error: 'Journal not found' });
     }
     res.status(200).json(journalStatus);
-  } catch (error) {
+  } catch (error: unknown) {
+    const userIdForLog = req.auth?.user?.id || 'unknown';
     console.error(
-      `[ERROR] Failed to get status for journal ${req.params.id} for user ${req.auth.user.id}:`,
+      `[ERROR] Failed to get status for journal ${req.params.id} for user ${userIdForLog}:`,
       error,
     );
     res.status(500).json({ error: 'An internal server error occurred.' });
@@ -138,28 +155,27 @@ router.put('/:id', protect, async (req, res) => {
   try {
     const paramsValidation = paramsSchema.safeParse(req.params);
     if (!paramsValidation.success) {
-      return res
-        .status(400)
-        .json({
-          error: 'Invalid request parameter',
-          details: paramsValidation.error.errors,
-        });
+      return res.status(400).json({
+        error: 'Invalid request parameter',
+        details: paramsValidation.error.flatten().fieldErrors,
+      });
+    }
+    if (!req.auth?.user?.id) {
+      return res.status(401).json({ message: 'Not authorized' });
     }
     const { id } = paramsValidation.data;
     const userId = req.auth.user.id;
 
     const bodyValidation = updateJournalSchema.safeParse(req.body);
     if (!bodyValidation.success) {
-      return res
-        .status(400)
-        .json({
-          error: 'Invalid request body',
-          details: bodyValidation.error.errors,
-        });
+      return res.status(400).json({
+        error: 'Invalid request body',
+        details: bodyValidation.error.flatten().fieldErrors,
+      });
     }
     const { clusterNotes, ...journalData } = bodyValidation.data;
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const journalUpdateResult = await tx.journal.updateMany({
         where: { id: id, userId: userId },
         data: journalData,
@@ -185,12 +201,13 @@ router.put('/:id', protect, async (req, res) => {
     });
 
     res.status(200).json(updatedJournal);
-  } catch (error) {
+  } catch (error: unknown) {
+    const userIdForLog = req.auth?.user?.id || 'unknown';
     console.error(
-      `[ERROR] Failed to update journal ${req.params.id} for user ${req.auth.user.id}:`,
+      `[ERROR] Failed to update journal ${req.params.id} for user ${userIdForLog}:`,
       error,
     );
-    if (error.message.includes('permission denied')) {
+    if ((error as Error).message.includes('permission denied')) {
       return res.status(404).json({ error: 'Journal not found' });
     }
     res.status(500).json({ error: 'An internal server error occurred.' });
@@ -202,12 +219,13 @@ router.delete('/:id', protect, async (req, res) => {
   try {
     const validation = paramsSchema.safeParse(req.params);
     if (!validation.success) {
-      return res
-        .status(400)
-        .json({
-          error: 'Invalid request parameter',
-          details: validation.error.errors,
-        });
+      return res.status(400).json({
+        error: 'Invalid request parameter',
+        details: validation.error.flatten().fieldErrors,
+      });
+    }
+    if (!req.auth?.user?.id) {
+      return res.status(401).json({ message: 'Not authorized' });
     }
     const { id } = validation.data;
     const userId = req.auth.user.id;
@@ -221,9 +239,10 @@ router.delete('/:id', protect, async (req, res) => {
     }
 
     res.status(204).send();
-  } catch (error) {
+  } catch (error: unknown) {
+    const userIdForLog = req.auth?.user?.id || 'unknown';
     console.error(
-      `[ERROR] Failed to delete journal ${req.params.id} for user ${req.auth.user.id}:`,
+      `[ERROR] Failed to delete journal ${req.params.id} for user ${userIdForLog}:`,
       error,
     );
     res.status(500).json({ error: 'An internal server error occurred.' });

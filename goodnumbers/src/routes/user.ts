@@ -1,11 +1,11 @@
 // goodnumbers/src/routes/user.ts
 import express from 'express';
-import { userSettingsSchema } from '../lib/schemas';
-import { encrypt } from '../lib/encryption';
-import { protect } from '../middleware/auth';
-import { prisma } from '../db';
+import { userSettingsSchema } from '../lib/schemas.js';
+import { encrypt } from '../lib/encryption.js';
+import { protect } from '../middleware/auth.js';
+import { prisma } from '../db.js';
 import rateLimit from 'express-rate-limit';
-import { validateRequest } from '../middleware/validateRequest';
+import { validateRequest } from '../middleware/validateRequest.js';
 import { createId } from '@paralleldrive/cuid2';
 
 const router = express.Router();

@@ -1,7 +1,7 @@
 // goodnumbers/src/middleware/validateRequest.ts
 
 import { Request, Response, NextFunction } from 'express';
-import { AnyZodObject, ZodError } from 'zod';
+import { ZodObject, ZodError } from 'zod';
 
 /**
  * This is a higher-order function that takes a Zod schema and returns an Express middleware.
@@ -10,7 +10,7 @@ import { AnyZodObject, ZodError } from 'zod';
  * @param schema - The Zod schema to validate the request against.
  * @returns An Express middleware function.
  */
-export const validateRequest = (schema: AnyZodObject) => {
+export const validateRequest = (schema: ZodObject) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       // The .parse() method will throw a ZodError if validation fails.
