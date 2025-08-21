@@ -1,8 +1,10 @@
+# goodnumbers-workspace/docs/eng/PHASE1_TASK3.md
+
 # Phase 1, Task 3: Create Basic Express Server
 
 **Author:** Gemini
 **Date:** 2025-08-16
-**Status:** Not Started
+**Status:** Complete
 
 ## 1. Overview & Goal
 
@@ -22,11 +24,11 @@ The primary goal of this task is to create a minimal, runnable Express server th
 
 This task must adhere to the `DEVELOPMENT_PROCESS.md`.
 
-- [ ] Create a GitHub Issue to track this task.
-- [ ] Create a feature branch from `develop` named `feat/1-basic-express-server`.
-- [ ] Follow the Red-Green-Refactor cycle for implementation.
-- [ ] Run all quality checks (lint, type check, tests) before committing.
-- [ ] Create a Pull Request targeting the `develop` branch.
+- [x] Create a GitHub Issue to track this task.
+- [x] Create a feature branch from `develop` named `feat/1-basic-express-server`.
+- [x] Follow the Red-Green-Refactor cycle for implementation.
+- [x] Run all quality checks (lint, type check, tests) before committing.
+- [x] Create a Pull Request targeting the `develop` branch.
 
 ---
 
@@ -37,12 +39,14 @@ This task must adhere to the `DEVELOPMENT_PROCESS.md`.
 First, prepare your local environment.
 
 1.  **Sync your `develop` branch:**
+
     ```bash
     git checkout develop
     git pull origin develop
     ```
 
 2.  **Create your feature branch:** The name follows the convention `type/issue-short-description`.
+
     ```bash
     git checkout -b feat/1-basic-express-server
     ```
@@ -64,11 +68,12 @@ We start by writing a test for the functionality that does not yet exist. This t
     Add the following code to the `server.test.ts` file. This test uses `supertest` to start the (not-yet-existing) server and make a request to the `/health` endpoint.
 
     ```typescript
-    import request from 'supertest';
-    import { app } from '../../src/index'; // We will export 'app' from our server file
+    import request from "supertest";
+    import { app } from "../../src/index"; // We will export 'app' from our server file
+    import http from "http";
 
     // We need a way to close the server after tests are done
-    let server: any;
+    let server: http.Server;
 
     beforeAll((done) => {
       // Let's use a random port for testing to avoid conflicts
@@ -81,15 +86,16 @@ We start by writing a test for the functionality that does not yet exist. This t
       server.close(done);
     });
 
-    describe('GET /health', () => {
-      it('should return 200 OK with a status message', async () => {
-        const response = await request(server).get('/health');
+    describe("GET /health", () => {
+      it("should return 200 OK with a status message", async () => {
+        const response = await request(server).get("/health");
         expect(response.status).toBe(200);
-        expect(response.body).toEqual({ status: 'ok' });
+        expect(response.body).toEqual({ status: "ok" });
       });
     });
     ```
-    *Note: This code will have type errors because `src/index.ts` does not yet export an `app` object.*
+
+    _Note: This code will have type errors because `src/index.ts` does not yet export an `app` object._
 
 3.  **Confirm the test fails:**
     Run the test suite. It will fail because we haven't implemented the server.
@@ -106,7 +112,7 @@ Now, write the minimum amount of code required to make the failing test pass.
     Open the file at `/home/ssuppe/vscode/goodnumbers-workspace/goodnumbers/src/index.ts` and add the following code.
 
     ```typescript
-    import express from 'express';
+    import express from "express";
 
     const app = express();
     const PORT = process.env.PORT || 3000;
@@ -115,19 +121,19 @@ Now, write the minimum amount of code required to make the failing test pass.
     app.use(express.json());
 
     // Define the /health endpoint
-    app.get('/health', (req, res) => {
-      res.status(200).json({ status: 'ok' });
+    app.get("/health", (req, res) => {
+      res.status(200).json({ status: "ok" });
     });
 
-    // Only start listening if the file is run directly
-    if (require.main === module) {
-        app.listen(PORT, () => {
-            console.log(`Server is running on http://localhost:${PORT}`);
-        });
+    // Only start listening if the file is run directly (and not in a test environment)
+    if (process.env.NODE_ENV !== "test") {
+      app.listen(PORT, () => {
+        console.log(`Server is running on http://localhost:${PORT}`);
+      });
     }
 
     // Export the app for testing purposes
-    export { app };
+    export default app;
     ```
 
 2.  **Confirm the test passes:**
@@ -146,16 +152,18 @@ With a passing test, we can now clean up our code and add conveniences for devel
 
     ```json
     "scripts": {
-      "test": "jest",
       "build": "tsc",
       "start": "node dist/index.js",
-      "dev": "nodemon src/index.ts"
+      "dev": "nodemon src/index.ts",
+      "test": "NODE_OPTIONS=\\\"--experimental-vm-modules\\\" jest"
     },
     ```
-    *Note: `nodemon.json` already exists, so the `dev` script will use it automatically.*
+
+    _Note: `nodemon.json` already exists, so the `dev` script will use it automatically._
 
 2.  **Build the project:**
     Run the build script to compile the TypeScript code into JavaScript in the `dist` directory (as configured in `tsconfig.json`).
+
     ```bash
     npm run build
     ```
@@ -173,6 +181,7 @@ Even for a simple server, it's crucial to implement foundational security measur
 
 1.  **Install Security Dependencies:**
     Install `helmet` to secure HTTP headers and `express-rate-limit` for protection against brute-force or DoS attacks.
+
     ```bash
     npm install helmet express-rate-limit
     ```
@@ -181,9 +190,9 @@ Even for a simple server, it's crucial to implement foundational security measur
     Modify `/home/ssuppe/vscode/goodnumbers-workspace/goodnumbers/src/index.ts` to include these security middlewares. They should be applied before your routes.
 
     ```typescript
-    import express from 'express';
-    import helmet from 'helmet';
-    import rateLimit from 'express-rate-limit';
+    import express from "express";
+    import helmet from "helmet";
+    import rateLimit from "express-rate-limit";
 
     const app = express();
     const PORT = process.env.PORT || 3000;
@@ -206,18 +215,18 @@ Even for a simple server, it's crucial to implement foundational security measur
     app.use(express.json());
 
     // --- Routes ---
-    app.get('/health', (req, res) => {
-      res.status(200).json({ status: 'ok' });
+    app.get("/health", (req, res) => {
+      res.status(200).json({ status: "ok" });
     });
 
     // --- Server Startup ---
-    if (require.main === module) {
-        app.listen(PORT, () => {
-            console.log(`Server is running on http://localhost:${PORT}`);
-        });
+    if (process.env.NODE_ENV !== "test") {
+      app.listen(PORT, () => {
+        console.log(`Server is running on http://localhost:${PORT}`);
+      });
     }
 
-    export { app };
+    export default app;
     ```
 
 3.  **Run Dependency Security Audit:**
@@ -232,6 +241,7 @@ Even for a simple server, it's crucial to implement foundational security measur
 Before committing, ensure the code meets all project quality standards.
 
 1.  **Run all checks:**
+
     ```bash
     # Run linter (assuming eslint is configured)
     npx eslint . --ext .ts
@@ -242,6 +252,7 @@ Before committing, ensure the code meets all project quality standards.
     # Run tests (they should still pass with the new middleware)
     npm test
     ```
+
     All checks must pass before you proceed.
 
 2.  **Commit the changes:**
@@ -256,15 +267,18 @@ Before committing, ensure the code meets all project quality standards.
 Finally, push your code and open a Pull Request for review.
 
 1.  **Push your branch to the remote repository:**
+
     ```bash
     git push origin feat/1-basic-express-server
     ```
 
 2.  **Create the Pull Request:**
     Use the `gh` CLI to create the PR, targeting the `develop` branch.
+
     ```bash
     gh pr create --base develop --title "feat(server): add basic express server with health check and security hardening" --body-file -
     ```
+
     When prompted for the body, paste the following template and fill it out.
 
     ```markdown
@@ -273,6 +287,7 @@ Finally, push your code and open a Pull Request for review.
     ## Summary
 
     This PR establishes the initial Express.js server as per Phase 1, Task 3. It includes:
+
     - A basic Express application setup in `src/index.ts`.
     - A public `/health` endpoint that returns a 200 OK status.
     - An integration test using `supertest` to verify the `/health` endpoint.
