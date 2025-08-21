@@ -125,4 +125,109 @@ router.get('/status/:id', protect, async (req, res) => {
   }
 });
 
+// Secure Zod schema for updating a journal.
+const updateJournalSchema = z.object({
+  weeklyVibe: z.string().optional(),
+  influencingFactors: z.array(z.string()).optional(),
+  goalsForNextWeek: z.string().optional(),
+  clusterNotes: z.record(z.string().cuid2(), z.string()).optional(),
+});
+
+// PUT /api/journals/:id - Update a journal entry and its notes
+router.put('/:id', protect, async (req, res) => {
+  try {
+    const paramsValidation = paramsSchema.safeParse(req.params);
+    if (!paramsValidation.success) {
+      return res
+        .status(400)
+        .json({
+          error: 'Invalid request parameter',
+          details: paramsValidation.error.errors,
+        });
+    }
+    const { id } = paramsValidation.data;
+    const userId = req.auth.user.id;
+
+    const bodyValidation = updateJournalSchema.safeParse(req.body);
+    if (!bodyValidation.success) {
+      return res
+        .status(400)
+        .json({
+          error: 'Invalid request body',
+          details: bodyValidation.error.errors,
+        });
+    }
+    const { clusterNotes, ...journalData } = bodyValidation.data;
+
+    await prisma.$transaction(async (tx) => {
+      const journalUpdateResult = await tx.journal.updateMany({
+        where: { id: id, userId: userId },
+        data: journalData,
+      });
+
+      if (journalUpdateResult.count === 0) {
+        throw new Error('Journal not found or permission denied');
+      }
+
+      if (clusterNotes) {
+        for (const clusterId in clusterNotes) {
+          await tx.glycemicEventCluster.updateMany({
+            where: { id: clusterId, journalId: id },
+            data: { userNotes: clusterNotes[clusterId] },
+          });
+        }
+      }
+    });
+
+    const updatedJournal = await prisma.journal.findUnique({
+      where: { id },
+      include: { clusters: true },
+    });
+
+    res.status(200).json(updatedJournal);
+  } catch (error) {
+    console.error(
+      `[ERROR] Failed to update journal ${req.params.id} for user ${req.auth.user.id}:`,
+      error,
+    );
+    if (error.message.includes('permission denied')) {
+      return res.status(404).json({ error: 'Journal not found' });
+    }
+    res.status(500).json({ error: 'An internal server error occurred.' });
+  }
+});
+
+// DELETE /api/journals/:id - Delete a journal entry
+router.delete('/:id', protect, async (req, res) => {
+  try {
+    const validation = paramsSchema.safeParse(req.params);
+    if (!validation.success) {
+      return res
+        .status(400)
+        .json({
+          error: 'Invalid request parameter',
+          details: validation.error.errors,
+        });
+    }
+    const { id } = validation.data;
+    const userId = req.auth.user.id;
+
+    const deleteResult = await prisma.journal.deleteMany({
+      where: { id: id, userId: userId },
+    });
+
+    if (deleteResult.count === 0) {
+      return res.status(404).json({ error: 'Journal not found' });
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    console.error(
+      `[ERROR] Failed to delete journal ${req.params.id} for user ${req.auth.user.id}:`,
+      error,
+    );
+    res.status(500).json({ error: 'An internal server error occurred.' });
+  }
+});
+
 export const journalsRouter = router;
