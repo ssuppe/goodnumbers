@@ -35,7 +35,7 @@ describe('Encryption Utility', () => {
   it('should throw an error if trying to decrypt a malformed payload', () => {
     const malformedPayload = 'this:is:not:valid';
     expect(() => decrypt(malformedPayload)).toThrow(
-      'Invalid encrypted payload format.',
+      'Invalid encrypted payload format. Expected "iv:authTag:ciphertext".',
     );
   });
 

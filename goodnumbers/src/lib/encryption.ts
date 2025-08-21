@@ -39,6 +39,7 @@ export function encrypt(plaintext: string): string {
   }
 
   const iv = randomBytes(IV_LENGTH_BYTES);
+  // DOCS UPDATE: Explicitly setting the authTagLength is a security best practice.
   const cipher = createCipheriv(ALGORITHM, key, iv, {
     authTagLength: AUTH_TAG_LENGTH_BYTES,
   });
@@ -78,6 +79,7 @@ export function decrypt(encryptedPayload: string): string {
 
   // GCM uses the authentication tag to verify the integrity of the data.
   // If the ciphertext or IV was tampered with, this step will throw an error.
+  // DOCS UPDATE: Explicitly setting the authTagLength is a security best practice.
   const decipher = createDecipheriv(ALGORITHM, key, iv, {
     authTagLength: AUTH_TAG_LENGTH_BYTES,
   });
