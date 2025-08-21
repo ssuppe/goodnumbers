@@ -110,11 +110,12 @@ route, and a
 comprehensive
 helmet
 CSP configuration.
+```typescript
 // goodnumbers/src/index.ts
 import "dotenv/config";
 import express from "express";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import rateLimit from "express-rate-limiter";
 import { ExpressAuth } from "@auth/express";
 import { authConfig } from "./lib/auth.ts"; // Note: .ts extension for ESM
 
@@ -122,32 +123,33 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // --- Security Middleware ---
+// SECURITY REQUIREMENT: Comprehensive CSP configuration using helmet.
 app.use(
-helmet({
-contentSecurityPolicy: {
-directives: {
-defaultSrc: ["'self'"],
-scriptSrc: ["'self'"], // Add CDN domains if you use them
-styleSrc: ["'self'", "'unsafe-inline'"], // Add CDNs if needed. 'unsafe-inline' is often needed for some libraries.
-imgSrc: ["'self'", "https://authjs.dev", "https://lh3.googleusercontent.com"], // Auth.js provider images
-connectSrc: [
-"'self'",
-"https://accounts.google.com",
-"https://oauth2.googleapis.com",
-"https://www.googleapis.com"
-], // For Google OAuth communication
-formAction: ["'self'", "https://accounts.google.com"], // For Auth.js form submissions and Google OAuth
-frameSrc: ["'self'", "https://accounts.google.com"], // For Google OAuth iframes
-},
-},
-})
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"], // Add CDN domains if you use them
+        styleSrc: ["'self'", "'unsafe-inline'"], // Add CDNs if needed. 'unsafe-inline' is often needed for some libraries.
+        imgSrc: ["'self'", "https://authjs.dev", "https://lh3.googleusercontent.com"], // Auth.js provider images
+        connectSrc: [
+          "'self'",
+          "https://accounts.google.com",
+          "https://oauth2.googleapis.com",
+          "https://www.googleapis.com"
+        ], // For Google OAuth communication
+        formAction: ["'self'", "https://accounts.google.com"], // For Auth.js form submissions and Google OAuth
+        frameSrc: ["'self'", "https://accounts.google.com"], // For Google OAuth iframes
+      },
+    },
+  })
 );
 
 const limiter = rateLimit({
-windowMs: 15 60 1000, // 15 minutes
-max: 100, // Limit each IP to 100 requests per windowMs
-standardHeaders: true,
-legacyHeaders: false,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 
@@ -156,39 +158,40 @@ app.use(limiter);
 app.use(express.static("public"));
 
 // --- Auth.js Middleware ---
-// All requests to /api/auth/\* will be handled by Auth.js
+// All requests to /api/auth/* will be handled by Auth.js
 app.use("/api/auth", ExpressAuth(authConfig)); // Note: No wildcard needed here
 
 // --- API Routes ---
 // Example placeholder for future API routes
 app.get("/api/protected-data", (req, res) => {
-// In a real scenario, you'd check req.auth here to ensure user is logged in
-res.json({ message: "This is protected data." });
+  // In a real scenario, you'd check req.auth here to ensure user is logged in
+  res.json({ message: "This is protected data." });
 });
 
 // --- Health Check Endpoint ---
 app.get("/health", (req, res) => {
-res.status(200).json({ status: "ok" });
+  res.status(200).json({ status: "ok" });
 });
 
 // --- Global Error Handler ---
 app.use(
-(
-err: Error,
-req: express.Request,
-res: express.Response,
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-next: express.NextFunction
-) => {
-console.error("--- Global Error Handler Caught an Error ---");
-console.error(err.stack);
-res.status(500).send("Something broke!");
-}
+  (
+    err: Error,
+    req: express.Request,
+    res: express.Response,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    next: express.NextFunction
+  ) => {
+    console.error("--- Global Error Handler Caught an Error ---");
+    console.error(err.stack);
+    res.status(500).send("Something broke!");
+  }
 );
 
 app.listen(port, () => {
-console.log(Server is running at http://localhost:${port});
+  console.log(`Server is running at http://localhost:${port}`);
 });
+```
 
 Finally, create the
 public
@@ -214,21 +217,21 @@ echo '<!DOCTYPE html>
   </body>
   </html>' > goodnumbers/public/index.html
  
- #### Sub-step 3.2: Configuration - Create the Allowlist File
+#### Sub-step 3.2: Configuration - Create the Allowlist File
  
- We need a place to store the email addresses of our approved beta testers.
+We need a place to store the email addresses of our approved beta testers.
  
- First, create a new directory named 
+First, create a new directory named 
 config
  inside the 
 goodnumbers/
- directory. Then, create the 
+directory. Then, create the 
 allowed_emails.txt
  file inside it.
   Create the directory from the workspace root
   mkdir goodnumbers/config
  
- Now, create the file 
+Now, create the file 
 goodnumbers/config/allowed_emails.txt
  and add your Google email address and one or two other test emails. This is crucial for
      testing later.
@@ -255,6 +258,7 @@ callback to check if a user's email is on the list.
 Replace the entire contents of
 goodnumbers/src/lib/auth.ts
 with the code below. The code includes detailed comments to explain each new section.
+```typescript
 // goodnumbers/src/lib/auth.ts
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
@@ -262,126 +266,152 @@ import type { JWT } from "@auth/core/jwt";
 import type { Session, DefaultUser } from "@auth/core/types";
 import GoogleProvider from "@auth/express/providers/google";
 
-import fs from "fs/promises";
-import \* as path from "path"; // Corrected: import as namespace for ESM compatibility
+import { readFile } from "fs/promises"; // Updated: Named import for readFile
+import * as path from "path";
 import { fileURLToPath } from "url";
 
 const prisma = new PrismaClient();
 
 // --- File path and cache configuration ---
-const **filename = fileURLToPath(import.meta.url);
-const **dirname = path.dirname(\_\_filename);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const ALLOWLIST_FILE_PATH = path.join(
-\_\_dirname,
-"../../config/allowed_emails.txt"
+  __dirname,
+  "../../config/allowed_emails.txt"
 );
 
 // Cache variables to store the allowlist in memory.
 let cachedAllowedEmails: Set<string> | null = null;
 let lastReadTime: number = 0;
-const CACHE_DURATION_MS = 5 60 1000; // Cache for 5 minutes
+const CACHE_DURATION_MS = 5 * 60 * 1000; // Cache for 5 minutes
 
-/\*\*
-_ --- NEW: Utility function to read and cache the email allowlist ---
-_ This function reads the allowed emails from the configuration file.
-_ It uses a simple in-memory cache to avoid excessive file I/O.
-_ @returns A Promise that resolves to a Set of allowed email strings, normalized to lowercase.
-\*/
-async function getAllowedEmails(): Promise<Set<string>> {
-const now = Date.now();
-if (cachedAllowedEmails && now - lastReadTime < CACHE_DURATION_MS) {
-console.log("[Auth.js] Using cached email allowlist.");
-return cachedAllowedEmails;
-}
+/**
+ * --- NEW: Utility function to read and cache the email allowlist ---
+ * This function reads the allowed emails from the configuration file.
+ * It uses a simple in-memory cache to avoid excessive file I/O.
+ * @returns A Promise that resolves to a Set of allowed email strings, normalized to lowercase.
+ */
+export async function getAllowedEmails(): Promise<Set<string>> {
+  const now = Date.now();
+  if (cachedAllowedEmails && now - lastReadTime < CACHE_DURATION_MS) {
+    console.log("[Auth.js] Using cached email allowlist.");
+    return cachedAllowedEmails;
+  }
 
-    try {
-      console.log([Auth.js] Reading allowlist from: ${ALLOWLIST_FILE_PATH});
-      const data = await fs.readFile(ALLOWLIST_FILE_PATH, "utf8");
-      const emails = data
-        .split("
+  try {
+    console.log(`[Auth.js] Reading allowlist from: ${ALLOWLIST_FILE_PATH}`);
+    const data = await readFile(ALLOWLIST_FILE_PATH, "utf8"); // Updated: Use named import readFile
+    const emails = data
+      .split("\n")
+      .map((line) => line.trim().toLowerCase()) // SECURITY: Normalize to lowercase for case-insensitive matching.
+      .filter((line) => line.length > 0 && !line.startsWith("#"));
 
-")
-.map((line) => line.trim().toLowerCase()) // SECURITY: Normalize to lowercase for case-insensitive matching.
-.filter((line) => line.length > 0 && !line.startsWith("#"));
-
-      // Using a Set provides a minor performance boost for the .has() check.
-      cachedAllowedEmails = new Set(emails);
-      lastReadTime = now;
-      console.log([Auth.js] SUCCESS: Loaded ${emails.length} allowed emails.);
-      return cachedAllowedEmails;
-    } catch (error) {
-      console.error(
-        [Auth.js] CRITICAL ERROR: Could not read allowlist file at ${ALLOWLIST_FILE_PATH}. Defaulting to deny all access.,
-        error
-      );
-      // SECURITY: If the file cannot be read, we must default to a secure state: deny all access.
-      cachedAllowedEmails = new Set(); // Cache an empty set to prevent further read attempts
-      lastReadTime = now;
-      return cachedAllowedEmails;
-    }
-
+    // Using a Set provides a minor performance boost for the .has() check.
+    cachedAllowedEmails = new Set(emails);
+    lastReadTime = now;
+    console.log(`[Auth.js] SUCCESS: Loaded ${emails.length} allowed emails.`);
+    return cachedAllowedEmails;
+  } catch (error) {
+    console.error(
+      `[Auth.js] CRITICAL ERROR: Could not read allowlist file at ${ALLOWLIST_FILE_PATH}. Defaulting to deny all access.`, error
+    );
+    // SECURITY: If the file cannot be read, we must default to a secure state: deny all access.
+    cachedAllowedEmails = new Set(); // Cache an empty set to prevent further read attempts
+    lastReadTime = now;
+    return cachedAllowedEmails;
+  }
 }
 
 export const authConfig = {
-adapter: PrismaAdapter(prisma),
-providers: [
-GoogleProvider({
-clientId: process.env.GOOGLE_CLIENT_ID as string,
-clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-authorization: { params: { prompt: "select_account" } }, // Added: Forces Google account selection
-}),
-],
-session: {
-strategy: "jwt",
-},
-callbacks: {
-/\*\*
-_ --- signIn callback for email allowlist validation ---
-_ This callback is executed every time a user attempts to sign in via any provider.
-\*/
-async signIn({ user, account, profile }) {
-const userEmail = profile?.email;
+  adapter: PrismaAdapter(prisma),
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      authorization: { params: { prompt: "select_account" } }, // Added: Forces Google account selection
+    }),
+  ],
+  session: {
+    strategy: "jwt",
+  },
+  callbacks: {
+    /**
+     * --- signIn callback for email allowlist validation ---
+     * This callback is executed every time a user attempts to sign in via any provider.
+     */
+    async signIn({ user, profile }: { user: User; profile?: Profile }) {
+      const userId = user?.id; // Added: Capture userId for PII-safe logging
+      const userEmail = profile?.email;
 
-        if (!userEmail) {
-          console.log(
-            "[Auth.js] DENIED: Sign-in attempt failed because no email was returned from provider."
-          );
-          return false;
-        }
+      if (!userEmail || !userId) { // Updated: Check for userId as well
+        console.log(
+          "[Auth.js] DENIED: Sign-in attempt failed, no email or user ID from provider/adapter."
+        );
+        return false;
+      }
 
-        // TODO: Before production, remove the logging of PII (userEmail) to protect user privacy.
-        // Replace with anonymous logging, e.g., "Sign-in attempt for an allowlisted user succeeded."
-        console.log([Auth.js] INFO: Attempting sign-in for user: ${userEmail});
-        const allowedEmails = await getAllowedEmails();
+      // PII-SAFE LOGGING: Log the user ID, not the email, to protect user privacy.
+      console.log(`[Auth.js] INFO: Attempting sign-in for user ID: ${userId}`);
+      const allowedEmails = await getAllowedEmails();
 
-        // SECURITY: Normalize the user\'s email to lowercase for a case-insensitive check.
-        const isAllowed = allowedEmails.has(userEmail.toLowerCase());
+      // SECURITY: Normalize the user\'s email to lowercase for a case-insensitive check.
+      const isAllowed = allowedEmails.has(userEmail.toLowerCase());
 
-        if (isAllowed) {
-          console.log([Auth.js] ALLOWED: User is in the allowlist.);
-          return true;
-        } else {
-          console.log([Auth.js] DENIED: User is NOT in the allowlist.);
-          return false;
-        }
+      if (!isAllowed) { // Updated: Check if NOT allowed first for early exit
+        console.log(`[Auth.js] DENIED: User with ID ${userId} is NOT in the allowlist.`); // Updated: PII-safe logging
+        return false;
+      }
+
+      // --- NEW LOGIC FOR AGREEMENT GATE (from PHASE2_TASK2.md) ---
+      // If the user is on the allowlist, we ensure their agreement flag is set to true.
+      // This is idempotent: it works for newly created users and safely re-asserts
+      // for existing users on every login.
+      try {
+        // ROBUSTNESS IMPROVEMENT: Update the user by their primary key (`id`) instead of email.
+        // This is more direct and less ambiguous than relying on a non-primary key field.
+        await prisma.user.update({
+          where: { id: userId },
+          data: { agreementsSigned: true },
+        });
+
+        // PRIVACY IMPROVEMENT: Log the user ID, not the email.
+        console.log(
+          `[Auth.js] INFO: Ensured agreementsSigned is true for user ID ${userId}.`
+        );
+      } catch (error) {
+        // SECURITY IMPROVEMENT: Log a controlled error message and avoid logging the raw error object,
+        // which could contain sensitive information.
+        console.error(
+          `[Auth.js] CRITICAL: Failed to update agreementsSigned for user ID ${userId}. Denying login.`, { errorMessage: (error as Error).message }
+        );
+        // SECURITY: If we can't update the database to confirm agreement,
+        // we must not allow the user to log in.
+        return false;
+      }
+      // --- END OF NEW LOGIC ---
+
+      console.log(
+        `[Auth.js] ALLOWED: User with ID ${userId} is in the allowlist.`
+      ); // Updated: PII-safe logging
+      return true; // Allow sign-in
     },
+
     async jwt({ token, user }: { token: JWT; user?: DefaultUser }) {
       if (user && user.id) {
         token.id = user.id;
       }
-
-return token;
-},
-async session({ session, token }: { session: Session; token: JWT }) {
-if (session.user && token.id) {
-
-session.user.id = token.id as string;
-}
-return session;
-},
-},
+      return token;
+    },
+    async session({ session, token }: { session: Session; token: JWT }) {
+      if (session.user && token.id) {
+        session.user.id = token.id as string;
+      }
+      return session;
+    },
+  },
 };
+```
 
 ### Step 4: Verification and Manual Testing
 
@@ -406,7 +436,7 @@ Now, rigorously test the changes to ensure everything works as expected. Restart
 2.  **Action:** Open your browser in an incognito window and navigate to `http://localhost:3000/api/auth/signin`. You should see the Auth.js login page.
 3.  **Action:** Attempt to sign in with the Google account corresponding to your allowed email.
 4.  **Expected Result:** You should be successfully authenticated and redirected into the application (e.g., to the dashboard).
-5.  **Verification:** Check your server console logs. You should see a message similar to: `[Auth.js] ALLOWED: User is in the allowlist.`
+5.  **Verification:** Check your server console logs. You should see a message similar to: `[Auth.js] ALLOWED: User with ID <user-id> is in the allowlist.`
 
 **Test Case 2: Negative Test (Denied User)**
 
@@ -414,7 +444,7 @@ Now, rigorously test the changes to ensure everything works as expected. Restart
 2.  **Action:** Open a new incognito window and navigate to `http://localhost:3000/api/auth/signin`.
 3.  **Action:** Attempt to sign in with the disallowed Google account.
 4.  **Expected Result:** After the Google login screen, you should be redirected back to an Auth.js error page stating that access is denied. You should **not** be able to access the application.
-5.  **Verification:** Check your server console logs. You should see a message similar to: `[Auth.js] DENIED: User is NOT in the allowlist.`
+5.  **Verification:** Check your server console logs. You should see a message similar to: `[Auth.js] DENIED: User with ID <user-id> is NOT in the allowlist.`
 
 **Test Case 3: Security Test (Missing Allowlist File)**
 
@@ -428,77 +458,194 @@ This test ensures our "deny by default" security posture is working.
 6.  **Verification:** Check the server console logs. You should see the critical error message: `[Auth.js] CRITICAL ERROR: Could not read allowlist file...` followed by the `DENIED` message. This confirms the secure-by-default logic is correct.
 7.  **Cleanup:** Don't forget to stop the server and rename the file back to `allowed_emails.txt`.
 
-## 3.4 Troubleshooting Common Issues
+#### Sub-step 4.1: Automated Testing for Allowlist Logic
 
-During the implementation of this task, several common issues were encountered. This section provides guidance on diagnosing and resolving them.
+**SECURITY REQUIREMENT:** To ensure the robustness and prevent regressions in the security-critical email allowlist logic, a dedicated integration test suite must be implemented.
 
-### Module Not Found Errors (`ERR_MODULE_NOT_FOUND`)
+Create a new file `goodnumbers/tests/integration/auth-allowlist.test.ts` with the following content:
 
-*   **Symptom:** Server crashes with `Error: Cannot find package '@auth/express'` or `Error: Cannot find module './lib/auth'` (or similar).
-*   **Diagnosis:**
-    *   **Missing Dependencies:** Ensure all required `npm` packages (e.g., `@auth/express`, `@auth/prisma-adapter`, `next-auth`) are installed by running `npm install` in the `goodnumbers` directory.
-    *   **ESM Module Resolution:** If using ES Modules (`"type": "module"` in `package.json`), ensure local imports include the `.ts` file extension (e.g., `import { authConfig } from "./lib/auth.ts";`).
-    *   **Incorrect `path` Import:** Verify that the `path` module is correctly imported as a namespace for ESM compatibility (`import * as path from "path";`).
+```typescript
+// goodnumbers/tests/integration/auth-allowlist.test.ts
+import 'dotenv/config';
+import {
+  jest,
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  afterEach,
+} from '@jest/globals';
 
-### `path-to-regexp` Errors (`TypeError: Missing parameter name`)
+// Mock the 'fs/promises' module before any other imports (TOP LEVEL)
+jest.unstable_mockModule('fs/promises', () => ({
+  readFile: jest.fn(),
+}));
 
-*   **Symptom:** Server crashes with errors originating from `path-to-regexp` when defining Express routes.
-*   **Diagnosis:** This typically occurs when wildcards (`*`) in route paths are not named.
-*   **Resolution:** Ensure that any wildcards in `app.use()` or `app.get()` routes are named (e.g., `"/api/auth/*all"`). However, note that `ExpressAuth` expects its base path to be exactly `"/api/auth"` without wildcards.
+// Dynamically import modules after mocks are set (TOP LEVEL)
+// These will be re-imported in beforeEach after resetModules
+const { readFile } = await import('fs/promises'); // Keep this one here, it's mocked
 
-### 404 Not Found at Root (`Cannot GET /`)
+// Cast the mocked function to make TypeScript happy
+let mockedReadFile: jest.Mock; // Declare with `let` so it can be assigned in beforeEach
 
-*   **Symptom:** Accessing `http://localhost:3000` results in a 404 error.
-*   **Diagnosis:** The `public` directory, which serves static files, is likely missing or empty.
-*   **Resolution:** Ensure the `goodnumbers/public` directory exists and contains a basic `index.html` file.
+describe('Auth.js signIn Callback (Allowlist Logic)', () => { // OPENING DESCRIBE BLOCK
+  // This user will be created by the Prisma adapter during the signIn call
+  const testUser = {
+    id: 'test-user-id-123',
+    email: 'test.user@example.com',
+    name: 'Test User',
+  };
 
-### Content Security Policy (CSP) Violations
+  // Spies for Prisma methods - Declare with `let`
+  let prismaUserUpdateSpy: jest.SpyInstance;
+  let prismaUserDeleteManySpy: jest.SpyInstance;
+  let prismaDisconnectSpy: jest.SpyInstance;
 
-*   **Symptom:** Browser console shows `Refused to load the image...` (`img-src`) or `Refused to send form data...` (`form-action`).
-*   **Diagnosis:** `helmet`'s default CSP is too restrictive for Auth.js.
-*   **Resolution:** Configure `helmet`'s `contentSecurityPolicy` directives to explicitly allow necessary sources. Refer to the `index.ts` code for the comprehensive configuration. Common directives to check: `imgSrc` (for `https://authjs.dev`, `https://lh3.googleusercontent.com`), `connectSrc` (for Google OAuth domains), `formAction` (for `'self'` and `https://accounts.google.com`), and `frameSrc` (for Google OAuth iframes).
+  // Declare authConfig and prisma with `let` so they can be assigned in beforeEach
+  let authConfig: any; // Use `any` for now to avoid complex typing
+  let prisma: any; // Use `any` for now to avoid complex typing
 
-### Server-Side `TypeError: fetch failed`
+  beforeAll(() => {
+    // Spies will be created in beforeEach after modules are reset
+  });
 
-*   **Symptom:** Server crashes with `TypeError: fetch failed` when attempting to sign in, often accompanied by a 500 status code.
-*   **Diagnosis:** This indicates a failure in the Node.js server to make an outgoing HTTPS request to Google's OAuth endpoints. This is often due to incorrect parameters being sent to Google, or a misconfiguration in the Google Cloud Console.
-*   **Diagnostic Steps:**
-    *   Run `curl -v https://oauth2.googleapis.com/token` from the *exact same terminal and environment* where your Node.js server is running. Look for network errors (`Could not resolve host`, `Connection timed out`, `SSL certificate problem`) or HTTP error codes (e.g., 400, 404 from Google).
-    *   **Verify Google OAuth Credentials:** Double-check `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, "Authorized JavaScript origins" (`http://localhost:3000`), and "Authorized redirect URIs" (`http://localhost:3000/api/auth/callback/google`) in your Google Cloud Console.
-    *   **Enable Google APIs:** Ensure necessary Google APIs (e.g., Google People API) are enabled in your Google Cloud Project.
-*   **Resolution:** Address the underlying network issue or Google Cloud Console configuration.
+  beforeEach(async () => { // Make beforeEach async
+    jest.resetModules(); // Reset modules to clear the cache in auth.ts
 
-### Mocking `fs/promises` or other built-in modules in tests
-
-*   **Symptom:** Tests that rely on mocking built-in Node.js modules (like `fs/promises` to test the allowlist logic) fail, and the console logs show that the real implementation of the module is being called instead of the mock.
-*   **Diagnosis:** This is a known issue when using Jest with ES Modules (`--experimental-vm-modules`). The standard `jest.mock()` does not work reliably in this environment.
-*   **Resolution:** Use the `jest.unstable_mockModule()` API along with dynamic `import()`.
-
-    This ensures the mock is set up before the module is imported by your code.
-
-    **Example (`auth.test.ts`):**
-
-    ```typescript
-    import { jest, describe, it, expect } from '@jest/globals';
-
-    // Mock fs/promises *before* importing the auth module
+    // RE-APPLY MOCK BEFORE IMPORTING MODULES THAT USE IT
     jest.unstable_mockModule('fs/promises', () => ({
       readFile: jest.fn(),
     }));
 
-    // Dynamically import the modules
-    const { readFile } = await import('fs/promises');
-    const { authConfig, __test_reset_cache } = await import('../../src/lib/auth');
+    // Re-import modules after reset
+    const authModule = await import('../../src/lib/auth');
+    authConfig = authModule.authConfig;
 
-describe('signIn callback', () => {
-      it('should allow a user on the allowlist', async () => {
-        // Configure the mock for this test
-        (readFile as jest.Mock).mockResolvedValue('user@example.com\n');
+    const dbModule = await import('../../src/db');
+    prisma = dbModule.prisma;
 
-        // ... rest of the test
-      });
+    // Re-initialize mockedReadFile after module reset
+    const fsPromisesModule = await import('fs/promises');
+    mockedReadFile = fsPromisesModule.readFile as jest.Mock;
+
+    // Re-initialize spies after modules are re-imported
+    prismaUserUpdateSpy = jest.spyOn(prisma.user, 'update');
+    prismaUserDeleteManySpy = jest.spyOn(prisma.user, 'deleteMany');
+    prismaDisconnectSpy = jest.spyOn(prisma, '$disconnect');
+  });
+
+  afterEach(async () => {
+    // Reset mocks and clear database after each test
+    mockedReadFile.mockReset();
+    prismaUserUpdateSpy.mockReset(); // Reset spy
+    prismaUserDeleteManySpy.mockReset(); // Reset spy
+    prismaDisconnectSpy.mockReset(); // Reset spy
+  });
+
+  afterAll(async () => {
+    // Restore original implementations after all tests
+    prismaUserUpdateSpy.mockRestore();
+    prismaUserDeleteManySpy.mockRestore();
+    prismaDisconnectSpy.mockRestore();
+  });
+
+  it('should return true and allow sign-in for a user on the allowlist', async () => {
+    // Arrange: Mock the allowlist file to contain the user\'s email
+    mockedReadFile.mockResolvedValue('test.user@example.com\nanother@example.com');
+    prismaUserUpdateSpy.mockResolvedValue({
+      id: testUser.id,
+      email: testUser.email,
+      agreementsSigned: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
-    ```
+    
+    const signInParams = {
+      user: testUser,
+      profile: { email: testUser.email! },
+    };
+
+    // Act
+    // @ts-expect-error: Simulating partial Auth.js callback parameters for testing
+    const result = await authConfig.callbacks.signIn(signInParams);
+
+    // Assert
+    expect(result).toBe(true);
+    expect(prismaUserUpdateSpy).toHaveBeenCalledWith({
+      where: { id: testUser.id },
+      data: { agreementsSigned: true },
+    });
+  });
+
+  it('should perform a case-insensitive check and allow a user', async () => {
+    // Arrange: The allowlist has a different case than the user\'s email
+    mockedReadFile.mockResolvedValue('Test.User@example.com\n');
+    prismaUserUpdateSpy.mockResolvedValue({
+      id: testUser.id,
+      email: testUser.email,
+      agreementsSigned: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const signInParams = {
+      user: testUser,
+      profile: { email: 'test.user@example.com' },
+    };
+
+    // Act
+    // @ts-expect-error
+    const result = await authConfig.callbacks.signIn(signInParams);
+
+    // Assert
+    expect(result).toBe(true);
+    expect(prismaUserUpdateSpy).toHaveBeenCalledWith({
+      where: { id: testUser.id },
+      data: { agreementsSigned: true },
+    });
+  });
+
+  it('should return false and deny sign-in for a user NOT on the allowlist', async () => {
+    // Arrange: The allowlist does not contain the user\'s email
+    mockedReadFile.mockResolvedValue('another.user@example.com');
+    // No need to mock prisma.user.update here as it should not be called
+
+    const signInParams = {
+      user: testUser,
+      profile: { email: testUser.email! },
+    };
+
+    // Act
+    // @ts-expect-error
+    const result = await authConfig.callbacks.signIn(signInParams);
+
+    // Assert
+    expect(result).toBe(false);
+    expect(prismaUserUpdateSpy).not.toHaveBeenCalled(); // Ensure update is not called
+  });
+
+  it('should return false and deny all sign-ins if the allowlist file cannot be read', async () => {
+    // Arrange: Mock the file read to throw an error
+    mockedReadFile.mockRejectedValue(new Error('File not found'));
+    // No need to mock prisma.user.update here as it should not be called
+    
+    // We don\'t even need to create a user, as it should fail for everyone
+    const signInParams = {
+      user: testUser,
+      profile: { email: testUser.email! },
+    };
+
+    // Act
+    // @ts-expect-error
+    const result = await authConfig.callbacks.signIn(signInParams);
+
+    // Assert
+    expect(result).toBe(false);
+    expect(prismaUserUpdateSpy).not.toHaveBeenCalled(); // Ensure update is not called
+  });
+});
+```
 
 ### Persistent Google Session / Account Switching Issues
 
@@ -573,3 +720,5 @@ The implementation reads approved emails from `goodnumbers/config/allowed_emails
 ```
 
 Once the PR is created, please post the link in the team's communication channel for review.
+
+```

@@ -21,7 +21,30 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // --- Security Middleware ---
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: [
+          "'self'",
+          'https://authjs.dev',
+          'https://lh3.googleusercontent.com',
+        ],
+        connectSrc: [
+          "'self'",
+          'https://accounts.google.com',
+          'https://oauth2.googleapis.com',
+          'https://www.googleapis.com',
+        ],
+        formAction: ["'self'", 'https://accounts.google.com'],
+        frameSrc: ["'self'", 'https://accounts.google.com'],
+      },
+    },
+  }),
+);
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,

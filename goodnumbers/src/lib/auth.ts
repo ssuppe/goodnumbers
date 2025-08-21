@@ -4,7 +4,7 @@ import type { JWT } from '@auth/core/jwt';
 import type { Session, DefaultUser, User, Profile } from '@auth/core/types';
 import GoogleProvider from '@auth/express/providers/google';
 
-import fs from 'fs/promises';
+import { readFile } from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { prisma } from '../db'; // Import the shared Prisma client
@@ -25,7 +25,7 @@ export async function getAllowedEmails(): Promise<Set<string>> {
     return cachedAllowedEmails;
   }
   try {
-    const data = await fs.readFile(ALLOWLIST_FILE_PATH, 'utf8');
+    const data = await readFile(ALLOWLIST_FILE_PATH, 'utf8');
     const emails = data
       .split('\n')
       .map((line) => line.trim().toLowerCase())
@@ -99,6 +99,7 @@ export const authConfig = {
         console.log(
           `[Auth.js] INFO: Ensured agreementsSigned is true for user ID ${userId}.`,
         );
+        return true; // ALLOW LOGIN
       } catch (error) {
         // SECURITY IMPROVEMENT: Log a controlled error message and avoid logging the raw error object,
         // which could contain sensitive information.
@@ -115,6 +116,8 @@ export const authConfig = {
       console.log(
         `[Auth.js] ALLOWED: User with ID ${userId} is in the allowlist.`,
       );
+      // This line should ideally not be reached if the above logic is correct
+      // It's kept for now to match the original structure, but will be removed if redundant
       return true; // Allow sign-in
     },
 
