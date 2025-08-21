@@ -14,6 +14,8 @@ We will follow a strict Test-Driven Development (TDD) methodology. For each piec
 
 Please follow all conventions outlined in `docs/DEVELOP-PROCESS.md` and `GEMINI.md`.
 
+**Note on Best Practices and Test Expectations:** This document emphasizes security best practices. Test expectations for unauthenticated requests to protected endpoints will align with `401 Unauthorized` responses, as authentication middleware will be prioritized over CSRF protection middleware in the application's `index.ts`.
+
 ## 2. Pre-Implementation Setup
 
 ### 2.1. Create a GitHub Issue
@@ -197,7 +199,7 @@ Create the router. In this step, we will also establish our patterns for **param
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma";
-import { isAuthenticated } from "../middleware/auth";
+import { protect } from "../middleware/auth";
 
 const router = Router();
 
@@ -207,7 +209,7 @@ const paramsSchema = z.object({
 });
 
 // GET /api/journals - Fetch all journals for the logged-in user
-router.get("/", isAuthenticated, async (req, res) => {
+router.get("/", protect, async (req, res) => {
   try {
     const userId = req.session.user.id;
     const journals = await prisma.journal.findMany({
@@ -227,7 +229,7 @@ router.get("/", isAuthenticated, async (req, res) => {
 });
 
 // GET /api/journals/:id - Fetch a single journal by its ID
-router.get("/:id", isAuthenticated, async (req, res) => {
+router.get("/:id", protect, async (req, res) => {
   try {
     // Parameter Validation: Ensure the ID is a valid CUID before querying.
     const validation = paramsSchema.safeParse(req.params);
@@ -377,8 +379,6 @@ Update the test file to handle the new CSRF protection flow.
 // file: goodnumbers-workspace/src/server/routes/journals.test.ts
 // Add these new describe blocks to the test file
 
-let createdJournalId: string;
-
 describe("CSRF Protection", () => {
   it("should generate a CSRF token", async () => {
     const response = await request(app).get("/api/csrf-token");
@@ -396,17 +396,34 @@ describe("CSRF Protection", () => {
   });
 });
 
-describe("POST /api/journals", () => {
-  it("should return 401 Unauthorized if user is not logged in", async () => {
+describe("Journal Creation and Status APIs", () => {
+  let createdJournalId: string;
+  let agent: request.SuperAgentTest;
+  let csrfToken: string;
+
+  beforeAll(async () => {
+    agent = request.agent(app);
+    const tokenRes = await agent.get("/api/csrf-token");
+    csrfToken = tokenRes.body.csrfToken;
+
+    const response = await agent
+      .post("/api/journals")
+      .set("x-test-user-id", testUser.id)
+      .set("x-csrf-token", csrfToken)
+      .send({});
+
+    expect(response.status).toBe(201);
+    createdJournalId = response.body.id;
+  });
+
+  it("POST /api/journals should return 401 Unauthorized if user is not logged in", async () => {
     const response = await request(app).post("/api/journals").send({});
     expect(response.status).toBe(401);
   });
 
-  it("should create a new journal with a valid CSRF token", async () => {
-    const agent = request.agent(app);
-    const tokenRes = await agent.get("/api/csrf-token");
-    const csrfToken = tokenRes.body.csrfToken;
-
+  it("POST /api/journals should create a new journal with a valid CSRF token", async () => {
+    // This test is effectively covered by the beforeAll block, but we keep it for clarity
+    // and to ensure the beforeAll setup is correct.
     const response = await agent
       .post("/api/journals")
       .set("x-test-user-id", testUser.id)
@@ -417,28 +434,25 @@ describe("POST /api/journals", () => {
     expect(response.body).toHaveProperty("id");
     expect(response.body.userId).toBe(testUser.id);
     expect(response.body.status).toBe("PENDING");
-    createdJournalId = response.body.id;
   });
-});
 
-describe("GET /api/journal-status/:id", () => {
-  it("should return 401 Unauthorized if user is not logged in", async () => {
+  it("GET /api/journals/status/:id should return 401 Unauthorized if user is not logged in", async () => {
     const response = await request(app).get(
-      `/api/journal-status/${createdJournalId}`
+      `/api/journals/status/${createdJournalId}`
     );
     expect(response.status).toBe(401);
   });
 
-  it("should return 404 if another user tries to get status", async () => {
+  it("GET /api/journals/status/:id should return 404 if another user tries to get status", async () => {
     const response = await request(app)
-      .get(`/api/journal-status/${createdJournalId}`)
+      .get(`/api/journals/status/${createdJournalId}`)
       .set("x-test-user-id", otherUser.id);
     expect(response.status).toBe(404);
   });
 
-  it("should return 200 and the correct status for the owner", async () => {
+  it("GET /api/journals/status/:id should return 200 and the correct status for the owner", async () => {
     const response = await request(app)
-      .get(`/api/journal-status/${createdJournalId}`)
+      .get(`/api/journals/status/${createdJournalId}`)
       .set("x-test-user-id", testUser.id);
     expect(response.status).toBe(200);
     expect(response.body.status).toBe("PENDING");
@@ -456,7 +470,7 @@ Add the handlers to your router file.
 // ... (add these routes to the existing file)
 
 // POST /api/journals - Create a new journal entry
-router.post("/", isAuthenticated, async (req, res) => {
+router.post("/", protect, async (req, res) => {
   try {
     const userId = req.session.user.id;
     const newJournal = await prisma.journal.create({
@@ -478,7 +492,7 @@ router.post("/", isAuthenticated, async (req, res) => {
 });
 
 // GET /api/journal-status/:id - Poll for journal generation progress
-router.get("/status/:id", isAuthenticated, async (req, res) => {
+router.get("/status/:id", protect, async (req, res) => {
   try {
     const validation = paramsSchema.safeParse(req.params);
     if (!validation.success) {
@@ -555,6 +569,13 @@ describe("PUT /api/journals/:id", () => {
     csrfToken = tokenRes.body.csrfToken;
   });
 
+  it("should return 401 Unauthorized if user is not logged in", async () => {
+    const response = await request(app)
+      .put(`/api/journals/${testJournal.id}`)
+      .send({});
+    expect(response.status).toBe(401);
+  });
+
   it("should return 400 Bad Request for invalid data", async () => {
     const response = await agent
       .put(`/api/journals/${testJournal.id}`)
@@ -601,6 +622,12 @@ describe("PUT /api/journals/:id", () => {
 });
 
 describe("DELETE /api/journals/:id", () => {
+  it("should return 401 Unauthorized if user is not logged in", async () => {
+    const response = await request(app)
+      .delete(`/api/journals/${testJournal.id}`);
+    expect(response.status).toBe(401);
+  });
+
   it("should delete the journal and return 204 No Content", async () => {
     const agent = request.agent(app);
     const tokenRes = await agent.get("/api/csrf-token");
@@ -644,7 +671,7 @@ const updateJournalSchema = z.object({
 });
 
 // PUT /api/journals/:id - Update a journal entry and its notes
-router.put('/:id', isAuthenticated, async (req, res) => {
+router.put('/:id', protect, async (req, res) => {
   try {
     const paramsValidation = paramsSchema.safeParse(req.params);
     if (!paramsValidation.success) {
@@ -695,7 +722,7 @@ router.put('/:id', isAuthenticated, async (req, res) => {
 });
 
 // DELETE /api/journals/:id - Delete a journal entry
-router.delete('/:id', isAuthenticated, async (req, res) => {
+router.delete('/:id', protect, async (req, res) => {
   try {
     const validation = paramsSchema.safeParse(req.params);
     if (!validation.success) {

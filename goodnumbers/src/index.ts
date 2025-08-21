@@ -9,6 +9,13 @@ import { authConfig } from './lib/auth.ts'; // Note: .ts extension for ESM
 // Import the new user router
 import userRouter from './routes/user.ts';
 import { journalsRouter } from './routes/journals.ts'; // Import the new journals router
+import { protect } from './middleware/auth';
+import cookieParser from 'cookie-parser';
+import {
+  doubleCsrfProtection,
+  generateCsrfToken,
+  invalidCsrfTokenError,
+} from './middleware/csrf';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -47,6 +54,8 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+app.use(cookieParser());
+
 // --- Static Files ---
 app.use(express.static('public'));
 
@@ -54,15 +63,36 @@ app.use(express.static('public'));
 // All requests to /api/auth/* will be handled by Auth.js
 app.use('/api/auth', ExpressAuth(authConfig));
 
+// API route for the frontend to get a CSRF token
+app.get('/api/csrf-token', (req, res) => {
+  const csrfToken = generateCsrfToken(req, res);
+  res.json({ csrfToken });
+});
+
 // --- API Routes ---
 // Use the new user router for all routes starting with /api/user
 app.use('/api/user', userRouter);
-app.use('/api/journals', journalsRouter); // Use the new journals router
+app.use('/api/journals', protect, doubleCsrfProtection, journalsRouter); // Use the new journals router with CSRF protection
 
 // --- Health Check Endpoint ---
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
+
+// Specific error handler for CSRF issues
+app.use(
+  (
+    err: Error,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    if (err === invalidCsrfTokenError) {
+      return res.status(403).json({ message: 'Invalid CSRF token' });
+    }
+    next(err);
+  },
+);
 
 // --- Global Error Handler ---
 app.use(

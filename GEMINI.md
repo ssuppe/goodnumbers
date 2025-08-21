@@ -85,6 +85,7 @@ Break complex work into 3-5 stages. Document in `IMPLEMENTATION_PLAN.md`:
   - Pass all existing tests
   - Include tests for new functionality
   - Follow project formatting/linting
+  - Follow patterns already established in the file / project you are working in
 
 - **Before committing**:
   - Run formatters/linters

@@ -92,3 +92,84 @@ describe('Journal Read APIs', () => {
     });
   });
 });
+
+describe('CSRF Protection', () => {
+  it('should generate a CSRF token', async () => {
+    const response = await request(app).get('/api/csrf-token');
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('csrfToken');
+    expect(response.headers['set-cookie']).toBeDefined();
+  });
+
+  it('should reject a POST request without a CSRF token', async () => {
+    const response = await request(app)
+      .post('/api/journals')
+      .set('x-test-user-id', testUser.id)
+      .send({});
+    expect(response.status).toBe(403);
+  });
+});
+
+describe('Journal Creation and Status APIs', () => {
+  let createdJournalId: string;
+  let agent: request.SuperAgentTest;
+  let csrfToken: string;
+
+  beforeAll(async () => {
+    agent = request.agent(app);
+    const tokenRes = await agent.get('/api/csrf-token');
+    csrfToken = tokenRes.body.csrfToken;
+
+    const response = await agent
+      .post('/api/journals')
+      .set('x-test-user-id', testUser.id)
+      .set('x-csrf-token', csrfToken)
+      .send({});
+
+    expect(response.status).toBe(201);
+    createdJournalId = response.body.id;
+  });
+
+  it('POST /api/journals should return 401 Unauthorized if user is not logged in', async () => {
+    const response = await request(app).post('/api/journals').send({});
+    expect(response.status).toBe(401);
+  });
+
+  it('POST /api/journals should create a new journal with a valid CSRF token', async () => {
+    // This test is effectively covered by the beforeAll block, but we keep it for clarity
+    // and to ensure the beforeAll setup is correct.
+    const response = await agent
+      .post('/api/journals')
+      .set('x-test-user-id', testUser.id)
+      .set('x-csrf-token', csrfToken)
+      .send({});
+
+    expect(response.status).toBe(201);
+    expect(response.body).toHaveProperty('id');
+    expect(response.body.userId).toBe(testUser.id);
+    expect(response.body.status).toBe('PENDING');
+  });
+
+  it('GET /api/journals/status/:id should return 401 Unauthorized if user is not logged in', async () => {
+    const response = await request(app).get(
+      `/api/journals/status/${createdJournalId}`,
+    );
+    expect(response.status).toBe(401);
+  });
+
+  it('GET /api/journals/status/:id should return 404 if another user tries to get status', async () => {
+    const response = await request(app)
+      .get(`/api/journals/status/${createdJournalId}`)
+      .set('x-test-user-id', otherUser.id);
+    expect(response.status).toBe(404);
+  });
+
+  it('GET /api/journals/status/:id should return 200 and the correct status for the owner', async () => {
+    const response = await request(app)
+      .get(`/api/journals/status/${createdJournalId}`)
+      .set('x-test-user-id', testUser.id);
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe('PENDING');
+    expect(response.body.progress).toBe(0);
+  });
+});
