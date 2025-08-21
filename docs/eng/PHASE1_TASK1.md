@@ -22,21 +22,19 @@ npm init -y
 
 **Important:** After initialization, open `package.json` and add "type": "module" to enable ES module support. This is crucial for modern Node.js development and compatibility with tools like ESLint's flat config.
 
-```json
 {
   "name": "goodnumbers",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "NODE_OPTIONS=\"--experimental-vm-modules\" jest"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module"  // Add this line
 }
-```
 
 ## 3. Install Dependencies
 
@@ -146,7 +144,16 @@ Create a `jest.config.cjs` file in the project root. This configures Jest to wor
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  testMatch: ['**/__tests__/**/*.ts?(x)', '**/?(*.)+(spec|test).ts?(x)']
+  testMatch: ['**/__tests__/**/*.ts?(x)', '**/?(*.)+(spec|test).ts?(x)'] ,
+  extensionsToTreatAsEsm: ['.ts'],
+  transform: {
+    '^.+\.tsx?': ['ts-jest', { useESM: true, tsconfig: './tsconfig.json' }],
+  },
+  moduleNameMapper: {
+    '^(\.{1,2}/.*)\.js': '$1',
+    '\.(json)$': '<rootDir>/__mocks__/fileMock.js',
+  },
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
 };
 ```
 
@@ -228,7 +235,7 @@ Add the following scripts to your `package.json` file to streamline development 
   "start": "node dist/index.js",
   "dev": "nodemon",
   "build": "tsc",
-  "test": "jest",
+  "test": "NODE_OPTIONS=\"--experimental-vm-modules\" jest",
   "lint": "eslint . --ext .ts",
   "prettier": "prettier --write ."
 }

@@ -1,11 +1,10 @@
 // goodnumbers/tests/unit/encryption.test.ts
-
 // Set a valid key for the main test suite
 process.env.ENCRYPTION_KEY =
   '151b795a05b8758bb36b9b3813333d5484373c0b735697525834c643a2b8593c';
 
 import { encrypt, decrypt } from '../../src/lib/encryption';
-import { jest } from '@jest/globals'; // ADDED THIS LINE
+import { jest } from '@jest/globals';
 
 describe('Encryption Utility', () => {
   it('should encrypt and decrypt a string successfully', () => {
@@ -78,36 +77,32 @@ describe('Encryption Utility', () => {
 
 // This separate suite tests the module's initialization logic
 describe('Encryption Utility Initialization', () => {
-  it('should throw an error if ENCRYPTION_KEY is not set', async () => {
-    // Added async
-    const originalEnvKey = process.env.ENCRYPTION_KEY;
-    delete process.env.ENCRYPTION_KEY;
+  const originalEnvKey = process.env.ENCRYPTION_KEY;
 
-    // Dynamically import and expect it to throw
+  afterEach(() => {
+    process.env.ENCRYPTION_KEY = originalEnvKey;
+    jest.resetModules();
+  });
+
+  it('should throw an error if ENCRYPTION_KEY is not set', async () => {
+    delete process.env.ENCRYPTION_KEY;
+    jest.resetModules(); // Ensure module cache is cleared before import
+
     await expect(async () => {
-      // Added async here
-      jest.resetModules(); // This might be needed to clear the cache for dynamic import
-      await import('../../src/lib/encryption'); // Dynamic import
+      await import('../../src/lib/encryption');
     }).rejects.toThrow(
       'FATAL: ENCRYPTION_KEY environment variable is not set.',
-    ); // Use rejects for async errors
-
-    process.env.ENCRYPTION_KEY = originalEnvKey;
+    );
   });
 
   it('should throw an error if ENCRYPTION_KEY is not a 32-byte hex string', async () => {
-    // Added async
-    const originalEnvKey = process.env.ENCRYPTION_KEY;
     process.env.ENCRYPTION_KEY = 'this-is-not-a-valid-32-byte-hex-key';
+    jest.resetModules(); // Ensure module cache is cleared before import
 
     await expect(async () => {
-      // Added async here
-      jest.resetModules(); // This might be needed to clear the cache for dynamic import
-      await import('../../src/lib/encryption'); // Dynamic import
+      await import('../../src/lib/encryption');
     }).rejects.toThrow(
       'FATAL: ENCRYPTION_KEY must be a 32-byte (64-character) hex string.',
-    ); // Use rejects for async errors
-
-    process.env.ENCRYPTION_KEY = originalEnvKey;
+    );
   });
 });

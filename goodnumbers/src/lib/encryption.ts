@@ -6,6 +6,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH_BYTES = 12; // GCM standard IV size is 12 bytes (96 bits)
+const AUTH_TAG_LENGTH_BYTES = 16; // GCM standard auth tag size is 16 bytes (128 bits)
 
 const secretKeyHex = process.env.ENCRYPTION_KEY;
 
@@ -38,7 +39,9 @@ export function encrypt(plaintext: string): string {
   }
 
   const iv = randomBytes(IV_LENGTH_BYTES);
-  const cipher = createCipheriv(ALGORITHM, key, iv);
+  const cipher = createCipheriv(ALGORITHM, key, iv, {
+    authTagLength: AUTH_TAG_LENGTH_BYTES,
+  });
 
   const ciphertext = Buffer.concat([
     cipher.update(plaintext, 'utf8'),
@@ -75,7 +78,9 @@ export function decrypt(encryptedPayload: string): string {
 
   // GCM uses the authentication tag to verify the integrity of the data.
   // If the ciphertext or IV was tampered with, this step will throw an error.
-  const decipher = createDecipheriv(ALGORITHM, key, iv);
+  const decipher = createDecipheriv(ALGORITHM, key, iv, {
+    authTagLength: AUTH_TAG_LENGTH_BYTES,
+  });
   decipher.setAuthTag(authTag);
 
   const decryptedText = Buffer.concat([
