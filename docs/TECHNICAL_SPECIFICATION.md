@@ -133,6 +133,8 @@ The goal of this specification is to provide a developer-ready document that out
 ### 2.2. Non-Functional Requirements
 
 - **Security:**
+  - **Environment Variable Management (Development/Testing):** For local development and testing, all necessary environment variables (e.g., `CSRF_SECRET`, `ENCRYPTION_KEY`) must be provided via a `.env` file in the `goodnumbers/` directory. These keys should be randomly generated and unique to the development environment, and never used in production.
+  - **Middleware Order (Authentication & CSRF):** For API endpoints requiring authentication, the authentication middleware (`protect`) MUST be applied *before* the CSRF protection middleware (`doubleCsrfProtection`). This ensures that unauthenticated requests are consistently met with a `401 Unauthorized` response, which is semantically correct for protected resources, before CSRF validation occurs.
   - All data in transit must be encrypted (HTTPS/SSL).
   - System must be protected against common web vulnerabilities (XSS, CSRF).
   - Sensitive credentials (`nightscoutUrl`, `nightscoutToken`) MUST be encrypted at rest.
@@ -366,10 +368,10 @@ All endpoints are protected by authentication middleware.
 - **Input Validation:** All API endpoints that accept client-side input (e.g., request bodies, query parameters) MUST use a schema-based validation library (e.g., `zod`) to rigorously validate the data's shape, type, and constraints. This is a primary defense against data corruption and injection attacks.
 - **Credential Encryption:** Sensitive user credentials, specifically the `nightscoutUrl` and `nightscoutToken`, will be encrypted at rest in the database.
   - **Method:** Symmetric encryption will be used via Node.js's built-in `crypto` module (AES-256-GCM).
-  - **Key Management:** For local development, a 256-bit secret encryption key will be supplied via an `ENCRYPTION_KEY` environment variable. For production, this key SHOULD be managed by a dedicated secrets management service (e.g., Google Secret Manager) and fetched at application startup, rather than being stored in a file on the server.
+  - **Key Management:** For local development, a 256-bit secret encryption key will be supplied via an `ENCRYPTION_KEY` environment variable in the `.env` file. This key should be generated randomly (e.g., using `openssl rand -hex 32`). For production, this key SHOULD be managed by a dedicated secrets management service (e.g., Google Secret Manager) and fetched at application startup, rather than being stored in a file on the server.
 - **Authentication:** Handled by Auth.js, providing robust session management and protection against common authentication vulnerabilities.
 - **MVP Access Control (Email Allowlist):** During the beta phase, access is restricted at the authentication level to a managed list of approved email addresses, preventing unauthorized sign-ups.
-- **CSRF Protection:** API endpoints that modify state (e.g., `POST`, `PUT`, `DELETE`) will use anti-CSRF tokens.
+- **CSRF Protection:** API endpoints that modify state (e.g., `POST`, `PUT`, `DELETE`) will use anti-CSRF tokens. The `doubleCsrfProtection` middleware will be applied *after* the authentication middleware for protected routes to ensure proper response semantics (`401 Unauthorized` for unauthenticated users).
 - **Data Segregation:** All database queries enforce ownership checks, ensuring a user can only access their own data.
 - **Secure HTTP Headers:** The application MUST use middleware like `helmet` to set various security-related HTTP headers, mitigating common attacks like XSS and clickjacking.
 - **Database File Security:** In the production environment, the SQLite database file (`.db`) MUST have its file system permissions configured to be readable and writable only by the application's user account.

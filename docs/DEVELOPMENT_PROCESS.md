@@ -103,7 +103,7 @@ The repository must be configured with a CI/CD pipeline to run the following che
 
 **A PR must be blocked from merging if any of these checks fail.
 
-    **Environment Variables:** Ensure all necessary environment variables (e.g., `ENCRYPTION_KEY`, `COOKIE_SECRET`) are correctly configured and loaded (e.g., via `dotenv/config`) in the local `.env` file for tests to run successfully.**
+    **Environment Variables:** Ensure all necessary environment variables (e.g., `ENCRYPTION_KEY`, `CSRF_SECRET`, `COOKIE_SECRET`) are correctly configured and loaded (e.g., via `dotenv/config`) in the local `.env` file for tests to run successfully. A missing required environment variable will cause test failures.**
 
 ### 4.4. Review and Merge Process
 

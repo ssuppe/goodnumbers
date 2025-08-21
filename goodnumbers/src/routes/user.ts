@@ -1,13 +1,12 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
 import { userSettingsSchema } from '../lib/schemas';
 import { encrypt } from '../lib/encryption';
 import { protect } from '../middleware/auth';
+import { prisma } from '../db'; // Import the shared Prisma client
 
 import rateLimit from 'express-rate-limit'; // Add this import
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // --- SECURITY: A stricter rate limiter for sensitive operations ---
 // This prevents an attacker from spamming the token regeneration endpoint

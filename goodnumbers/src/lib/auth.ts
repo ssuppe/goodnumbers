@@ -1,21 +1,19 @@
 // file: goodnumbers/src/lib/auth.ts
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { PrismaClient } from "@prisma/client";
-import type { JWT } from "@auth/core/jwt";
-import type { Session, DefaultUser, User, Profile } from "@auth/core/types";
-import GoogleProvider from "@auth/express/providers/google";
+import { PrismaAdapter } from '@auth/prisma-adapter';
+import type { JWT } from '@auth/core/jwt';
+import type { Session, DefaultUser, User, Profile } from '@auth/core/types';
+import GoogleProvider from '@auth/express/providers/google';
 
-import fs from "fs/promises";
-import * as path from "path";
-import { fileURLToPath } from "url";
-
-const prisma = new PrismaClient();
+import fs from 'fs/promises';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { prisma } from '../db'; // Import the shared Prisma client
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ALLOWLIST_FILE_PATH = path.join(
   __dirname,
-  "../../config/allowed_emails.txt"
+  '../../config/allowed_emails.txt',
 );
 let cachedAllowedEmails: Set<string> | null = null;
 let lastReadTime: number = 0;
@@ -27,11 +25,11 @@ export async function getAllowedEmails(): Promise<Set<string>> {
     return cachedAllowedEmails;
   }
   try {
-    const data = await fs.readFile(ALLOWLIST_FILE_PATH, "utf8");
+    const data = await fs.readFile(ALLOWLIST_FILE_PATH, 'utf8');
     const emails = data
-      .split("\n")
+      .split('\n')
       .map((line) => line.trim().toLowerCase())
-      .filter((line) => line.length > 0 && !line.startsWith("#"));
+      .filter((line) => line.length > 0 && !line.startsWith('#'));
     cachedAllowedEmails = new Set(emails);
     lastReadTime = now;
     console.log(`[Auth.js] SUCCESS: Loaded ${emails.length} allowed emails.`);
@@ -39,7 +37,7 @@ export async function getAllowedEmails(): Promise<Set<string>> {
   } catch (error) {
     console.error(
       `[Auth.js] CRITICAL ERROR: Could not read allowlist file at ${ALLOWLIST_FILE_PATH}.`,
-      error
+      error,
     );
     cachedAllowedEmails = new Set();
     lastReadTime = now;
@@ -53,11 +51,11 @@ export const authConfig = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      authorization: { params: { prompt: "select_account" } },
+      authorization: { params: { prompt: 'select_account' } },
     }),
   ],
   session: {
-    strategy: "jwt",
+    strategy: 'jwt',
   },
   callbacks: {
     async signIn({ user, profile }: { user: User; profile?: Profile }) {
@@ -69,7 +67,7 @@ export const authConfig = {
 
       if (!userEmail || !userId) {
         console.log(
-          "[Auth.js] DENIED: Sign-in failed, no email or user ID from provider/adapter."
+          '[Auth.js] DENIED: Sign-in failed, no email or user ID from provider/adapter.',
         );
         return false;
       }
@@ -80,7 +78,7 @@ export const authConfig = {
       if (!isAllowed) {
         // PRIVACY IMPROVEMENT: Log the user ID, not the email, to prevent leaking PII.
         console.log(
-          `[Auth.js] DENIED: User with ID ${userId} is NOT in the allowlist.`
+          `[Auth.js] DENIED: User with ID ${userId} is NOT in the allowlist.`,
         );
         return false;
       }
@@ -99,14 +97,14 @@ export const authConfig = {
 
         // PRIVACY IMPROVEMENT: Log the user ID, not the email.
         console.log(
-          `[Auth.js] INFO: Ensured agreementsSigned is true for user ID ${userId}.`
+          `[Auth.js] INFO: Ensured agreementsSigned is true for user ID ${userId}.`,
         );
       } catch (error) {
         // SECURITY IMPROVEMENT: Log a controlled error message and avoid logging the raw error object,
         // which could contain sensitive information.
         console.error(
           `[Auth.js] CRITICAL: Failed to update agreementsSigned for user ID ${userId}. Denying login.`,
-          { errorMessage: (error as Error).message }
+          { errorMessage: (error as Error).message },
         );
         // SECURITY: If we can't update the database to confirm agreement,
         // we must not allow the user to log in.
@@ -114,7 +112,9 @@ export const authConfig = {
       }
       // --- END OF NEW LOGIC ---
 
-      console.log(`[Auth.js] ALLOWED: User with ID ${userId} is in the allowlist.`);
+      console.log(
+        `[Auth.js] ALLOWED: User with ID ${userId} is in the allowlist.`,
+      );
       return true; // Allow sign-in
     },
 
@@ -131,6 +131,5 @@ export const authConfig = {
       }
       return session;
     },
-
-},
+  },
 };
