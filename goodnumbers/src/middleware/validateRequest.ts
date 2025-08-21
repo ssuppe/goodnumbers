@@ -5,16 +5,21 @@ import { AnyZodObject, ZodError } from 'zod';
 
 /**
  * This is a higher-order function that takes a Zod schema and returns an Express middleware.
- * The returned middleware will validate the request body against the provided schema.
+ * The returned middleware will validate the request body, query, and params against the provided schema.
  *
- * @param schema - The Zod schema to validate the request body against.
+ * @param schema - The Zod schema to validate the request against.
  * @returns An Express middleware function.
  */
 export const validateRequest = (schema: AnyZodObject) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       // The .parse() method will throw a ZodError if validation fails.
-      schema.parse(req.body);
+      // This now correctly parses the entire request context as specified.
+      schema.parse({
+        body: req.body,
+        query: req.query,
+        params: req.params,
+      });
       // If validation is successful, call the next middleware in the stack.
       next();
     } catch (error) {
@@ -24,7 +29,7 @@ export const validateRequest = (schema: AnyZodObject) => {
         // This provides clear feedback to the client about what was wrong with the request.
         return res.status(400).json({
           error: 'Validation failed',
-          details: error.flatten().fieldErrors,
+          details: error.format(),
         });
       }
       // If the error is not a ZodError, it's an unexpected server error.

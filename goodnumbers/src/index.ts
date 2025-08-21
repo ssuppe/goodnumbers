@@ -3,64 +3,39 @@ import 'dotenv/config';
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { ExpressAuth } from '@auth/express';
-import { authConfig } from './lib/auth.ts'; // Note: .ts extension for ESM
-
-// Import the new user router
-import userRouter from './routes/user.ts';
-import { journalsRouter } from './routes/journals.ts'; // Import the new journals router
-import { protect } from './middleware/auth';
 import cookieParser from 'cookie-parser';
+
+import { ExpressAuth } from '@auth/express';
+import { authConfig } from './lib/auth';
+import { protect } from './middleware/auth';
 import {
   doubleCsrfProtection,
   generateCsrfToken,
   invalidCsrfTokenError,
 } from './middleware/csrf';
+import { errorHandler } from './middleware/errorHandler'; // <-- IMPORT ERROR HANDLER
+import userRouter from './routes/user';
+import { journalsRouter } from './routes/journals';
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // --- Security Middleware ---
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"], // Add CDN domains if you use them
-        styleSrc: ["'self'", "'unsafe-inline'"], // Add CDNs if needed. 'unsafe-inline' is often needed for some libraries.
-        imgSrc: [
-          "'self'",
-          'https://authjs.dev',
-          'https://lh3.googleusercontent.com',
-        ],
-        connectSrc: [
-          "'self'",
-          'https://accounts.google.com',
-          'https://oauth2.googleapis.com',
-          'https://www.googleapis.com',
-        ],
-        formAction: ["'self'", 'https://accounts.google.com'],
-        frameSrc: ["'self'", 'https://accounts.google.com'],
-      },
-    },
-  }),
-);
-
+app.use(helmet());
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
 });
 app.use(limiter);
-
+app.use(express.json()); // Body parser
 app.use(cookieParser());
 
 // --- Static Files ---
 app.use(express.static('public'));
 
 // --- Auth.js Middleware ---
-// All requests to /api/auth/* will be handled by Auth.js
 app.use('/api/auth', ExpressAuth(authConfig));
 
 // API route for the frontend to get a CSRF token
@@ -70,14 +45,15 @@ app.get('/api/csrf-token', (req, res) => {
 });
 
 // --- API Routes ---
-// Use the new user router for all routes starting with /api/user
 app.use('/api/user', userRouter);
-app.use('/api/journals', protect, doubleCsrfProtection, journalsRouter); // Use the new journals router with CSRF protection
+app.use('/api/journals', protect, doubleCsrfProtection, journalsRouter);
 
 // --- Health Check Endpoint ---
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
+
+// --- Error Handling Middleware ---
 
 // Specific error handler for CSRF issues
 app.use(
@@ -94,29 +70,8 @@ app.use(
   },
 );
 
-// --- Global Error Handler ---
-app.use(
-  (
-    err: Error,
-    req: express.Request,
-    res: express.Response,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    next: express.NextFunction,
-  ) => {
-    // --- RECOMMENDATION: SECURE LOGGING ---
-    // In a production environment, never log the entire raw error object (`err`) or stack (`err.stack`),
-    // as it may contain sensitive user data or system information. Use a structured,
-    // production-ready logger (like Pino or Winston) that can sanitize output.
-    // For now, we log a more controlled message.
-    console.error('--- Global Error Handler Caught an Error ---');
-    console.error(`Error Message: ${err.message}`);
-    // For debugging, you might log the stack, but be aware of the risk of leaking PII.
-    // console.error(`Stack: ${err.stack}`);
-
-    // Always send a generic, non-revealing error message to the client.
-    res.status(500).json({ message: 'An internal server error occurred.' });
-  },
-);
+// Global Error Handler - THIS MUST BE THE LAST MIDDLEWARE
+app.use(errorHandler); // <-- USE THE CORRECT, IMPORTED HANDLER
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(port, () => {

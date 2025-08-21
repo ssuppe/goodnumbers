@@ -144,7 +144,7 @@ describe('User API', () => {
 
       // Assert
       expect(response.status).toBe(400);
-      expect(response.body.errors.nightscoutUrl).toBeDefined();
+      expect(response.body.details.body.nightscoutUrl._errors).toHaveLength(1);
     });
 
     it('should return 400 Bad Request for invalid preferredUnits enum', async () => {
@@ -166,7 +166,7 @@ describe('User API', () => {
 
       // Assert
       expect(response.status).toBe(400);
-      expect(response.body.errors.preferredUnits).toBeDefined();
+      expect(response.body.details.body.preferredUnits._errors).toHaveLength(1);
     });
   });
 
