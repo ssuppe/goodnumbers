@@ -79,8 +79,8 @@ git push -u origin feat/p3-t1-journal-crud-apis
 Create the test file. We will test the unauthorized case, the "get all" case, and the "get one by id" case, including the crucial security test that one user cannot fetch another's journal.
 
 ```typescript
-// file: goodnumbers-workspace/src/server/routes/journals.test.ts
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+// file: goodnumbers-workspace/goodnumbers/tests/integration/journals.test.ts
+import { describe, it, expect, beforeAll, afterAll } from "jest";
 import { app, server } from "../index";
 import request from "supertest";
 import { prisma } from "../prisma";
@@ -102,7 +102,7 @@ beforeAll(async () => {
 
   testJournal = await prisma.journal.create({
     data: {
-      id: cuid(), // Use cuid to match schema
+      id: cuid2(), // Use cuid to match schema
       userId: testUser.id,
       status: "COMPLETE",
       podcastTitle: "Test Journal",
@@ -205,13 +205,13 @@ const router = Router();
 
 // Zod schema for validating CUIDs in route parameters
 const paramsSchema = z.object({
-  id: z.string().cuid({ message: "Invalid ID format" }),
+  id: z.string().cuid2({ message: "Invalid ID format" }),
 });
 
 // GET /api/journals - Fetch all journals for the logged-in user
 router.get("/", protect, async (req, res) => {
   try {
-    const userId = req.session.user.id;
+    const userId = req.auth.user.id;
     const journals = await prisma.journal.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
@@ -220,7 +220,7 @@ router.get("/", protect, async (req, res) => {
   } catch (error) {
     // Secure Logging: Log the full error for internal review.
     console.error(
-      `[ERROR] Failed to fetch journals for user ${req.session.user.id}:`,
+      `[ERROR] Failed to fetch journals for user ${req.auth.user.id}:`,
       error
     );
     // Generic Response: Do not leak error details to the client.
@@ -240,7 +240,7 @@ router.get("/:id", protect, async (req, res) => {
       });
     }
     const { id } = validation.data;
-    const userId = req.session.user.id;
+    const userId = req.auth.user.id;
 
     const journal = await prisma.journal.findUnique({
       where: {
@@ -258,7 +258,7 @@ router.get("/:id", protect, async (req, res) => {
     res.status(200).json(journal);
   } catch (error) {
     console.error(
-      `[ERROR] Failed to fetch journal ${req.params.id} for user ${req.session.user.id}:`,
+      `[ERROR] Failed to fetch journal ${req.params.id} for user ${req.auth.user.id}:`,
       error
     );
     res.status(500).json({ error: "An internal server error occurred." });
@@ -376,7 +376,7 @@ git commit -m "feat(api): P3_T1 implement GET /journals and /journals/:id with v
 Update the test file to handle the new CSRF protection flow.
 
 ```typescript
-// file: goodnumbers-workspace/src/server/routes/journals.test.ts
+// file: goodnumbers-workspace/goodnumbers/tests/integration/journals.test.ts
 // Add these new describe blocks to the test file
 
 describe("CSRF Protection", () => {
@@ -472,7 +472,7 @@ Add the handlers to your router file.
 // POST /api/journals - Create a new journal entry
 router.post("/", protect, async (req, res) => {
   try {
-    const userId = req.session.user.id;
+    const userId = req.auth.user.id;
     const newJournal = await prisma.journal.create({
       data: {
         userId: userId,
@@ -484,7 +484,7 @@ router.post("/", protect, async (req, res) => {
     res.status(201).json(newJournal);
   } catch (error) {
     console.error(
-      `[ERROR] Failed to create journal for user ${req.session.user.id}:`,
+      `[ERROR] Failed to create journal for user ${req.auth.user.id}:`,
       error
     );
     res.status(500).json({ error: "An internal server error occurred." });
@@ -502,7 +502,7 @@ router.get("/status/:id", protect, async (req, res) => {
       });
     }
     const { id } = validation.data;
-    const userId = req.session.user.id;
+    const userId = req.auth.user.id;
 
     const journalStatus = await prisma.journal.findUnique({
       where: { id: id, userId: userId },
@@ -519,7 +519,7 @@ router.get("/status/:id", protect, async (req, res) => {
     res.status(200).json(journalStatus);
   } catch (error) {
     console.error(
-      `[ERROR] Failed to get status for journal ${req.params.id} for user ${req.session.user.id}:`,
+      `[ERROR] Failed to get status for journal ${req.params.id} for user ${req.auth.user.id}:`,
       error
     );
     res.status(500).json({ error: "An internal server error occurred." });
@@ -543,7 +543,7 @@ git commit -m "feat(api): P3_T1 implement POST /journals and GET /journal-status
 Add the final set of tests, ensuring they follow the CSRF token flow for `PUT` and `DELETE` requests.
 
 ```typescript
-// file: goodnumbers-workspace/src/server/routes/journals.test.ts
+// file: goodnumbers-workspace/goodnumbers/tests/integration/journals.test.ts
 // Add these new describe blocks
 
 describe("PUT /api/journals/:id", () => {
@@ -554,7 +554,7 @@ describe("PUT /api/journals/:id", () => {
   beforeAll(async () => {
     clusterToUpdate = await prisma.glycemicEventCluster.create({
       data: {
-        id: cuid(),
+        id: cuid2(),
         journalId: testJournal.id,
         eventType: "HIGH",
         eventCount: 5,
@@ -667,7 +667,7 @@ const updateJournalSchema = z.object({
   weeklyVibe: z.string().optional(),
   influencingFactors: z.array(z.string()).optional(),
   goalsForNextWeek: z.string().optional(),
-  clusterNotes: z.record(z.string().cuid(), z.string()).optional(),
+  clusterNotes: z.record(z.string().cuid2(), z.string()).optional(),
 });
 
 // PUT /api/journals/:id - Update a journal entry and its notes
@@ -678,7 +678,7 @@ router.put('/:id', protect, async (req, res) => {
       return res.status(400).json({ error: 'Invalid request parameter', details: paramsValidation.error.errors });
     }
     const { id } = paramsValidation.data;
-    const userId = req.session.user.id;
+    const userId = req.auth.user.id;
 
     const bodyValidation = updateJournalSchema.safeParse(req.body);
     if (!bodyValidation.success) {
@@ -713,7 +713,7 @@ router.put('/:id', protect, async (req, res) => {
 
     res.status(200).json(updatedJournal);
   } catch (error) {
-    console.error(`[ERROR] Failed to update journal ${req.params.id} for user ${req.session.user.id}:`, error);
+    console.error(`[ERROR] Failed to update journal ${req.params.id} for user ${req.auth.user.id}:`, error);
     if (error.message.includes('permission denied')) {
         return res.status(404).json({ error: 'Journal not found' });
     }
@@ -729,7 +729,7 @@ router.delete('/:id', protect, async (req, res) => {
         return res.status(400).json({ error: 'Invalid request parameter', details: validation.error.errors });
     }
     const { id } = validation.data;
-    const userId = req.session.user.id;
+    const userId = req.auth.user.id;
 
     const deleteResult = await prisma.journal.deleteMany({
       where: { id: id, userId: userId },
@@ -741,7 +741,7 @@ router.delete('/:id', protect, async (req, res) => {
 
     res.status(204).send();
   } catch (error) {
-    console.error(`[ERROR] Failed to delete journal ${req.params.id} for user ${req.session.user.id}:`, error);
+    console.error(`[ERROR] Failed to delete journal ${req.params.id} for user ${req.auth.user.id}:`, error);
     res.status(500).json({ error: 'An internal server error occurred.' });
   }
 });

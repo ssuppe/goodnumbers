@@ -2,6 +2,10 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import type { JWT } from 'next-auth/jwt';
 import type { Session, DefaultUser, User, Profile } from 'next-auth';
 import type { AuthOptions } from 'next-auth';
+
+interface GoogleProfile extends Profile {
+  picture?: string;
+}
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import GoogleProvider from '@auth/express/providers/google';
 
@@ -56,12 +60,17 @@ export const authConfig: AuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
       authorization: { params: { prompt: 'select_account' } },
-      profile(profile: Profile) {
+      profile(profile: GoogleProfile) {
+        // Ensure id is always a string. Google's 'sub' should always be present.
+        if (!profile.sub) {
+          throw new Error("Google profile 'sub' (ID) is missing.");
+        }
         return {
-          id: profile.sub,
+          id: profile.sub as string,
           name: profile.name,
           email: profile.email,
-          image: profile.picture,
+          // Google's profile includes a 'picture' property for the user's avatar.
+          image: profile.picture ?? '',
         };
       },
     },

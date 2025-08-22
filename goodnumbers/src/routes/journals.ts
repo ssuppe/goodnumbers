@@ -1,8 +1,8 @@
-// file: goodnumbers-workspace/src/server/routes/journals.ts
+// goodnumbers-workspace/goodnumbers/src/routes/journals.ts
 import { Router } from 'express';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
-import { prisma } from '../db.js'; // Corrected path to prisma
+import { prisma } from '../db.js';
 import { protect } from '../middleware/auth.js';
 
 const router = Router();
@@ -15,23 +15,21 @@ const paramsSchema = z.object({
 // GET /api/journals - Fetch all journals for the logged-in user
 router.get('/', protect, async (req, res) => {
   try {
-    if (!req.auth?.user?.id) {
+    const userId = req.auth?.user?.id;
+    if (!userId) {
       return res.status(401).json({ message: 'Not authorized' });
     }
-    const userId = req.auth.user.id;
     const journals = await prisma.journal.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     });
     res.status(200).json(journals);
   } catch (error: unknown) {
-    // Secure Logging: Log the full error for internal review.
-    const userIdForLog = req.session?.user?.id || 'unknown';
+    const userIdForLog = req.auth?.user?.id || 'unknown';
     console.error(
       `[ERROR] Failed to fetch journals for user ${userIdForLog}:`,
       error,
     );
-    // Generic Response: Do not leak error details to the client.
     res.status(500).json({ error: 'An internal server error occurred.' });
   }
 });
@@ -39,7 +37,6 @@ router.get('/', protect, async (req, res) => {
 // GET /api/journals/:id - Fetch a single journal by its ID
 router.get('/:id', protect, async (req, res) => {
   try {
-    // Parameter Validation: Ensure the ID is a valid CUID before querying.
     const validation = paramsSchema.safeParse(req.params);
     if (!validation.success) {
       return res.status(400).json({
@@ -47,16 +44,16 @@ router.get('/:id', protect, async (req, res) => {
         details: validation.error.flatten().fieldErrors,
       });
     }
-    if (!req.auth?.user?.id) {
+    const userId = req.auth?.user?.id;
+    if (!userId) {
       return res.status(401).json({ message: 'Not authorized' });
     }
     const { id } = validation.data;
-    const userId = req.auth.user.id;
 
     const journal = await prisma.journal.findUnique({
       where: {
         id: id,
-        userId: userId, // Ownership Check: Crucial for security.
+        userId: userId, // Ownership Check
       },
       include: {
         clusters: true,
@@ -80,10 +77,10 @@ router.get('/:id', protect, async (req, res) => {
 // POST /api/journals - Create a new journal entry
 router.post('/', protect, async (req, res) => {
   try {
-    if (!req.auth?.user?.id) {
+    const userId = req.auth?.user?.id;
+    if (!userId) {
       return res.status(401).json({ message: 'Not authorized' });
     }
-    const userId = req.auth.user.id;
     const newJournal = await prisma.journal.create({
       data: {
         userId: userId,
@@ -103,7 +100,7 @@ router.post('/', protect, async (req, res) => {
   }
 });
 
-// GET /api/journal-status/:id - Poll for journal generation progress
+// GET /api/journals/status/:id - Poll for journal generation progress
 router.get('/status/:id', protect, async (req, res) => {
   try {
     const validation = paramsSchema.safeParse(req.params);
@@ -113,11 +110,11 @@ router.get('/status/:id', protect, async (req, res) => {
         details: validation.error.flatten().fieldErrors,
       });
     }
-    if (!req.auth?.user?.id) {
+    const userId = req.auth?.user?.id;
+    if (!userId) {
       return res.status(401).json({ message: 'Not authorized' });
     }
     const { id } = validation.data;
-    const userId = req.auth.user.id;
 
     const journalStatus = await prisma.journal.findUnique({
       where: { id: id, userId: userId },
@@ -160,11 +157,11 @@ router.put('/:id', protect, async (req, res) => {
         details: paramsValidation.error.flatten().fieldErrors,
       });
     }
-    if (!req.auth?.user?.id) {
+    const userId = req.auth?.user?.id;
+    if (!userId) {
       return res.status(401).json({ message: 'Not authorized' });
     }
     const { id } = paramsValidation.data;
-    const userId = req.auth.user.id;
 
     const bodyValidation = updateJournalSchema.safeParse(req.body);
     if (!bodyValidation.success) {
@@ -224,11 +221,11 @@ router.delete('/:id', protect, async (req, res) => {
         details: validation.error.flatten().fieldErrors,
       });
     }
-    if (!req.auth?.user?.id) {
+    const userId = req.auth?.user?.id;
+    if (!userId) {
       return res.status(401).json({ message: 'Not authorized' });
     }
     const { id } = validation.data;
-    const userId = req.auth.user.id;
 
     const deleteResult = await prisma.journal.deleteMany({
       where: { id: id, userId: userId },

@@ -36,6 +36,8 @@ describe('Auth.js signIn Callback', () => {
     mockedReadFile = fsPromises.readFile as jest.Mock;
 
     // Clean up and create a fresh user before each test
+    await prisma.glycemicEventCluster.deleteMany({});
+    await prisma.journal.deleteMany({});
     await prisma.user.deleteMany({});
     testUser = await prisma.user.create({
       data: {
@@ -53,6 +55,8 @@ describe('Auth.js signIn Callback', () => {
 
   afterAll(async () => {
     // Final cleanup
+    await prisma.glycemicEventCluster.deleteMany({});
+    await prisma.journal.deleteMany({});
     await prisma.user.deleteMany({});
     await prisma.$disconnect();
   });
