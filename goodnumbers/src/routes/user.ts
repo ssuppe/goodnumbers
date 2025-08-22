@@ -30,10 +30,15 @@ router.put(
   validateRequest(userSettingsSchema), // <-- CORRECT MIDDLEWARE USAGE
   async (req, res, next) => {
     try {
+      // --- FIX: ADDED DEFENSIVE RUNTIME CHECK ---
       const userId = req.auth?.user?.id;
       if (!userId) {
-        // This check is a safeguard; `protect` middleware should prevent this.
-        return res.status(401).json({ message: 'Not authorized' });
+        // This should theoretically not be reachable if `protect` middleware is used.
+        // This is a defensive safeguard against accidental misconfiguration.
+        console.error(
+          '[FATAL] userId not found in request after protect middleware.',
+        );
+        return res.status(500).json({ message: 'Internal server error.' });
       }
 
       // The body is already validated by the middleware.

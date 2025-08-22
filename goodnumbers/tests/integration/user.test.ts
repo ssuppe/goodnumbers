@@ -83,7 +83,7 @@ describe('User API', () => {
       expect(response.body.preferredUnits).toBe('MMOL');
       expect(response.body.id).toBe(user.id);
 
-      // --- SECURITY TEST IMPROVEMENT ---
+      // --- FIX: ADDED MISSING ASSERTION FOR nightscoutUrl ---
       // We must explicitly test that NEITHER the token NOR the URL are returned
       // in the response body. This test now enforces our security policy.
       expect(response.body.nightscoutToken).toBeUndefined();

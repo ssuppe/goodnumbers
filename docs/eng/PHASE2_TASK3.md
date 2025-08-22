@@ -286,7 +286,7 @@ const prisma = new PrismaClient();
  * Description: Updates the settings for the authenticated user.
  * Access: Private (requires authentication)
  */
-router.put("/settings", protect, async (req, res) => {
+router.put("/settings", protect, validateRequest(userSettingsSchema), async (req, res, next) => {
   try {
     // --- RECOMMENDATION: DEFENSIVE CODING ---
     // The `protect` middleware should guarantee that `req.auth.user.id` exists.
@@ -301,18 +301,8 @@ router.put("/settings", protect, async (req, res) => {
       return res.status(500).json({ message: "Internal server error." });
     }
 
-    // 1. Validate the request body against our Zod schema.
-    const validation = userSettingsSchema.safeParse(req.body);
-
-    if (!validation.success) {
-      // If validation fails, return a 400 Bad Request with the error details.
-      return res.status(400).json({
-        message: "Invalid request body.",
-        errors: validation.error.flatten().fieldErrors,
-      });
-    }
-
-    const { nightscoutUrl, nightscoutToken, preferredUnits } = validation.data;
+    // The body is already validated by the middleware.
+    const { nightscoutUrl, nightscoutToken, preferredUnits } = req.body;
 
     // 2. Encrypt the sensitive credentials before saving them.
     const encryptedUrl = encrypt(nightscoutUrl);
@@ -334,8 +324,7 @@ router.put("/settings", protect, async (req, res) => {
         id: true,
         email: true,
         preferredUnits: true,
-        // REMOVED: nightscoutUrl: true,
-      },
+        },
     });
 
     // 4. Return a 200 OK response with the safe, updated user data.

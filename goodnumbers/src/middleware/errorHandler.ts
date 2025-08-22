@@ -17,19 +17,22 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction,
 ) => {
-  // Log the full error to the console for debugging purposes.
-  // In a real production environment, you would use a dedicated logging service.
-  console.error(err);
+  // --- FIX: IMPROVED LOGGING FOR SECURITY ---
+  // Log a structured error message to prevent accidentally logging PII that might be
+  // present in the raw error object.
+  console.error('--- Global Error Handler Caught an Error ---');
+  console.error(`Error Message: ${err.message}`);
 
-  // Check the environment. In production, we don't want to send sensitive
-  // information like a stack trace to the client.
+  // In production, we don't want to send sensitive stack traces to the client.
   if (process.env.NODE_ENV === 'production') {
-    // Send a generic, non-revealing error message.
+    // In a real production app, you might still log the stack to a secure logging service.
+    // console.error(`Stack: ${err.stack}`);
     return res
       .status(500)
       .json({ error: 'An internal server error occurred.' });
   } else {
-    // In development, send a more detailed error message including the stack trace.
+    // In development, provide more detail.
+    console.error(`Stack: ${err.stack}`);
     return res.status(500).json({
       error: 'An internal server error occurred.',
       message: err.message,
