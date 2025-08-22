@@ -51,21 +51,21 @@ To reliably mock modules in an ES Module environment, use the experimental `jest
 **Example (`auth.test.ts`):**
 
 ```typescript
-import { jest, describe, it, expect } from '@jest/globals';
+import { jest, describe, it, expect } from "@jest/globals";
 
 // Mock fs/promises *before* importing the auth module
-jest.unstable_mockModule('fs/promises', () => ({
+jest.unstable_mockModule("fs/promises", () => ({
   readFile: jest.fn(),
 }));
 
 // Dynamically import the modules
-const { readFile } = await import('fs/promises');
-const { authConfig } = await import('../../src/lib/auth'); // Assuming authConfig is the main export
+const { readFile } = await import("fs/promises");
+const { authConfig } = await import("../../src/lib/auth"); // Assuming authConfig is the main export
 
-describe('signIn callback', () => {
-  it('should allow a user on the allowlist', async () => {
+describe("signIn callback", () => {
+  it("should allow a user on the allowlist", async () => {
     // Configure the mock for this test
-    (readFile as jest.Mock).mockResolvedValue('user@example.comn');
+    (readFile as jest.Mock).mockResolvedValue("user@example.comn");
 
     // ... rest of the test
   });
@@ -303,7 +303,7 @@ This section outlines high-level tasks that should be addressed as part of the p
     - **Action:** Configure log transport to a persistent storage solution (e.g., file system, cloud logging service like Google Cloud Logging).
     - **Action:** Update the global error handler (`errorHandler.ts`) to use the new logging solution.
     - **Test:**
-        - Verify that logs are generated in the correct format and contain expected context.
-        - Confirm that errors are properly captured and logged by the new system.
-        - (Manual) Verify logs are accessible in the chosen storage solution.
+      - Verify that logs are generated in the correct format and contain expected context.
+      - Confirm that errors are properly captured and logged by the new system.
+      - (Manual) Verify logs are accessible in the chosen storage solution.
     - **Commit:** `feat(ops): P6_T1 implement production logging solution`
