@@ -94,7 +94,7 @@ router.post(
         },
       });
 
-      res.status(200).json({ newRssToken: newToken });
+      res.status(200).json({ rssToken: newToken });
     } catch (error) {
       next(error);
     }

@@ -194,13 +194,13 @@ describe('User API', () => {
 
       // Assert - API response
       expect(response.status).toBe(200);
-      expect(response.body.newRssToken).toBeDefined();
-      expect(response.body.newRssToken).not.toBe(initialRssToken);
+      expect(response.body.rssToken).toBeDefined();
+      expect(response.body.rssToken).not.toBe(initialRssToken);
 
       // Assert - Database state
       const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
       expect(dbUser).not.toBeNull();
-      expect(dbUser!.rssToken).toBe(response.body.newRssToken);
+      expect(dbUser!.rssToken).toBe(response.body.rssToken);
       expect(dbUser!.rssToken).not.toBe(initialRssToken);
     });
 

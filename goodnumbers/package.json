@@ -29,6 +29,7 @@
     "@auth/express": "^0.11.0",
     "@auth/prisma-adapter": "^2.10.0",
     "@prisma/client": "^6.14.0",
+    "@paralleldrive/cuid2": "^2.2.2",
     "cookie-parser": "^1.4.7",
     "csrf-csrf": "^4.0.3",
     "dotenv": "^17.2.1",
