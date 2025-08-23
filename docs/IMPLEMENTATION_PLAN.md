@@ -17,6 +17,25 @@ To support the MVP goals of stability and quality without undue complexity, this
 - **Incremental Complexity:** Testing tools and patterns will be introduced in the phase where they are first needed, avoiding upfront overhead.
 
 ### 2.2. Levels of Testing & Tooling
+... (existing content) ...
+
+#### 2.2.1. A Two-Tier Approach to Integration Testing
+
+For services that interact with external dependencies like a database or a Redis queue, we will adopt a two-tier integration testing strategy to balance speed and confidence:
+
+1.  **Tier 1: Mocked Integration Tests (Fast Feedback)**
+    -   **Purpose:** To verify the application's internal logic and the "contract" between different parts of our code. For example, ensuring an API route correctly calls a specific function from our queue library.
+    -   **Mechanism:** We use Jest's mocking capabilities (`jest.unstable_mockModule`) to replace the real external dependency with a controlled, in-memory version.
+    -   **Characteristics:** These tests are extremely fast, reliable, and can run in parallel without interfering with each other. They are ideal for running frequently during local development.
+    -   **Example:** `tests/integration/queue.test.ts`
+
+2.  **Tier 2: "True" Integration Tests (High Confidence)**
+    -   **Purpose:** To verify the application's ability to correctly connect to, serialize data for, and interact with a real backing service (e.g., the Redis server running in Docker).
+    -   **Mechanism:** These tests run against a live service. They use environment variables to configure the application to use a unique, isolated namespace (like a specific queue name) for the duration of the test run.
+    -   **Characteristics:** These tests are slower and require the external dependency to be running. They provide the highest level of confidence that the entire integrated system works as expected. They are critical for our CI/CD pipeline before a deployment.
+    -   **Example:** `tests/integration/real-queue.test.ts`
+
+... (rest of the document) ...
 
 1.  **Unit Testing:**
 

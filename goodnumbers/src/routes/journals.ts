@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { protect } from '../middleware/auth.js';
+import { journalQueue } from '../lib/queue.js'; // <-- IMPORT THE QUEUE
 
 const router = Router();
 
@@ -89,14 +90,18 @@ router.post('/', protect, async (req, res) => {
       },
     });
 
+    // --- NEW LOGIC: Enqueue the background job ---
+    // Here we add a new job to the queue.
+    // The first argument is a name for this type of job, which is useful for debugging.
+    // The second argument is the payload, containing the data our worker needs.
+    await journalQueue.add('generate-journal', { journalId: newJournal.id });
+
+    // We still return the new journal record immediately to the user.
     res.status(201).json(newJournal);
   } catch (error: unknown) {
-    const userIdForLog = req.auth?.user?.id || 'unknown';
-    console.error(
-      `[ERROR] Failed to create journal for user ${userIdForLog}:`,
-      error,
-    );
-    res.status(500).json({ error: 'An internal server error occurred.' });
+    // CONSISTENCY NOTE: We are using next(error) to pass control to our global
+    // error handler. This is the preferred pattern in our application.
+    next(error);
   }
 });
 
