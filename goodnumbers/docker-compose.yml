@@ -9,7 +9,7 @@ services:
     # SECURITY BEST PRACTICE: This sets the required password for Redis.
     # The value is fetched from the .env file on your local machine. Never run
     # Redis in a networked environment without a password.
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--loglevel", "debug"]
     ports:
       # SECURITY NOTE: This binds the Redis port inside the container to your
       # local machine's loopback address (127.0.0.1 or localhost). This is
