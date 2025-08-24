@@ -17,6 +17,7 @@ To support the MVP goals of stability and quality without undue complexity, this
 - **Incremental Complexity:** Testing tools and patterns will be introduced in the phase where they are first needed, avoiding upfront overhead.
 
 ### 2.2. Levels of Testing & Tooling
+
 ... (existing content) ...
 
 #### 2.2.1. A Two-Tier Approach to Integration Testing
@@ -24,16 +25,17 @@ To support the MVP goals of stability and quality without undue complexity, this
 For services that interact with external dependencies like a database or a Redis queue, we will adopt a two-tier integration testing strategy to balance speed and confidence:
 
 1.  **Tier 1: Mocked Integration Tests (Fast Feedback)**
-    -   **Purpose:** To verify the application's internal logic and the "contract" between different parts of our code. For example, ensuring an API route correctly calls a specific function from our queue library.
-    -   **Mechanism:** We use Jest's mocking capabilities (`jest.unstable_mockModule`) to replace the real external dependency with a controlled, in-memory version.
-    -   **Characteristics:** These tests are extremely fast, reliable, and can run in parallel without interfering with each other. They are ideal for running frequently during local development.
-    -   **Example:** `tests/integration/queue.test.ts`
+
+    - **Purpose:** To verify the application's internal logic and the "contract" between different parts of our code. For example, ensuring an API route correctly calls a specific function from our queue library.
+    - **Mechanism:** We use Jest's mocking capabilities (`jest.unstable_mockModule`) to replace the real external dependency with a controlled, in-memory version.
+    - **Characteristics:** These tests are extremely fast, reliable, and can run in parallel without interfering with each other. They are ideal for running frequently during local development.
+    - **Example:** `tests/integration/queue.test.ts`
 
 2.  **Tier 2: "True" Integration Tests (High Confidence)**
-    -   **Purpose:** To verify the application's ability to correctly connect to, serialize data for, and interact with a real backing service (e.g., the Redis server running in Docker).
-    -   **Mechanism:** These tests run against a live service. They use environment variables to configure the application to use a unique, isolated namespace (like a specific queue name) for the duration of the test run.
-    -   **Characteristics:** These tests are slower and require the external dependency to be running. They provide the highest level of confidence that the entire integrated system works as expected. They are critical for our CI/CD pipeline before a deployment.
-    -   **Example:** `tests/integration/real-queue.test.ts`
+    - **Purpose:** To verify the application's ability to correctly connect to, serialize data for, and interact with a real backing service (e.g., the Redis server running in Docker).
+    - **Mechanism:** These tests run against a live service. They use environment variables to configure the application to use a unique, isolated namespace (like a specific queue name) for the duration of the test run.
+    - **Characteristics:** These tests are slower and require the external dependency to be running. They provide the highest level of confidence that the entire integrated system works as expected. They are critical for our CI/CD pipeline before a deployment.
+    - **Example:** `tests/integration/real-queue.test.ts`
 
 ... (rest of the document) ...
 
@@ -50,7 +52,7 @@ For services that interact with external dependencies like a database or a Redis
 
 3.  **End-to-End (E2E) Testing:**
     - **Goal:** To test critical user journeys from start to finish in a real browser environment.
-    - **Tool:** **Playwright** will be used to automate browser actions and validate complete workflows (e.g., login -> create journal -> view result). This will be introduced in Phase 4.
+    - **Tool:** **Playwright** will be used to automate browser actions and validate complete workflows (e.g., login -> create journal -> view result). This will be introduced in Phase 5.
 
 ### 2.3. Testing Conventions
 
@@ -249,7 +251,68 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Test:** Write an integration test using Jest and `supertest` that creates a journal and then calls this endpoint to check its initial `PENDING` status.
     - **Commit:** `feat(api): P3_T3 implement journal status polling endpoint`
 
-### **Phase 4: Frontend Implementation**
+### **Phase 4: Security Hardening Sprint**
+
+**Goal:** To implement critical security and privacy enhancements to the backend API before the frontend UI is fully wired up. This ensures we are building on a secure-by-design foundation and addresses key architectural gaps identified in the initial plan. This phase must be completed before proceeding with the main frontend implementation.
+
+---
+
+**Task 1: Implement Data Privacy via Cascading Deletes (Data Model)**
+
+- **Objective:** This is a critical privacy fix. We must ensure that when a user deletes their account, all of their associated sensitive data (journals, glycemic event clusters) is automatically and permanently removed from the database. Currently, this data would be "orphaned," which is a significant privacy violation.
+- **Action (Schema Modification):**
+  1.  Open the `goodnumbers/prisma/schema.prisma` file.
+  2.  Locate the `Journal` model. Add the `onDelete: Cascade` directive to the `user` relation. The line should look like this:
+      `user User @relation(fields: [userId], references: [id], onDelete: Cascade)`
+  3.  Locate the `GlycemicEventCluster` model. Add `onDelete: Cascade` to the `journal` relation. The line should look like this:
+      `journal Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)`
+- **Action (Database Migration):**
+  1.  After saving the schema changes, open your terminal in the `goodnumbers` directory.
+  2.  Run the following command to create and apply a new database migration: `npx prisma migrate dev --name feat-cascading-deletes`.
+- **Action (Documentation):**
+  1.  Update the Prisma schema code block in `docs/TECHNICAL_SPECIFICATION.md` to reflect these changes.
+  2.  Add comments to the schema in the document explaining _why_ the cascading deletes are critical for user privacy and data integrity.
+- **Test (Integration):**
+  1.  Write a new integration test that creates a `User`, an associated `Journal`, and an associated `GlycemicEventCluster`.
+  2.  In the test, delete the `User` record you created.
+  3.  Finally, query the database for the `Journal` by its ID and assert that the result is `null`. This proves the cascading delete was successful.
+- **Commit:** `feat(db): P4_T1 add cascading deletes for user privacy`
+
+---
+
+**Task 2: Remediate PII in Server Logs (Authentication)**
+
+- **Objective:** Enhance user privacy and reduce security risk by removing all Personally Identifiable Information (PII), specifically user emails, from all server-side logs. Logging PII is a risk, especially as we prepare for production logging systems.
+- **Action (Code Modification):**
+  1.  Open the `goodnumbers/src/lib/auth.ts` file.
+  2.  Carefully review the `signIn` callback function.
+  3.  Locate all `console.log` and `console.error` statements.
+  4.  Replace every instance of logging the `userEmail` variable with the non-identifiable `userId` variable. The `userId` provides the necessary traceability for debugging without exposing sensitive PII.
+- **Test (Manual Verification):**
+  1.  Run the application locally.
+  2.  Attempt to log in with a Google account that is **on** the allowlist.
+  3.  Attempt to log in with a Google account that is **not on** the allowlist.
+  4.  Observe the server console output for both attempts. Verify that no email addresses are printed in any of the logs; only user IDs should be visible.
+- **Commit:** `fix(auth): P4_T2 remove pii from server logs`
+
+---
+
+**Task 3: Implement Backend Agreement Enforcement (Authorization)**
+
+- **Objective:** Fix the critical security vulnerability of relying on the frontend to enforce the agreement gate. This change moves all authorization logic to the server, adhering to the "Never Trust the Client" security principle.
+- **Action (Create Middleware):**
+  1.  Create a new file at `goodnumbers/src/middleware/enforceAgreements.ts`.
+  2.  In this file, implement an Express middleware function that checks the database for the `agreementsSigned` flag of the currently authenticated user (`req.auth.user.id`).
+  3.  If the flag is `false` or the user record is not found, the middleware must immediately end the request-response cycle by returning a `403 Forbidden` status with a clear JSON error message and code (e.g., `{ "message": "...", "code": "AGREEMENTS_NOT_SIGNED" }`).
+- **Action (Apply Middleware):**
+  1.  In `goodnumbers/src/index.ts`, import the new `enforceAgreements` middleware. Apply it to the entire `/api/journals` route group. The order is critical: `app.use('/api/journals', protect, enforceAgreements, ...)`.
+  2.  In `goodnumbers/src/routes/user.ts`, import the new middleware. Apply it _individually_ to the sensitive endpoints that require agreements: `DELETE /me`, `PUT /settings`, and `POST /regenerate-rss-token`. The `/session-status` and `/agreements` endpoints are intentionally left without this middleware so the user can check their status and sign the agreements.
+- **Test (Integration):**
+  1.  **Red:** Write an integration test where you create a user with `agreementsSigned: false`. Make a request to a protected endpoint (e.g., `PUT /api/user/settings`). Assert that the response status is exactly `403`.
+  2.  **Green:** In the same test, update the user record in the database, setting `agreementsSigned: true`. Make the same request again to `PUT /api/user/settings` and assert that it now succeeds with a `200` status.
+- **Commit:** `feat(security): P4_T3 add middleware to enforce agreements on backend`
+
+### **Phase 5: Frontend Implementation**
 
 **Goal:** Build the user interface, connecting it to the now-stable backend API.
 
@@ -268,7 +331,7 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Test:** Write component tests with Jest/React Testing Library and E2E tests with Playwright for these pages to ensure data is displayed correctly and user interactions work as expected.
     - **Commit:** `feat(ui): P4_T2 implement dashboard and journal view pages`
 
-### **Phase 5: Background Processing Implementation**
+### **Phase 6: Background Processing Implementation**
 
 **Goal:** Implement the core data processing logic inside the background worker.
 
