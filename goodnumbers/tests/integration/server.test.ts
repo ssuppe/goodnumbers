@@ -1,6 +1,9 @@
+// file: goodnumbers-workspace/goodnumbers/tests/integration/server.test.ts
+
 import request from 'supertest';
 import app from '../../src/index';
 import * as http from 'http';
+import { connection as redisConnection } from '../../src/lib/queue';
 
 // We need a way to close the server after tests are done
 let server: http.Server;
@@ -12,8 +15,17 @@ beforeAll((done) => {
   });
 });
 
-afterAll((done) => {
-  server.close(done);
+// REFACTORED to use async/await and close all connections
+afterAll(async () => {
+  await redisConnection.quit();
+  await new Promise<void>((resolve, reject) => {
+    server.close((err) => {
+      if (err) {
+        return reject(err);
+      }
+      resolve();
+    });
+  });
 });
 
 describe('GET /health', () => {

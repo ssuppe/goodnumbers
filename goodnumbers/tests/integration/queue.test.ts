@@ -1,4 +1,5 @@
 // file: goodnumbers-workspace/goodnumbers/tests/integration/queue.test.ts
+
 import 'dotenv/config';
 import {
   jest,
@@ -10,7 +11,6 @@ import {
   afterAll,
 } from '@jest/globals';
 import type { User } from '@prisma/client';
-import type Redis from 'ioredis';
 
 // Use a unique queue name for testing to avoid conflicts with a running dev server
 const TEST_QUEUE_NAME = `test-journal-queue-${Date.now()}`;
@@ -95,8 +95,8 @@ describe('BullMQ Job Queue Integration', () => {
 
   afterAll(async () => {
     console.log('[TEST_TEARDOWN] Closing queue and database connections...');
+    // The .close() method correctly handles shutting down the queue and its underlying Redis connection.
     await testQueue.close();
-    (testQueue.connection as Redis).disconnect();
     await prisma.journal.deleteMany({}); // Ensure journals are deleted before users
     await prisma.user.deleteMany({});
     await prisma.$disconnect();

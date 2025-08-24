@@ -8,7 +8,7 @@
     "worker": "node dist/worker.js",
     "dev": "nodemon",
     "build": "tsc",
-    "test": "NODE_OPTIONS=\"--experimental-vm-modules\" jest --detectOpenHandles",
+    "test": "NODE_OPTIONS=\"--experimental-vm-modules\" jest --detectOpenHandles --forceExit",
     "lint": "eslint . --ext .ts",
     "prettier": "prettier --write .",
     "test-all": "NODE_OPTIONS=\"--experimental-vm-modules\" jest"

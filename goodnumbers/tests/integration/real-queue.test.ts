@@ -1,4 +1,5 @@
 // file: goodnumbers-workspace/goodnumbers/tests/integration/real-queue.test.ts
+
 import 'dotenv/config';
 import {
   describe,
@@ -29,6 +30,7 @@ describe('BullMQ True Integration with Real Redis', () => {
   let agent: supertest.SuperAgentTest;
   let csrfToken: string;
   let appModule: typeof import('../../src/index'); // To hold the dynamically imported app
+  let queueModule: typeof import('../../src/lib/queue'); // To hold the dynamically imported queue module
 
   // -- Test Lifecycle: Setup --
   beforeAll(async () => {
@@ -38,10 +40,11 @@ describe('BullMQ True Integration with Real Redis', () => {
     // Set the environment variable here, before importing the app
     process.env.QUEUE_NAME = TEST_QUEUE_NAME;
 
-    // Dynamically import the app AFTER the environment variable is set and modules are reset
+    // Dynamically import the app and queue module AFTER the environment variable is set
     appModule = await import('../../src/index');
+    queueModule = await import('../../src/lib/queue'); // Load the module to access its connection
 
-    // 1. Establish a direct connection to the REAL Redis instance.
+    // 1. Establish a direct connection to the REAL Redis instance for test assertions.
     redisConnection = new Redis({
       host: process.env.REDIS_HOST || '127.0.0.1',
       port: parseInt(process.env.REDIS_PORT || '6379', 10),
@@ -53,7 +56,7 @@ describe('BullMQ True Integration with Real Redis', () => {
       throw err; // Fail fast if we can't connect to Redis
     });
 
-    // 2. Create a BullMQ Queue instance in our test.
+    // 2. Create a BullMQ Queue instance in our test to inspect the queue.
     realTestQueue = new Queue(TEST_QUEUE_NAME, { connection: redisConnection });
 
     // 3. Prepare the database state.
@@ -78,8 +81,10 @@ describe('BullMQ True Integration with Real Redis', () => {
   });
 
   afterAll(async () => {
+    // Gracefully close all connections
     await realTestQueue.close();
-    await redisConnection.quit();
+    await redisConnection.quit(); // Closes the connection used by the test itself
+    await queueModule.connection.quit(); // Closes the connection used by the main app
     await prisma.journal.deleteMany({});
     await prisma.user.deleteMany({});
     await prisma.$disconnect();

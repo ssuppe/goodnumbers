@@ -1,4 +1,5 @@
 // goodnumbers/tests/integration/auth-allowlist.test.ts
+
 import 'dotenv/config';
 import {
   jest,

@@ -1,7 +1,9 @@
-// goodnumbers-workspace/goodnumbers/tests/integration/journals.test.ts
+// file: goodnumbers-workspace/goodnumbers/tests/integration/journals.test.ts
+
 import request from 'supertest';
 import app from '../../src/index'; // Corrected path to app
 import { prisma } from '../../src/db'; // Corrected path to prisma
+import { connection as redisConnection } from '../../src/lib/queue'; // Import the Redis connection
 import { createId } from '@paralleldrive/cuid2';
 
 // Jest's global functions (describe, it, expect, beforeAll, afterAll) are available without explicit imports.
@@ -39,6 +41,7 @@ afterAll(async () => {
   await prisma.journal.deleteMany({});
   await prisma.user.deleteMany({});
   await prisma.$disconnect();
+  await redisConnection.quit(); // GRACEFULLY CLOSE THE REDIS CONNECTION
 });
 
 describe('Journal Read APIs', () => {
