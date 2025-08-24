@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Setup - GoodNumbers</title>
+    <style>
+        :root {
+            --primary-color: #2563EB;
+            --primary-color-hover: #1D4ED8;
+            --primary-color-active: #1E40AF;
+            --primary-background-light: #DBEAFE;
+            --feedback-critical-color: #7F1D1D;
+            --background-color: #F8F9FA;
+            --component-background-color: #FFFFFF;
+            --text-color-primary: #212529;
+            --text-color-secondary: #6C757D;
+            --border-color: #DEE2E6;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .banner {
+            background-color: var(--feedback-critical-color);
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px; /* Add some padding around the card */
+        }
+
+        .card {
+            background-color: var(--component-background-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            border: 1px solid var(--border-color);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            margin-bottom: 30px;
+            text-align: center;
+            color: var(--text-color-primary);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: var(--text-color-primary);
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="password"],
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+
+        .radio-group label {
+            display: inline-block;
+            margin-right: 20px;
+            font-weight: normal;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        .button {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            font-size: 1em;
+            text-align: center;
+        }
+
+        .button.primary {
+            background-color: var(--primary-color);
+            color: white;
+            border: 1px solid var(--primary-color);
+        }
+
+        .button.primary:hover:not(:disabled) {
+            background-color: var(--primary-color-hover);
+            border-color: var(--primary-color-hover);
+        }
+
+        .button.primary:disabled {
+            background-color: #cccccc;
+            border-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .button.secondary {
+            background-color: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+
+        .button.secondary:hover:not(:disabled) {
+            background-color: var(--primary-background-light);
+        }
+
+        .feedback-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .feedback-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .feedback-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 480px) {
+            .button-group {
+                flex-direction: column;
+            }
+            .button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="banner">
+        NOTE: GoodNumbers is an experiment and is for educational use only. Do not make any changes to your diabetic healthcare plan without speaking to your doctor.
+    </div>
+    <div class="main-content">
+    <div class="card">
+        <h2>Set up your account</h2>
+        <div class="form-group">
+            <label for="cgmProvider">CGM Provider</label>
+            <select id="cgmProvider">
+                <option value="nightscout">Nightscout</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="nightscoutApiVersion">Nightscout API Version</label>
+            <input type="text" id="nightscoutApiVersion" value="1" readonly>
+        </div>
+        <div class="form-group">
+            <label for="nightscoutUrl">Nightscout URL</label>
+            <input type="text" id="nightscoutUrl" placeholder="e.g., https://your-nightscout.herokuapp.com">
+        </div>
+        <div class="form-group">
+            <label for="nightscoutToken">Nightscout Token</label>
+            <input type="password" id="nightscoutToken" placeholder="Your API secret token">
+        </div>
+        <div class="form-group">
+            <label>Preferred Units</label>
+            <div class="radio-group">
+                <label><input type="radio" name="preferredUnits" value="mgdl" checked> mg/dL</label>
+                <label><input type="radio" name="preferredUnits" value="mmol"> mmol/L</label>
+            </div>
+        </div>
+
+        <div id="feedbackMessage" class="feedback-message" style="display: none;"></div>
+
+        <div class="button-group">
+            <button class="button secondary" id="testConnectionButton">Test Connection</button>
+            <button class="button primary" id="saveAndContinueButton" disabled>Save and Continue</button>
+        </div>
+    </div>
+
+    <script>
+        const testConnectionButton = document.getElementById('testConnectionButton');
+        const saveAndContinueButton = document.getElementById('saveAndContinueButton');
+        const feedbackMessage = document.getElementById('feedbackMessage');
+        const nightscoutUrlInput = document.getElementById('nightscoutUrl');
+        const nightscoutTokenInput = document.getElementById('nightscoutToken');
+
+        testConnectionButton.addEventListener('click', () => {
+            // Simulate API call
+            const url = nightscoutUrlInput.value;
+            const token = nightscoutTokenInput.value;
+
+            // Simple validation for demo purposes
+            if (url.includes('nightscout') && token.length > 5) { // Simulate success
+                feedbackMessage.textContent = 'Connection successful!';
+                feedbackMessage.className = 'feedback-message success';
+                feedbackMessage.style.display = 'block';
+                saveAndContinueButton.disabled = false;
+            } else { // Simulate failure
+                feedbackMessage.textContent = 'Connection failed. Please check your URL and token and try again.';
+                feedbackMessage.className = 'feedback-message error';
+                feedbackMessage.style.display = 'block';
+                saveAndContinueButton.disabled = true;
+            }
+        });
+
+        saveAndContinueButton.addEventListener('click', () => {
+            alert('Settings saved and continuing to Dashboard!');
+            // In a real app, this would redirect to the dashboard
+        });
+    </script>
+    </div>
+</body>
+</html>

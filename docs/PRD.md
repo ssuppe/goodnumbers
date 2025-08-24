@@ -36,16 +36,16 @@ This section outlines the core principles of the GoodNumbers visual identity and
 
 The palette is unified and intentional, using a primary green for positive actions and a distinct red for critical alerts.
 
-- **Primary Color (Soft Green):** Used for all interactive elements, including buttons, links, selected states, and informational icons. This color signifies growth, positive action, and forward progress.
+- **Primary Color (Vibrant Blue):** Used for all interactive elements, including buttons, links, selected states, and informational icons. This color signifies growth, positive action, and forward progress.
 
-  - `--primary-color: #4CAF50`
-  - `--primary-color-hover: #5cb85c`
-  - `--primary-color-active: #449d44`
-  - `--primary-background-light: #E8F5E9` (for selected item backgrounds)
+  - `--primary-color: #2563EB`
+  - `--primary-color-hover: #1D4ED8`
+  - `--primary-color-active: #1E40AF`
+  - `--primary-background-light: #DBEAFE` (for selected item backgrounds)
 
 - **Critical Alert Color (Red):** Reserved exclusively for high-priority warnings to ensure its significance is not diluted. Its primary use is for the site-wide medical disclaimer banner.
 
-  - `--feedback-critical-color: #D32F2F`
+  - `--feedback-critical-color: #7F1D1D`
 
 - **Neutral Colors:** A palette of grays and whites forms the foundation of the interface, ensuring high readability and a clean look.
 

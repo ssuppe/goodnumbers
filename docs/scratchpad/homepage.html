@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoodNumbers - Weekly Health Journal</title>
+    <style>
+        :root {
+            --primary-color: #2563EB;
+            --primary-color-hover: #1D4ED8;
+            --primary-color-active: #1E40AF;
+            --primary-background-light: #DBEAFE;
+            --feedback-critical-color: #7F1D1D;
+            --background-color: #F8F9FA;
+            --component-background-color: #FFFFFF;
+            --text-color-primary: #212529;
+            --text-color-secondary: #6C757D;
+            --border-color: #DEE2E6;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative; /* For positioning the top-right button within the container */
+        }
+
+        
+
+        
+
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            text-align: center;
+        }
+
+        .top-right-absolute-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+        }
+
+        .button.primary {
+            background-color: var(--primary-color);
+            color: white;
+            border: 1px solid var(--primary-color);
+        }
+
+        .button.primary:hover {
+            background-color: var(--primary-color-hover);
+            border-color: var(--primary-color-hover);
+        }
+
+        .button.secondary {
+            background-color: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+
+        .button.secondary:hover {
+            background-color: var(--primary-background-light);
+        }
+
+        .banner {
+            background-color: var(--feedback-critical-color);
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 50px 20px;
+        }
+
+        .hero h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: var(--text-color-primary);
+        }
+
+        .hero p {
+            font-size: 1.1em;
+            color: var(--text-color-secondary);
+            max-width: 700px;
+            margin: 0 auto 30px auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .footer {
+            background-color: var(--component-background-color);
+            border-top: 1px solid var(--border-color);
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9em;
+            color: var(--text-color-secondary);
+            margin-top: 50px;
+        }
+
+        .footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2em;
+            }
+            .hero-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            .button {
+                width: 80%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="banner">
+        NOTE: GoodNumbers is an experiment and is for educational use only. Do not make any changes to your diabetic healthcare plan without speaking to your doctor.
+    </div>
+
+    
+
+    <div class="container">
+        <a href="#" class="button primary top-right-absolute-button">Login / Register</a>
+        <div class="hero">
+            <h1>A smart weekly journal for type 1 diabetics</h1>
+            <p>
+                <strong>GoodNumbers</strong> is an experimental weekly journal to help type 1 diabetics reflect and improve their blood sugar levels week to week. It uses a mix of good old statistical analysis to help you zero in on troublesome trends and identify patterns. It then leverages AI to help you reflect on strategies to address them. Use it for self-reflection, to find your blind spots in your diabetes management, and to continuously improve.
+            </p>
+            <div class="hero-buttons">
+                <a href="#" class="button secondary">See a demo</a>
+                
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2025 GoodNumbers. All rights reserved.</p>
+        <p>
+            <a href="#">Privacy Policy</a> |
+            <a href="#">Terms of Service</a> |
+            <a href="#">About Us</a>
+        </p>
+    </div>
+</body>
+</html>

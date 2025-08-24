@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - GoodNumbers</title>
+    <style>
+        :root {
+            --primary-color: #2563EB;
+            --primary-color-hover: #1D4ED8;
+            --primary-color-active: #1E40AF;
+            --primary-background-light: #DBEAFE;
+            --feedback-critical-color: #7F1D1D;
+            --background-color: #F8F9FA;
+            --component-background-color: #FFFFFF;
+            --text-color-primary: #212529;
+            --text-color-secondary: #6C757D;
+            --border-color: #DEE2E6;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .banner {
+            background-color: var(--feedback-critical-color);
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px; /* Add some padding around the card */
+        }
+
+        .card {
+            background-color: var(--component-background-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            border: 1px solid var(--border-color);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            margin-bottom: 30px;
+            color: var(--text-color-primary);
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 25px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 1.1em;
+        }
+
+        .button.google {
+            background-color: #4285F4; /* Google Blue */
+            color: white;
+            border: 1px solid #4285F4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .button.google:hover {
+            background-color: #357ae8;
+            border-color: #357ae8;
+        }
+
+        .google-icon {
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2px;
+        }
+
+        .google-icon img {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="banner">
+        NOTE: GoodNumbers is an experiment and is for educational use only. Do not make any changes to your diabetic healthcare plan without speaking to your doctor.
+    </div>
+    <div class="main-content">
+        <div class="card">
+            <h2>Sign in to GoodNumbers</h2>
+        <button class="button google">
+            <span class="google-icon">
+                <img src="https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png" alt="Google icon">
+            </span>
+            Sign in with Google
+        </button>
+    </div>
+    </div>
+</body>
+</html>

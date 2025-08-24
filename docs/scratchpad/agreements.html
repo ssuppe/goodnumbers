@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agreements - GoodNumbers</title>
+    <style>
+        :root {
+            --primary-color: #2563EB;
+            --primary-color-hover: #1D4ED8;
+            --primary-color-active: #1E40AF;
+            --primary-background-light: #DBEAFE;
+            --feedback-critical-color: #7F1D1D;
+            --background-color: #F8F9FA;
+            --component-background-color: #FFFFFF;
+            --text-color-primary: #212529;
+            --text-color-secondary: #6C757D;
+            --border-color: #DEE2E6;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .banner {
+            background-color: var(--feedback-critical-color);
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px; /* Add some padding around the card */
+        }
+
+        .card {
+            background-color: var(--component-background-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid var(--border-color);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            margin-bottom: 30px;
+            color: var(--text-color-primary);
+        }
+
+        .checkbox-group {
+            text-align: left;
+            margin-bottom: 30px;
+        }
+
+        .checkbox-group label {
+            display: block;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            cursor: pointer;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 25px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 1.1em;
+        }
+
+        .button.primary {
+            background-color: var(--primary-color);
+            color: white;
+            border: 1px solid var(--primary-color);
+        }
+
+        .button.primary:hover:not(:disabled) {
+            background-color: var(--primary-color-hover);
+            border-color: var(--primary-color-hover);
+        }
+
+        .button.primary:disabled {
+            background-color: #cccccc;
+            border-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="banner">
+        NOTE: GoodNumbers is an experiment and is for educational use only. Do not make any changes to your diabetic healthcare plan without speaking to your doctor.
+    </div>
+    <div class="main-content">
+        <div class="card">
+            <h2>Please review and accept our terms</h2>
+        <div class="checkbox-group">
+            <label>
+                <input type="checkbox" id="termsCheckbox">
+                I agree to the Terms and Conditions (which includes acknowledgment of the experimental nature of the project and software disclaimer)
+            </label>
+            <label>
+                <input type="checkbox" id="privacyCheckbox">
+                I agree to the Privacy Policy
+            </label>
+        </div>
+        <button class="button primary" id="continueButton" disabled>Login / Continue</button>
+    </div>
+
+    <script>
+        const termsCheckbox = document.getElementById('termsCheckbox');
+        const privacyCheckbox = document.getElementById('privacyCheckbox');
+        const continueButton = document.getElementById('continueButton');
+
+        function checkCheckboxes() {
+            if (termsCheckbox.checked && privacyCheckbox.checked) {
+                continueButton.disabled = false;
+            } else {
+                continueButton.disabled = true;
+            }
+        }
+
+        termsCheckbox.addEventListener('change', checkCheckboxes);
+        privacyCheckbox.addEventListener('change', checkCheckboxes);
+
+        // Initial check in case page is reloaded with checkboxes already checked (e.g., browser back button)
+        checkCheckboxes();
+    </script>
+    </div>
+</body>
+</html>
