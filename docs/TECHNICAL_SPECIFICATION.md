@@ -212,7 +212,8 @@ model Journal {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   userId               String
-  user                 User      @relation(fields: [userId], references: [id])
+  // When a User is deleted, all their associated Journals should also be deleted for data privacy.
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Job progress tracking
   status               String    @default("PENDING")
@@ -238,7 +239,8 @@ model Journal {
 model GlycemicEventCluster {
   id                  String    @id @default(cuid())
   journalId           String
-  journal             Journal   @relation(fields: [journalId], references: [id])
+  // When a Journal is deleted, all its associated GlycemicEventClusters should also be deleted for data integrity.
+  journal             Journal   @relation(fields: [journalId], references: [id], onDelete: Cascade)
 
   // Cluster summary data
   eventType           String
