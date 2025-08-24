@@ -1,3 +1,4 @@
+// file: goodnumbers/src/lib/auth.ts
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import type { JWT } from 'next-auth/jwt';
 import type { Session, DefaultUser, User, Profile } from 'next-auth';
