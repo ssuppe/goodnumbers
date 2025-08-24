@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
+import rateLimit from 'express-rate-limit';
 import { prisma } from '../db.js';
 import { protect } from '../middleware/auth.js';
 import { journalQueue } from '../lib/queue.js'; // <-- IMPORT THE QUEUE
@@ -105,8 +106,22 @@ router.post('/', protect, async (req, res) => {
   }
 });
 
+// --- NEW: Rate limiter specifically for the polling endpoint ---
+// This is a crucial security measure to prevent abuse.
+// It allows for up to 30 requests per minute from a single IP,
+// which is more than enough for our frontend's polling needs.
+const statusApiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // Limit each IP to 30 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Too many requests to this endpoint, please try again in a minute.',
+  },
+});
+
 // GET /api/journals/status/:id - Poll for journal generation progress
-router.get('/status/:id', protect, async (req, res) => {
+router.get('/status/:id', protect, statusApiLimiter, async (req, res) => {
   try {
     const validation = paramsSchema.safeParse(req.params);
     if (!validation.success) {
