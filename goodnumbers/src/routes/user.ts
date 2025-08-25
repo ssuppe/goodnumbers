@@ -7,6 +7,8 @@ import { prisma } from '../db.js';
 import rateLimit from 'express-rate-limit';
 import { validateRequest } from '../middleware/validateRequest.js';
 import { createId } from '@paralleldrive/cuid2';
+import { enforceAgreements } from '../middleware/enforceAgreements.js'; // <-- IMPORT
+import { doubleCsrfProtection } from '../middleware/csrf.js'; // <-- IMPORT CSRF
 
 const router = express.Router();
 
@@ -22,26 +24,24 @@ const sensitiveOperationLimiter = rateLimit({
 /**
  * PUT /api/user/settings
  * Description: Updates the settings for the authenticated user.
- * Access: Private (requires authentication)
+ * Access: Private (requires authentication, signed agreements, and CSRF token)
  */
 router.put(
   '/settings',
   protect,
-  validateRequest(userSettingsSchema), // <-- CORRECT MIDDLEWARE USAGE
+  enforceAgreements,
+  doubleCsrfProtection, // <-- APPLY CSRF MIDDLEWARE HERE
+  validateRequest(userSettingsSchema),
   async (req, res, next) => {
     try {
-      // --- FIX: ADDED DEFENSIVE RUNTIME CHECK ---
       const userId = req.auth?.user?.id;
       if (!userId) {
-        // This should theoretically not be reachable if `protect` middleware is used.
-        // This is a defensive safeguard against accidental misconfiguration.
         console.error(
           '[FATAL] userId not found in request after protect middleware.',
         );
         return res.status(500).json({ message: 'Internal server error.' });
       }
 
-      // The body is already validated by the middleware.
       const { nightscoutUrl, nightscoutToken, preferredUnits } = req.body;
 
       const encryptedUrl = encrypt(nightscoutUrl);
@@ -63,7 +63,6 @@ router.put(
 
       res.status(200).json(updatedUser);
     } catch (error) {
-      // Pass errors to the global error handler
       next(error);
     }
   },
@@ -72,11 +71,13 @@ router.put(
 /**
  * POST /api/user/regenerate-rss-token
  * Description: Regenerates the RSS token for the authenticated user.
- * Access: Private (requires authentication)
+ * Access: Private (requires authentication, signed agreements, and CSRF token)
  */
 router.post(
   '/regenerate-rss-token',
   protect,
+  enforceAgreements,
+  doubleCsrfProtection, // <-- APPLY CSRF MIDDLEWARE HERE
   sensitiveOperationLimiter,
   async (req, res, next) => {
     try {
@@ -100,5 +101,9 @@ router.post(
     }
   },
 );
+
+// NOTE: We are intentionally NOT applying `enforceAgreements` to any other user routes
+// that might be added, such as GET /api/user/session-status or POST /api/user/sign-agreements,
+// as the user must be able to access those before signing.
 
 export default router;

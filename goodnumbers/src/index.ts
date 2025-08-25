@@ -13,9 +13,10 @@ import {
   generateCsrfToken,
   invalidCsrfTokenError,
 } from './middleware/csrf.js';
-import { errorHandler } from './middleware/errorHandler.js'; // <-- IMPORT ERROR HANDLER
+import { errorHandler } from './middleware/errorHandler.js';
 import userRouter from './routes/user.js';
 import { journalsRouter } from './routes/journals.js';
+import { enforceAgreements } from './middleware/enforceAgreements.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -70,7 +71,16 @@ app.get('/api/csrf-token', (req, res) => {
 
 // --- API Routes ---
 app.use('/api/user', userRouter);
-app.use('/api/journals', protect, doubleCsrfProtection, journalsRouter);
+
+// Apply middleware stack to the entire journals route group.
+// Order is CRITICAL: 1. Auth check, 2. Agreement check, 3. CSRF check.
+app.use(
+  '/api/journals',
+  protect,
+  enforceAgreements,
+  doubleCsrfProtection,
+  journalsRouter,
+);
 
 // --- Health Check Endpoint ---
 app.get('/health', (req, res) => {
@@ -95,7 +105,7 @@ app.use(
 );
 
 // Global Error Handler - THIS MUST BE THE LAST MIDDLEWARE
-app.use(errorHandler); // <-- USE THE CORRECT, IMPORTED HANDLER
+app.use(errorHandler);
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(port, () => {
