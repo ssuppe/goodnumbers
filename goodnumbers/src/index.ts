@@ -1,22 +1,23 @@
-import './lib/env.ts';
-import express from 'express';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
-import { ExpressAuth } from '@auth/express';
-import { authConfig } from './lib/auth.ts';
+import "./lib/env.ts";
+import express from "express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import { ExpressAuth } from "@auth/express";
+import { authConfig } from "./lib/auth.ts";
+import { getSession } from "@auth/express";
 
 // This function encapsulates the app creation and validation logic.
 export function createApp() {
   // --- Fatal Error Checks for Environment Variables ---
   if (!process.env.AUTH_SECRET) {
-    throw new Error('FATAL: Environment variable AUTH_SECRET is not set.');
+    throw new Error("FATAL: Environment variable AUTH_SECRET is not set.");
   }
   if (!process.env.AUTH_GOOGLE_ID) {
-    throw new Error('FATAL: Environment variable AUTH_GOOGLE_ID is not set.');
+    throw new Error("FATAL: Environment variable AUTH_GOOGLE_ID is not set.");
   }
   if (!process.env.AUTH_GOOGLE_SECRET) {
     throw new Error(
-      'FATAL: Environment variable AUTH_GOOGLE_SECRET is not set.'
+      "FATAL: Environment variable AUTH_GOOGLE_SECRET is not set."
     );
   }
 
@@ -29,6 +30,7 @@ export function createApp() {
         directives: {
           ...helmet.contentSecurityPolicy.getDefaultDirectives(),
           "img-src": ["'self'", "data:", "https://authjs.dev"], // Allow images from authjs.dev
+          "form-action": ["'self'", "*"], // Add this line to allow form submissions to any origin
         },
       },
     })
@@ -43,14 +45,25 @@ export function createApp() {
 
   // --- Core Middlewares ---
   app.use(express.json());
+  app.use(express.static("public")); // Serve static files from 'public' directory
 
-  // If your app is served through a proxy, trust the proxy to allow us to read the `X-Forwarded-*` headers
-  app.set('trust proxy', true);
+  // If running behind a proxy in production (e.g., Google Cloud Run),
+  // trust the `X-Forwarded-*` headers. In dev/test, this is not needed and can be a security risk.
+  if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
 
-  app.use('/api/auth', ExpressAuth(authConfig));
+  // --- Auth Routes ---
+  app.use("/api/auth", ExpressAuth(authConfig));
 
-  app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok' });
+  // --- API Routes ---
+  app.get("/health", (req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
+
+  app.get("/api/session", async (req, res) => {
+    const session = await getSession(req, authConfig);
+    res.json(session);
   });
 
   return app;
@@ -68,6 +81,10 @@ function startServer() {
 }
 
 // Only start the server if the file is run directly.
-if (import.meta.url.startsWith('file://') && process.argv[1] === new URL(import.meta.url).pathname) {
-    startServer();
+// This allows test runners to import the module without starting the server.
+if (
+  import.meta.url.startsWith("file://") &&
+  process.argv[1] === new URL(import.meta.url).pathname
+) {
+  startServer();
 }

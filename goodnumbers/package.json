@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node dist/index.js",
-    "dev": "nodemon",
+    "dev": "AUTH_URL= nodemon",
     "build": "tsc",
     "test": "NODE_OPTIONS=\"--experimental-vm-modules\" jest",
     "lint": "eslint . --ext .ts",
