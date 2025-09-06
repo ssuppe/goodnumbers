@@ -1,9 +1,7 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import Google from "@auth/express/providers/google";
-import { prisma } from "./prisma.js";
-import { ExpressAuthConfig } from "@auth/express";
-
-export const authConfig: ExpressAuthConfig = {
+import { prisma } from "./prisma.ts";
+export const authConfig = {
   adapter: PrismaAdapter(prisma),
   providers: [
     Google({
@@ -13,6 +11,5 @@ export const authConfig: ExpressAuthConfig = {
   ],
   secret: process.env.AUTH_SECRET,
   // THIS IS THE CRITICAL SECURITY FIX:
-  trustHost:
-    process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test',
+  trustHost: true, // Changed to true for development
 };

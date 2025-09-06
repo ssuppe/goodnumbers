@@ -1,3 +1,28 @@
+Of course. I've reviewed the project documentation. Your suggestion to add a UI testing task is an excellent one.
+
+### My Recommendation
+
+I completely agree with your proposal. Adding a simple, placeholder UI to test the login/logout flow after the core Auth.js integration is a standard best practice.
+
+Here’s why I recommend it:
+
+1.  **End-to-End Validation:** It allows us to confirm that the entire authentication flow is working from the user's perspective (button click -> Google -> callback -> session created) before we add more complex logic like the allowlist. This makes debugging much easier.
+2.  **Solid Foundation:** It ensures the most critical piece of user-facing functionality—getting in and out of the application—is solid before we build anything on top of it.
+3.  **Reduces Risk:** It isolates the core integration work. If something goes wrong later, we'll know it's likely due to the newer code (like the allowlist) and not the basic setup.
+
+I suggest we call this new task "Task 2: Create a Placeholder UI for Login/Logout Testing". It would involve creating a minimal HTML page served by our Express server with login/logout buttons and a status display. This avoids the complexity of setting up a full frontend framework like React at this stage.
+
+Below is the proposed update to the `IMPLEMENTATION_PLAN.md` file, which re-numbers the subsequent tasks in Phase 2. I have also included the new and modified files that would be created for this task.
+
+---
+
+### Proposed File Changes
+
+Here is the updated `IMPLEMENTATION_PLAN.md` with the new task added to Phase 2.
+
+`````markdown
+# Docs/IMPLEMENTATION_PLAN.md
+
 # Goodnumbers Implementation Plan
 
 **Version:** 2.0 (Auth.js v5 Refresh)
@@ -68,7 +93,7 @@ To reliably mock modules in an ES Module environment, use the experimental `jest
 
 **Example (`auth.test.ts`):**
 
-```typescript
+````typescript
 import { jest, describe, it, expect } from "@jest/globals";
 
 // Mock fs/promises *before* importing the auth module
@@ -87,8 +112,7 @@ describe("signIn callback", () => {
 
     // ... rest of the test
   });
-});
-```
+});```
 
 This approach ensures that the mock is registered before your code imports the module, providing a reliable way to isolate dependencies in your tests.
 
@@ -184,13 +208,17 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 **Goal:** To implement a secure, modern, and robust authentication and user management system using the official Auth.js v5 library for Express. This phase is critical and replaces all previous authentication logic.
 
-#### **Task 1: Core Auth.js v5 Integration**
+#### **Task 1: Core Auth.js v5 Integration** - COMPLETE
 
 - **Goal:** To install the necessary dependencies and configure the foundational pieces of Auth.js, including the database adapter and the main Express handler.
 - **Action (Dependencies):** In the `goodnumbers` directory, install the required Auth.js v5 packages.
   ```bash
   npm install @auth/express @auth/prisma-adapter
-  ```
+````
+`````
+
+`````
+
 - **Action (Database Schema):** Auth.js requires specific models to manage users, sessions, and provider accounts. Add the standard Auth.js models to your `prisma/schema.prisma` file. Your schema should now include `User`, `Account`, `Session`, and `VerificationToken` alongside your application models. Crucially, update the `User` model to include the `agreementsSigned` field from the start.
 
   ```prisma
@@ -273,7 +301,7 @@ For each task listed in the implementation phases below, the following GitHub-in
     secret: process.env.AUTH_SECRET,
     trustHost: true,
   };
-  ````
+`````
 
 - **Action (Integration):** Wire up the Auth.js handler in your main server file.
 
@@ -294,7 +322,24 @@ For each task listed in the implementation phases below, the following GitHub-in
 - **Test (Manual):** Start the server (`npm run dev`). Navigate to `http://localhost:3000/api/auth/signin` in your browser. You should see a basic, unstyled sign-in page with a "Sign in with Google" button. This confirms the core integration is working.
 - **Commit:** `feat(auth): P2_T1 integrate authjs v5 core components`
 
-#### **Task 2: Implement Email Allowlist**
+#### **Task 2: Create a Placeholder UI for Login/Logout Testing**
+
+- **Goal:** To create a minimal frontend page to manually verify the end-to-end Google OAuth flow is working correctly before adding more complex logic.
+- **Action (Static Serving):** Configure the Express server to serve static files from a new `goodnumbers/public` directory.
+- **Action (Session Endpoint):** Create a new `GET /api/session` endpoint that uses `getSession` from Auth.js to return the current user's session object. This allows a client-side script to check the authentication status.
+- **Action (HTML):** Create a new file `goodnumbers/public/index.html`. This file will contain:
+  - A simple script to fetch `/api/session` on page load.
+  - If a user is logged in, it will display their email and a "Sign Out" button (within a form that `POST`s to `/api/auth/signout`).
+  - If no user is logged in, it will display a "Sign in with Google" link (pointing to `/api/auth/signin/google`).
+- **Test (Manual):**
+  1. Start the server and navigate to `http://localhost:3000/`.
+  2. Verify the page shows a "Logged out" status and the "Sign in" link.
+  3. Click the link, complete the Google sign-in flow.
+  4. Upon returning to the page, verify it now shows your email and the "Sign Out" button.
+  5. Click "Sign Out" and verify you are returned to the logged-out state.
+- **Commit:** `feat(auth): P2_T2 add placeholder ui for testing auth flow`
+
+#### **Task 3: Implement Email Allowlist**
 
 - **Goal:** To restrict application access to a predefined list of beta testers by implementing logic within the `signIn` callback.
 - **Action (Configuration):** Create a new directory `goodnumbers/config/` and a new file inside it: `goodnumbers/config/allowed_emails.txt`. Add your personal Google email to this file for testing.
@@ -374,9 +419,9 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 - **Test (Green):** Run the unit test file. It should now pass.
 - **Refactor:** Ensure the code is clean and the error handling (for the unreadable file) is robust.
-- **Commit:** `feat(auth): P2_T2 implement email allowlist in signIn callback`
+- **Commit:** `feat(auth): P2_T3 implement email allowlist in signIn callback`
 
-#### **Task 3: Implement Route Protection Middleware**
+#### **Task 4: Implement Route Protection Middleware**
 
 - **Goal:** Create a reusable middleware to protect API routes, ensuring only authenticated users can access them.
 - **Test (Red - Integration Test):** Create a new test file `goodnumbers/tests/integration/auth.test.ts`.
@@ -414,9 +459,9 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 - **Test (Green):** Run the integration test. It should now pass.
 - **Refactor:** Review the middleware for clarity and correctness.
-- **Commit:** `feat(auth): P2_T3 create 'protect' middleware for securing routes`
+- **Commit:** `feat(auth): P2_T4 create 'protect' middleware for securing routes`
 
-#### **Task 4: Implement User Settings API**
+#### **Task 5: Implement User Settings API**
 
 - **Goal:** To create the `PUT /api/user/settings` endpoint, secured by the new `protect` middleware.
 - **Test (Red):** In a new file `goodnumbers/tests/integration/user.test.ts`, write a test for the `PUT /api/user/settings` endpoint.
@@ -428,7 +473,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 - **Action (Green):** Create `goodnumbers/src/routes/user.ts`. Implement the `/settings` route, making sure to apply the `protect` middleware first.
 - **Test (Green):** Run the new integration test. It should pass.
 - **Refactor:** Clean up the route handler logic.
-- **Commit:** `feat(api): P2_T4 implement protected endpoint for user settings`
+- **Commit:** `feat(api): P2_T5 implement protected endpoint for user settings`
 
 ### **Phase 3: Core Journal Feature (Backend API)**
 
@@ -591,3 +636,136 @@ This section outlines high-level tasks that should be addressed as part of the p
       - Confirm that errors are properly captured and logged by the new system.
       - (Manual) Verify logs are accessible in the chosen storage solution.
     - **Commit:** `feat(ops): P6_T1 implement production logging solution`
+
+````
+
+Here is the code for the new placeholder UI and the necessary server modifications.
+
+```typescript
+# Frontend/src/index.ts
+import 'dotenv/config';
+import express from 'express';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import { ExpressAuth } from '@auth/express';
+import { authConfig } from './lib/auth.js';
+import { getSession } from '@auth/express';
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// --- Security Middlewares ---
+
+// Set various security HTTP headers
+app.use(helmet());
+
+// Basic rate limiting to prevent brute-force attacks
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+app.use(limiter);
+
+// --- Core Middlewares ---
+app.use(express.json());
+app.use(express.static('public')); // Serve static files from 'public' directory
+
+// --- Auth Routes ---
+// Note: It's important to wire up Auth.js before your other API routes
+app.use('/api/auth', ExpressAuth(authConfig));
+
+// --- API Routes ---
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+app.get('/api/session', async (req, res) => {
+  const session = await getSession(req, authConfig);
+  res.json(session);
+});
+
+
+// Only start listening if the file is run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+}
+
+// Export the app for testing purposes
+export { app };
+````
+
+```html
+# Frontend/public/index.html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Goodnumbers Auth Test</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 2em;
+        line-height: 1.5;
+      }
+      #auth-container {
+        border: 1px solid #ccc;
+        padding: 1em;
+        border-radius: 8px;
+        max-width: 400px;
+      }
+      button {
+        font-size: 1em;
+        padding: 0.5em 1em;
+        cursor: pointer;
+      }
+      a {
+        font-size: 1em;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Goodnumbers Auth Test Page</h1>
+    <div id="auth-container">
+      <p>Loading session status...</p>
+    </div>
+
+    <script>
+      const authContainer = document.getElementById("auth-container");
+
+      async function updateUI() {
+        try {
+          const res = await fetch("/api/session");
+          const session = await res.json();
+
+          if (session && session.user) {
+            // User is logged in
+            authContainer.innerHTML = `
+                        <p><strong>Status:</strong> Logged in</p>
+                        <p><strong>Email:</strong> ${session.user.email}</p>
+                        <form action="/api/auth/signout" method="POST">
+                            <button type="submit">Sign Out</button>
+                        </form>
+                    `;
+          } else {
+            // User is logged out
+            authContainer.innerHTML = `
+                        <p><strong>Status:</strong> Logged out</p>
+                        <a href="/api/auth/signin/google">Sign in with Google</a>
+                    `;
+          }
+        } catch (error) {
+          authContainer.innerHTML = `<p>Error fetching session: ${error.message}</p>`;
+        }
+      }
+
+      // Update the UI when the page loads
+      document.addEventListener("DOMContentLoaded", updateUI);
+    </script>
+  </body>
+</html>
+```
