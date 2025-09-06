@@ -14,8 +14,6 @@ describe('Application Startup', () => {
   const OLD_ENV = process.env;
 
   beforeEach(() => {
-    // jest.resetModules() is no longer strictly necessary for this test,
-    // but it's good practice to keep it.
     jest.resetModules();
     process.env = { ...OLD_ENV };
   });
