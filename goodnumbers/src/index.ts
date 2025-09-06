@@ -1,9 +1,9 @@
-import 'dotenv/config';
+import './lib/env.ts';
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { ExpressAuth } from '@auth/express';
-import { authConfig } from './lib/auth.js';
+import { authConfig } from './lib/auth.ts';
 
 // This function encapsulates the app creation and validation logic.
 export function createApp() {
@@ -23,7 +23,16 @@ export function createApp() {
   const app = express();
 
   // --- Security Middlewares ---
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+          "img-src": ["'self'", "data:", "https://authjs.dev"], // Allow images from authjs.dev
+        },
+      },
+    })
+  );
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100,
@@ -34,6 +43,9 @@ export function createApp() {
 
   // --- Core Middlewares ---
   app.use(express.json());
+
+  // If your app is served through a proxy, trust the proxy to allow us to read the `X-Forwarded-*` headers
+  app.set('trust proxy', true);
 
   app.use('/api/auth', ExpressAuth(authConfig));
 
