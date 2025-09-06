@@ -39,7 +39,7 @@ model Journal {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   userId               String
-  user                 User      @relation(fields: [userId], references: [id])
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Job progress tracking
   status               String    @default("PENDING")
