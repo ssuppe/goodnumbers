@@ -2,13 +2,11 @@
   "folders": [
     {
       "path": "./goodnumbers",
-      "name": "Next.js Frontend"
+      "name": "Frontend"
     },
-    {
-      "path": "."
-    },
-    {
-      "path": "../envs"
+{
+      "path": "./docs",
+      "name": "Docs"
     }
   ],
   "settings": {
