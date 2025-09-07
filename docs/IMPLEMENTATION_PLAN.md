@@ -339,7 +339,7 @@ For each task listed in the implementation phases below, the following GitHub-in
   5. Click "Sign Out" and verify you are returned to the logged-out state.
 - **Commit:** `feat(auth): P2_T2 add placeholder ui for testing auth flow`
 
-#### **Task 3: Implement Email Allowlist**
+#### **Task 3: Implement Email Allowlist** - COMPLETE
 
 - **Goal:** To restrict application access to a predefined list of beta testers by implementing logic within the `signIn` callback.
 - **Action (Configuration):** Create a new directory `goodnumbers/config/` and a new file inside it: `goodnumbers/config/allowed_emails.txt`. Add your personal Google email to this file for testing.
@@ -421,45 +421,20 @@ For each task listed in the implementation phases below, the following GitHub-in
 - **Refactor:** Ensure the code is clean and the error handling (for the unreadable file) is robust.
 - **Commit:** `feat(auth): P2_T3 implement email allowlist in signIn callback`
 
-#### **Task 4: Implement Route Protection Middleware**
+#### **Task 4: Implement Onboarding Enforcement Middleware**
 
-- **Goal:** Create a reusable middleware to protect API routes, ensuring only authenticated users can access them.
-- **Test (Red - Integration Test):** Create a new test file `goodnumbers/tests/integration/auth.test.ts`.
-  1.  Create a temporary test route in your test file (e.g., `/api/test-protected`).
-  2.  Apply the (not-yet-created) `protect` middleware to it.
-  3.  Write a test using `supertest` that makes a request to this route _without_ authentication headers. Assert that it returns a `401 Unauthorized` status.
-  4.  Write another test that includes a special header (e.g., `x-test-user-id`) and assert that it returns a `200 OK` status.
-- **Action (Green):** Create a new file `goodnumbers/src/middleware/auth.ts` and implement the `protect` function. This function will use `getSession` from `@auth/express`. For the test environment, it will check for the special header to make testing easier.
-
-  ```typescript
-  // file: goodnumbers/src/middleware/auth.ts
-  import { getSession } from "@auth/express";
-  import { authConfig } from "../lib/auth.js";
-  import { Request, Response, NextFunction } from "express";
-
-  export async function protect(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) {
-    // Test hook for simulating authentication in integration tests
-    if (process.env.NODE_ENV === "test" && req.headers["x-test-user-id"]) {
-      req.auth = { user: { id: req.headers["x-test-user-id"] as string } };
-      return next();
-    }
-
-    const session = await getSession(req, authConfig);
-    if (!session?.user) {
-      return res.status(401).json({ message: "Not authorized" });
-    }
-    req.auth = session;
-    next();
-  }
-  ```
-
-- **Test (Green):** Run the integration test. It should now pass.
-- **Refactor:** Review the middleware for clarity and correctness.
-- **Commit:** `feat(auth): P2_T4 create 'protect' middleware for securing routes`
+- **Goal:** To create a secure, server-side authorization layer that enforces the required user onboarding flow (Agreements -> Account Setup) before granting access to the main application.
+- **Action (Test-Driven Development):**
+  1.  **Red:** Create a comprehensive integration test suite (`onboarding.test.ts`) that defines all required behaviors. This includes testing page redirects, API `403 Forbidden` errors for incomplete onboarding, redirect loop prevention, and the new agreements endpoint.
+  2.  **Green:** Write the simplest, most robust code to make all tests pass.
+- **Action (Implementation):**
+  1.  **Enrich Session Securely:** Update the Auth.js `session` callback in `src/lib/auth.ts` to include onboarding fields (`agreementsSigned`, etc.). Add documentation to mandate the use of the "database" session strategy for security.
+  2.  **Create `protect` Middleware:** Implement a middleware (`src/middleware/auth.ts`) to handle primary authentication, checking for a valid session and attaching the user object to the request.
+  3.  **Create `enforceOnboarding` Middleware:** Implement the core authorization logic (`src/middleware/onboarding.ts`) to check the user's onboarding status, perform redirects or return API errors, and use PII-safe logging.
+  4.  **Create Agreements API:** Implement the `POST /api/user/agreements` endpoint to allow users to persist their agreement status.
+- **Test (Manual):** After automated tests pass, perform a manual verification by logging in and manipulating the user's state in the database to confirm redirects are working as expected in a live browser.
+- **Commit:** `feat(auth): P2_T4 implement onboarding enforcement middleware`
+- **Detailed Plan:** See `docs/eng/PHASE2_TASK4.md` for the full, verbose engineering and testing plan.
 
 #### **Task 5: Implement User Settings API**
 
@@ -472,7 +447,9 @@ For each task listed in the implementation phases below, the following GitHub-in
   5.  Query the database directly to verify that the user's settings were correctly updated and that sensitive data was encrypted.
 - **Action (Green):** Create `goodnumbers/src/routes/user.ts`. Implement the `/settings` route, making sure to apply the `protect` middleware first.
 - **Test (Green):** Run the new integration test. It should pass.
-- **Refactor:** Clean up the route handler logic.
+- **Refactor:**
+  - Clean up the route handler logic.
+  - **Note:** Consider consolidating the `POST /api/user/agreements` logic into this endpoint. For instance, allowing a request like `PUT /api/user/settings` with a body of `{ "agreementsSigned": true }` would create a more unified API.
 - **Commit:** `feat(api): P2_T5 implement protected endpoint for user settings`
 
 ### **Phase 3: Core Journal Feature (Backend API)**
