@@ -5,14 +5,13 @@ import * as http from 'http';
 // We need a way to close the server after tests are done
 let server: http.Server;
 
-beforeAll((done) => {
-  // Let's use a random port for testing to avoid conflicts
+beforeEach((done) => {
   server = app.listen(0, () => {
     done();
   });
 });
 
-afterAll((done) => {
+afterEach((done) => {
   server.close(done);
 });
 

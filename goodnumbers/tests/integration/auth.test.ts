@@ -1,15 +1,16 @@
 import request from 'supertest';
-import { app } from '../../src/index.js'; // Import the app instance directly
+import { app } from '../../src/index.ts'; // Import the app instance directly
 import * as http from 'http';
 
 let server: http.Server;
 
-beforeAll((done) => {
-  // The server can now be started simply, as the config is correct for the test env.
+// Use beforeEach and afterEach to ensure a clean server for every test.
+// This is the best practice for integration test isolation.
+beforeEach((done) => {
   server = app.listen(0, done);
 });
 
-afterAll((done) => {
+afterEach((done) => {
   server.close(done);
 });
 
@@ -38,7 +39,10 @@ describe('API Contract: Auth.js Endpoints', () => {
 
       // FIX: Correct the assertion to match the observed redirect to the signin page.
       // This is an acceptable fallback for a CSRF failure when the session is disrupted.
-      const redirectUrl = new URL(response.headers['location'], 'http://127.0.0.1');
+      const redirectUrl = new URL(
+        response.headers['location'],
+        'http://127.0.0.1',
+      );
       expect(redirectUrl.pathname).toBe('/api/auth/signin');
     });
   });
