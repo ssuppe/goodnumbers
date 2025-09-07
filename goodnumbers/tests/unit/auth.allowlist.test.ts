@@ -1,5 +1,6 @@
 // file: goodnumbers/tests/unit/auth.allowlist.test.ts
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import type { User } from '@auth/core/types'; // Import the User type
 
 // 1. Create a mutable object to hold our mock's implementation.
 //    This object acts as a stable "bridge" between the test setup and the mock factory.
@@ -27,17 +28,16 @@ describe('Auth.js signIn Callback', () => {
     fsPromisesMocks.readFile.mockResolvedValue(allowlistContent);
 
     // Act: Dynamically import the module under test *after* the mock is configured.
-    const { authConfig } = await import('../../src/lib/auth.js');
-    const result = await authConfig.callbacks!.signIn!({
-      user: { id: '1', email: 'user1@example.com' },
-    } as any);
+    const { authConfig } = await import('../../src/lib/auth.ts');
+    const mockUser: User = { id: '1', email: 'user1@example.com' }; // Explicitly type mockUser
+    const result = await authConfig.callbacks!.signIn!({ user: mockUser });
 
     // Assert
     expect(result).toBe(true);
     // Also, assert that the file was read with the correct arguments.
     expect(fsPromisesMocks.readFile).toHaveBeenCalledWith(
       'config/allowed_emails.txt',
-      'utf-8'
+      'utf-8',
     );
   });
 
@@ -45,12 +45,11 @@ describe('Auth.js signIn Callback', () => {
     // Arrange
     const allowlistContent = 'user1@example.com\nuser2@example.com';
     fsPromisesMocks.readFile.mockResolvedValue(allowlistContent);
-    const { authConfig } = await import('../../src/lib/auth.js');
+    const { authConfig } = await import('../../src/lib/auth.ts');
 
     // Act
-    const result = await authConfig.callbacks!.signIn!({
-      user: { id: '3', email: 'user3@example.com' },
-    } as any);
+    const mockUser: User = { id: '3', email: 'user3@example.com' };
+    const result = await authConfig.callbacks!.signIn!({ user: mockUser });
 
     // Assert
     expect(result).toBe(false);
@@ -60,12 +59,11 @@ describe('Auth.js signIn Callback', () => {
     // Arrange
     const allowlistContent = 'User.One@Example.COM';
     fsPromisesMocks.readFile.mockResolvedValue(allowlistContent);
-    const { authConfig } = await import('../../src/lib/auth.js');
+    const { authConfig } = await import('../../src/lib/auth.ts');
 
     // Act
-    const result = await authConfig.callbacks!.signIn!({
-      user: { id: '1', email: 'user.one@example.com' },
-    } as any);
+    const mockUser: User = { id: '1', email: 'user.one@example.com' };
+    const result = await authConfig.callbacks!.signIn!({ user: mockUser });
 
     // Assert
     expect(result).toBe(true);
@@ -80,15 +78,14 @@ describe('Auth.js signIn Callback', () => {
       user2@example.com
     `;
     fsPromisesMocks.readFile.mockResolvedValue(allowlistContent);
-    const { authConfig } = await import('../../src/lib/auth.js');
+    const { authConfig } = await import('../../src/lib/auth.ts');
 
     // Act
-    const allowed = await authConfig.callbacks!.signIn!({
-      user: { id: '1', email: 'user1@example.com' },
-    } as any);
-    const denied = await authConfig.callbacks!.signIn!({
-      user: { id: '3', email: '# This is a comment' },
-    } as any);
+    const allowedUser: User = { id: '1', email: 'user1@example.com' };
+    const allowed = await authConfig.callbacks!.signIn!({ user: allowedUser });
+
+    const deniedUser: User = { id: '3', email: '# This is a comment' };
+    const denied = await authConfig.callbacks!.signIn!({ user: deniedUser });
 
     // Assert
     expect(allowed).toBe(true);
@@ -98,12 +95,11 @@ describe('Auth.js signIn Callback', () => {
   it('should return FALSE if the allowlist file cannot be read (secure default)', async () => {
     // Arrange: Simulate a file system error.
     fsPromisesMocks.readFile.mockRejectedValue(new Error('File not found'));
-    const { authConfig } = await import('../../src/lib/auth.js');
+    const { authConfig } = await import('../../src/lib/auth.ts');
 
     // Act
-    const result = await authConfig.callbacks!.signIn!({
-      user: { id: '1', email: 'user1@example.com' },
-    } as any);
+    const mockUser: User = { id: '1', email: 'user1@example.com' };
+    const result = await authConfig.callbacks!.signIn!({ user: mockUser });
 
     // Assert
     expect(result).toBe(false);
@@ -113,12 +109,11 @@ describe('Auth.js signIn Callback', () => {
     // Arrange
     const allowlistContent = 'user1@example.com';
     fsPromisesMocks.readFile.mockResolvedValue(allowlistContent);
-    const { authConfig } = await import('../../src/lib/auth.js');
+    const { authConfig } = await import('../../src/lib/auth.ts');
 
     // Act
-    const result = await authConfig.callbacks!.signIn!({
-      user: { id: '1', email: null },
-    } as any);
+    const mockUser: Partial<User> = { id: '1', email: null };
+    const result = await authConfig.callbacks!.signIn!({ user: mockUser });
 
     // Assert
     expect(result).toBe(false);

@@ -1,10 +1,10 @@
 // file: goodnumbers/src/lib/auth.ts
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import Google from "@auth/express/providers/google";
-import { prisma } from "./prisma.ts";
-import type { ExpressAuthConfig } from "@auth/express";
-import * as fs from "fs/promises"; // Corrected import
-import type { User } from "@auth/express-adapter";
+import { PrismaAdapter } from '@auth/prisma-adapter';
+import Google from '@auth/express/providers/google';
+import { prisma } from './prisma.ts';
+import type { ExpressAuthConfig } from '@auth/express';
+import * as fs from 'fs/promises'; // Corrected import
+import type { User } from '@auth/express-adapter';
 
 // --- Email Allowlist Logic ---
 
@@ -29,22 +29,23 @@ async function isEmailAllowed(user: Partial<User>): Promise<boolean> {
   // Refresh cache if it's empty or expired
   if (!allowedEmails || now - cacheTimestamp > CACHE_TTL) {
     try {
-      const fileContent = await fs.readFile( // Corrected call
-        "config/allowed_emails.txt",
-        "utf-8"
+      const fileContent = await fs.readFile(
+        // Corrected call
+        'config/allowed_emails.txt',
+        'utf-8',
       );
       allowedEmails = new Set(
         fileContent
-          .split("\n")
+          .split('\n')
           .map((line) => line.trim().toLowerCase())
-          .filter((line) => line && !line.startsWith("#"))
+          .filter((line) => line && !line.startsWith('#')),
       );
       cacheTimestamp = now;
-      console.log("[Auth] Refreshed email allowlist from file.");
+      console.log('[Auth] Refreshed email allowlist from file.');
     } catch (error) {
       console.error(
-        "[CRITICAL AUTH ERROR] Could not read allowed_emails.txt. Defaulting to denying all new sign-ins.",
-        error
+        '[CRITICAL AUTH ERROR] Could not read allowed_emails.txt. Defaulting to denying all new sign-ins.',
+        error,
       );
       allowedEmails = new Set();
     }
@@ -54,9 +55,9 @@ async function isEmailAllowed(user: Partial<User>): Promise<boolean> {
 
   // SECURE LOGGING: Log the user's ID if available, otherwise log a generic message.
   // NEVER log the email address.
-  const identifier = id ? `user with ID ${id}` : "a new user";
+  const identifier = id ? `user with ID ${id}` : 'a new user';
   console.log(
-    `[Auth] Login attempt for ${identifier}. Allowed: ${isAllowed ? "YES" : "NO"}.`
+    `[Auth] Login attempt for ${identifier}. Allowed: ${isAllowed ? 'YES' : 'NO'}.`,
   );
   return isAllowed;
 }
@@ -65,6 +66,14 @@ async function isEmailAllowed(user: Partial<User>): Promise<boolean> {
 
 export const authConfig: ExpressAuthConfig = {
   adapter: PrismaAdapter(prisma),
+  // CRITICAL SECURITY NOTE:
+  // The Prisma adapter automatically enforces the "database" session strategy.
+  // This is essential for privacy and security. The session cookie will only contain
+  // a session token, and sensitive data (like nightscoutUrl) is only ever
+  // looked up on the server, never exposed to the client.
+  // DO NOT change this to a "jwt" strategy without a thorough security review.
+  session: { strategy: 'database' },
+
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
@@ -77,11 +86,26 @@ export const authConfig: ExpressAuthConfig = {
     async signIn({ user }) {
       return await isEmailAllowed(user);
     },
+    // This callback runs on the server and enriches the session object
+    // to make user data available to our middleware without extra DB calls.
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
+        session.user.agreementsSigned = user.agreementsSigned;
+        session.user.nightscoutUrl = user.nightscoutUrl;
+        session.user.preferredUnits = user.preferredUnits;
       }
       return session;
     },
   },
 };
+
+// Extend the Session User type to satisfy TypeScript in our application code.
+// This lets us access the custom properties we added in the session callback.
+declare module '@auth/express' {
+  interface User {
+    agreementsSigned?: boolean;
+    nightscoutUrl?: string | null;
+    preferredUnits?: string;
+  }
+}
