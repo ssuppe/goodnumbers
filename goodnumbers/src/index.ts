@@ -1,3 +1,4 @@
+// Frontend/src/index.ts
 import './lib/env.ts';
 import express from 'express';
 import helmet from 'helmet';
@@ -34,8 +35,8 @@ export function createApp() {
       contentSecurityPolicy: {
         directives: {
           ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-          'img-src': ["'self'", 'data:', 'https://authjs.dev'], // Allow images from authjs.dev
-          'form-action': ["'self'", '*'], // Add this line to allow form submissions to any origin
+          'img-src': ["'self'", 'data:', 'https://authjs.dev'],
+          'form-action': ["'self'", '*'],
         },
       },
     }),
@@ -50,10 +51,8 @@ export function createApp() {
 
   // --- Core Middlewares ---
   app.use(express.json());
-  app.use(express.static('public')); // Serve static files from 'public' directory
+  app.use(express.static('public'));
 
-  // If running behind a proxy in production (e.g., Google Cloud Run),
-  // trust the `X-Forwarded-*` headers. In dev/test, this is not needed and can be a security risk.
   if (process.env.NODE_ENV === 'production') {
     app.set('trust proxy', 1);
   }
@@ -62,8 +61,7 @@ export function createApp() {
   app.use('/api/auth', ExpressAuth(authConfig));
 
   // --- API Routes ---
-  // The imports have been moved to the top of the file.
-  app.use('/api/user', userRoutes); // All user routes are prefixed
+  app.use('/api/user', userRoutes);
 
   app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok' });
@@ -74,7 +72,24 @@ export function createApp() {
     res.json(session);
   });
 
-  // Example of a fully protected route for dashboard access
+  // --- Onboarding and Application Routes ---
+
+  // Placeholder for the agreements page. It's protected because a user must be logged in
+  // to even know if they need to sign agreements.
+  app.get('/agreements', protect, enforceOnboarding, (req, res) => {
+    res.send(`<h1>Agreements Page</h1><p>User: ${req.user?.email}</p><p>Please sign the agreements.</p>
+      <form action="/api/user/agreements" method="POST"><button type="submit">Sign Agreements</button></form>
+    `);
+  });
+
+  // Placeholder for the account setup page.
+  app.get('/setup-account', protect, (req, res) => {
+    res.send(
+      `<h1>Account Setup Page</h1><p>User: ${req.user?.email}</p><p>Please set up your account.</p>`,
+    );
+  });
+
+  // Main dashboard, protected by both authentication and onboarding middleware.
   app.get('/dashboard', protect, enforceOnboarding, (req, res) => {
     res.send(`Welcome to the dashboard, user ${req.user!.id}!`);
   });
@@ -94,7 +109,6 @@ function startServer() {
 }
 
 // Only start the server if the file is run directly.
-// This allows test runners to import the module without starting the server.
 if (
   import.meta.url.startsWith('file://') &&
   process.argv[1] === new URL(import.meta.url).pathname
