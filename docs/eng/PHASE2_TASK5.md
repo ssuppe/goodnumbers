@@ -82,8 +82,8 @@ Implement a hardened, secure, test-driven `PUT /api/user/settings` endpoint to m
     ```
 2.  **Create a Feature Branch:**
     ```bash
-    git checkout develop
-    git pull origin develop
+    git checkout phase2develop
+    git pull origin phase2develop
     git checkout -b feat/P2_T5-user-settings-api
     ```
 
@@ -559,5 +559,5 @@ cd goodnumbers
 git add .
 git commit --amend --no-edit
 git push origin feat/P2_T5-user-settings-api
-gh pr create --base develop --title "feat(api): P2_T5 Implement User Settings API" --body "Closes #<issue_number>. Implements the protected user settings endpoint with TDD, validation, encryption, and security hardening (XSS, rate-limiting)."
+gh pr create --base phase2develop --title "feat(api): P2_T5 Implement User Settings API" --body "Closes #<issue_number>. Implements the protected user settings endpoint with TDD, validation, encryption, and security hardening (XSS, rate-limiting)."
 ```
