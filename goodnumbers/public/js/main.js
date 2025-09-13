@@ -1,32 +1,28 @@
-const authContainer = document.getElementById("auth-container");
+const authContainer = document.getElementById('auth-container');
 
 async function updateUI() {
   try {
-    // Fetch CSRF token first, as it's needed for both sign-in and sign-out forms
-    const csrfRes = await fetch("/api/auth/csrf");
-    if (!csrfRes.ok) {
-      throw new Error(`Failed to fetch CSRF token: ${csrfRes.status}`);
-    }
-    const { csrfToken } = await csrfRes.json();
-
-    const res = await fetch("/api/session");
+    const res = await fetch('/api/session');
     if (!res.ok) {
       throw new Error(`Server responded with status: ${res.status}`);
     }
     const session = await res.json();
 
     if (session && session.user) {
-      // User is logged in
-      authContainer.innerHTML = `
-        <p><strong>Status:</strong> Logged in</p>
-        <p><strong>Email:</strong> ${session.user.email}</p>
-        <form action="/api/auth/signout" method="POST">
-            <input type="hidden" name="csrfToken" value="${csrfToken}">
-            <button type="submit">Sign Out</button>
-        </form>
-      `;
+      // If the user is logged in, redirect them to the dashboard.
+      // The dashboard is the main entry point to the application,
+      // and its associated middleware will handle the onboarding flow.
+      authContainer.innerHTML = `<p><strong>Status:</strong> Logged in. Redirecting to your dashboard...</p>`;
+      window.location.href = '/dashboard';
     } else {
-      // User is logged out
+      // If the user is logged out, show the sign-in options.
+      // We need a CSRF token to make the sign-in form work correctly.
+      const csrfRes = await fetch('/api/auth/csrf');
+      if (!csrfRes.ok) {
+        throw new Error(`Failed to fetch CSRF token: ${csrfRes.status}`);
+      }
+      const { csrfToken } = await csrfRes.json();
+
       authContainer.innerHTML = `
         <p><strong>Status:</strong> Logged out</p>
         <form action="/api/auth/signin/google" method="POST">
@@ -36,10 +32,9 @@ async function updateUI() {
       `;
     }
   } catch (error) {
-    console.error("Error fetching session or CSRF token:", error);
-    authContainer.innerHTML = `<p style="color: red;">Error. See console for details.</p>`;
+    console.error('Error updating UI:', error);
   }
 }
 
 // Update the UI when the page loads
-document.addEventListener("DOMContentLoaded", updateUI);
+document.addEventListener('DOMContentLoaded', updateUI);
