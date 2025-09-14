@@ -1,4 +1,3 @@
-// Frontend/src/index.ts
 import './lib/env.ts';
 import express from 'express';
 import helmet from 'helmet';
@@ -74,9 +73,10 @@ export function createApp() {
 
   // --- Onboarding and Application Routes ---
 
-  // Placeholder for the agreements page. It's protected because a user must be logged in
-  // to even know if they need to sign agreements.
-  app.get('/agreements', protect, enforceOnboarding, (req, res) => {
+  // Placeholder for the agreements page. It is protected, but does NOT need
+  // the onboarding middleware, as this is the destination for users who
+  // have not completed this step.
+  app.get('/agreements', protect, (req, res) => {
     res.send(`<h1>Agreements Page</h1><p>User: ${req.user?.email}</p><p>Please sign the agreements.</p>
       <form action="/api/user/agreements" method="POST"><button type="submit">Sign Agreements</button></form>
     `);
