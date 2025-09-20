@@ -1,4 +1,3 @@
-// Frontend/src/index.ts
 import './lib/env.ts';
 import express from 'express';
 import helmet from 'helmet';
@@ -6,6 +5,8 @@ import rateLimit from 'express-rate-limit';
 import { ExpressAuth } from '@auth/express';
 import { authConfig } from './lib/auth.ts';
 import { getSession } from '@auth/express';
+
+import { escapeHtml } from './lib/utils.ts';
 
 // Correctly placed top-level imports
 import userRoutes from './routes/user.ts';
@@ -74,24 +75,59 @@ export function createApp() {
 
   // --- Onboarding and Application Routes ---
 
-  // Placeholder for the agreements page. It's protected because a user must be logged in
-  // to even know if they need to sign agreements.
-  app.get('/agreements', protect, enforceOnboarding, (req, res) => {
-    res.send(`<h1>Agreements Page</h1><p>User: ${req.user?.email}</p><p>Please sign the agreements.</p>
-      <form action="/api/user/agreements" method="POST"><button type="submit">Sign Agreements</button></form>
+  // Placeholder for the agreements page. It is protected, but does NOT need
+  // the onboarding middleware, as this is the destination for users who
+  // have not completed this step.
+  app.get('/agreements', protect, (req, res) => {
+    res.send(`<h1>Agreements Page</h1><p>User: ${escapeHtml(req.user?.email)}</p><p>Please sign the agreements.</p>
+      <form id="agreement-form">
+        <button type="submit">Sign Agreements</button>
+      </form>
+      <p id="message"></p>
+<script src="/js/agreements.js"></script>
     `);
   });
 
   // Placeholder for the account setup page.
   app.get('/setup-account', protect, (req, res) => {
+    const prefilledUrl = escapeHtml(req.user?.nightscoutUrl);
     res.send(
-      `<h1>Account Setup Page</h1><p>User: ${req.user?.email}</p><p>Please set up your account.</p>`,
+      `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <title>Account Setup</title>
+          <style> body { font-family: sans-serif; padding: 2em; } input, select { margin-bottom: 1em; width: 300px; } button { padding: 0.5em 1em; } </style>
+      </head>
+      <body>
+          <h1>Account Setup Page</h1>
+          <p>User: ${escapeHtml(req.user?.email)}</p>
+          <form id="settings-form">
+              <label for="nightscoutUrl">Nightscout URL (leave blank to clear):</label><br>
+              <input type="text" id="nightscoutUrl" name="nightscoutUrl" size="50" value="${prefilledUrl}"><br>
+
+              <label for="nightscoutToken">Nightscout Token (leave blank to clear):</label><br>
+              <input type="password" id="nightscoutToken" name="nightscoutToken" size="50"><br>
+
+              <label for="preferredUnits">Preferred Units:</label><br>
+              <select id="preferredUnits" name="preferredUnits">
+                  <option value="MGDL" ${req.user?.preferredUnits === 'MGDL' ? 'selected' : ''}>mg/dL</option>
+                  <option value="MMOL" ${req.user?.preferredUnits === 'MMOL' ? 'selected' : ''}>mmol/L</option>
+              </select><br><br>
+
+              <button type="submit">Save and Continue</button>
+          </form>
+          <p id="message"></p>
+          <script src="/js/setup-account.js"></script>
+      </body>
+      </html>
+    `,
     );
   });
 
   // Main dashboard, protected by both authentication and onboarding middleware.
   app.get('/dashboard', protect, enforceOnboarding, (req, res) => {
-    res.send(`Welcome to the dashboard, user ${req.user!.id}!`);
+    res.send(`Welcome to the dashboard, user ${escapeHtml(req.user!.email)}!`);
   });
 
   return app;
