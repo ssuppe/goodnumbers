@@ -30,7 +30,10 @@ export async function protect(req: Request, res: Response, next: NextFunction) {
 
   const session = await getSession(req, authConfig);
   if (!session?.user) {
-    if (req.path.startsWith('/api/')) {
+    // FIX: Use `req.originalUrl` to check for API requests.
+    // `req.path` is relative to the router's mount point (e.g., '/settings'),
+    // while `req.originalUrl` contains the full path (e.g., '/api/user/settings').
+    if (req.originalUrl.startsWith('/api/')) {
       return res.status(401).json({ error: 'Not authorized' });
     }
     return res.redirect('/api/auth/signin');
@@ -38,21 +41,21 @@ export async function protect(req: Request, res: Response, next: NextFunction) {
 
   // Fetch the latest user data from the database
   const dbUser = await prisma.user.findUnique({
-    where: { email: session.user.email || undefined }, // Use email for lookup, assuming it's unique and always present in session.user
+    where: { email: session.user.email || undefined },
   });
 
   if (!dbUser) {
-    // This should ideally not happen if session.user exists, but handle defensively
     console.error(
       `[Auth] User from session (${session.user.email}) not found in DB.`,
     );
-    if (req.path.startsWith('/api/')) {
+    // Also apply the fix here for consistency.
+    if (req.originalUrl.startsWith('/api/')) {
       return res.status(401).json({ error: 'User data not found' });
     }
     return res.redirect('/api/auth/signin');
   }
 
   // Attach the fresh user object from the database to the request
-  req.user = { ...session.user, ...dbUser }; // Merge session user with DB user to ensure all fields are present
+  req.user = { ...session.user, ...dbUser };
   next();
 }
