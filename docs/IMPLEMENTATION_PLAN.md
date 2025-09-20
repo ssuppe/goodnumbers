@@ -1,36 +1,13 @@
-Of course. I've reviewed the project documentation. Your suggestion to add a UI testing task is an excellent one.
-
-### My Recommendation
-
-I completely agree with your proposal. Adding a simple, placeholder UI to test the login/logout flow after the core Auth.js integration is a standard best practice.
-
-Here’s why I recommend it:
-
-1.  **End-to-End Validation:** It allows us to confirm that the entire authentication flow is working from the user's perspective (button click -> Google -> callback -> session created) before we add more complex logic like the allowlist. This makes debugging much easier.
-2.  **Solid Foundation:** It ensures the most critical piece of user-facing functionality—getting in and out of the application—is solid before we build anything on top of it.
-3.  **Reduces Risk:** It isolates the core integration work. If something goes wrong later, we'll know it's likely due to the newer code (like the allowlist) and not the basic setup.
-
-I suggest we call this new task "Task 2: Create a Placeholder UI for Login/Logout Testing". It would involve creating a minimal HTML page served by our Express server with login/logout buttons and a status display. This avoids the complexity of setting up a full frontend framework like React at this stage.
-
-Below is the proposed update to the `IMPLEMENTATION_PLAN.md` file, which re-numbers the subsequent tasks in Phase 2. I have also included the new and modified files that would be created for this task.
-
----
-
-### Proposed File Changes
-
-Here is the updated `IMPLEMENTATION_PLAN.md` with the new task added to Phase 2.
-
-`````markdown
 # Docs/IMPLEMENTATION_PLAN.md
 
 # Goodnumbers Implementation Plan
 
-**Version:** 2.0 (Auth.js v5 Refresh)
-**Date:** 2025-09-06
+**Version:** 3.0 (Phase 3 Update)
+**Date:** 2025-09-20
 
 ## 1. Overview
 
-This document outlines the phased, step-by-step implementation plan for the Goodnumbers project. The plan follows a measured, test-driven approach, ensuring that each component is built and verified before moving to the next. Each task should be developed on a dedicated feature branch and merged into the `develop` branch via a Pull Request, as defined in `DEVELOPMENT_PROCESS.md`.
+This document outlines the phased, step-by-step implementation plan for the Goodnumbers project. The plan follows a measured, test-driven approach, ensuring that each component is built and verified before moving to the next. Each task should be developed on a dedicated feature branch and merged into the appropriate development branch via a Pull Request, as defined in `DEVELOPMENT_PROCESS.md`.
 
 ## 2. Testing Strategy
 
@@ -48,26 +25,22 @@ To support the MVP goals of stability and quality without undue complexity, this
 For services that interact with external dependencies like a database or a Redis queue, we will adopt a two-tier integration testing strategy to balance speed and confidence:
 
 1.  **Tier 1: Mocked Integration Tests (Fast Feedback)**
-
     - **Purpose:** To verify the application's internal logic and the "contract" between different parts of our code. For example, ensuring an API route correctly calls a specific function from our queue library.
     - **Mechanism:** We use Jest's mocking capabilities (`jest.unstable_mockModule`) to replace the real external dependency with a controlled, in-memory version.
     - **Characteristics:** These tests are extremely fast, reliable, and can run in parallel without interfering with each other. They are ideal for running frequently during local development.
     - **Example:** `tests/integration/queue.test.ts`
 
 2.  **Tier 2: "True" Integration Tests (High Confidence)**
-
     - **Purpose:** To verify the application's ability to correctly connect to, serialize data for, and interact with a real backing service (e.g., the Redis server running in Docker).
     - **Mechanism:** These tests run against a live service. They use environment variables to configure the application to use a unique, isolated namespace (like a specific queue name) for the duration of the test run.
     - **Characteristics:** These tests are slower and require the external dependency to be running. They provide the highest level of confidence that the entire integrated system works as expected. They are critical for our CI/CD pipeline before a deployment.
     - **Example:** `tests/integration/real-queue.test.ts`
 
 3.  **Unit Testing:**
-
     - **Goal:** To test the smallest pieces of logic (e.g., a single utility function) in complete isolation.
     - **Tool:** **Jest** will be used for its test runner, assertion library (`expect`), and mocking capabilities.
 
 4.  **Integration Testing:**
-
     - **Goal:** To test how multiple units work together.
     - **Backend Tools:** **Jest** and **`supertest`** will be used to test Express API endpoints, ensuring the HTTP layer, middleware, and service logic function correctly as a group.
     - **Frontend Tools:** **Jest** and **React Testing Library** will be used to test React components, ensuring they render and behave correctly from a user's perspective.
@@ -93,7 +66,7 @@ To reliably mock modules in an ES Module environment, use the experimental `jest
 
 **Example (`auth.test.ts`):**
 
-````typescript
+```typescript
 import { jest, describe, it, expect } from "@jest/globals";
 
 // Mock fs/promises *before* importing the auth module
@@ -112,7 +85,8 @@ describe("signIn callback", () => {
 
     // ... rest of the test
   });
-});```
+});
+```
 
 This approach ensures that the mock is registered before your code imports the module, providing a reliable way to isolate dependencies in your tests.
 
@@ -170,7 +144,6 @@ For each task listed in the implementation phases below, the following GitHub-in
 **Goal:** Establish a runnable server, a database schema, and core utilities. This phase ensures the absolute fundamentals are working before any feature logic is added.
 
 1.  **Task: Initialize Project & Dependencies** - COMPLETE
-
     - Make a new subfolder calld 'goodnumbers' which will be the project root
     - **Action:** Set up the Node.js project (`npm init`), install core dependencies (Express, Prisma, TypeScript), and configure project files (`tsconfig.json`, `.pylintrc`, `.prettierrc`).
     - **Action:** Install testing dependencies: `jest`, `ts-jest`, `@types/jest`, `supertest`.
@@ -178,7 +151,6 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Commit:** `chore: Initial project setup and configuration`
 
 2.  **Task: Implement Database Schema** - COMPLETE
-
     - **Action:** Create the `goodnumbers/prisma/schema.prisma` file and populate it with the models from the technical specification.
     - **Action:** Add `*.db` to the `goodnumbers/prisma/.gitignore` file to ensure local database files are not committed.
     - **Test (Red):** Create a new integration test file at `goodnumbers/tests/integration/database.test.ts`. Write a test that attempts to connect to the database via the Prisma client and query the user table. This test will fail initially.
@@ -187,7 +159,6 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Commit:** `feat(db): implement initial prisma schema`
 
 3.  **Task: Create Basic Express Server** - COMPLETE
-
     - **Action:** Set up a minimal Express server application that listens on a port.
     - **Action:** Add `helmet` and `express-rate-limit` middleware to set secure HTTP headers and provide basic DoS protection.
     - **Action:** Create a public `/health` endpoint that returns a `200 OK` with a JSON body like `{"status": "ok"}`.
@@ -204,276 +175,87 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 ---
 
-### **Phase 2: Authentication & User Management (Auth.js v5)**
+### **Phase 2: Authentication & User Management (Auth.js v5)** - COMPLETE
 
 **Goal:** To implement a secure, modern, and robust authentication and user management system using the official Auth.js v5 library for Express. This phase is critical and replaces all previous authentication logic.
 
 #### **Task 1: Core Auth.js v5 Integration** - COMPLETE
 
 - **Goal:** To install the necessary dependencies and configure the foundational pieces of Auth.js, including the database adapter and the main Express handler.
-- **Action (Dependencies):** In the `goodnumbers` directory, install the required Auth.js v5 packages.
-  ```bash
-  npm install @auth/express @auth/prisma-adapter
-````
-`````
-
-`````
-
-- **Action (Database Schema):** Auth.js requires specific models to manage users, sessions, and provider accounts. Add the standard Auth.js models to your `prisma/schema.prisma` file. Your schema should now include `User`, `Account`, `Session`, and `VerificationToken` alongside your application models. Crucially, update the `User` model to include the `agreementsSigned` field from the start.
-
-  ```prisma
-  // file: goodnumbers/prisma/schema.prisma
-
-  // ... (keep existing models like Journal) ...
-
-  model User {
-    id               String    @id @default(cuid())
-    name             String?
-    email            String?   @unique
-    emailVerified    DateTime?
-    image            String?
-    accounts         Account[]
-    sessions         Session[]
-    journals         Journal[]
-
-    // Application-specific fields
-    nightscoutUrl    String?
-    nightscoutToken  String?
-    preferredUnits   GlucoseUnit @default(MGDL)
-    rssToken         String    @unique @default(cuid())
-    agreementsSigned Boolean   @default(false)
-  }
-
-  // --- Standard Auth.js Models ---
-  model Account {
-    id                 String  @id @default(cuid())
-    userId             String
-    type               String
-    provider           String
-    providerAccountId  String
-    refresh_token      String?
-    access_token       String?
-    expires_at         Int?
-    token_type         String?
-    scope              String?
-    id_token           String?
-    session_state      String?
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-    @@unique([provider, providerAccountId])
-  }
-
-  model Session {
-    id           String   @id @default(cuid())
-    sessionToken String   @unique
-    userId       String
-    expires      DateTime
-    user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  }
-
-  model VerificationToken {
-    identifier String
-    token      String   @unique
-    expires    DateTime
-    @@unique([identifier, token])
-  }
-  ```
-
-- **Action (Database Migration):** Apply the schema changes to your database.
-
-  ````bash
-  npx prisma migrate dev --name feat-authjs-models
-  ```-   **Action (Configuration):** Create a new file at `goodnumbers/src/lib/auth.ts` to hold the core Auth.js configuration.
-  ```typescript
-  // file: goodnumbers/src/lib/auth.ts
-  import { PrismaAdapter } from '@auth/prisma-adapter';
-  import Google from '@auth/express/providers/google';
-  import { prisma } from '../db.js';
-  import { ExpressAuthConfig } from '@auth/express';
-
-  export const authConfig: ExpressAuthConfig = {
-    adapter: PrismaAdapter(prisma),
-    providers: [
-      Google({
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      }),
-    ],
-    secret: process.env.AUTH_SECRET,
-    trustHost: true,
-  };
-`````
-
-- **Action (Integration):** Wire up the Auth.js handler in your main server file.
-
-  ```typescript
-  // file: goodnumbers/src/index.ts
-  // ... (other imports)
-  import { ExpressAuth } from "@auth/express";
-  import { authConfig } from "./lib/auth.js";
-
-  // ... (app setup)
-
-  // Wire up Auth.js before your other API routes
-  app.use("/api/auth", ExpressAuth(authConfig));
-
-  // ... (other routes, error handlers, etc.)
-  ```
-
-- **Test (Manual):** Start the server (`npm run dev`). Navigate to `http://localhost:3000/api/auth/signin` in your browser. You should see a basic, unstyled sign-in page with a "Sign in with Google" button. This confirms the core integration is working.
 - **Commit:** `feat(auth): P2_T1 integrate authjs v5 core components`
 
-#### **Task 2: Create a Placeholder UI for Login/Logout Testing**
+#### **Task 2: Create a Placeholder UI for Login/Logout Testing** - COMPLETE
 
 - **Goal:** To create a minimal frontend page to manually verify the end-to-end Google OAuth flow is working correctly before adding more complex logic.
-- **Action (Static Serving):** Configure the Express server to serve static files from a new `goodnumbers/public` directory.
-- **Action (Session Endpoint):** Create a new `GET /api/session` endpoint that uses `getSession` from Auth.js to return the current user's session object. This allows a client-side script to check the authentication status.
-- **Action (HTML):** Create a new file `goodnumbers/public/index.html`. This file will contain:
-  - A simple script to fetch `/api/session` on page load.
-  - If a user is logged in, it will display their email and a "Sign Out" button (within a form that `POST`s to `/api/auth/signout`).
-  - If no user is logged in, it will display a "Sign in with Google" link (pointing to `/api/auth/signin/google`).
-- **Test (Manual):**
-  1. Start the server and navigate to `http://localhost:3000/`.
-  2. Verify the page shows a "Logged out" status and the "Sign in" link.
-  3. Click the link, complete the Google sign-in flow.
-  4. Upon returning to the page, verify it now shows your email and the "Sign Out" button.
-  5. Click "Sign Out" and verify you are returned to the logged-out state.
 - **Commit:** `feat(auth): P2_T2 add placeholder ui for testing auth flow`
 
 #### **Task 3: Implement Email Allowlist** - COMPLETE
 
 - **Goal:** To restrict application access to a predefined list of beta testers by implementing logic within the `signIn` callback.
-- **Action (Configuration):** Create a new directory `goodnumbers/config/` and a new file inside it: `goodnumbers/config/allowed_emails.txt`. Add your personal Google email to this file for testing.
-- **Test (Red - Unit Test):** Create a new test file `goodnumbers/tests/unit/auth.test.ts`. Using `jest.unstable_mockModule`, mock the `fs/promises` module. Write tests for the `signIn` callback logic: one for an allowed email, one for a denied email, and one for when the file is unreadable (which should deny access).
-- **Action (Green):** Implement the allowlist logic and the `signIn` callback in `goodnumbers/src/lib/auth.ts`.
-
-  ```typescript
-  // file: goodnumbers/src/lib/auth.ts
-  import { PrismaAdapter } from "@auth/prisma-adapter";
-  import Google from "@auth/express/providers/google";
-  import { prisma } from "../db.js";
-  import { ExpressAuthConfig } from "@auth/express";
-  import fs from "fs/promises";
-
-  // In-memory cache for the allowlist to avoid reading the file on every login
-  let allowedEmails: Set<string> | null = null;
-  let cacheTimestamp = 0;
-  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-  async function isEmailAllowed(email?: string | null): Promise<boolean> {
-    if (!email) return false;
-
-    const now = Date.now();
-    if (!allowedEmails || now - cacheTimestamp > CACHE_TTL) {
-      try {
-        const fileContent = await fs.readFile(
-          "config/allowed_emails.txt",
-          "utf-8"
-        );
-        allowedEmails = new Set(
-          fileContent
-            .split("\n")
-            .map((line) => line.trim().toLowerCase())
-            .filter((line) => line && !line.startsWith("#"))
-        );
-        cacheTimestamp = now;
-        console.log("[Auth] Refreshed email allowlist from file.");
-      } catch (error) {
-        console.error(
-          "[CRITICAL ERROR] Could not read allowed_emails.txt. Defaulting to denying all access.",
-          error
-        );
-        allowedEmails = new Set(); // Secure default: deny all if file is unreadable
-      }
-    }
-
-    const isAllowed = allowedEmails.has(email.toLowerCase());
-    console.log(
-      `[Auth] Login attempt for user ID associated with ${email}. Allowed: ${
-        isAllowed ? "YES" : "NO"
-      }.`
-    );
-    return isAllowed;
-  }
-
-  export const authConfig: ExpressAuthConfig = {
-    adapter: PrismaAdapter(prisma),
-    providers: [
-      Google({
-        clientId: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      }),
-    ],
-    callbacks: {
-      async signIn({ user }) {
-        return await isEmailAllowed(user.email);
-      },
-      async session({ session, user }) {
-        session.user.id = user.id;
-        return session;
-      },
-    },
-    secret: process.env.AUTH_SECRET,
-    trustHost: true,
-  };
-  ```
-
-- **Test (Green):** Run the unit test file. It should now pass.
-- **Refactor:** Ensure the code is clean and the error handling (for the unreadable file) is robust.
 - **Commit:** `feat(auth): P2_T3 implement email allowlist in signIn callback`
 
-#### **Task 4: Implement Onboarding Enforcement Middleware**
+#### **Task 4: Implement Onboarding Enforcement Middleware** - COMPLETE
 
 - **Goal:** To create a secure, server-side authorization layer that enforces the required user onboarding flow (Agreements -> Account Setup) before granting access to the main application.
-- **Action (Test-Driven Development):**
-  1.  **Red:** Create a comprehensive integration test suite (`onboarding.test.ts`) that defines all required behaviors. This includes testing page redirects, API `403 Forbidden` errors for incomplete onboarding, redirect loop prevention, and the new agreements endpoint.
-  2.  **Green:** Write the simplest, most robust code to make all tests pass.
-- **Action (Implementation):**
-  1.  **Enrich Session Securely:** Update the Auth.js `session` callback in `src/lib/auth.ts` to include onboarding fields (`agreementsSigned`, etc.). Add documentation to mandate the use of the "database" session strategy for security.
-  2.  **Create `protect` Middleware:** Implement a middleware (`src/middleware/auth.ts`) to handle primary authentication, checking for a valid session and attaching the user object to the request.
-  3.  **Create `enforceOnboarding` Middleware:** Implement the core authorization logic (`src/middleware/onboarding.ts`) to check the user's onboarding status, perform redirects or return API errors, and use PII-safe logging.
-  4.  **Create Agreements API:** Implement the `POST /api/user/agreements` endpoint to allow users to persist their agreement status.
-- **Test (Manual):** After automated tests pass, perform a manual verification by logging in and manipulating the user's state in the database to confirm redirects are working as expected in a live browser.
 - **Commit:** `feat(auth): P2_T4 implement onboarding enforcement middleware`
-- **Detailed Plan:** See `docs/eng/PHASE2_TASK4.md` for the full, verbose engineering and testing plan.
 
-#### **Task 5: Implement User Settings API**
+#### **Task 5: Implement User Settings API** - COMPLETE
 
-- **Goal:** To create the `PUT /api/user/settings` endpoint, secured by the new `protect` middleware.
-- **Test (Red):** In a new file `goodnumbers/tests/integration/user.test.ts`, write a test for the `PUT /api/user/settings` endpoint.
-  1.  Use `supertest` to make a request.
-  2.  Use the `x-test-user-id` header to simulate an authenticated user.
-  3.  Send a valid request body with new settings.
-  4.  Assert that the response is `200 OK`.
-  5.  Query the database directly to verify that the user's settings were correctly updated and that sensitive data was encrypted.
-- **Action (Green):** Create `goodnumbers/src/routes/user.ts`. Implement the `/settings` route, making sure to apply the `protect` middleware first.
-- **Test (Green):** Run the new integration test. It should pass.
-- **Refactor:**
-  - Clean up the route handler logic.
-  - **Note:** Consider consolidating the `POST /api/user/agreements` logic into this endpoint. For instance, allowing a request like `PUT /api/user/settings` with a body of `{ "agreementsSigned": true }` would create a more unified API.
+- **Goal:** To create the `PUT /api/user/settings` endpoint, secured by the `protect` middleware, and refactor the old agreements endpoint.
 - **Commit:** `feat(api): P2_T5 implement protected endpoint for user settings`
+
+---
 
 ### **Phase 3: Core Journal Feature (Backend API)**
 
-**Goal:** Build out all the backend API endpoints related to the journal lifecycle. At the end of this phase, the backend will be ready, but the actual data processing will not be implemented yet.
+**Goal:** Build out all the backend API endpoints related to the journal lifecycle. At the end of this phase, the backend will be ready for the core feature, but the actual data processing will be deferred. This phase builds directly upon the secure, authenticated foundation from Phase 2.
 
-1.  **Task: Implement Journal CRUD APIs**
+#### **Phase 3 Pre-requisite: Create `phase3develop` Branch**
 
-    - **Action:** Implement the foundational journal endpoints: `POST`, `GET` (list), `GET` (by ID), `PUT`, and `DELETE` for `/api/journals`. All endpoints accepting data must use `zod` for validation.
-    - **Test:** Write integration tests using Jest and `supertest` for each endpoint. Crucially, ensure that ownership is enforced (a user cannot access or modify another user's journals).
-    - **Commit:** `feat(api): P3_T1 implement crud api for journals`
+- **Goal:** To create a clean, dedicated integration branch for Phase 3, preserving the state of the completed Phase 2.
+- **Action:**
 
-2.  **Task: Set Up Background Job Queue**
+  ```bash
+  # Ensure you have the latest version of the phase 2 branch
+  git checkout phase2develop
+  git pull origin phase2develop
 
-    - **Action:** Integrate BullMQ and configure its connection to a Redis instance.
-    - **Action:** Modify the `POST /api/journals` endpoint to enqueue a new job with the `journalId` upon successful creation.
-    - **Action:** Create a skeleton background worker that listens to the queue and logs the ID of any received job.
-    - **Test:** Write an integration test that calls the journal creation API and then checks the queue (via a Redis client) to confirm a job was successfully enqueued.
-    - **Commit:** `feat(worker): P3_T2 integrate bullmq for background job processing`
+  # Create and push the new branch for phase 3
+  git checkout -b phase3develop
+  git push origin phase3develop
+  ```
 
-3.  **Task: Implement Journal Status API**
-    - **Action:** Create the `GET /api/journal-status/:id` endpoint to allow the frontend to poll for job progress.
-    - **Test:** Write an integration test using Jest and `supertest` that creates a journal and then calls this endpoint to check its initial `PENDING` status.
-    - **Commit:** `feat(api): P3_T3 implement journal status polling endpoint`
+- **Note:** All feature branches for Phase 3 tasks must be based on, and their Pull Requests must target, the `phase3develop` branch.
+
+#### **Task 1: Implement Journal CRUD APIs**
+
+- **Goal:** Implement the foundational journal endpoints (`POST`, `GET` list, `GET` by ID, `PUT`, and `DELETE`) for `/api/journals`.
+- **Implementation Details:**
+  - **Security:** The entire `/api/journals` route group **must** be protected by the middleware chain established in Phase 2 (`protect` and `enforceOnboarding`). This ensures only authenticated, fully onboarded users can access these endpoints.
+  - **Data Segregation:** All database queries that access a specific journal (`GET /:id`, `PUT /:id`, `DELETE /:id`) **must** include a `userId` check in the `where` clause (e.g., `{ where: { id: journalId, userId: req.user.id } }`). This is a critical security measure to enforce data ownership.
+  - **Input Validation:** For the `PUT /api/journals/:id` endpoint, create a new schema named `journalUpdateSchema` in `src/lib/validation.ts` using `zod`. This maintains our established pattern for secure and consistent input validation.
+- **Test:** Write integration tests using Jest and `supertest` for each endpoint. Crucially, tests must verify that ownership is enforced (a user cannot access or modify another user's journals).
+- **Commit:** `feat(api): P3_T1 implement crud api for journals`
+
+#### **Task 2: Set Up Background Job Queue**
+
+- **Goal:** Integrate a background job queue to handle the asynchronous, long-running process of journal generation, ensuring the web server remains responsive.
+- **Implementation Details:**
+  - **Dependencies:** Install `bullmq` and a Redis client such as `ioredis`. Add Redis connection details to the `.env` and `.env.example` files.
+  - **Logic:** The `POST /api/journals` endpoint will be modified. After successfully creating a `Journal` record with a `PENDING` status, it will enqueue a new job containing the `journalId`.
+  - **Worker:** Create a skeleton background worker process. This worker will connect to the Redis queue, listen for new jobs, and simply log the ID of any job it receives. The actual processing logic will be implemented in a later phase.
+- **Test:** Write an integration test that calls the journal creation API and then uses a Redis client to connect to the test database and confirm that a job was successfully added to the queue with the correct journal ID.
+- **Commit:** `feat(worker): P3_T2 integrate bullmq for background job processing`
+
+#### **Task 3: Implement Journal Status API**
+
+- **Goal:** Create an endpoint to allow the frontend to poll for the progress of a journal generation job.
+- **Implementation Details:**
+  - **API Design:** To follow RESTful best practices, the endpoint will be `GET /api/journals/:id/status`. This treats the status as a sub-resource of the journal.
+  - **Logic:** The endpoint will query the database for the specified journal and return its `status`, `progress`, and `statusMessage` fields.
+  - **Security:** This endpoint must also enforce user ownership to prevent one user from polling the status of another user's journal.
+- **Test:** Write an integration test using Jest and `supertest` that first creates a journal (which will have a `PENDING` status) and then immediately calls this new status endpoint to verify the initial state is returned correctly.
+- **Commit:** `feat(api): P3_T3 implement journal status polling endpoint`
 
 ### **Phase 4: Security Hardening Sprint**
 
@@ -541,7 +323,6 @@ For each task listed in the implementation phases below, the following GitHub-in
 **Goal:** Build the user interface, connecting it to the now-stable backend API.
 
 1.  **Task: Build Foundational UI & Login Flow**
-
     - **Action:** Set up the React project, routing, and a main layout component (header, footer).
     - **Action:** Build the UI for the login flow, the post-login agreements page, and the account setup page. Wire these up to the corresponding backend APIs.
     - **Test:** Use Jest and React Testing Library for component tests. Use Playwright for E2E tests to validate the forms and user flows.
@@ -560,14 +341,12 @@ For each task listed in the implementation phases below, the following GitHub-in
 **Goal:** Implement the core data processing logic inside the background worker.
 
 1.  **Task: Implement Data Fetching & Analysis**
-
     - **Action:** In the background worker, implement the logic to fetch data from a user's Nightscout instance (decrypting credentials first).
     - **Action:** Integrate the existing analysis scripts to process the raw data into structured insights and `TimeCluster` objects.
     - **Test:** Write unit tests using Jest for the data fetching and analysis pipeline, heavily mocking the external Nightscout API.
     - **Commit:** `feat(worker): P6_T1 implement nightscout data fetching and statistical analysis`
 
 2.  **Task: Implement AI & TTS Pipeline**
-
     - **Action:** Implement the multi-pass Gemini calls to generate the script and description.
     - **Action:** Implement the call to the TTS service to generate the audio file.
     - **Action:** Implement robust error handling for each step of this pipeline.
@@ -613,136 +392,3 @@ This section outlines high-level tasks that should be addressed as part of the p
       - Confirm that errors are properly captured and logged by the new system.
       - (Manual) Verify logs are accessible in the chosen storage solution.
     - **Commit:** `feat(ops): P6_T1 implement production logging solution`
-
-````
-
-Here is the code for the new placeholder UI and the necessary server modifications.
-
-```typescript
-# Frontend/src/index.ts
-import 'dotenv/config';
-import express from 'express';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
-import { ExpressAuth } from '@auth/express';
-import { authConfig } from './lib/auth.js';
-import { getSession } from '@auth/express';
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// --- Security Middlewares ---
-
-// Set various security HTTP headers
-app.use(helmet());
-
-// Basic rate limiting to prevent brute-force attacks
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-});
-app.use(limiter);
-
-// --- Core Middlewares ---
-app.use(express.json());
-app.use(express.static('public')); // Serve static files from 'public' directory
-
-// --- Auth Routes ---
-// Note: It's important to wire up Auth.js before your other API routes
-app.use('/api/auth', ExpressAuth(authConfig));
-
-// --- API Routes ---
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
-
-app.get('/api/session', async (req, res) => {
-  const session = await getSession(req, authConfig);
-  res.json(session);
-});
-
-
-// Only start listening if the file is run directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-  });
-}
-
-// Export the app for testing purposes
-export { app };
-````
-
-```html
-# Frontend/public/index.html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Goodnumbers Auth Test</title>
-    <style>
-      body {
-        font-family: sans-serif;
-        padding: 2em;
-        line-height: 1.5;
-      }
-      #auth-container {
-        border: 1px solid #ccc;
-        padding: 1em;
-        border-radius: 8px;
-        max-width: 400px;
-      }
-      button {
-        font-size: 1em;
-        padding: 0.5em 1em;
-        cursor: pointer;
-      }
-      a {
-        font-size: 1em;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Goodnumbers Auth Test Page</h1>
-    <div id="auth-container">
-      <p>Loading session status...</p>
-    </div>
-
-    <script>
-      const authContainer = document.getElementById("auth-container");
-
-      async function updateUI() {
-        try {
-          const res = await fetch("/api/session");
-          const session = await res.json();
-
-          if (session && session.user) {
-            // User is logged in
-            authContainer.innerHTML = `
-                        <p><strong>Status:</strong> Logged in</p>
-                        <p><strong>Email:</strong> ${session.user.email}</p>
-                        <form action="/api/auth/signout" method="POST">
-                            <button type="submit">Sign Out</button>
-                        </form>
-                    `;
-          } else {
-            // User is logged out
-            authContainer.innerHTML = `
-                        <p><strong>Status:</strong> Logged out</p>
-                        <a href="/api/auth/signin/google">Sign in with Google</a>
-                    `;
-          }
-        } catch (error) {
-          authContainer.innerHTML = `<p>Error fetching session: ${error.message}</p>`;
-        }
-      }
-
-      // Update the UI when the page loads
-      document.addEventListener("DOMContentLoaded", updateUI);
-    </script>
-  </body>
-</html>
-```
