@@ -25,10 +25,10 @@ describe('PUT /api/user/settings', () => {
     });
   });
 
-  afterAll(async (done) => {
+  afterAll(async () => {
     await prisma.user.deleteMany();
     await prisma.$disconnect();
-    server.close(done);
+    server.close();
   });
 
   it('should return 401 Unauthorized if no user is authenticated', async () => {
