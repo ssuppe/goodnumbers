@@ -1,52 +1,53 @@
-import type { Request, Response, NextFunction } from 'express';
+import pkg from 'express';
+const { Request, Response, NextFunction } = pkg;
 
-export function enforceOnboarding(
+import { prisma } from '../lib/prisma.ts';
+
+// This middleware enforces the user onboarding flow.
+// Users must sign agreements and set up their Nightscout account
+// before accessing the main application.
+export async function enforceOnboarding(
   req: Request,
   res: Response,
   next: NextFunction,
 ) {
-  const user = req.user;
-  const isApiRequest = req.path.startsWith('/api/');
-
-  if (!user) {
-    console.error(
-      '[CRITICAL] enforceOnboarding middleware ran without a user on the request. This should not happen.',
-    );
-    return res.status(500).json({ error: 'User not found on request object.' });
+  // If the user is not authenticated, the `protect` middleware should have
+  // already handled it. This middleware assumes an authenticated user.
+  if (!req.user) {
+    return res.status(401).json({ error: 'Unauthorized.' });
   }
 
-  const userId = user.id; // For PII-safe logging
+  const userId = req.user.id;
 
-  // Check 1: Have agreements been signed?
-  if (!user.agreementsSigned) {
-    if (req.path === '/agreements') return next(); // Prevent redirect loop
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { agreementsSigned: true, nightscoutUrl: true },
+    });
 
-    console.log(`[Auth] User ${userId} requires agreements. Path: ${req.path}`);
-    if (isApiRequest) {
-      return res.status(403).json({
-        error: 'User has not signed the agreements.',
-        code: 'AGREEMENTS_NOT_SIGNED',
-      });
+    if (!user) {
+      // This should ideally not happen if `protect` middleware works correctly
+      return res.status(404).json({ error: 'User not found.' });
     }
-    return res.redirect('/agreements');
-  }
 
-  // Check 2: Has the account been set up?
-  if (!user.nightscoutUrl || !user.preferredUnits) {
-    if (req.path === '/setup-account') return next(); // Prevent redirect loop
-
-    console.log(
-      `[Auth] User ${userId} requires account setup. Path: ${req.path}`,
-    );
-    if (isApiRequest) {
-      return res.status(403).json({
-        error: 'User has not completed account setup.',
-        code: 'ACCOUNT_NOT_SETUP',
-      });
+    // Check if agreements are signed
+    if (!user.agreementsSigned) {
+      // Redirect to agreements page if not signed
+      return res.redirect('/agreements');
     }
-    return res.redirect('/setup-account');
-  }
 
-  // If all checks pass, proceed.
-  next();
+    // Check if Nightscout URL is set (basic account setup)
+    if (!user.nightscoutUrl) {
+      // Redirect to setup account page if not set
+      return res.redirect('/setup-account');
+    }
+
+    // If all checks pass, proceed to the next middleware/route handler
+    next();
+  } catch (error) {
+    console.error('[Onboarding Middleware] Error enforcing onboarding:', error);
+    res
+      .status(500)
+      .json({ error: 'Internal server error during onboarding check.' });
+  }
 }

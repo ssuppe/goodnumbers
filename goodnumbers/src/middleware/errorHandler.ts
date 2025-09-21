@@ -1,11 +1,12 @@
-import { Request, Response, NextFunction } from 'express';
+import pkg from 'express';
+const { Request, Response, NextFunction } = pkg;
 
 // Express identifies this as an error handler because it has 4 arguments.
 export function errorHandler(
   err: Error,
   req: Request,
   res: Response,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   next: NextFunction,
 ) {
   // FIX: Specifically handle CSRF errors to return a 403 status.
