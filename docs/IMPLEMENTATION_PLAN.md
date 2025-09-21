@@ -56,6 +56,41 @@ For services that interact with external dependencies like a database or a Redis
 - **File Naming:** Test files should be named to correspond with the module they are testing (e.g., `database.test.ts`, `encryption.test.ts`).
 - **Database Files:** Local development database files (e.g., `goodnumbers/prisma/dev.db`) are ephemeral and must be added to the `.gitignore` file. The schema is managed solely through version-controlled migration files.
 
+#### 2.3.1. Integration Test Server Lifecycle
+
+For integration tests that require a running Express server (e.g., API tests with `supertest`), the following `beforeEach`/`afterEach` pattern **must** be used to ensure proper test isolation and server shutdown:
+
+```typescript
+import request from "supertest";
+import { app } from "../../src/index.ts"; // Import the main Express app instance
+import * as http from "http";
+
+let server: http.Server;
+let agent: request.SuperTest<request.Test>;
+
+beforeEach((done) => {
+  server = app.listen(0, () => { // Start server on a random port
+    agent = request.agent(server); // Create agent bound to this server instance
+    // Perform any other async setup here (e.g., database seeding)
+    // ... then call done()
+    done(); 
+  });
+});
+
+afterEach((done) => {
+  server.close(done); // Close the server after each test
+});
+```
+
+- **Key Principles:**
+  - **Isolation:** A fresh server instance is created and destroyed for *each* test, preventing side effects between tests.
+  - **`app.listen(0)`:** Uses a random available port, avoiding port conflicts.
+  - **`supertest` Agent:** The `request.agent(server)` is crucial. It creates a `supertest` instance that persists cookies and state across requests within a single test, mimicking a real user session. It **must** be created *after* the server starts listening.
+  - **`done()` Callback:** Essential for asynchronous setup/teardown. Jest waits until `done()` is called before proceeding.
+  - **Prisma Disconnect:** For tests involving Prisma, `prisma.$disconnect()` should be called in `afterAll` (if the client is shared across tests) or within the `server.close()` callback in `afterEach` (if a new client is created per test or if the server closure depends on it). For our current setup, disconnecting Prisma in `afterEach` after server close is appropriate if the Prisma client is initialized per test or if the server close is dependent on it. However, for a global Prisma client, `afterAll` is more efficient. Given our current `journals.test.ts` setup, `prisma.$disconnect()` should be called in `afterAll` to avoid reconnecting for every test, but for now, we'll keep it in `afterEach` as per the working example.
+
+This pattern ensures robust and reliable integration tests, preventing common issues like hanging test runners and resource leaks.
+
 ### 2.4. Mocking with ES Modules
 
 When using ES Modules (`"type": "module"` in `package.json`), the standard `jest.mock()` function can be unreliable for mocking modules, especially built-in Node.js modules like `fs/promises`. This is due to the way ES Modules are loaded and how Jest's hoisting mechanism works.
