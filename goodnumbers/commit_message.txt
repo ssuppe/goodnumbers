@@ -1,0 +1,13 @@
+feat(api): P3_T1 Implement Journal Creation API with CSRF Protection
+
+This commit completes Phase 3, Task 1 of the Goodnumbers implementation plan.
+
+Key changes include:
+- Implemented the `POST /api/journals` endpoint for journal creation.
+- Integrated `tiny-csrf` for Cross-Site Request Forgery (CSRF) protection across relevant API routes (`/api/user`, `/api/journals`).
+- Established a robust middleware order in `src/index.ts` to ensure proper parsing of cookies and request bodies before CSRF validation.
+- Added a dedicated `/api/csrf-token` endpoint for clients to retrieve CSRF tokens.
+- Enhanced the global error handler (`src/middleware/errorHandler.ts`) to specifically catch and respond to CSRF-related errors with a `403 Forbidden` status.
+- Updated integration tests (`tests/integration/journals.test.ts`, `tests/integration/user.test.ts`, `tests/integration/auth.test.ts`) to correctly handle CSRF tokens by sending them in the request body (`_csrf` field) and to accurately reflect expected API behaviors.
+
+This establishes a secure and tested foundation for future API development.
