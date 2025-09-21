@@ -1,5 +1,3 @@
-# Docs/IMPLEMENTATION_PLAN.md
-
 # Goodnumbers Implementation Plan
 
 **Version:** 3.0 (Phase 3 Update)
@@ -58,38 +56,55 @@ For services that interact with external dependencies like a database or a Redis
 
 #### 2.3.1. Integration Test Server Lifecycle
 
-For integration tests that require a running Express server (e.g., API tests with `supertest`), the following `beforeEach`/`afterEach` pattern **must** be used to ensure proper test isolation and server shutdown:
+For integration tests that require a running Express server, the following `beforeEach`/`afterEach` pattern **must** be used. This approach uses an "app factory" (`createApp`) to ensure a clean, isolated, and correctly configured server for every test.
 
 ```typescript
 import request from "supertest";
-import { app } from "../../src/index.ts"; // Import the main Express app instance
+// Import the factory function, NOT the singleton app instance
+import { createApp } from "../../src/index.ts";
 import * as http from "http";
+import type { Express } from "express";
 
 let server: http.Server;
 let agent: request.SuperTest<request.Test>;
+let app: Express;
 
 beforeEach((done) => {
-  server = app.listen(0, () => { // Start server on a random port
-    agent = request.agent(server); // Create agent bound to this server instance
-    // Perform any other async setup here (e.g., database seeding)
-    // ... then call done()
-    done(); 
+  // 1. Set any necessary environment variables BEFORE creating the app.
+  // This is critical for middleware that reads 'process.env' on initialization.
+  process.env.CSRF_SECRET = "a_valid_test_secret_that_is_32_characters_long";
+  process.env.NODE_ENV = "test";
+
+  // 2. Create a fresh app instance for this test.
+  app = createApp();
+
+  // 3. Start the server on a random, available port.
+  server = app.listen(0, () => {
+    // 4. Create a supertest agent bound to this specific server instance.
+    // The agent will manage cookies and session state for us.
+    agent = request.agent(server);
+
+    // 5. Perform any other async setup (like database seeding) here.
+    // ... then call done() to signal Jest to start the test.
+    done();
   });
 });
 
 afterEach((done) => {
-  server.close(done); // Close the server after each test
+  // 6. Close the server after each test to prevent hanging processes.
+  server.close(done);
 });
 ```
 
 - **Key Principles:**
-  - **Isolation:** A fresh server instance is created and destroyed for *each* test, preventing side effects between tests.
-  - **`app.listen(0)`:** Uses a random available port, avoiding port conflicts.
-  - **`supertest` Agent:** The `request.agent(server)` is crucial. It creates a `supertest` instance that persists cookies and state across requests within a single test, mimicking a real user session. It **must** be created *after* the server starts listening.
+  - **Isolation:** A fresh server instance is created and destroyed for _each_ test, preventing side effects. Using an app factory (`createApp`) is essential for this, as it prevents module caching from reusing a stale, improperly configured app instance.
+  - **Configuration-First:** Environment variables are set _before_ the app is created. This solves timing issues where middleware might initialize before test-specific configurations are applied.
+  - **`app.listen(0)`:** Uses a random available port, avoiding conflicts.
+  - **`supertest` Agent:** The `request.agent(server)` is crucial. It creates a `supertest` instance that persists cookies and state across requests within a single test, mimicking a real user session. It **must** be created _after_ the server starts listening.
   - **`done()` Callback:** Essential for asynchronous setup/teardown. Jest waits until `done()` is called before proceeding.
-  - **Prisma Disconnect:** For tests involving Prisma, `prisma.$disconnect()` should be called in `afterAll` (if the client is shared across tests) or within the `server.close()` callback in `afterEach` (if a new client is created per test or if the server closure depends on it). For our current setup, disconnecting Prisma in `afterEach` after server close is appropriate if the Prisma client is initialized per test or if the server close is dependent on it. However, for a global Prisma client, `afterAll` is more efficient. Given our current `journals.test.ts` setup, `prisma.$disconnect()` should be called in `afterAll` to avoid reconnecting for every test, but for now, we'll keep it in `afterEach` as per the working example.
+  - **Prisma Disconnect:** For tests involving Prisma, `prisma.$disconnect()` should be called in an `afterAll` hook to cleanly close the database connection pool once all tests in the file have completed.
 
-This pattern ensures robust and reliable integration tests, preventing common issues like hanging test runners and resource leaks.
+This pattern ensures robust and reliable integration tests, preventing common issues like hanging test runners, resource leaks, and configuration errors.
 
 ### 2.4. Mocking with ES Modules
 
@@ -116,7 +131,7 @@ const { authConfig } = await import("../../src/lib/auth"); // Assuming authConfi
 describe("signIn callback", () => {
   it("should allow a user on the allowlist", async () => {
     // Configure the mock for this test
-    (readFile as jest.Mock).mockResolvedValue("user@example.comn");
+    (readFile as jest.Mock).mockResolvedValue("user@example.com\n");
 
     // ... rest of the test
   });
@@ -427,3 +442,7 @@ This section outlines high-level tasks that should be addressed as part of the p
       - Confirm that errors are properly captured and logged by the new system.
       - (Manual) Verify logs are accessible in the chosen storage solution.
     - **Commit:** `feat(ops): P6_T1 implement production logging solution`
+
+```
+
+```
