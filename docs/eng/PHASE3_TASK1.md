@@ -1,54 +1,58 @@
-# file: docs/eng/PHASE3_TASK1_CSRF_IMPLEMENTATION.md
+# Goodnumbers — PHASE 3, TASK 1: Secure Journal Creation API with Robust Integration Testing
 
-# Goodnumbers — PHASE 3, TASK 1: Secure Journal Creation API
+## 1. Overview for the Junior Engineer
 
-## TL;DR
+Welcome to Phase 3! This first task is one of the most important in the entire project. We will be implementing the `POST /api/journals` endpoint, which allows a user to create a new journal. More importantly, we will be setting up the security foundation—specifically **Cross-Site Request Forgery (CSRF) protection**—that will protect all of our future sensitive API endpoints.
 
-Implement the `POST /api/journals` endpoint with robust, stateless CSRF protection using `tiny-csrf`. This task establishes the foundational security pattern for all state-changing API endpoints in the application.
+This document will guide you through the process using a professional, **Test-Driven Development (TDD)** approach. We will write a test that fails first, then write the code to make it pass. This ensures our security works exactly as we expect.
 
-## Objectives
+During our initial attempts, we discovered a subtle but critical issue where our testing tools struggled with the security libraries. This document contains the final, superior solution that solves those problems, resulting in a clean, secure, and highly reliable implementation.
 
-1.  **Codify CSRF Rules as Tests:** Create a focused integration test that proves state-changing endpoints are vulnerable without CSRF protection.
-2.  **Implement CSRF Middleware Correctly:** Install and configure `cookie-parser` and `tiny-csrf` globally, ensuring the correct middleware order for them to function.
-3.  **Implement Journal Creation Endpoint:** Build the basic `POST /api/journals` endpoint, protected by the full authentication and CSRF middleware chain.
-4.  **Achieve a Green Build:** Ensure all new tests pass, confirming the security layer is working as expected.
+## 2. Technical Deep Dive: The "Why" Behind Our Choices
 
-## Risk & Mitigation
+### What is CSRF?
 
-- **Risk: (HIGH) Cross-Site Request Forgery (CSRF).** An attacker could trick an authenticated user's browser into unintentionally creating a journal.
-  - **Mitigation:** The `POST /api/journals` endpoint **must** be protected by `tiny-csrf`. The client (and our tests) will fetch a token from `/api/csrf-token` and include it in the `x-csrf-token` header of the `POST` request.
+CSRF is an attack where a malicious website can trick your browser into making a request to our application without your consent. Since your browser automatically sends your login cookie with the request, our app might think it was you who, for example, asked to delete a journal. We must prevent this.
 
-## Method Outline (Red-Green-Refactor)
+### Our CSRF Strategy: The Double Submit Cookie Pattern
 
-1.  **RED:** Write a new, focused integration test (`journals.test.ts`) that verifies the `POST /api/journals` endpoint correctly rejects requests that are missing a valid CSRF token. The test will initially fail.
-2.  **GREEN:** Install dependencies (`cookie-parser`, `tiny-csrf`). Implement the minimal code in `src/index.ts` and `src/routes/journal.ts` to make the test pass.
-3.  **REFACTOR:** Review the implementation for clarity and adherence to project conventions, then open a pull request.
+We will use a modern, stateless security pattern. Here’s how it works:
 
-## Acceptance Gates
+1.  When you first visit our app, the server sends your browser a special, secure cookie containing a secret CSRF token.
+2.  Our frontend code is designed to read this token from the cookie.
+3.  For any sensitive action (like creating a journal), our frontend will include that same token in a special header, like `x-csrf-token`.
+4.  Our server will then check: "Does the token in the header match the token in the cookie?" If they match, the request is legitimate. If not, it's rejected.
 
-1.  The `POST /api/journals` endpoint returns a `403 Forbidden` error if a valid CSRF token is not provided in the `x-csrf-token` header.
-2.  The `POST /api/journals` endpoint returns a `401 Unauthorized` error if the user is not authenticated.
-3.  The `POST /api/journals` endpoint returns a `201 Created` status when provided with a valid user session and CSRF token.
+A malicious website cannot read the cookie from your browser, so it cannot forge a valid request.
 
-## “Make-sure-you” Checklist
+### The Testing Challenge We Overcame (The Important Part!)
 
-- [ ] Have you updated your `.env.test` file with the `CSRF_SECRET` and `COOKIE_SECRET`?
-- [ ] Have you created the new integration test file **before** writing the implementation code?
-- [ ] Is `cookie-parser` registered in `src/index.ts` **before** the `csrf` middleware?
-- [ ] Have you applied the `protect` and `enforceOnboarding` middleware to the new journal router?
-- [ ] Have you updated the test for `POST` to fetch and use a **`x-csrf-token`** header?
+Our initial plan was to use the standard `supertest` library for testing. However, we discovered that it had trouble correctly managing the **signed cookies** that our CSRF library, `tiny-csrf`, creates for security. This led to frustrating and misleading test failures.
 
----
+After careful research, we found a better tool for the job: **`supertest-session`**. This is a specialized version of `supertest` designed specifically to handle complex, cookie-based sessions perfectly.
 
-## In-depth Engineering Plan
+**The key insight is that `supertest-session` allows us to keep our application code 100% identical between test and production environments.** We solve the testing problem by using a better testing tool, not by changing our application's security logic. This is a major win for project quality and reliability.
 
-### Commit 1: RED — Write Failing Integration Test
+## 3. The Step-by-Step Implementation Plan
 
-First, we codify the CSRF requirement as a failing test.
+We will follow the "Red-Green-Refactor" TDD workflow.
 
-#### **Action 1: Update Test Environment**
+### Commit 1: RED — Write a Failing Test to Define Our Goal
 
-Add secrets for `cookie-parser` and `tiny-csrf` to your test environment file.
+First, we will set up our test environment and write a test that proves our application is not secure yet. The test will fail, which is exactly what we want. This is our **RED** state.
+
+#### **Action 1: Install a New, Specialized Testing Dependency**
+
+This is the key library that will make our tests reliable.
+
+```bash
+cd goodnumbers
+npm install --save-dev supertest-session
+```
+
+#### **Action 2: Update Your Test Environment File**
+
+Ensure your `.env.test` file contains the necessary secrets for `cookie-parser` and `tiny-csrf`. The test environment uses these to run the middleware just like it would in production.
 
 ```markdown
 # file: .env.test
@@ -57,22 +61,25 @@ AUTH_SECRET=a_super_secret_key_for_testing_authjs_sessions
 AUTH_GOOGLE_ID=test_google_id
 AUTH_GOOGLE_SECRET=test_google_secret
 
-# The CSRF secret that tiny-csrf requires. It MUST be 32+ characters.
+# The CSRF secret that tiny-csrf requires. It MUST be 32+ characters long.
 
 CSRF_SECRET=a_very_secure_and_long_secret_for_testing_csrf_thirty_two_chars
+
+# A secret for signing cookies, used by cookie-parser.
+
 COOKIE_SECRET=a_different_super_secret_key_for_testing_cookies
 
 NODE_ENV=test
 ```
 
-#### **Action 2: Create the Focused Test File**
+#### **Action 3: Create the Focused Integration Test File**
 
-Create a new file `tests/integration/journals.test.ts`. This test proves that an authenticated user cannot create a journal without the CSRF token.
+Create a new file at `tests/integration/journals.test.ts`. Notice how we import and use `supertest-session` here. This test defines our security requirements: an unauthenticated user gets a `401`, and an authenticated user without a CSRF token gets a `403`.
 
 ```markdown
 # file: tests/integration/journals.test.ts
 
-import request from 'supertest';
+import session from 'supertest-session'; // We use the specialized 'supertest-session'
 import \* as http from 'http';
 import { PrismaClient, User } from '@prisma/client';
 import type { Express } from 'express';
@@ -82,17 +89,18 @@ const prisma = new PrismaClient();
 
 let app: Express;
 let server: http.Server;
-let agent: request.SuperTest<request.Test>;
+// The 'agent' is now a 'Session' object, which is better at handling cookies.
+let agent: session.Session;
 let user1: User;
 let csrfToken: string;
 
 describe('POST /api/journals', () => {
-// Before each test, create a fresh app instance and test agent.
-// The 'agent' is crucial as it stores and sends cookies automatically.
 beforeEach((done) => {
 app = createApp();
 server = app.listen(0, async () => {
-agent = request.agent(server);
+// Initialize the session agent. It wraps our app and will
+// correctly manage signed cookies across multiple requests in a single test.
+agent = session(app);
 
       await prisma.user.deleteMany();
       user1 = await prisma.user.create({
@@ -103,9 +111,9 @@ agent = request.agent(server);
         },
       });
 
-      // This request will fail initially, but once implemented, the agent
-      // will get the CSRF cookie, and we'll get the token for our header.
-      const csrfRes = await agent.get('/api/csrf-token').catch(() => ({ body: {} }));
+      // The agent makes a request to get the token. It will automatically
+      // handle the 'set-cookie' header from the response for us.
+      const csrfRes = await agent.get('/api/csrf-token');
       csrfToken = csrfRes.body.csrfToken;
 
       done();
@@ -152,9 +160,9 @@ const res = await agent
 });
 ```
 
-#### **Action 3: Verify Failure and Commit**
+#### **Action 4: Verify Failure and Commit**
 
-Run the test suite. The tests will fail with `404 Not Found` and `403 Forbidden` errors because the routes and middleware do not exist. This is our correct **RED** state.
+Run your tests. They will fail with `404 Not Found` because we haven't created the routes yet. This is perfect. It means our test setup is working and is correctly reporting that the feature doesn't exist.
 
 ```bash
 cd goodnumbers
@@ -165,11 +173,13 @@ git commit -m "test(api): add failing csrf tests for journal creation"
 
 ---
 
-### Commit 2: GREEN — Implement and Fix
+### Commit 2: GREEN — Implement the Feature to Make the Tests Pass
 
-Now, write the minimum code necessary to make the tests pass.
+Now we will write the actual application code. The goal is to write just enough to make our failing tests turn green.
 
-#### **Action 1: Install Dependencies**
+#### **Action 1: Install Application Dependencies**
+
+These are the libraries our _application_ needs, as opposed to the testing libraries.
 
 ```bash
 cd goodnumbers
@@ -179,7 +189,7 @@ npm install --save-dev @types/cookie-parser
 
 #### **Action 2: Create the Journal Router**
 
-Create `goodnumbers/src/routes/journal.ts` with only the `POST` handler implemented.
+Create a new file at `goodnumbers/src/routes/journal.ts`. This file will handle requests for the `/api/journals` path. For now, we only need to implement the `POST` route.
 
 ```markdown
 # file: src/routes/journal.ts
@@ -189,15 +199,17 @@ import { prisma } from '../lib/prisma.ts';
 
 const router = Router();
 
-// POST /api/journals - Create a new journal
+// This handler will only be reached if the request has already passed
+// through the 'protect' and 'csrf' middleware successfully.
 router.post('/', async (req, res) => {
-// The 'protect' middleware ensures req.user exists.
+// We can safely assume 'req.user' exists because of the 'protect' middleware.
 const userId = req.user!.id;
 
 try {
 const journal = await prisma.journal.create({
 data: { userId },
 });
+// Respond with a '201 Created' status and the new journal object.
 res.status(201).json({ journal });
 } catch (error) {
 console.error(`[API] Failed to create journal for user ${userId}:`, error);
@@ -208,9 +220,40 @@ res.status(500).json({ error: 'Could not create journal.' });
 export default router;
 ```
 
-#### **Action 3: Wire Up Middleware in the Main App**
+#### **Action 3: Create a Global Error Handler**
 
-This is the most critical step. Update `goodnumbers/src/index.ts` to add and correctly order `cookie-parser` and `tiny-csrf`.
+During debugging, we realized that unhandled errors were causing generic `500` responses without any useful information. A global error handler is a professional best practice. It will catch any unexpected errors in our application and ensure we log them and send a clean response.
+
+Create a new file at `goodnumbers/src/middleware/errorHandler.ts`.
+
+```markdown
+# file: src/middleware/errorHandler.ts
+
+import { Request, Response, NextFunction } from 'express';
+
+// Express identifies this as an error handler because it has 4 arguments.
+export function errorHandler(
+err: Error,
+req: Request,
+res: Response,
+next: NextFunction,
+) {
+// Log the full error to the console for debugging.
+// This is the most important part for development.
+console.error('--- UNHANDLED ERROR ---');
+console.error(err.stack);
+console.error('--- END UNHANDLED ERROR ---');
+
+// Send a generic, safe response to the client.
+res.status(500).json({
+error: 'An internal server error occurred.',
+});
+}
+```
+
+#### **Action 4: Wire Everything Together in `index.ts`**
+
+This is the most critical step. We will update our main application file to use all the new pieces in the correct order. The order of middleware in Express is extremely important.
 
 ```markdown
 # file: src/index.ts
@@ -222,13 +265,17 @@ import rateLimit from 'express-rate-limit';
 import { ExpressAuth } from '@auth/express';
 import { authConfig } from './lib/auth.ts';
 import { getSession } from '@auth/express';
-import cookieParser from 'cookie-parser'; // NEW
-import csrf from 'tiny-csrf'; // NEW
+import cookieParser from 'cookie-parser'; // For parsing cookies
+import csrf from 'tiny-csrf'; // For CSRF protection
 
 import { escapeHtml } from './lib/utils.ts';
 
+// Import our new modules
+import journalRoutes from './routes/journal.ts';
+import { errorHandler } from './middleware/errorHandler.ts';
+
+// Import existing modules
 import userRoutes from './routes/user.ts';
-import journalRoutes from './routes/journal.ts'; // NEW
 import { protect } from './middleware/auth.ts';
 import { enforceOnboarding } from './middleware/onboarding.ts';
 
@@ -241,51 +288,63 @@ const csrfSecret = process.env.CSRF_SECRET;
 if (!csrfSecret || (process.env.NODE_ENV !== 'test' && csrfSecret.length < 32)) {
 throw new Error('FATAL: CSRF_SECRET is not set or is not 32+ characters long.');
 }
+const cookieSecret = process.env.COOKIE_SECRET;
+if (!cookieSecret) throw new Error('FATAL: COOKIE_SECRET is not set.');
 
 const app = express();
 
 // --- Security & Core Middlewares ---
-app.use(helmet({ contentSecurityPolicy: false })); // Disabled for simplicity in placeholder pages
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(rateLimit({ windowMs: 15 _ 60 _ 1000, max: 100, standardHeaders: true, legacyHeaders: false }));
 app.use(express.json());
 app.use(express.static('public'));
-if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
 
-// --- CRITICAL MIDDLEWARE ORDER ---
+// --- UNIFIED MIDDLEWARE ORDER FOR ALL ENVIRONMENTS ---
+// This order is critical for security to function correctly.
 
-// 1. Cookie Parser: Must run first to parse cookies for subsequent middleware.
-app.use(cookieParser(process.env.COOKIE_SECRET));
+// 1. Cookie Parser: It must run first so that cookies are parsed and available
+// on the `req` object for other middleware to use. We pass it the secret
+// so it can validate signed cookies.
+app.use(cookieParser(cookieSecret));
 
-// 2. Auth.js: Handles authentication sessions.
+// 2. Auth.js: Handles all authentication logic. It needs `cookie-parser` to
+// read the session cookie.
 app.use('/api/auth', ExpressAuth(authConfig));
 
-// 3. CSRF Protection: Protects all subsequent state-changing routes.
+// 3. CSRF Protection: This middleware protects against CSRF attacks. It needs
+// `cookie-parser` to read its own CSRF cookie.
 app.use(csrf(csrfSecret, ['POST', 'PUT', 'DELETE']));
 
 // --- API Routes ---
 
-// Endpoint for the client/tests to get a valid CSRF token.
+// This endpoint is for our client to get the initial token.
 app.get('/api/csrf-token', (req, res) => {
 res.json({ csrfToken: req.csrfToken() });
 });
 
 app.use('/api/user', userRoutes);
-// Apply the full security chain to the journal routes.
+
+// Here, we apply our full security chain to the journal routes. A request must
+// be authenticated (`protect`), the user must be fully onboarded (`enforceOnboarding`),
+// and the CSRF token must be valid before the request can reach the journal router.
 app.use('/api/journals', protect, enforceOnboarding, journalRoutes);
 
-// --- Health & Session Routes ---
+// --- Health Check and other routes ---
 app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 app.get('/api/session', async (req, res) => res.json(await getSession(req, authConfig)));
-
-// --- Placeholder Page Routes (unchanged) ---
 app.get('/agreements', protect, (req, res) => { res.send(`<h1>Agreements Page</h1>...`); });
 app.get('/setup-account', protect, (req, res) => { res.send(`<h1>Account Setup Page</h1>...`); });
 app.get('/dashboard', protect, enforceOnboarding, (req, res) => { res.send(`Welcome, ${escapeHtml(req.user!.email)}!`); });
 
+// --- Global Error Handler ---
+// This MUST be the very last middleware. If any route or middleware before this
+// throws an error, Express will skip straight to this handler.
+app.use(errorHandler);
+
 return app;
 }
 
-// Check if the file is being run directly to start the server.
+// --- Server Startup Logic ---
 if (
 import.meta.url.startsWith('file://') &&
 process.argv === new URL(import.meta.url).pathname
@@ -298,30 +357,32 @@ console.log(`Server is running on http://localhost:${PORT}`);
 }
 ```
 
-#### **Action 4: Verify Success and Commit**
+#### **Action 5: Verify Success and Commit**
 
-Run the test suite again. All tests should now pass. This is our **GREEN** state.
+Run the test suite again. All the tests in `journals.test.ts` should now pass. This is our **GREEN** state. We have successfully implemented the secure endpoint.
 
 ```bash
 cd goodnumbers
 npm test
 git add .
-git commit -m "feat(api): implement secure journal creation endpoint with csrf"
+git commit -m "feat(api): implement secure journal creation endpoint"
 ```
 
 ---
 
-### **TODO: Complete the Rest of the Journal API**
+## 4. Next Steps
 
-If the above plan works successfully, you have established the core security pattern. You can now return to our chat to get the code for the remaining parts of the Journal API.
+Congratulations! You have successfully established the core security pattern for the entire application. The foundation is now solid.
+
+When you are ready, you can return to our chat to get the code for the remaining parts of the Journal API.
 
 **[Continue this conversation here when you are ready for the next steps](https://aistudio.google.com/prompts/1lvrfJj-WaonUGek8M3R6yfrq7Rtutub6?save=true)**
 
-The next steps will include:
+The next steps will involve building on this foundation:
 
-- Adding tests for `GET`, `PUT`, `DELETE` endpoints.
-- Implementing the logic for those endpoints, including ownership checks and input validation.
-- Refactoring the code for clarity and completeness.
+- Adding tests for the `GET`, `PUT`, and `DELETE` journal endpoints.
+- Implementing the logic for those endpoints, including critical security checks for data ownership.
+- Adding input validation to protect against bad data.
 
 ```
 
