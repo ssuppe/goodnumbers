@@ -1,13 +1,11 @@
-feat(api): P3_T1 Implement Journal Creation API with CSRF Protection
+fix(ui): Re-introduce placeholder forms and fix CSRF for agreements and setup pages
 
-This commit completes Phase 3, Task 1 of the Goodnumbers implementation plan.
+This commit addresses the missing placeholder web forms on the agreements and setup-account pages, which were inadvertently removed during a previous refactoring phase. It also implements the necessary client-side logic to correctly handle CSRF tokens for these forms.
 
 Key changes include:
-- Implemented the `POST /api/journals` endpoint for journal creation.
-- Integrated `tiny-csrf` for Cross-Site Request Forgery (CSRF) protection across relevant API routes (`/api/user`, `/api/journals`).
-- Established a robust middleware order in `src/index.ts` to ensure proper parsing of cookies and request bodies before CSRF validation.
-- Added a dedicated `/api/csrf-token` endpoint for clients to retrieve CSRF tokens.
-- Enhanced the global error handler (`src/middleware/errorHandler.ts`) to specifically catch and respond to CSRF-related errors with a `403 Forbidden` status.
-- Updated integration tests (`tests/integration/journals.test.ts`, `tests/integration/user.test.ts`, `tests/integration/auth.test.ts`) to correctly handle CSRF tokens by sending them in the request body (`_csrf` field) and to accurately reflect expected API behaviors.
+- Re-introduced the inline HTML forms for `/agreements` and ` /setup-account` in `src/index.ts` to enable basic manual testing.
+- Modified `public/js/agreements.js` to fetch the CSRF token from `/api/csrf-token` and include it in the `PUT /api/user/settings` request body when signing agreements.
+- Modified `public/js/setup-account.js` to fetch the CSRF token from `/api/csrf-token` and include it in the `PUT /api/user/settings` request body when saving account settings.
+- Improved client-side error reporting for both agreements and setup-account pages.
 
-This establishes a secure and tested foundation for future API development.
+This ensures that the manager can continue to perform manual testing of the onboarding flow.
