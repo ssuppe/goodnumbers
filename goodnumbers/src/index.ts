@@ -93,10 +93,48 @@ export function createApp() {
     res.json(await getSession(req, authConfig)),
   );
   app.get('/agreements', protect, (req, res) => {
-    res.send(`<h1>Agreements Page</h1>...`);
+    res.send(`<h1>Agreements Page</h1><p>User: ${escapeHtml(req.user?.email)}</p><p>Please sign the agreements.</p>
+      <form id="agreement-form">
+        <button type="submit">Sign Agreements</button>
+      </form>
+      <p id="message"></p>
+<script src="/js/agreements.js"></script>
+    `);
   });
   app.get('/setup-account', protect, (req, res) => {
-    res.send(`<h1>Account Setup Page</h1>...`);
+    const prefilledUrl = escapeHtml(req.user?.nightscoutUrl);
+    res.send(
+      `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <title>Account Setup</title>
+          <style> body { font-family: sans-serif; padding: 2em; } input, select { margin-bottom: 1em; width: 300px; } button { padding: 0.5em 1em; } </style>
+      </head>
+      <body>
+          <h1>Account Setup Page</h1>
+          <p>User: ${escapeHtml(req.user?.email)}</p>
+          <form id="settings-form">
+              <label for="nightscoutUrl">Nightscout URL (leave blank to clear):</label><br>
+              <input type="text" id="nightscoutUrl" name="nightscoutUrl" size="50" value="${prefilledUrl}"><br>
+
+              <label for="nightscoutToken">Nightscout Token (leave blank to clear):</label><br>
+              <input type="password" id="nightscoutToken" name="nightscoutToken" size="50"><br>
+
+              <label for="preferredUnits">Preferred Units:</label><br>
+              <select id="preferredUnits" name="preferredUnits">
+                  <option value="MGDL" ${req.user?.preferredUnits === 'MGDL' ? 'selected' : ''}>mg/dL</option>
+                  <option value="MMOL" ${req.user?.preferredUnits === 'MMOL' ? 'selected' : ''}>mmol/L</option>
+              </select><br><br>
+
+              <button type="submit">Save and Continue</button>
+          </form>
+          <p id="message"></p>
+          <script src="/js/setup-account.js"></script>
+      </body>
+      </html>
+    `,
+    );
   });
   app.get('/dashboard', protect, enforceOnboarding, (req, res) => {
     res.send(`Welcome, ${escapeHtml(req.user!.email)}!`);
