@@ -11,6 +11,14 @@ document
     if (data.nightscoutUrl === '') data.nightscoutUrl = null;
     if (data.nightscoutToken === '') data.nightscoutToken = null;
 
+    // 1. Fetch CSRF token
+    const csrfResponse = await fetch('/api/csrf-token');
+    const csrfData = await csrfResponse.json();
+    const csrfToken = csrfData.csrfToken;
+
+    // Add CSRF token to the data object
+    data._csrf = csrfToken;
+
     try {
       const response = await fetch('/api/user/settings', {
         method: 'PUT',
@@ -27,7 +35,7 @@ document
         const errorData = await response.json();
         const errorMsg = errorData.errors
           ? errorData.errors[0].message
-          : 'Could not save settings.';
+          : errorData.error || 'Could not save settings.'; // Improved error message
         messageEl.textContent = 'Error: ' + errorMsg;
       }
     } catch (error) {

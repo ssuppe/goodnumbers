@@ -1,14 +1,14 @@
 import request from 'supertest';
-import { app } from '../../src/index'; // We will export 'app' from our server file
+import { createApp } from '../../src/index.ts'; // Import the factory
 import * as http from 'http';
+import type { Express } from 'express';
 
-// We need a way to close the server after tests are done
 let server: http.Server;
+let app: Express; // To hold the app instance
 
 beforeEach((done) => {
-  server = app.listen(0, () => {
-    done();
-  });
+  app = createApp(); // Create a new app instance for each test
+  server = app.listen(0, done);
 });
 
 afterEach((done) => {
