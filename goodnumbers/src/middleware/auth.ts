@@ -1,61 +1,70 @@
+import pkg from 'express';
+const { Request, Response, NextFunction } = pkg;
+
 import { getSession } from '@auth/express';
 import { authConfig } from '../lib/auth.ts';
 import { prisma } from '../lib/prisma.ts';
-import type { Request, Response, NextFunction } from 'express';
 
-// Extend the Express Request type to include our custom user object
+// Extend the Request type to include the user property using module augmentation
 declare module 'express' {
-  interface Request {
-    user?: import('@auth/express').User & {
-      agreementsSigned?: boolean;
-      nightscoutUrl?: string;
-      preferredUnits?: string;
-    }; // Extend with relevant fields
+  export interface Request {
+    user?: {
+      id: string;
+      email: string;
+      agreementsSigned: boolean;
+      nightscoutUrl?: string | null;
+      nightscoutToken?: string | null;
+      preferredUnits?: 'MGDL' | 'MMOL' | null;
+    };
   }
 }
 
+// This middleware protects routes by ensuring the user is authenticated.
+// It also populates `req.user` with basic user information.
 export async function protect(req: Request, res: Response, next: NextFunction) {
-  // Hardened hook for integration tests.
-  // This MUST be disabled in production for security reasons.
-  if (process.env.NODE_ENV !== 'production' && req.headers['x-test-user-id']) {
-    const userId = req.headers['x-test-user-id'] as string;
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (user) {
-      // In tests, we attach the full user object from the DB to simulate
-      // the enriched session.
-      req.user = user;
+  // For integration tests, we can bypass Auth.js by setting a special header.
+  // In a real application, this would be removed or heavily restricted.
+  if (process.env.NODE_ENV === 'test' && req.headers['x-test-user-id']) {
+    const testUserId = req.headers['x-test-user-id'] as string;
+    const testUser = await prisma.user.findUnique({
+      where: { id: testUserId },
+    });
+    if (testUser) {
+      req.user = {
+        id: testUser.id,
+        email: testUser.email || '',
+        agreementsSigned: testUser.agreementsSigned,
+        nightscoutUrl: testUser.nightscoutUrl,
+        nightscoutToken: testUser.nightscoutToken,
+        preferredUnits: testUser.preferredUnits,
+      };
       return next();
     }
   }
 
+  // Get the session from Auth.js
   const session = await getSession(req, authConfig);
-  if (!session?.user) {
-    // FIX: Use `req.originalUrl` to check for API requests.
-    // `req.path` is relative to the router's mount point (e.g., '/settings'),
-    // while `req.originalUrl` contains the full path (e.g., '/api/user/settings').
-    if (req.originalUrl.startsWith('/api/')) {
-      return res.status(401).json({ error: 'Not authorized' });
+
+  if (session?.user?.email) {
+    // Fetch the full user object from Prisma to get application-specific fields
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: {
+        id: true,
+        email: true,
+        agreementsSigned: true,
+        nightscoutUrl: true,
+        nightscoutToken: true,
+        preferredUnits: true,
+      },
+    });
+
+    if (user) {
+      req.user = user; // Attach the user object to the request
+      return next();
     }
-    return res.redirect('/api/auth/signin');
   }
 
-  // Fetch the latest user data from the database
-  const dbUser = await prisma.user.findUnique({
-    where: { email: session.user.email || undefined },
-  });
-
-  if (!dbUser) {
-    console.error(
-      `[Auth] User from session (${session.user.email}) not found in DB.`,
-    );
-    // Also apply the fix here for consistency.
-    if (req.originalUrl.startsWith('/api/')) {
-      return res.status(401).json({ error: 'User data not found' });
-    }
-    return res.redirect('/api/auth/signin');
-  }
-
-  // Attach the fresh user object from the database to the request
-  req.user = { ...session.user, ...dbUser };
-  next();
+  // If no valid session or user found, return 401 Unauthorized
+  res.status(401).json({ error: 'Unauthorized.' });
 }
