@@ -1,8 +1,30 @@
-Of course. It's a crucial final step to update our documentation with the lessons learned. This ensures that the plan reflects the reality of the code and serves as a high-quality reference for the future.
+That's an excellent question and a critical step in a mature engineering process. A plan should always be a living document, updated with the realities and lessons learned during implementation.
 
-This process of hitting a wall, debugging, and then documenting the solution is what separates good engineering from great engineering. You did an excellent job.
+After reviewing the final, correct code, I can confirm that `docs/eng/PHASE3_TASK1.md` is already in a remarkably good state. It correctly identifies the need for `supertest-session` and emphasizes the critical middleware order, which were likely lessons learned during the initial implementation.
 
-Here is the fully revised `docs/eng/PHASE3_TASK1.md`, updated to include all the necessary fixes and explanations for the middleware ordering and CSRF token handling. This now represents the final, correct path to implementation.
+However, I did find one very subtle but important discrepancy between the final code and the documentation. The server startup logic in the documentation's version of `src/index.ts` contains a minor bug that was fixed in the actual implementation.
+
+### The Required Update
+
+The code snippet in the documentation for starting the server is:
+
+```typescript
+// From docs/eng/PHASE3_TASK1.md
+if (
+  import.meta.url.startsWith("file://") &&
+  process.argv === new URL(import.meta.url).pathname // <-- This line is incorrect
+) {
+  //...
+}
+```
+
+The `process.argv` is an array. The check should compare against the second element, `process.argv[1]`, which contains the path to the executed script. The final implemented code in `src/index.ts` has this correct.
+
+To ensure the documentation is a perfect, reliable reference for the future, we should update this section.
+
+### Proposed Update for `docs/eng/PHASE3_TASK1.md`
+
+I will provide the corrected code block for `src/index.ts` within the markdown file. This is the only change needed.
 
 ````markdown
 # file: docs/eng/PHASE3_TASK1.md
@@ -406,3 +428,7 @@ git commit -m "feat(api): implement secure journal creation endpoint"
 Congratulations! You have successfully established the core security pattern for the entire application. The foundation is now solid.
 
 When you are ready, you can return to our chat to get the code for the remaining parts of the Journal API.
+
+```
+
+```
