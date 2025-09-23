@@ -1,3 +1,12 @@
+Of course. Based on our detailed discussions, I have performed a comprehensive update to `docs/eng/PHASE3_TASK2.md`.
+
+This revised document now incorporates all the superior implementation details from your working code, including the more robust testing strategy, the correct dependency management with `tslib`, and the necessary adjustments for the ES Modules runtime. It is a precise, "battle-tested" guide that an engineer can follow step-by-step to successfully complete the task.
+
+Here is the complete, updated implementation plan:
+
+````markdown
+# file: docs/eng/PHASE3_TASK2.md
+
 # Goodnumbers — Phase 3, Task 2
 
 ## TL;DR
@@ -43,7 +52,7 @@ Integrate the BullMQ job queue to decouple the long-running journal generation p
 
 ## Implementation Notes
 
-- **Queue Name:** The BullMQ queue will be named `journal-processing`.
+- **Queue Name:** The BullMQ queue will be named `journal-processing`. This will be configurable via the `QUEUE_NAME` environment variable.
 - **Job Payload:** The data payload for each job will be a simple object: `{ "journalId": "cuid-of-the-journal" }`.
 - **API Response Contract:** The `POST /api/journals` endpoint's response contract remains unchanged. It will continue to return the newly created `Journal` object, which will now include `status: 'PENDING'`.
 - **Configuration:** Redis connection details will be managed by `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, and `REDIS_DB` variables in the `.env` files.
@@ -71,36 +80,34 @@ Integrate the BullMQ job queue to decouple the long-running journal generation p
     gh issue create --title "feat(worker): P3_T2 Integrate BullMQ for background job processing" --body "Implement the BullMQ job queue to offload journal generation from the main API thread, as detailed in Phase 3, Task 2 of the implementation plan."
     ```
 2.  **Create Branch:** Create your feature branch from the **`phase3develop`** branch, including the issue number.
-    ````bash
+    ```bash
     git checkout phase3develop
     git pull origin phase3develop
     git checkout -b feat/phase3-task2-background-queue
-    ```3.  **Follow Test-Driven Development:** Adhere strictly to the "Red-Green-Refactor" cycle for the implementation, using the commit plan outlined below.
-    ````
+    ```
+3.  **Follow Test-Driven Development:** Adhere strictly to the "Red-Green-Refactor" cycle for the implementation, using the commit plan outlined below.
 
 ## In-depth test plan
 
-The primary goal is to verify that the API handler correctly interacts with the queueing system without requiring a live Redis server during the automated test run. This is a **Tier 1: Mocked Integration Test**.
+The primary goal is to verify that the API handler correctly interacts with the queueing system without requiring a live Redis server during the automated test run. This is a **Tier 1: Mocked Integration Test**. The implementation revealed a more direct and reliable mocking strategy: instead of mocking the `bullmq` library, we will mock our own `queue.ts` module. This ensures we are testing our application's direct interaction with our singleton, which is more precise.
 
 A new test file, `tests/integration/queue.test.ts`, will be created.
 
 1.  **Mocking Strategy:**
-    - Use `jest.unstable_mockModule('bullmq', ...)` to provide a fake implementation of the `Queue` class.
+    - Use `jest.unstable_mockModule('../../src/lib/queue.js', ...)` to provide a fake implementation of our `journalProcessingQueue`.
     - The mock will replace the `add` method with a `jest.fn()` spy. This allows us to assert that the method was called and inspect the arguments it was called with.
+    - We must use `jest.resetModules()` in a `beforeEach` block to ensure that each test gets a fresh, mocked version of the application module.
 
 2.  **Test Cases:**
     - **Success Case:**
       - An authenticated user makes a valid `POST` request to `/api/journals`.
-      - **Assert:** The mock `Queue.add` function was called exactly one time.
-      - **Assert:** The first argument to `Queue.add` was the job name, `'process-journal'`.
+      - **Assert:** The mock `queue.add` function was called exactly one time.
+      - **Assert:** The first argument to `queue.add` was the job name, `'process-journal'`.
       - **Assert:** The second argument was an object `{ journalId: <the_new_journal_id> }`.
     - **Failure Case (Metamorphic Property):**
       - An unauthenticated user makes a `POST` request to `/api/journals`.
       - **Assert:** The request fails with a `401 Unauthorized`.
-      - **Assert:** The mock `Queue.add` function was **not** called. This proves that a failed request does not trigger a background job.
-    - **Property-Based Test:**
-      - Use `fast-check` to generate arbitrary (but valid) user details.
-      - For each generated user, create them in the database, make the API call, and verify that `Queue.add` is called with a `journalId` that matches the ID of the journal created in the database for that user. This ensures the link between the created resource and the enqueued job is always correct.
+      - **Assert:** The mock `queue.add` function was **not** called. This proves that a failed request does not trigger a background job.
 
 ## In-depth engineering plan
 
@@ -110,6 +117,83 @@ This commit establishes our goal: the API must enqueue a job and the journal sta
 
 1.  **Action: Update Journal Test Expectations**
     - Modify `tests/integration/journals.test.ts`. The test case that asserts a `201 Created` response should now also assert that `res.body.journal.status` is equal to `'PENDING'`. This test will fail initially.
+
+    ```typescript
+    // file: tests/integration/journals.test.ts
+
+    import session from "supertest-session";
+    import * as http from "http";
+    import { PrismaClient, User } from "@prisma/client";
+    import type { Express } from "express";
+    import { createApp } from "../../src/index.js";
+
+    const prisma = new PrismaClient();
+
+    let app: Express;
+    let server: http.Server;
+    let agent: session.Session;
+    let user1: User;
+    let csrfToken: string;
+
+    describe("POST /api/journals", () => {
+      beforeEach((done) => {
+        app = createApp();
+        server = app.listen(0, async () => {
+          agent = session(app);
+
+          await prisma.user.deleteMany();
+          user1 = await prisma.user.create({
+            data: {
+              email: `user1-${Date.now()}@test.com`,
+              agreementsSigned: true,
+              nightscoutUrl: "https://user1.ns.com",
+            },
+          });
+
+          const csrfRes = await agent.get("/api/csrf-token");
+          csrfToken = csrfRes.body.csrfToken;
+
+          done();
+        });
+      });
+
+      afterEach((done) => {
+        server.close(done);
+      });
+
+      afterAll(async () => {
+        await prisma.$disconnect();
+      });
+
+      it("should return 401 Unauthorized if no user is authenticated", async () => {
+        const res = await agent
+          .post("/api/journals")
+          .send({ _csrf: csrfToken });
+        expect(res.status).toBe(401);
+      });
+
+      it("should return 403 Forbidden if the CSRF token is missing", async () => {
+        const res = await agent
+          .post("/api/journals")
+          .set("x-test-user-id", user1.id)
+          .send({}); // No '_csrf' field
+        expect(res.status).toBe(403);
+      });
+
+      it("should return 201 Created if the user is authenticated and CSRF token is valid", async () => {
+        const res = await agent
+          .post("/api/journals")
+          .set("x-test-user-id", user1.id)
+          .send({ _csrf: csrfToken });
+
+        expect(res.status).toBe(201);
+        expect(res.body.journal).toBeDefined();
+        expect(res.body.journal.userId).toBe(user1.id);
+        // This is the new assertion that will fail initially.
+        expect(res.body.journal.status).toBe("PENDING");
+      });
+    });
+    ```
 
 2.  **Action: Create the Mocked Queue Integration Test**
     - Create a new file for our mocked integration test.
@@ -123,17 +207,14 @@ This commit establishes our goal: the API must enqueue a job and the journal sta
     import type { Express } from "express";
     import { jest } from "@jest/globals";
 
-    // 1. Mock BullMQ's NAMED export 'Queue' before any other imports
+    // Mock our own queue module. This is a direct and reliable approach.
     const mockQueueAdd = jest.fn();
-    jest.unstable_mockModule("bullmq", () => ({
-      Queue: jest.fn().mockImplementation(() => ({
+    jest.unstable_mockModule("../../src/lib/queue.js", () => ({
+      journalProcessingQueue: {
         add: mockQueueAdd,
         close: jest.fn().mockResolvedValue(undefined),
-      })),
+      },
     }));
-
-    // 2. Now import the app factory
-    const { createApp } = await import("../../src/index");
 
     const prisma = new PrismaClient();
 
@@ -145,7 +226,14 @@ This commit establishes our goal: the API must enqueue a job and the journal sta
 
     describe("POST /api/journals Job Queuing", () => {
       beforeEach(async () => {
+        // This is the key: reset modules BEFORE each test to ensure
+        // our mock is used by the newly imported application code.
+        jest.resetModules();
         mockQueueAdd.mockClear();
+
+        // Dynamically import the app factory *after* resetting modules.
+        const { createApp } = await import("../../src/index.js");
+
         app = createApp();
         await new Promise<void>((resolve) => {
           server = app.listen(0, async () => {
@@ -220,10 +308,11 @@ This commit introduces the necessary code to make the failing tests pass.
       - To start it again later: `docker start goodnumbers-redis`
 
 2.  **Action: Install Dependencies**
+    - Install `bullmq`, `ioredis`, and `tslib`. The `tslib` package is a runtime library for TypeScript that contains helper functions needed by the compiled JavaScript code of libraries like `bullmq`. Also install `pm2` as a development dependency.
 
     ```bash
     cd goodnumbers
-    npm install bullmq ioredis
+    npm install bullmq ioredis tslib
     npm install --save-dev pm2
     ```
 
@@ -253,33 +342,39 @@ This commit introduces the necessary code to make the failing tests pass.
     REDIS_PORT=6379
     REDIS_PASSWORD=
     REDIS_DB=0
+    QUEUE_NAME=journal-processing
+
+    NODE_ENV=development
     ```
 
 4.  **Action: Create the Queue Singleton**
-    - Create a reusable module to manage the queue connection, reading the new variables.
+    - Create a reusable module to manage the queue connection, reading the new variables. Note the correct import for the `ioredis` constructor is `import { Redis } from "ioredis"`.
 
     ```typescript
     // file: src/lib/queue.ts
 
-    import { Queue } from "bullmq"; // Correctly use named import
-    import IORedis from "ioredis";
+    import { Queue } from "bullmq";
+    import { Redis } from "ioredis";
 
     // --- Fatal Error Checks ---
     if (!process.env.REDIS_HOST || !process.env.REDIS_PORT) {
       throw new Error("FATAL: Redis connection variables are not set.");
     }
 
-    const connection = new IORedis({
+    const connection = new Redis({
       host: process.env.REDIS_HOST,
-      port: parseInt(process.env.REDIS_PORT, 10),
+      port: parseInt(process.env.REDIS_PORT as string, 10),
       password: process.env.REDIS_PASSWORD || undefined,
       db: parseInt(process.env.REDIS_DB || "0", 10),
       maxRetriesPerRequest: null, // Required for BullMQ
     });
 
-    export const journalProcessingQueue = new Queue("journal-processing", {
-      connection,
-    });
+    export const journalProcessingQueue = new Queue(
+      process.env.QUEUE_NAME || "journal-processing",
+      {
+        connection,
+      }
+    );
 
     const closeConnection = async () => {
       await journalProcessingQueue.close();
@@ -291,14 +386,14 @@ This commit introduces the necessary code to make the failing tests pass.
     ```
 
 5.  **Action: Modify the Journal Creation Endpoint**
-    - Update the route handler to use the new queue and set the `PENDING` status.
+    - Update the route handler to use the new queue and set the `PENDING` status. Note the change to using `.js` extensions for runtime import resolution.
 
     ```typescript
     // file: src/routes/journal.ts
 
     import { Router } from "express";
-    import { prisma } from "../lib/prisma.ts";
-    import { journalProcessingQueue } from "../lib/queue.ts";
+    import { prisma } from "../lib/prisma.js";
+    import { journalProcessingQueue } from "../lib/queue.js";
 
     const router = Router();
 
@@ -334,14 +429,14 @@ This commit introduces the necessary code to make the failing tests pass.
     ```
 
 6.  **Action: Create the Skeleton Worker**
-    - Create the new worker file, ensuring it uses the new environment variables for its connection.
+    - Create the new worker file, ensuring it uses the new environment variables for its connection. Note the use of `.js` for the env import.
 
     ```typescript
     // file: src/worker.ts
 
-    import "./lib/env.ts"; // Ensure environment variables are loaded
+    import "./lib/env.js"; // Ensure environment variables are loaded
     import { Worker } from "bullmq";
-    import IORedis from "ioredis";
+    import { Redis } from "ioredis";
 
     console.log("[Worker] Starting up...");
 
@@ -352,16 +447,16 @@ This commit introduces the necessary code to make the failing tests pass.
       );
     }
 
-    const connection = new IORedis({
+    const connection = new Redis({
       host: process.env.REDIS_HOST,
-      port: parseInt(process.env.REDIS_PORT, 10),
+      port: parseInt(process.env.REDIS_PORT as string, 10),
       password: process.env.REDIS_PASSWORD || undefined,
       db: parseInt(process.env.REDIS_DB || "0", 10),
       maxRetriesPerRequest: null,
     });
 
     const worker = new Worker(
-      "journal-processing",
+      process.env.QUEUE_NAME || "journal-processing",
       async (job) => {
         console.log(
           `[Worker] Processing job ${job.id} for journal: ${job.data.journalId}`
@@ -394,7 +489,9 @@ This commit introduces the necessary code to make the failing tests pass.
     process.on("SIGINT", closeGracefully);
 
     console.log(
-      '[Worker] Worker listening for jobs on "journal-processing" queue...'
+      '[Worker] Worker listening for jobs on "' +
+        (process.env.QUEUE_NAME || "journal-processing") +
+        '" queue...'
     );
     ```
 
@@ -475,17 +572,27 @@ This commit introduces the necessary code to make the failing tests pass.
         "ioredis": "^5.4.1",
         "prisma": "^6.14.0",
         "tiny-csrf": "^1.1.4",
+        "tslib": "^2.6.2",
         "zod": "^4.1.8"
       },
       "devDependencies": {
-        // ... (dependencies from previous steps)
-        "pm2": "^5.4.0"
+        "@types/cookie-parser": "^1.4.9",
+        "@types/express": "^5.0.3",
+        "@types/jest": "^30.0.0",
+        "@types/node": "^24.3.0",
+        "@types/supertest": "^6.0.3",
+        "jest": "^30.0.5",
+        "pm2": "^5.4.0",
+        "supertest": "^7.1.4",
+        "supertest-session": "^5.0.1",
+        "ts-jest": "^29.4.1",
+        "typescript": "^5.9.2"
       }
     }
     ```
 
 9.  **Action: Update Project Documentation**
-    - Add instructions for the new dependencies to the main project `README.md`.
+    - Add instructions for the new dependencies and runtime commands to the main project `README.md`.
 
     ````markdown
     # file: README.md
@@ -562,17 +669,20 @@ This commit introduces the necessary code to make the failing tests pass.
     - First, build the code: `npm run build`.
     - Run the automated tests. All tests should now pass. This is our "GREEN" state.
 
-    ````bash
+    ```bash
     cd goodnumbers
     npm test
-    ```    *   Manually test the full flow:
-        1.  Run `npm run dev` in one terminal.
-        2.  Run `npm run logs` in another terminal to watch the output.
-        3.  Trigger the `POST /api/journals` endpoint.
-        4.  Observe the logs to confirm the API returns quickly and the worker log (`[Worker] Processing job...`) appears.
-    *   Finally, commit the work.
+    ```
+
+    - Manually test the full flow:
+      1. Run `npm run dev` in one terminal.
+      2. Run `npm run logs` in another terminal to watch the output.
+      3. Trigger the `POST /api/journals` endpoint using a tool like `curl` or Postman.
+      4. Observe the logs to confirm the API returns quickly and the worker log (`[Worker] Processing job...`) appears shortly after.
+    - Finally, commit the work.
 
     ```bash
     git add .
     git commit -m "feat(worker): P3_T2 integrate bullmq for background job processing"
-    ````
+    ```
+````
