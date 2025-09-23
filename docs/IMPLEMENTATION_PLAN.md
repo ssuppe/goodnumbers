@@ -40,7 +40,7 @@ For services that interact with external dependencies like a database or a Redis
 
 4.  **Integration Testing:**
     - **Goal:** To test how multiple units work together.
-    - **Backend Tools:** **Jest** and **`supertest`** will be used to test Express API endpoints, ensuring the HTTP layer, middleware, and service logic function correctly as a group.
+    - **Backend Tools:** **Jest** and **`supertest-session`** will be used to test Express API endpoints. `supertest-session` is critical for correctly managing cookies and state in tests involving authentication and CSRF protection.
     - **Frontend Tools:** **Jest** and **React Testing Library** will be used to test React components, ensuring they render and behave correctly from a user's perspective.
 
 5.  **End-to-End (E2E) Testing:**
@@ -56,55 +56,45 @@ For services that interact with external dependencies like a database or a Redis
 
 #### 2.3.1. Integration Test Server Lifecycle
 
-For integration tests that require a running Express server, the following `beforeEach`/`afterEach` pattern **must** be used. This approach uses an "app factory" (`createApp`) to ensure a clean, isolated, and correctly configured server for every test.
+For integration tests that require a running Express server with session management, the following `beforeEach`/`afterEach` pattern **must** be used with `supertest-session`.
 
 ```typescript
-import request from "supertest";
-// Import the factory function, NOT the singleton app instance
+// **UPDATED: This example now uses supertest-session for robust state management.**
+import session from "supertest-session";
 import { createApp } from "../../src/index.ts";
 import * as http from "http";
 import type { Express } from "express";
 
 let server: http.Server;
-let agent: request.SuperTest<request.Test>;
+let agent: session.Session; // Use the session type
 let app: Express;
 
 beforeEach((done) => {
-  // 1. Set any necessary environment variables BEFORE creating the app.
-  // This is critical for middleware that reads 'process.env' on initialization.
-  process.env.CSRF_SECRET = "a_valid_test_secret_that_is_32_characters_long";
-  process.env.NODE_ENV = "test";
-
-  // 2. Create a fresh app instance for this test.
+  // 1. Create a fresh app instance for this test.
   app = createApp();
 
-  // 3. Start the server on a random, available port.
+  // 2. Start the server on a random, available port.
   server = app.listen(0, () => {
-    // 4. Create a supertest agent bound to this specific server instance.
-    // The agent will manage cookies and session state for us.
-    agent = request.agent(server);
+    // 3. Create a session agent bound to this server instance.
+    // This agent will manage cookies and session state for the entire test block.
+    agent = session(app);
 
-    // 5. Perform any other async setup (like database seeding) here.
+    // 4. Perform any other async setup (like database seeding or fetching a CSRF token).
     // ... then call done() to signal Jest to start the test.
     done();
   });
 });
 
 afterEach((done) => {
-  // 6. Close the server after each test to prevent hanging processes.
+  // 5. Close the server after each test to prevent hanging processes.
   server.close(done);
 });
 ```
 
 - **Key Principles:**
-  - **Isolation:** A fresh server instance is created and destroyed for _each_ test, preventing side effects. Using an app factory (`createApp`) is essential for this, as it prevents module caching from reusing a stale, improperly configured app instance.
-  - **Configuration-First:** Environment variables are set _before_ the app is created. This solves timing issues where middleware might initialize before test-specific configurations are applied.
-  - **`app.listen(0)`:** Uses a random available port, avoiding conflicts.
-  - **`supertest` Agent:** The `request.agent(server)` is crucial. It creates a `supertest` instance that persists cookies and state across requests within a single test, mimicking a real user session. It **must** be created _after_ the server starts listening.
-  - **`done()` Callback:** Essential for asynchronous setup/teardown. Jest waits until `done()` is called before proceeding.
-  - **Prisma Disconnect:** For tests involving Prisma, `prisma.$disconnect()` should be called in an `afterAll` hook to cleanly close the database connection pool once all tests in the file have completed.
-
-This pattern ensures robust and reliable integration tests, preventing common issues like hanging test runners, resource leaks, and configuration errors.
+  - **Isolation:** A fresh server instance is created and destroyed for _each_ test.
+  - **`supertest-session` Agent:** Using `session(app)` is crucial for stateful testing. It automatically persists cookies (like session and CSRF tokens) across multiple requests within a single `it` block, perfectly mimicking a real browser session.
+  - **Asynchronous Setup:** The `done()` callback is essential for managing asynchronous setup and teardown.
 
 ### 2.4. Mocking with ES Modules
 
@@ -281,10 +271,10 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 - **Goal:** Implement the foundational journal endpoints (`POST`, `GET` list, `GET` by ID, `PUT`, and `DELETE`) for `/api/journals`.
 - **Implementation Details:**
-  - **Security:** The entire `/api/journals` route group **must** be protected by the middleware chain established in Phase 2 (`protect` and `enforceOnboarding`). This ensures only authenticated, fully onboarded users can access these endpoints.
+  - **Security:** The entire `/api/journals` route group **must** be protected by the middleware chain: `protect`, `enforceOnboarding`, and **`csrfProtection`**. This ensures only authenticated, fully onboarded users can access these endpoints and prevents cross-site request forgery attacks.
   - **Data Segregation:** All database queries that access a specific journal (`GET /:id`, `PUT /:id`, `DELETE /:id`) **must** include a `userId` check in the `where` clause (e.g., `{ where: { id: journalId, userId: req.user.id } }`). This is a critical security measure to enforce data ownership.
   - **Input Validation:** For the `PUT /api/journals/:id` endpoint, create a new schema named `journalUpdateSchema` in `src/lib/validation.ts` using `zod`. This maintains our established pattern for secure and consistent input validation.
-- **Test:** Write integration tests using Jest and `supertest` for each endpoint. Crucially, tests must verify that ownership is enforced (a user cannot access or modify another user's journals).
+- **Test:** Write integration tests using `supertest-session` for each endpoint. Crucially, tests must verify that ownership is enforced and that CSRF protection rejects requests without a valid token.
 - **Commit:** `feat(api): P3_T1 implement crud api for journals`
 
 #### **Task 2: Set Up Background Job Queue**
@@ -442,7 +432,3 @@ This section outlines high-level tasks that should be addressed as part of the p
       - Confirm that errors are properly captured and logged by the new system.
       - (Manual) Verify logs are accessible in the chosen storage solution.
     - **Commit:** `feat(ops): P6_T1 implement production logging solution`
-
-```
-
-```
