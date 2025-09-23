@@ -38,7 +38,11 @@ export default [
       '@typescript-eslint/no-namespace': 'error', // Set to error
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { argsIgnorePattern: '^_' },
+        {
+          argsIgnorePattern: '^_|',
+          varsIgnorePattern: '^(Request|Response|NextFunction)$',
+          caughtErrorsIgnorePattern: '^_|',
+        },
       ], // Set to error
     },
   },
