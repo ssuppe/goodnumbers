@@ -1,688 +1,744 @@
-Of course. Based on our detailed discussions, I have performed a comprehensive update to `docs/eng/PHASE3_TASK2.md`.
+Excellent. It is a mark of a great engineering team to be proactive about hardening designs. Adopting these security and reliability improvements early will pay significant dividends in the long run.
 
-This revised document now incorporates all the superior implementation details from your working code, including the more robust testing strategy, the correct dependency management with `tslib`, and the necessary adjustments for the ES Modules runtime. It is a precise, "battle-tested" guide that an engineer can follow step-by-step to successfully complete the task.
+I have updated the design and implementation guide to incorporate all the requested changes. I have been extremely detailed in the explanations, providing context and rationale for each modification to ensure it serves as a valuable learning document for the junior engineer.
 
-Here is the complete, updated implementation plan:
+Below is the complete, updated design guide, which now includes the enhanced security and reliability patterns we discussed.
 
-````markdown
-# file: docs/eng/PHASE3_TASK2.md
+---
 
-# Goodnumbers — Phase 3, Task 2
+# file: docs/eng/DESIGN_GUIDE_JOB_QUEUE.md
 
-## TL;DR
+# Goodnumbers — Engineering Design & Implementation Guide: Asynchronous Job Queue
 
-Integrate the BullMQ job queue to decouple the long-running journal generation process from the synchronous API request, ensuring the web server remains responsive.
+**Version:** 3.1 (Security Hardened Edition)
+**Author:** Technical Lead
+**Date:** 2025-09-27
+**Status:** Final
 
-## Invariants (do not change)
+## 1. Overview & Purpose (The "Why")
 
-- **API Responsiveness:** The `POST /api/journals` endpoint MUST complete its request/response cycle in under 500ms.
-- **Job Uniqueness:** Every successful call to `POST /api/journals` that creates a new database record MUST result in exactly one job being enqueued. No duplicate jobs for a single journal creation are permitted.
-- **Data Isolation:** All operations MUST remain strictly scoped to the authenticated user. A user cannot enqueue a job for another user's journal.
+The Goodnumbers journal generation process involves long-running tasks, including external API calls to Nightscout, statistical analysis, a multi-pass AI pipeline with Gemini, and audio generation via a TTS service. Executing these tasks within a synchronous API request is not feasible; it would lead to request timeouts, a poor user experience, and a fragile system.
 
-## Assumptions & Scope
+To solve this, we are implementing an **asynchronous job queue**. This architecture decouples the initial user request from the intensive background work. The API's only responsibility is to acknowledge the request and schedule the work, ensuring a fast, responsive user experience. The background work is then processed reliably and independently by a separate worker process.
 
-- **Assumption:** The engineer has Docker installed and running on their local development machine.
-- **Scope:** This task is strictly limited to setting up the queue, modifying the API endpoint to enqueue a job, and creating a skeleton background worker. The worker's only responsibility is to receive and log the job data. The implementation of the actual data processing logic is explicitly **out of scope**.
+This document serves as the complete, definitive guide to this system, intended for any engineer who needs to understand, implement, or maintain this critical piece of our infrastructure.
 
-## Objectives
+## 2. Architecture & Technology Selection
 
-1.  Modify the `POST /api/journals` endpoint to create a `Journal` record with a `status` of `PENDING`, enqueue a background job with the new `journalId`, and return immediately.
-2.  Implement a skeleton background worker process that connects to Redis, listens for jobs on the `journal-processing` queue, and logs the received `journalId`.
-3.  Implement a `pm2` configuration file to manage both the web server and the worker processes for development and production.
-4.  Achieve a 100% pass rate on a new integration test suite that verifies the job is correctly enqueued upon journal creation, using a mocked Redis client.
-5.  Maintain the existing >95% test coverage and achieve a mutation testing score of >90% for the modified API handler logic.
+Our system is composed of three primary components arranged in a producer/consumer pattern:
 
-## Risks & Mitigations
+- **The Producer (`src/routes/journal.ts`):** The API endpoint (`POST /api/journals`) that adds a `process-journal` job to the queue after successfully creating a `Journal` record in the database.
+- **The Queue (`src/lib/queue.ts`):** A shared module that configures the connection to a message broker and instantiates the job queue.
+- **The Consumer (`src/worker.ts`):** A standalone Node.js process that listens for jobs on the queue and executes the long-running journal generation logic.
 
-- **Risk:** The connection to the Redis server fails silently, causing jobs to be dropped.
-  - **Mitigation:** The queue and worker connection logic will include robust, explicit error handling. The worker process will log connection errors and exit on fatal connection failures to alert the process manager (`pm2`).
-- **Risk:** A client-side retry of a failed API request could create a duplicate journal and enqueue a duplicate job.
-  - **Mitigation:** For the MVP, this risk is accepted. The primary database constraint on `journalId` prevents data corruption. Future work will introduce an idempotency key to make the endpoint safely retryable.
+### 2.1. Technology Stack
 
-## Method Outline (idea → mechanism → trade-offs → go/no-go)
+- **Redis:** A high-performance, in-memory data store acting as our message broker. It is reliable, fast, and feature-rich.
+- **IORedis:** A robust and efficient Node.js client for Redis.
+- **BullMQ:** A modern job queue library for Node.js built on top of Redis, providing reliability, performance, and advanced features.
+- **Docker Compose:** A tool for defining and running multi-container Docker applications. We will use it to manage our Redis service in development, ensuring a consistent environment for all team members.
+- **PM2:** A production-grade process manager for Node.js applications. We will use it to manage both our web server and worker processes, enabling features like automatic restarts and log aggregation.
+- **Just:** A command runner that provides a simple, consistent interface for common development tasks, orchestrating Docker Compose, NPM scripts, and PM2.
 
-- **Idea:** Decouple the time-intensive journal generation from the user-facing API.
-- **Mechanism:** Implement a producer/consumer pattern using a Redis-backed message queue (BullMQ).
-  - **Producer:** The Express.js web server (`POST /api/journals`).
-  - **Consumer:** A new, separate Node.js background worker process.
-- **Trade-offs:**
-  - **Pro:** Dramatically improves API responsiveness and perceived performance. Increases system resilience, as failed jobs can be retried independently of the user's session.
-  - **Con:** Introduces a new dependency (Redis) and increases architectural complexity (managing a separate worker process).
-- **Go/No-Go Decision:** **Go**. This architecture is a non-negotiable requirement for handling long-running, resource-intensive tasks without degrading the user experience.
+## 3. Developer Environment Setup
 
-## Implementation Notes
+This section provides a complete guide to setting up the local development environment. By using `just`, we have simplified the entire process into a few memorable commands.
 
-- **Queue Name:** The BullMQ queue will be named `journal-processing`. This will be configurable via the `QUEUE_NAME` environment variable.
-- **Job Payload:** The data payload for each job will be a simple object: `{ "journalId": "cuid-of-the-journal" }`.
-- **API Response Contract:** The `POST /api/journals` endpoint's response contract remains unchanged. It will continue to return the newly created `Journal` object, which will now include `status: 'PENDING'`.
-- **Configuration:** Redis connection details will be managed by `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, and `REDIS_DB` variables in the `.env` files.
-- **Process Management:** The background worker and web server will be managed by `pm2` via a version-controlled `ecosystem.config.cjs` file.
+### 3.1. Prerequisites
 
-## Acceptance Gates
+1.  **Node.js:** Ensure you have Node.js v18 or later installed.
+2.  **Docker:** Ensure [Docker Desktop](https://www.docker.com/products/docker-desktop/) is installed and running.
+3.  **Just:** Install the `just` command runner.
+    - On macOS with Homebrew: `brew install just`
+    - For other systems, see the [official installation instructions](https://github.com/casey/just#installation).
 
-- **Gate 1 (API):** A `POST` request to `/api/journals` by an authenticated user returns a `201 Created` status code. The response body contains the journal object with its `status` field set to `"PENDING"`.
-- **Gate 2 (Queue):** Immediately after the API call in Gate 1, a new job containing the correct `journalId` exists in the `journal-processing` queue in Redis.
-- **Gate 3 (Worker):** The running background worker process (managed by `pm2`) outputs a log message confirming it has received the job from Gate 2.
-- **Gate 4 (Testing):** All existing automated tests must continue to pass. The new mocked integration test for the queueing logic must pass.
+### 3.2. First-Time Setup
 
-## “Make-sure-you” Checklist
+1.  **Install Dependencies:**
 
-- [ ] Run `npm audit` and ensure no new high or critical severity vulnerabilities are introduced by the new dependencies.
-- [ ] Confirm that Redis connection credentials are not hardcoded and are loaded exclusively from environment variables.
-- [ ] Verify that the `.env.example` file has been updated with placeholders for `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, and `REDIS_DB`.
-- [ ] Ensure the database transaction for creating the `Journal` record is completed _before_ the job is enqueued. The job should not be added if the database write fails.
-- [ ] Confirm the worker process includes graceful shutdown logic to close the Redis connection on `SIGINT` or `SIGTERM`.
-
-## Project hygiene prep
-
-1.  **Create GitHub Issue:** Use the `gh` CLI to create a new issue for this task.
     ```bash
-    gh issue create --title "feat(worker): P3_T2 Integrate BullMQ for background job processing" --body "Implement the BullMQ job queue to offload journal generation from the main API thread, as detailed in Phase 3, Task 2 of the implementation plan."
+    npm install
     ```
-2.  **Create Branch:** Create your feature branch from the **`phase3develop`** branch, including the issue number.
+
+2.  **Setup Environment Variables:**
+    Copy the environment variable template. You will need to fill in your `AUTH_*` secrets. The `REDIS_*` variables are now configured with a default password for enhanced local security.
+
     ```bash
-    git checkout phase3develop
-    git pull origin phase3develop
-    git checkout -b feat/phase3-task2-background-queue
+    cp .env.example .env
     ```
-3.  **Follow Test-Driven Development:** Adhere strictly to the "Red-Green-Refactor" cycle for the implementation, using the commit plan outlined below.
 
-## In-depth test plan
+3.  **Run Database Migrations:**
+    This command sets up your local SQLite database based on the Prisma schema.
+    ```bash
+    npx prisma migrate dev
+    ```
 
-The primary goal is to verify that the API handler correctly interacts with the queueing system without requiring a live Redis server during the automated test run. This is a **Tier 1: Mocked Integration Test**. The implementation revealed a more direct and reliable mocking strategy: instead of mocking the `bullmq` library, we will mock our own `queue.ts` module. This ensures we are testing our application's direct interaction with our singleton, which is more precise.
+### 3.3. Daily Workflow Commands
 
-A new test file, `tests/integration/queue.test.ts`, will be created.
+- **To start everything (Redis, web server, worker):**
+  ```bash
+  just run
+  ```
+- **To view logs from both the server and worker:**
+  ```bash
+  just logs
+  ```
+- **To stop everything and clean up:**
+  ```bash
+  just clean
+  ```
 
-1.  **Mocking Strategy:**
-    - Use `jest.unstable_mockModule('../../src/lib/queue.js', ...)` to provide a fake implementation of our `journalProcessingQueue`.
-    - The mock will replace the `add` method with a `jest.fn()` spy. This allows us to assert that the method was called and inspect the arguments it was called with.
-    - We must use `jest.resetModules()` in a `beforeEach` block to ensure that each test gets a fresh, mocked version of the application module.
+## 4. In-depth, Step-by-Step Implementation Plan
 
-2.  **Test Cases:**
-    - **Success Case:**
-      - An authenticated user makes a valid `POST` request to `/api/journals`.
-      - **Assert:** The mock `queue.add` function was called exactly one time.
-      - **Assert:** The first argument to `queue.add` was the job name, `'process-journal'`.
-      - **Assert:** The second argument was an object `{ journalId: <the_new_journal_id> }`.
-    - **Failure Case (Metamorphic Property):**
-      - An unauthenticated user makes a `POST` request to `/api/journals`.
-      - **Assert:** The request fails with a `401 Unauthorized`.
-      - **Assert:** The mock `queue.add` function was **not** called. This proves that a failed request does not trigger a background job.
-
-## In-depth engineering plan
+We will follow a Test-Driven Development (TDD) "Red-Green-Refactor" workflow.
 
 ### Commit 1: RED — Write Failing Tests for the New Queuing Logic
 
-This commit establishes our goal: the API must enqueue a job and the journal status must be `PENDING`.
+This commit establishes our precise requirements through tests. The tests will fail initially because the implementation does not yet exist.
 
-1.  **Action: Update Journal Test Expectations**
-    - Modify `tests/integration/journals.test.ts`. The test case that asserts a `201 Created` response should now also assert that `res.body.journal.status` is equal to `'PENDING'`. This test will fail initially.
+#### **Action 1: Update Existing Journal Test Expectations**
 
-    ```typescript
-    // file: tests/integration/journals.test.ts
+Modify `tests/integration/journals.test.ts`. The main success test must now also assert that the created journal's `status` is `'PENDING'`.
 
-    import session from "supertest-session";
-    import * as http from "http";
-    import { PrismaClient, User } from "@prisma/client";
-    import type { Express } from "express";
-    import { createApp } from "../../src/index.js";
+```typescript
+// file: tests/integration/journals.test.ts
 
-    const prisma = new PrismaClient();
+import session from "supertest-session";
+import * as http from "http";
+import { PrismaClient, User } from "@prisma/client";
+import type { Express } from "express";
+import { createApp } from "../../src/index.js";
 
-    let app: Express;
-    let server: http.Server;
-    let agent: session.Session;
-    let user1: User;
-    let csrfToken: string;
+const prisma = new PrismaClient();
 
-    describe("POST /api/journals", () => {
-      beforeEach((done) => {
-        app = createApp();
-        server = app.listen(0, async () => {
-          agent = session(app);
+let app: Express;
+let server: http.Server;
+let agent: session.Session;
+let user1: User;
+let csrfToken: string;
 
-          await prisma.user.deleteMany();
-          user1 = await prisma.user.create({
-            data: {
-              email: `user1-${Date.now()}@test.com`,
-              agreementsSigned: true,
-              nightscoutUrl: "https://user1.ns.com",
-            },
-          });
+describe("POST /api/journals", () => {
+  beforeEach((done) => {
+    app = createApp();
+    server = app.listen(0, async () => {
+      agent = session(app);
 
-          const csrfRes = await agent.get("/api/csrf-token");
-          csrfToken = csrfRes.body.csrfToken;
-
-          done();
-        });
+      await prisma.user.deleteMany();
+      user1 = await prisma.user.create({
+        data: {
+          email: `user1-${Date.now()}@test.com`,
+          agreementsSigned: true,
+          nightscoutUrl: "https://user1.ns.com",
+        },
       });
 
-      afterEach((done) => {
-        server.close(done);
-      });
+      const csrfRes = await agent.get("/api/csrf-token");
+      csrfToken = csrfRes.body.csrfToken;
 
-      afterAll(async () => {
-        await prisma.$disconnect();
-      });
-
-      it("should return 401 Unauthorized if no user is authenticated", async () => {
-        const res = await agent
-          .post("/api/journals")
-          .send({ _csrf: csrfToken });
-        expect(res.status).toBe(401);
-      });
-
-      it("should return 403 Forbidden if the CSRF token is missing", async () => {
-        const res = await agent
-          .post("/api/journals")
-          .set("x-test-user-id", user1.id)
-          .send({}); // No '_csrf' field
-        expect(res.status).toBe(403);
-      });
-
-      it("should return 201 Created if the user is authenticated and CSRF token is valid", async () => {
-        const res = await agent
-          .post("/api/journals")
-          .set("x-test-user-id", user1.id)
-          .send({ _csrf: csrfToken });
-
-        expect(res.status).toBe(201);
-        expect(res.body.journal).toBeDefined();
-        expect(res.body.journal.userId).toBe(user1.id);
-        // This is the new assertion that will fail initially.
-        expect(res.body.journal.status).toBe("PENDING");
-      });
+      done();
     });
-    ```
+  });
 
-2.  **Action: Create the Mocked Queue Integration Test**
-    - Create a new file for our mocked integration test.
+  afterEach((done) => {
+    server.close(done);
+  });
 
-    ```typescript
-    // file: tests/integration/queue.test.ts
+  afterAll(async () => {
+    await prisma.$disconnect();
+  });
 
-    import session from "supertest-session";
-    import * as http from "http";
-    import { PrismaClient, User } from "@prisma/client";
-    import type { Express } from "express";
-    import { jest } from "@jest/globals";
+  it("should return 401 Unauthorized if no user is authenticated", async () => {
+    const res = await agent.post("/api/journals").send({ _csrf: csrfToken });
+    expect(res.status).toBe(401);
+  });
 
-    // Mock our own queue module. This is a direct and reliable approach.
-    const mockQueueAdd = jest.fn();
-    jest.unstable_mockModule("../../src/lib/queue.js", () => ({
-      journalProcessingQueue: {
-        add: mockQueueAdd,
-        close: jest.fn().mockResolvedValue(undefined),
-      },
-    }));
+  it("should return 403 Forbidden if the CSRF token is missing", async () => {
+    const res = await agent
+      .post("/api/journals")
+      .set("x-test-user-id", user1.id)
+      .send({}); // No '_csrf' field
+    expect(res.status).toBe(403);
+  });
 
-    const prisma = new PrismaClient();
+  it("should return 201 Created and status PENDING for a valid request", async () => {
+    const res = await agent
+      .post("/api/journals")
+      .set("x-test-user-id", user1.id)
+      .send({ _csrf: csrfToken });
 
-    let app: Express;
-    let server: http.Server;
-    let agent: session.Session;
-    let user1: User;
-    let csrfToken: string;
+    expect(res.status).toBe(201);
+    expect(res.body.journal).toBeDefined();
+    expect(res.body.journal.userId).toBe(user1.id);
+    // This is the new assertion that will fail initially.
+    expect(res.body.journal.status).toBe("PENDING");
+  });
+});
+```
 
-    describe("POST /api/journals Job Queuing", () => {
-      beforeEach(async () => {
-        // This is the key: reset modules BEFORE each test to ensure
-        // our mock is used by the newly imported application code.
-        jest.resetModules();
-        mockQueueAdd.mockClear();
+#### **Action 2: Create the Mocked Queue Integration Test**
 
-        // Dynamically import the app factory *after* resetting modules.
-        const { createApp } = await import("../../src/index.js");
+Create a new file to test the interaction between the API and the queue, using a mock to ensure the test is fast and isolated.
 
-        app = createApp();
-        await new Promise<void>((resolve) => {
-          server = app.listen(0, async () => {
-            agent = session(app);
-            await prisma.user.deleteMany();
-            user1 = await prisma.user.create({
-              data: {
-                email: `user-queue-${Date.now()}@test.com`,
-                agreementsSigned: true,
-                nightscoutUrl: "https://user1.ns.com",
-              },
-            });
-            const csrfRes = await agent.get("/api/csrf-token");
-            csrfToken = csrfRes.body.csrfToken;
-            resolve();
-          });
-        });
-      });
+````typescript
+// file: tests/integration/queue.test.ts
 
-      afterEach((done) => {
-        server.close(done);
-      });
+import session from "supertest-session";
+import * as http from "http";
+import { PrismaClient, User } from "@prisma/client";
+import type { Express } from "express";
+import { jest } from "@jest/globals";
 
-      it("should add a job to the queue with the correct journalId upon successful journal creation", async () => {
-        const res = await agent
-          .post("/api/journals")
-          .set("x-test-user-id", user1.id)
-          .send({ _csrf: csrfToken });
+// MOCKING STRATEGY: Replace our real queue module with a mock.
+const mockQueueAdd = jest.fn();
+jest.unstable_mockModule("../../src/lib/queue.js", () => ({
+  journalProcessingQueue: {
+    add: mockQueueAdd,
+    close: jest.fn().mockResolvedValue(undefined),
+  },
+}));
 
-        expect(res.status).toBe(201);
-        const journalId = res.body.journal.id;
+const prisma = new PrismaClient();
 
-        // Assert that our mock was called correctly
-        expect(mockQueueAdd).toHaveBeenCalledTimes(1);
-        expect(mockQueueAdd).toHaveBeenCalledWith("process-journal", {
-          journalId: journalId,
-        });
-      });
-    });
-    ```
+let app: Express;
+let server: http.Server;
+let agent: session.Session;
+let user1: User;
+let csrfToken: string;
 
-3.  **Action: Verify Failure and Commit**
-    - Run the tests. The `journals.test.ts` will fail on the status check, and `queue.test.ts` will fail because `mockQueueAdd` was not called. This is the expected "RED" state.
+describe("POST /api/journals Job Queuing", () => {
+  beforeEach(async () => {
+    // CRITICAL: Reset modules before each test to ensure the mock is used
+    // by the newly imported application code.
+    jest.resetModules();
+    mockQueueAdd.mockClear();
 
-    ```bash
-    cd goodnumbers
-    npm test
-    git add .
-    git commit -m "test(api): add failing tests for job queuing on journal creation"
-    ```
+    // Dynamically import the app factory *after* resetting modules.
+    const { createApp } = await import("../../src/index.js");
 
-### Commit 2: GREEN — Implement Job Queue and Skeleton Worker
-
-This commit introduces the necessary code to make the failing tests pass.
-
-1.  **Action: Install and Run Redis via Docker**
-    - In your terminal, run the following command to start a Redis container. This will download the image if you don't have it, name the container `goodnumbers-redis`, and expose it on the standard port `6379`.
-
-    ```bash
-    docker run -d --name goodnumbers-redis -p 6379:6379 redis/redis-stack-server:latest
-    ```
-
-    - **Verify the connection:** After the container starts, test that it's running correctly by pinging it.
-
-    ```bash
-    docker exec goodnumbers-redis redis-cli ping
-    # You should see the output: PONG
-    ```
-
-    - **Management Commands (for reference):**
-      - To stop the container: `docker stop goodnumbers-redis`
-      - To start it again later: `docker start goodnumbers-redis`
-
-2.  **Action: Install Dependencies**
-    - Install `bullmq`, `ioredis`, and `tslib`. The `tslib` package is a runtime library for TypeScript that contains helper functions needed by the compiled JavaScript code of libraries like `bullmq`. Also install `pm2` as a development dependency.
-
-    ```bash
-    cd goodnumbers
-    npm install bullmq ioredis tslib
-    npm install --save-dev pm2
-    ```
-
-3.  **Action: Update Environment Configuration**
-    - Update your environment files to use the new Redis variables.
-
-    ```bash
-    # file: .env.test
-
-    # ... existing variables
-
-    # Redis connection for testing
-    REDIS_HOST=localhost
-    REDIS_PORT=6379
-    REDIS_PASSWORD=
-    REDIS_DB=1 # Use a separate DB for test isolation
-    ```
-
-    ```bash
-    # file: .env.example
-
-    # ... existing variables
-
-    # --- Background Job Queue (Redis) ---
-    # Connection details for the Redis server backing the job queue
-    REDIS_HOST=localhost
-    REDIS_PORT=6379
-    REDIS_PASSWORD=
-    REDIS_DB=0
-    QUEUE_NAME=journal-processing
-
-    NODE_ENV=development
-    ```
-
-4.  **Action: Create the Queue Singleton**
-    - Create a reusable module to manage the queue connection, reading the new variables. Note the correct import for the `ioredis` constructor is `import { Redis } from "ioredis"`.
-
-    ```typescript
-    // file: src/lib/queue.ts
-
-    import { Queue } from "bullmq";
-    import { Redis } from "ioredis";
-
-    // --- Fatal Error Checks ---
-    if (!process.env.REDIS_HOST || !process.env.REDIS_PORT) {
-      throw new Error("FATAL: Redis connection variables are not set.");
-    }
-
-    const connection = new Redis({
-      host: process.env.REDIS_HOST,
-      port: parseInt(process.env.REDIS_PORT as string, 10),
-      password: process.env.REDIS_PASSWORD || undefined,
-      db: parseInt(process.env.REDIS_DB || "0", 10),
-      maxRetriesPerRequest: null, // Required for BullMQ
-    });
-
-    export const journalProcessingQueue = new Queue(
-      process.env.QUEUE_NAME || "journal-processing",
-      {
-        connection,
-      }
-    );
-
-    const closeConnection = async () => {
-      await journalProcessingQueue.close();
-      connection.disconnect();
-    };
-
-    process.on("SIGTERM", closeConnection);
-    process.on("SIGINT", closeConnection);
-    ```
-
-5.  **Action: Modify the Journal Creation Endpoint**
-    - Update the route handler to use the new queue and set the `PENDING` status. Note the change to using `.js` extensions for runtime import resolution.
-
-    ```typescript
-    // file: src/routes/journal.ts
-
-    import { Router } from "express";
-    import { prisma } from "../lib/prisma.js";
-    import { journalProcessingQueue } from "../lib/queue.js";
-
-    const router = Router();
-
-    router.post("/", async (req, res, next) => {
-      const userId = req.user!.id;
-
-      try {
-        // 1. Create the journal with a PENDING status
-        const journal = await prisma.journal.create({
+    app = createApp();
+    await new Promise<void>((resolve) => {
+      server = app.listen(0, async () => {
+        agent = session(app);
+        await prisma.user.deleteMany();
+        user1 = await prisma.user.create({
           data: {
-            userId,
-            status: "PENDING", // Explicitly set status
+            email: `user-queue-${Date.now()}@test.com`,
+            agreementsSigned: true,
+            nightscoutUrl: "https://user1.ns.com",
           },
         });
-
-        // 2. Enqueue the job for background processing
-        await journalProcessingQueue.add("process-journal", {
-          journalId: journal.id,
-        });
-
-        // 3. Return the created journal object immediately
-        res.status(201).json({ journal });
-      } catch (error) {
-        console.error(
-          `[API] Failed to create or enqueue journal for user ${userId}:`,
-          error
-        );
-        next(error); // Pass error to global handler
-      }
+        const csrfRes = await agent.get("/api/csrf-token");
+        csrfToken = csrfRes.body.csrfToken;
+        resolve();
+      });
     });
+  });
 
-    export default router;
-    ```
+  afterEach((done) => {
+    server.close(done);
+  });
 
-6.  **Action: Create the Skeleton Worker**
-    - Create the new worker file, ensuring it uses the new environment variables for its connection. Note the use of `.js` for the env import.
+  it("should add a job to the queue with the correct journalId upon successful journal creation", async () => {
+    const res = await agent
+      .post("/api/journals")
+      .set("x-test-user-id", user1.id)
+      .send({ _csrf: csrfToken });
 
-    ```typescript
-    // file: src/worker.ts
+    expect(res.status).toBe(201);
+    const journalId = res.body.journal.id;
 
-    import "./lib/env.js"; // Ensure environment variables are loaded
-    import { Worker } from "bullmq";
-    import { Redis } from "ioredis";
-
-    console.log("[Worker] Starting up...");
-
-    // --- Fatal Error Checks ---
-    if (!process.env.REDIS_HOST || !process.env.REDIS_PORT) {
-      throw new Error(
-        "FATAL: Redis connection variables are not set for worker."
-      );
-    }
-
-    const connection = new Redis({
-      host: process.env.REDIS_HOST,
-      port: parseInt(process.env.REDIS_PORT as string, 10),
-      password: process.env.REDIS_PASSWORD || undefined,
-      db: parseInt(process.env.REDIS_DB || "0", 10),
-      maxRetriesPerRequest: null,
+    // Assert that our mock function was called correctly
+    expect(mockQueueAdd).toHaveBeenCalledTimes(1);
+    expect(mockQueueAdd).toHaveBeenCalledWith("process-journal", {
+      journalId: journalId,
     });
+  });
+});```
 
-    const worker = new Worker(
-      process.env.QUEUE_NAME || "journal-processing",
-      async (job) => {
-        console.log(
-          `[Worker] Processing job ${job.id} for journal: ${job.data.journalId}`
-        );
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        console.log(`[Worker] Finished job ${job.id}`);
-        return { status: "done", journalId: job.data.journalId };
+#### **Action 3: Verify Failure and Commit**
+
+Run the tests. They will fail as expected. Commit this "RED" state to version control.
+
+```bash
+cd goodnumbers
+npm test
+git add .
+git commit -m "test(api): add failing tests for job queuing on journal creation"
+````
+
+---
+
+### Commit 2: GREEN — Implement the Feature and Make Tests Pass
+
+This commit introduces all the necessary code to implement the job queue system.
+
+#### **Action 1: Define Services with Docker Compose**
+
+Create `docker-compose.yml`. We will add a `command` to set a default password. This password will be passed in via an environment variable, which Docker Compose can read from our `.env` file. This is a critical security practice, even for local development.
+
+```yaml
+# file: goodnumbers/docker-compose.yml
+
+version: "3.8"
+
+# Defines the external services needed for development.
+# Run `just services-up` to start and `just services-down` to stop.
+services:
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: goodnumbers-redis
+    # SECURITY: We add a command to start Redis with a required password.
+    # The password is read from the .env file via the 'environment' key.
+    command: redis-stack-server --requirepass ${REDIS_PASSWORD}
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:6379:6379" # Bind to localhost only for security
+    volumes:
+      - redis-data:/data # Persist Redis data across restarts
+    networks:
+      - goodnumbers-net
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  goodnumbers-net:
+    driver: bridge
+```
+
+#### **Action 2: Install Dependencies**
+
+Install `bullmq`, the Redis client `ioredis`, and `pm2` for process management.
+
+```bash
+cd goodnumbers
+npm install bullmq ioredis
+npm install --save-dev pm2
+```
+
+#### **Action 3: Update Environment Configuration**
+
+Add Redis connection variables to your environment files, including the new `REDIS_PASSWORD`. We provide a secure default password in the example file.
+
+```bash
+# file: goodnumbers/.env.example
+
+# ... existing variables ...
+
+# --- Background Job Queue (Redis) ---
+# Connection details for the Redis server backing the job queue
+# SECURITY: A default password is provided. For a real production system,
+# this should be replaced with a securely generated secret.
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_PASSWORD=a-very-secure-and-long-password-for-local-dev
+REDIS_DB=0
+QUEUE_NAME=journal-processing
+
+NODE_ENV=development
+```
+
+```bash
+# file: goodnumbers/.env.test
+
+# ... existing variables
+
+# Redis connection for testing
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_PASSWORD=a-very-secure-and-long-password-for-local-dev
+REDIS_DB=1 # Use a separate DB for test isolation
+```
+
+#### **Action 4: Create the Queue Singleton**
+
+Create a reusable module to manage the BullMQ connection, ensuring it now uses the `REDIS_PASSWORD` environment variable.
+
+```typescript
+// file: goodnumbers/src/lib/queue.ts
+
+import { Queue } from "bullmq";
+import { Redis } from "ioredis";
+
+// --- Fatal Error Checks ---
+if (!process.env.REDIS_HOST || !process.env.REDIS_PORT) {
+  throw new Error("FATAL: Redis connection variables are not set.");
+}
+
+// Establish a reusable connection to Redis.
+const connection = new Redis({
+  host: process.env.REDIS_HOST,
+  port: parseInt(process.env.REDIS_PORT as string, 10),
+  // SECURITY: Use the password from the environment variables.
+  password: process.env.REDIS_PASSWORD || undefined,
+  db: parseInt(process.env.REDIS_DB || "0", 10),
+  maxRetriesPerRequest: null, // Required by BullMQ for reliability
+  // PRODUCTION NOTE: For a real production deployment where Redis is on a
+  // separate machine, you would need to enable TLS here for security.
+  // Example: tls: { servername: process.env.REDIS_HOST }
+});
+
+// Create and export the queue instance. The queue name is configurable
+// via environment variables, which is crucial for test isolation.
+export const journalProcessingQueue = new Queue(
+  process.env.QUEUE_NAME || "journal-processing",
+  {
+    connection,
+  }
+);
+
+// Graceful shutdown logic is critical to prevent orphaned connections
+// or jobs being dropped during deployments or restarts.
+const closeConnection = async () => {
+  console.log("[Queue] Closing Redis connections...");
+  await journalProcessingQueue.close();
+  connection.disconnect();
+};
+
+process.on("SIGTERM", closeConnection);
+process.on("SIGINT", closeConnection);
+```
+
+#### **Action 5: Modify the Journal Creation Endpoint**
+
+Update the route handler to set the `PENDING` status and enqueue the job. We will add a crucial improvement here: a "compensating transaction" pattern. If enqueuing the job fails, we will attempt to delete the journal record we just created to prevent it from getting stuck in a "PENDING" state forever. This makes our system more resilient.
+
+```typescript
+// file: goodnumbers/src/routes/journal.ts
+
+import { Router } from "express";
+import { prisma } from "../lib/prisma.js";
+import { journalProcessingQueue } from "../lib/queue.js";
+
+const router = Router();
+
+router.post("/", async (req, res, next) => {
+  const userId = req.user!.id;
+  let journal; // Declare journal here to access it in the catch block
+
+  try {
+    // 1. Create the journal with a PENDING status.
+    journal = await prisma.journal.create({
+      data: {
+        userId,
+        status: "PENDING",
       },
-      { connection }
-    );
-
-    worker.on("completed", (job) => {
-      console.log(`[Worker] Job ${job.id} has completed!`);
     });
 
-    worker.on("failed", (job, err) => {
+    // 2. Enqueue the job for background processing.
+    // This is a critical step. If this fails, we need to handle it.
+    await journalProcessingQueue.add("process-journal", {
+      journalId: journal.id,
+    });
+
+    // 3. Respond immediately with a '201 Created' status.
+    res.status(201).json({ journal });
+  } catch (error) {
+    // 4. DATA INTEGRITY: Implement a compensating action.
+    // If the journal was created but the job could not be enqueued,
+    // we must delete the journal to prevent orphaned records.
+    if (journal) {
       console.error(
-        `[Worker] Job ${job?.id} has failed with error: ${err.message}`
+        `[API] CRITICAL: Job enqueue failed for journal ${journal.id}. Rolling back journal creation.`
       );
-    });
-
-    const closeGracefully = async () => {
-      console.log("[Worker] Shutting down...");
-      await worker.close();
-      connection.disconnect();
-      process.exit(0);
-    };
-
-    process.on("SIGTERM", closeGracefully);
-    process.on("SIGINT", closeGracefully);
-
-    console.log(
-      '[Worker] Worker listening for jobs on "' +
-        (process.env.QUEUE_NAME || "journal-processing") +
-        '" queue...'
-    );
-    ```
-
-7.  **Action: Create PM2 Ecosystem Configuration**
-    - Create a file named `ecosystem.config.cjs` in the `goodnumbers/` root. This file tells `pm2` how to run and manage both our web server and our new worker.
-    - **Note:** We use `cluster` mode for the web server to allow it to scale across multiple CPU cores. We use `fork` mode for the worker because it's a single, stateful process that should not be duplicated.
-
-    ```javascript
-    // file: ecosystem.config.cjs
-
-    module.exports = {
-      apps: [
-        {
-          name: "goodnumbers-web",
-          script: "./dist/index.js",
-          instances: 1,
-          exec_mode: "cluster",
-          watch: ["./dist"],
-          env: {
-            NODE_ENV: "development",
-          },
-          env_production: {
-            NODE_ENV: "production",
-          },
-        },
-        {
-          name: "goodnumbers-worker",
-          script: "./dist/worker.js",
-          instances: 1,
-          exec_mode: "fork",
-          watch: ["./dist"],
-          env: {
-            NODE_ENV: "development",
-          },
-          env_production: {
-            NODE_ENV: "production",
-          },
-        },
-      ],
-    };
-    ```
-
-8.  **Action: Add/Update Scripts in `package.json`**
-    - Update `package.json` with scripts to run the application using `pm2`.
-
-    ```json
-    // file: package.json
-    {
-      "name": "goodnumbers",
-      "version": "1.0.0",
-      "description": "",
-      "main": "index.js",
-      "scripts": {
-        "start": "pm2 start ecosystem.config.cjs --env production",
-        "stop": "pm2 stop ecosystem.config.cjs",
-        "dev": "pm2 start ecosystem.config.cjs --watch",
-        "logs": "pm2 logs",
-        "build": "tsc",
-        "test": "NODE_OPTIONS=\"--experimental-vm-modules\" jest --runInBand",
-        "lint": "eslint . --ext .ts",
-        "prettier": "prettier --write ."
-      },
-      "keywords": [],
-      "author": "",
-      "license": "ISC",
-      "type": "module",
-      "dependencies": {
-        "@auth/express": "^0.11.0",
-        "@auth/prisma-adapter": "^2.10.0",
-        "@prisma/client": "^6.14.0",
-        "body-parser": "^1.20.2",
-        "bullmq": "^5.8.2",
-        "cookie-parser": "^1.4.6",
-        "dotenv": "^17.2.1",
-        "express": "^5.1.0",
-        "express-rate-limit": "^8.0.1",
-        "helmet": "^8.1.0",
-        "ioredis": "^5.4.1",
-        "prisma": "^6.14.0",
-        "tiny-csrf": "^1.1.4",
-        "tslib": "^2.6.2",
-        "zod": "^4.1.8"
-      },
-      "devDependencies": {
-        "@types/cookie-parser": "^1.4.9",
-        "@types/express": "^5.0.3",
-        "@types/jest": "^30.0.0",
-        "@types/node": "^24.3.0",
-        "@types/supertest": "^6.0.3",
-        "jest": "^30.0.5",
-        "pm2": "^5.4.0",
-        "supertest": "^7.1.4",
-        "supertest-session": "^5.0.1",
-        "ts-jest": "^29.4.1",
-        "typescript": "^5.9.2"
-      }
+      await prisma.journal.delete({ where: { id: journal.id } });
     }
-    ```
 
-9.  **Action: Update Project Documentation**
-    - Add instructions for the new dependencies and runtime commands to the main project `README.md`.
+    // 5. Pass any errors to the global handler for consistent error logging.
+    next(error);
+  }
+});
 
-    ````markdown
-    # file: README.md
+export default router;
+```
 
-    ## Local Development Setup
+#### **Action 6: Create the Skeleton Worker**
 
-    ### Prerequisites
+Create the new worker file, ensuring it also uses the new `REDIS_PASSWORD` variable. We'll also refine the logging slightly to focus on the Job ID as the primary identifier for better traceability.
 
-    1.  **Node.js** (v18 or later)
-    2.  **Docker**
+```typescript
+// file: goodnumbers/src/worker.ts
 
-    ### Running the Application
+import "./lib/env.js"; // Ensure environment variables are loaded first
+import { Worker } from "bullmq";
+import { Redis } from "ioredis";
 
-    1.  **Install Dependencies:**
+console.log("[Worker] Starting up...");
 
-        ```bash
-        npm install
-        ```
+// --- Fatal Error Checks ---
+if (!process.env.REDIS_HOST || !process.env.REDIS_PORT) {
+  throw new Error("FATAL: Redis connection variables are not set for worker.");
+}
 
-    2.  **Setup Environment Variables:**
-        Copy the `.env.example` file to `.env` and fill in the required values.
+const connection = new Redis({
+  host: process.env.REDIS_HOST,
+  port: parseInt(process.env.REDIS_PORT as string, 10),
+  // SECURITY: Use the password from the environment variables.
+  password: process.env.REDIS_PASSWORD || undefined,
+  db: parseInt(process.env.REDIS_DB || "0", 10),
+  maxRetriesPerRequest: null,
+  // PRODUCTION NOTE: For a real production deployment where Redis is on a
+  // separate machine, you would need to enable TLS here for security.
+  // Example: tls: { servername: process.env.REDIS_HOST }
+});
 
-        ```bash
-        cp .env.example .env
-        ```
+const worker = new Worker(
+  process.env.QUEUE_NAME || "journal-processing",
+  async (job) => {
+    // SECURE LOGGING: Focus on the Job ID as the primary identifier.
+    console.log(
+      `[Worker] Processing job ${job.id} (Journal ID: ${job.data.journalId})`
+    );
+    // Simulate a long-running task.
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    console.log(`[Worker] Finished job ${job.id}`);
+    return { status: "done", journalId: job.data.journalId };
+  },
+  { connection }
+);
 
-    3.  **Run Redis:**
-        Start the Redis container using Docker.
+// Event listeners provide observability into the worker's state.
+worker.on("completed", (job) => {
+  console.log(`[Worker] Job ${job.id} has completed successfully.`);
+});
 
-        ```bash
-        docker run -d --name goodnumbers-redis -p 6379:6379 redis/redis-stack-server:latest
-        ```
+worker.on("failed", (job, err) => {
+  console.error(
+    `[Worker] Job ${job?.id} has failed with error: ${err.message}`
+  );
+});
 
-    4.  **Run Database Migrations:**
+// Graceful shutdown ensures the worker finishes its current job before exiting.
+const closeGracefully = async () => {
+  console.log("[Worker] Shutting down gracefully...");
+  await worker.close();
+  connection.disconnect();
+  process.exit(0);
+};
 
-        ```bash
-        npx prisma migrate dev
-        ```
+process.on("SIGTERM", closeGracefully);
+process.on("SIGINT", closeGracefully);
 
-    5.  **Build and Run with PM2:**
-        First, compile the TypeScript code. Then, start the web server and the background worker using `pm2`.
+console.log(
+  '[Worker] Worker listening for jobs on "' +
+    (process.env.QUEUE_NAME || "journal-processing") +
+    '" queue...'
+);
+```
 
-        ```bash
-        npm run build
-        npm run dev
-        ```
+#### **Action 7: Create PM2 Ecosystem Configuration**
 
-    6.  **View Logs:**
-        To see the combined output from both the web server and the worker, run:
-        ```bash
-        npm run logs
-        ```
+Create `ecosystem.config.cjs`. We will add `env_production` blocks to ensure that we can set production-specific environment variables (like `NODE_ENV`) when we run the `npm start` command. This is a best practice for managing different deployment environments.
 
-    ### Stopping the Application
+```javascript
+// file: goodnumbers/ecosystem.config.cjs
 
-    To stop the `pm2` processes:
+module.exports = {
+  apps: [
+    {
+      name: "goodnumbers-web",
+      script: "./dist/index.js",
+      instances: 1,
+      exec_mode: "cluster",
+      watch: ["./dist"],
+      env: {
+        NODE_ENV: "development",
+      },
+      // PRODUCTION: This block is used when running `pm2 start --env production`
+      env_production: {
+        NODE_ENV: "production",
+      },
+    },
+    {
+      name: "goodnumbers-worker",
+      script: "./dist/worker.js",
+      instances: 1,
+      exec_mode: "fork",
+      watch: ["./dist"],
+      env: {
+        NODE_ENV: "development",
+      },
+      // PRODUCTION: This ensures the worker also runs in production mode.
+      env_production: {
+        NODE_ENV: "production",
+      },
+    },
+  ],
+};
+```
+
+#### **Action 8: Add/Update Scripts in `package.json`**
+
+Update `package.json` with scripts to run the application using `pm2`.
+
+```json
+// file: goodnumbers/package.json
+{
+  "name": "goodnumbers",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "pm2 start ecosystem.config.cjs --env production",
+    "stop": "pm2 stop ecosystem.config.cjs && pm2 delete ecosystem.config.cjs",
+    "dev": "pm2 start ecosystem.config.cjs --watch",
+    "logs": "pm2 logs",
+    "build": "tsc",
+    "test": "NODE_OPTIONS=\"--experimental-vm-modules\" jest --runInBand",
+    "lint": "eslint . --ext .ts",
+    "prettier": "prettier --write ."
+  },
+  "type": "module",
+  "dependencies": {
+    "bullmq": "^5.8.2",
+    "ioredis": "^5.4.1",
+    "...": "..."
+  },
+  "devDependencies": {
+    "pm2": "^5.4.0",
+    "...": "..."
+  }
+}
+```
+
+#### **Action 9: Create Justfile for Simplified Workflow**
+
+Create a `justfile` in the `goodnumbers/` root. This file is the new "front door" for all development tasks, providing simple, unified commands.
+
+```makefile
+# file: goodnumbers/justfile
+
+# Provides simple, memorable commands for managing the development environment.
+
+# --- SERVICE MANAGEMENT ---
+# Starts background services (Redis) using Docker Compose in detached mode.
+services-up:
+    @echo "Starting Redis container..."
+    @docker-compose up -d
+
+# Stops and removes background services defined in Docker Compose.
+services-down:
+    @echo "Stopping and removing Redis container..."
+    @docker-compose down
+
+# --- APPLICATION MANAGEMENT ---
+# Builds the TypeScript project.
+build:
+    @npm run build
+
+# Starts the web server and worker in development mode with watch.
+# Assumes services are already running via `just services-up`.
+dev:
+    @npm run dev
+
+# Stops the web server and worker processes managed by pm2.
+stop:
+    @npm run stop
+
+# Tails logs from both the web server and the worker.
+logs:
+    @npm run logs
+
+# --- COMBINED WORKFLOWS ---
+# A single command to build the project and start all services and application processes.
+run: build services-up dev
+
+# --- UTILITIES ---
+# Cleans the project by stopping services, stopping the app, and removing node_modules.
+clean: stop services-down
+    @echo "Removing node_modules..."
+    @rm -rf node_modules
+```
+
+#### **Action 10: Update Project `README.md`**
+
+Finally, update the project's main `README.md` to reflect the new, simplified setup and workflow.
+
+````markdown
+# file: goodnumbers/README.md
+
+## Local Development Setup
+
+### Prerequisites
+
+1.  **Node.js** (v18 or later)
+2.  **Docker**
+3.  **Just** (a command runner, e.g., `brew install just`)
+
+### Running the Application
+
+1.  **Install Dependencies:**
 
     ```bash
-    npm run stop
+    npm install
     ```
-    ````
 
-    To stop the Redis container:
+2.  **Setup Environment Variables:**
+    Copy `.env.example` to `.env` and fill in the required `AUTH_*` secrets. The Redis password is already set up for local development.
 
     ```bash
-    docker stop goodnumbers-redis
+    cp .env.example .env
     ```
 
+3.  **Run Database Migrations:**
+
+    ```bash
+    npx prisma migrate dev
     ```
 
+4.  **Build, Start Services, and Run App:**
+    The `just run` command handles everything: it builds the TypeScript, starts Redis via Docker Compose, and starts the web server and worker with `pm2`.
+
+    ```bash
+    just run
     ```
 
-10. **Action: Verify Success and Commit**
-    - First, build the code: `npm run build`.
-    - Run the automated tests. All tests should now pass. This is our "GREEN" state.
+5.  **View Logs:**
+    To see the combined, real-time output from both the web server and the worker:
+    ```bash
+    just logs
+    ```
 
+### Stopping the Application
+
+To stop the `pm2` processes and the Redis container:
+
+```bash
+just clean
+```
+````
+
+#### **Action 11: Add Production Considerations Section**
+
+It is crucial to document aspects of the design that are specific to a production environment. Add a new top-level section to this guide to capture these important details.
+
+## 5. Production Security & Reliability Considerations
+
+While this guide focuses on building a robust local development environment, several key adjustments are necessary for a production deployment.
+
+### 5.1. Data-in-Transit Encryption (TLS)
+
+When the application server and the Redis server are running on different machines, the connection between them must be encrypted. `ioredis` supports this via a `tls` configuration object. This prevents any third party on the network from eavesdropping on job data. This was omitted from the current implementation because our deployment model runs both processes on the same machine, but it is a non-negotiable requirement for any distributed setup.
+
+### 5.2. Queue-Level Rate Limiting
+
+The API has a global rate limiter, which is a great first line of defense. However, in a system with many users, it is possible for a single authenticated user to enqueue a large number of jobs, potentially starving the queue and preventing other users' jobs from being processed. For a future, scaled-up version of this application, we should consider implementing per-user rate limiting directly on the queue using features available in libraries like BullMQ Pro. This would provide a more granular and robust defense against this type of resource exhaustion.
+
+#### **Action 12: Verify Success and Commit**
+
+1.  **Run automated tests.** All tests should now pass. This is our "GREEN" state.
     ```bash
     cd goodnumbers
     npm test
     ```
-
-    - Manually test the full flow:
-      1. Run `npm run dev` in one terminal.
-      2. Run `npm run logs` in another terminal to watch the output.
-      3. Trigger the `POST /api/journals` endpoint using a tool like `curl` or Postman.
-      4. Observe the logs to confirm the API returns quickly and the worker log (`[Worker] Processing job...`) appears shortly after.
-    - Finally, commit the work.
-
+2.  **Manually test the full flow using the new commands:**
+    1.  Run `just run` in your terminal.
+    2.  Run `just logs` in another terminal.
+    3.  Trigger the `POST /api/journals` endpoint using a tool like `curl` or Postman.
+    4.  Observe the logs to confirm the API returns quickly and the worker log (`[Worker] Processing job...`) appears shortly after.
+3.  **Commit the work.**
     ```bash
     git add .
     git commit -m "feat(worker): P3_T2 integrate bullmq for background job processing"
     ```
-````
