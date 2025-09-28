@@ -1,15 +1,15 @@
-import pkg from 'express';
-const { Request, Response, NextFunction } = pkg;
+// Frontend/src/middleware/errorHandler.ts
+import { Request, Response, NextFunction } from 'express';
 
 // Express identifies this as an error handler because it has 4 arguments.
 export function errorHandler(
   err: Error,
   req: Request,
   res: Response,
-
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   next: NextFunction,
 ) {
-  // FIX: Specifically handle CSRF errors to return a 403 status.
+  // Specifically handle CSRF errors to return a 403 status.
   if (err.message?.startsWith('Did not get a valid CSRF token')) {
     return res.status(403).json({ error: 'Invalid or missing CSRF token.' });
   }

@@ -1,10 +1,10 @@
-// file: goodnumbers/src/lib/auth.ts
+// Frontend/src/lib/auth.ts
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import Google from '@auth/express/providers/google';
-import { prisma } from './prisma.ts';
+import { prisma } from './prisma.js';
 import type { ExpressAuthConfig } from '@auth/express';
-import * as fs from 'fs/promises'; // Corrected import
-import type { User } from '@auth/express-adapter';
+import * as fs from 'fs/promises';
+import type { User } from '@auth/core/types';
 
 // --- Email Allowlist Logic ---
 
@@ -30,7 +30,6 @@ async function isEmailAllowed(user: Partial<User>): Promise<boolean> {
   if (!allowedEmails || now - cacheTimestamp > CACHE_TTL) {
     try {
       const fileContent = await fs.readFile(
-        // Corrected call
         'config/allowed_emails.txt',
         'utf-8',
       );
