@@ -6,7 +6,6 @@ export function errorHandler(
   err: Error,
   req: Request,
   res: Response,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   next: NextFunction,
 ) {
   // Specifically handle CSRF errors to return a 403 status.

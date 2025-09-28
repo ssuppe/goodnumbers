@@ -1,3 +1,4 @@
+// goodnumbers/eslint.config.js
 import globals from 'globals';
 import pluginJs from '@eslint/js';
 import tseslint from 'typescript-eslint';
@@ -7,11 +8,11 @@ export default [
     languageOptions: {
       globals: {
         ...globals.browser,
-        ...globals.node, // Add Node.js globals
+        ...globals.node,
       },
       parser: tseslint.parser,
       parserOptions: {
-        project: './tsconfig.eslint.json', // Ensure type-aware linting
+        project: './tsconfig.eslint.json',
         ecmaVersion: 'latest',
         sourceType: 'module',
       },
@@ -20,22 +21,22 @@ export default [
   pluginJs.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['**/*.js'], // For plain JS files, disable type-checking
+    // FIX: Add .cjs to the list of files to disable type-checking for.
+    files: ['**/*.js', '**/*.cjs'],
     ...tseslint.configs.disableTypeChecked,
   },
   {
-    files: ['jest.config.cjs'], // Target jest.config.cjs
+    files: ['jest.config.cjs'],
     rules: {
-      '@typescript-eslint/no-var-requires': 'off', // Allow require in CJS files
-      '@typescript-eslint/no-explicit-any': 'off', // Allow any in CJS files if needed
+      '@typescript-eslint/no-var-requires': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
-    ...tseslint.configs.disableTypeChecked, // Disable type checking for this file
+    ...tseslint.configs.disableTypeChecked,
   },
   {
     rules: {
-      // Re-enable stricter rules as requested by the user
-      '@typescript-eslint/no-explicit-any': 'error', // Set to error
-      '@typescript-eslint/no-namespace': 'error', // Set to error
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-namespace': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -43,7 +44,7 @@ export default [
           varsIgnorePattern: '^(Request|Response|NextFunction)$',
           caughtErrorsIgnorePattern: '^_|',
         },
-      ], // Set to error
+      ],
     },
   },
   {
