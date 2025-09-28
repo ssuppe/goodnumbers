@@ -1,7 +1,7 @@
-import pkg from 'express';
-const { Request, Response, NextFunction } = pkg;
+// Frontend/src/middleware/onboarding.ts
+import { Request, Response, NextFunction } from 'express';
 
-import { prisma } from '../lib/prisma.ts';
+import { prisma } from '../lib/prisma.js';
 
 // This middleware enforces the user onboarding flow.
 // Users must sign agreements and set up their Nightscout account
