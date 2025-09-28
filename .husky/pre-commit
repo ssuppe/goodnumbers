@@ -1,1 +1,37 @@
-npx lint-staged
+# .husky/pre-commit
+
+#!/usr/bin/env sh
+
+# --- Robustly find the project directory ---
+# 1. Find the absolute path to the root of the git repository.
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+# 2. Define the path to your Node.js project folder relative to the root.
+PROJECT_DIR="$REPO_ROOT/goodnumbers"
+
+# 3. Check if the project directory actually exists. If not, fail with a helpful message.
+if [ ! -d "$PROJECT_DIR" ]; then
+  echo "❌ ERROR: Pre-commit hook could not find the project directory at '$PROJECT_DIR'."
+  echo "Please ensure your project is located in a 'goodnumbers' subfolder within the repository."
+  exit 1
+fi
+
+# --- Execute checks from the correct directory ---
+echo "› Executing pre-commit checks in '$PROJECT_DIR'..."
+cd "$PROJECT_DIR" || exit 1
+
+echo "› Running linter..."
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "❌ Linting failed. Commit aborted."
+  exit 1
+fi
+
+echo "› Running TypeScript build..."
+npm run build
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript build failed. Commit aborted."
+  exit 1
+fi
+
+echo "✅ Pre-commit checks passed."
