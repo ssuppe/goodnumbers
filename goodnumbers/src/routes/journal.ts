@@ -1,5 +1,6 @@
+// Frontend/src/routes/journal.ts
 import { Router } from 'express';
-import { prisma } from '../lib/prisma.ts';
+import { prisma } from '../lib/prisma.js';
 
 const router = Router();
 

@@ -1,8 +1,9 @@
+// Frontend/src/routes/user.ts
 import { Router } from 'express';
-import { prisma } from '../lib/prisma.ts';
-import { protect } from '../middleware/auth.ts';
-import { userSettingsSchema } from '../lib/validation.ts';
-import { encrypt } from '../lib/encryption.ts';
+import { prisma } from '../lib/prisma.js';
+import { protect } from '../middleware/auth.js';
+import { userSettingsSchema } from '../lib/validation.js';
+import { encrypt } from '../lib/encryption.js';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 

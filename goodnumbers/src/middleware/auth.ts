@@ -1,16 +1,16 @@
-import pkg from 'express';
-const { Request, Response, NextFunction } = pkg;
+// Frontend/src/middleware/auth.ts
+import { Request, Response, NextFunction } from 'express';
 
 import { getSession } from '@auth/express';
-import { authConfig } from '../lib/auth.ts';
-import { prisma } from '../lib/prisma.ts';
+import { authConfig } from '../lib/auth.js';
+import { prisma } from '../lib/prisma.js';
 
 // Extend the Request type to include the user property using module augmentation
-declare module 'express' {
+declare module 'express-serve-static-core' {
   export interface Request {
     user?: {
       id: string;
-      email: string;
+      email: string | null; // <-- FIX: Changed from string to string | null
       agreementsSigned: boolean;
       nightscoutUrl?: string | null;
       nightscoutToken?: string | null;
@@ -23,7 +23,6 @@ declare module 'express' {
 // It also populates `req.user` with basic user information.
 export async function protect(req: Request, res: Response, next: NextFunction) {
   // For integration tests, we can bypass Auth.js by setting a special header.
-  // In a real application, this would be removed or heavily restricted.
   if (process.env.NODE_ENV === 'test' && req.headers['x-test-user-id']) {
     const testUserId = req.headers['x-test-user-id'] as string;
     const testUser = await prisma.user.findUnique({
@@ -32,7 +31,7 @@ export async function protect(req: Request, res: Response, next: NextFunction) {
     if (testUser) {
       req.user = {
         id: testUser.id,
-        email: testUser.email || '',
+        email: testUser.email || null, // Ensure consistency
         agreementsSigned: testUser.agreementsSigned,
         nightscoutUrl: testUser.nightscoutUrl,
         nightscoutToken: testUser.nightscoutToken,
