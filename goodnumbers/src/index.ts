@@ -1,19 +1,20 @@
-import './lib/env.ts';
+// Frontend/src/index.ts
+import './lib/env.js';
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { ExpressAuth } from '@auth/express';
-import { authConfig } from './lib/auth.ts';
+import { authConfig } from './lib/auth.js';
 import { getSession } from '@auth/express';
 import cookieParser from 'cookie-parser';
 import csrf from 'tiny-csrf';
 
-import { escapeHtml } from './lib/utils.ts';
-import journalRoutes from './routes/journal.ts';
-import { errorHandler } from './middleware/errorHandler.ts';
-import userRoutes from './routes/user.ts';
-import { protect } from './middleware/auth.ts';
-import { enforceOnboarding } from './middleware/onboarding.ts';
+import { escapeHtml } from './lib/utils.js';
+import journalRoutes from './routes/journal.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import userRoutes from './routes/user.js';
+import { protect } from './middleware/auth.js';
+import { enforceOnboarding } from './middleware/onboarding.js';
 
 export function createApp() {
   // --- Fatal Error Checks ---
