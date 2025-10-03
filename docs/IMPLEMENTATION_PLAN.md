@@ -371,48 +371,309 @@ For each task listed in the implementation phases below, the following GitHub-in
   2.  **Green:** In the same test, update the user record in the database, setting `agreementsSigned: true`. Make the same request again to `PUT /api/user/settings` and assert that it now succeeds with a `200` status.
 - **Commit:** `feat(security): P4_T3 add middleware to enforce agreements on backend`
 
-### **Phase 5: Frontend Implementation**
+Of course. Here is the complete, updated implementation plan from Phase 5 onward. This version incorporates our discussion and provides a robust, professional monorepo setup plan that will serve as an excellent foundation for your senior engineers to build their detailed design documents.
 
-**Goal:** Build the user interface, connecting it to the now-stable backend API.
+You can directly replace the corresponding content in `Docs/IMPLEMENTATION_PLAN.md` with this block.
 
-#### **Task 1: Initialize React Frontend Project**
+```markdown
+# file: Docs/IMPLEMENTATION_PLAN.md
+// ... (Phases 0-4 remain unchanged) ...
 
-- **Goal:** To create the foundational project structure and development environment for our React single-page application (SPA). This task is a critical prerequisite for all other UI development.
-- **Implementation Details:**
-  - **Action (Project Scaffolding):**
-    1.  Create a new directory at the project root named `frontend/`.
-    2.  Inside `frontend/`, initialize a new Node.js project (`npm init`).
-    3.  Use a modern build tool like **Vite** to scaffold a new React project with TypeScript (`npm create vite@latest . -- --template react-ts`).
-  - **Action (Dependency Installation):**
-    1.  Install core frontend libraries: `react-router-dom` for navigation, `axios` or a similar library for API calls, and a state management library if deemed necessary (e.g., Zustand).
-    2.  Install testing libraries: `vitest`, `@testing-library/react`, `jsdom`.
-  - **Action (Development Server Configuration):**
-    1.  In `frontend/vite.config.ts`, configure the development server's `proxy` option. All requests from the frontend to `/api` should be proxied to the backend Express server (e.g., `http://localhost:3000`). This is crucial to avoid CORS errors during local development.
-  - **Action (Project Structure):**
-    1.  Create a basic directory structure inside `frontend/src/` for `components/`, `pages/`, `hooks/`, and `lib/`.
-    2.  Create a simple placeholder `HomePage.tsx` component to render.
-- **Test:**
-  1.  Write a simple component test for `HomePage.tsx` to ensure the Vitest and React Testing Library setup is working correctly.
-  2.  Manually start both the backend (`goodnumbers/`) and frontend (`frontend/`) development servers. Verify that the React app loads in the browser and that a test API call from a component (e.g., to `/api/health`) is successfully proxied to the backend and returns data.
-- **Commit:** `feat(ui): P5_T1 initialize react frontend project with vite`
+### **Phase 5: Full-Stack Integration & UI Implementation**
 
-#### **Task 2: Build Foundational UI & Login Flow**
+**Goal:** To establish a robust monorepo architecture that allows for clean separation of concerns between the frontend and backend, while enabling type-safe code sharing. This phase will then proceed to build the foundational user interface, connecting it to the now-stable backend API.
 
-- **Goal:** To build the core application layout and the complete user authentication and onboarding journey, connecting the UI to the backend APIs.
-- **Action:** Set up the React project with `react-router-dom`, a main layout component (header, footer), and basic styling.
-- **Action:** Build the UI for the login flow, the post-login agreements page, and the account setup page. Wire these up to the corresponding backend APIs, including fetching and sending the CSRF token for all state-modifying requests.
-- **Test:** Use Vitest and React Testing Library for component tests. Use Playwright for E2E tests to validate the complete login and onboarding user flow.
-- **Commit:** `feat(ui): P5_T2 implement core layout and authentication flow`
+---
 
-#### **Task 3: Build Dashboard & Journal Pages**
+#### **Task 1: Establish Monorepo with npm Workspaces**
 
-- **Goal:** To implement the core data-driven pages of the application.
-- **Action:** Create the Dashboard page, fetching and displaying the list of past journals from `GET /api/journals`.
-- **Action:** Implement the "Start Journal" button, which calls `POST /api/journals` and navigates to the loading page.
-- **Action:** Build the journal loading page that polls the `GET /api/journals/:id/status` endpoint.
-- **Action:** Build the main journal view page with all its components (AGP chart, inputs, etc.), fetching data from the `GET /api/journals/:id` endpoint.
-- **Test:** Write component tests with Vitest/React Testing Library and E2E tests with Playwright for these pages to ensure data is displayed correctly and user interactions work as expected.
-- **Commit:** `feat(ui): P5_T3 implement dashboard and journal view pages`
+*   **Objective:** To restructure the project from a single-package setup into a multi-package monorepo using npm workspaces. This is the foundational step for all full-stack development.
+*   **Risks & Mitigations:**
+    *   **Risk:** Incorrectly configured `package.json` files can lead to dependency resolution issues.
+        *   **Mitigation:** This plan provides exact templates for the new configuration files. The engineer must follow the backup and migration steps precisely.
+    *   **Risk:** Confusion about where to run `npm` commands.
+        *   **Mitigation:** The plan includes new root-level scripts and documentation explaining that `npm install` must now be run from the project root.
+*   **Implementation Notes:**
+    *   This is primarily a file-moving and configuration task. It should be done on a dedicated branch.
+    *   **Crucial Naming Convention Change:** The existing backend directory, currently named `Frontend/`, **must** be renamed to `backend/` for clarity and to avoid confusion with the actual frontend application we are about to create.
+
+##### **In-depth Engineering Plan (Task 1)**
+
+**Step 1: Prepare the Workspace**
+
+1.  **Backup:** Before starting, make a backup of your entire project directory.
+2.  **Rename Backend Directory:** Rename the `Frontend/` directory at the project root to `backend/`.
+3.  **Create Root `package.json`:** In the absolute root of your project, create a new `package.json` file. This file will define the monorepo workspaces.
+
+    ```json
+    // file: package.json
+    {
+      "name": "goodnumbers-monorepo",
+      "version": "1.0.0",
+      "private": true,
+      "workspaces": [
+        "backend",
+        "frontend",
+        "packages/*"
+      ],
+      "scripts": {
+        "dev:backend": "npm run dev -w backend",
+        "dev:frontend": "npm run dev -w frontend",
+        "build:backend": "npm run build -w backend",
+        "build:frontend": "npm run build -w frontend",
+        "test:backend": "npm test -w backend",
+        "test:frontend": "npm test -w frontend",
+        "lint": "npm run lint -ws --if-present",
+        "postinstall": "npm run build -w @goodnumbers/schemas && npm run build -w @goodnumbers/types"
+      },
+      "devDependencies": {
+        "typescript": "^5.9.2"
+      }
+    }
+    ```
+
+4.  **Create `packages` Directory:** At the project root, create a new empty directory named `packages/`.
+5.  **Clean Up:** **Delete** the `node_modules` directory inside `backend/`. Also delete the `package-lock.json` file inside `backend/`. This is critical for npm to correctly hoist dependencies to the root.
+
+**Step 2: Install Dependencies**
+
+1.  **Install:** From the **project root**, run `npm install`. This will read the new root `package.json`, recognize the workspaces, and install all dependencies for the `backend` into a single, top-level `node_modules` directory.
+
+**Step 3: Verify Installation**
+
+1.  **Run Backend Tests:** From the **project root**, run the new workspace script: `npm test -w backend`. All existing backend tests should pass without any code changes. This confirms the workspace is correctly configured.
+2.  **Commit:** `chore(repo): P5_T1 establish monorepo with npm workspaces`
+
+---
+
+#### **Task 2: Create Shared `@goodnumbers/schemas` Package**
+
+*   **Objective:** To extract the environment-agnostic Zod validation schemas into a dedicated, shared internal package that both the frontend and backend can consume.
+*   **Acceptance Gate:** The backend application must be refactored to import schemas from the new `@goodnumbers/schemas` package, and all backend integration tests must continue to pass.
+
+##### **In-depth Engineering Plan (Task 2)**
+
+**Step 1: Create the Package Structure**
+
+1.  **Create Directories:** Inside the `packages/` directory, create the following structure: `schemas/src/`.
+2.  **Create `package.json`:** Create a `package.json` for the new schemas package.
+
+    ```json
+    // file: packages/schemas/package.json
+    {
+      "name": "@goodnumbers/schemas",
+      "version": "1.0.0",
+      "private": true,
+      "main": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "scripts": {
+        "build": "tsc"
+      },
+      "dependencies": {
+        "zod": "^4.1.8"
+      },
+      "devDependencies": {
+        "typescript": "^5.9.2"
+      }
+    }
+    ```
+
+3.  **Create `tsconfig.json`:** Create a `tsconfig.json` to build this package.
+
+    ```json
+    // file: packages/schemas/tsconfig.json
+    {
+      "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "declaration": true,
+        "outDir": "./dist",
+        "strict": true,
+        "esModuleInterop": true,
+        "moduleResolution": "node"
+      },
+      "include": ["src"],
+      "exclude": ["node_modules", "dist"]
+    }
+    ```
+
+**Step 2: Migrate Code and Refactor Backend**
+
+1.  **Move Code:** Move the contents of `backend/src/lib/validation.ts` into a new file at `packages/schemas/src/index.ts`. Delete the now-empty `backend/src/lib/validation.ts`.
+2.  **Update Backend `package.json`:** Add the new package as a dependency.
+
+    ```json
+    // file: backend/package.json
+    {
+      // ... existing fields
+      "dependencies": {
+        // ... other dependencies
+        "@goodnumbers/schemas": "workspace:*",
+        "zod": "^4.1.8"
+      },
+      // ...
+    }
+    ```
+
+3.  **Install:** From the project root, run `npm install`. This will symlink the new package.
+4.  **Refactor All Imports:** Go through the backend code (`backend/src/routes/journal.ts`, `backend/src/routes/user.ts`) and change all relative imports from `../lib/validation.js` to `@goodnumbers/schemas`.
+5.  **Run Tests:** Run `npm test -w backend` from the root. All tests should now pass.
+6.  **Commit:** `feat(schemas): P5_T2 create shared schemas package`
+
+---
+
+#### **Task 3: Create Shared `@goodnumbers/types` Package for Prisma**
+
+*   **Objective:** To configure Prisma to generate its client types into a shared package, allowing the frontend to import data types like `User` and `Journal` without bundling the Prisma client itself.
+*   **Acceptance Gate:** The backend can import Prisma types from `@goodnumbers/types` and all tests pass.
+
+##### **In-depth Engineering Plan (Task 3)**
+
+**Step 1: Create the Package Structure**
+
+1.  **Create `package.json`:** Create a `package.json` for the new types package.
+
+    ```json
+    // file: packages/types/package.json
+    {
+      "name": "@goodnumbers/types",
+      "version": "1.0.0",
+      "private": true,
+      "main": "dist/index.js",
+      "types": "dist/index.d.ts",
+      "scripts": {
+        "build": "tsc"
+      },
+      "devDependencies": {
+        "typescript": "^5.9.2"
+      }
+    }
+    ```
+
+2.  **Create `tsconfig.json` and a root `tsconfig.base.json`:**
+    *   **Base Config (in project root):**
+        ```json
+        // file: tsconfig.base.json
+        {
+          "compilerOptions": {
+            "target": "ESNext",
+            "module": "ESNext",
+            "strict": true,
+            "esModuleInterop": true,
+            "skipLibCheck": true,
+            "forceConsistentCasingInFileNames": true,
+            "moduleResolution": "bundler"
+          }
+        }
+        ```
+    *   **Package-specific Config:**
+        ```json
+        // file: packages/types/tsconfig.json
+        {
+           "extends": "../../tsconfig.base.json",
+           "compilerOptions": {
+            "outDir": "dist",
+            "declaration": true
+           },
+           "include": ["src"]
+        }
+        ```
+
+**Step 2: Configure Prisma Generator**
+
+1.  **Update Schema:** Modify the Prisma schema to point its output to the new package. The relative path is crucial.
+
+    ```prisma
+    // file: backend/prisma/schema.prisma
+    generator client {
+      provider = "prisma-client-js"
+      output   = "../packages/types/src/generated/client"
+    }
+    // ... rest of schema
+    ```
+
+2.  **Create Export File:** Create a file at `packages/types/src/index.ts` to re-export the generated types.
+
+    ```typescript
+    // file: packages/types/src/index.ts
+    // This exports all the generated types like `User`, `Journal`, etc.
+    export * from './generated/client';
+    ```
+
+3.  **Generate Prisma Client:** From the `backend/` directory, run `npx prisma generate`. This will create the types in the new shared location.
+4.  **Update Backend `package.json`:** Add the dependency.
+
+    ```json
+    // file: backend/package.json
+     "dependencies": {
+        // ... other dependencies
+        "@goodnumbers/types": "workspace:*",
+        // ...
+      },
+    ```
+
+5.  **Install:** Run `npm install` from the root.
+
+**Step 3: Refactor and Verify**
+
+1.  **Refactor Backend:** In your backend code (e.g., `auth.ts`, tests), change imports like `import { User } from '@prisma/client'` to `import type { User } from '@goodnumbers/types'`. The runtime `prisma` instance should still be imported from your local `backend/src/lib/prisma.ts`.
+2.  **Run Backend Tests:** Run `npm test -w backend`. Everything should pass.
+3.  **Commit:** `feat(types): P5_T3 create shared types package for Prisma`
+
+---
+
+#### **Task 4: Initialize React Frontend Project**
+
+*   **Goal:** To create the foundational project structure and development environment for our React single-page application (SPA).
+*   **Implementation Details:**
+    *   **Action (Project Scaffolding):**
+        1.  Create a new directory at the project root named `frontend/`.
+        2.  Inside `frontend/`, initialize a new Node.js project (`npm init`).
+        3.  Use a modern build tool like **Vite** to scaffold a new React project with TypeScript (`npm create vite@latest . -- --template react-ts`).
+    *   **Action (Dependency Installation):**
+        1.  From the project root, run `npm install`. This will install the frontend's dependencies and also link the shared workspaces.
+        2.  Install core frontend libraries: `npm install react-router-dom axios -w frontend`.
+        3.  Install testing libraries: `npm install -D vitest @testing-library/react jsdom -w frontend`.
+        4.  In `frontend/package.json`, manually add the workspace dependencies:
+            ```json
+            "dependencies": {
+              // ... other deps
+              "@goodnumbers/schemas": "workspace:*",
+              "@goodnumbers/types": "workspace:*"
+            }
+            ```
+        5.  Run `npm install` from the root one more time to link them.
+    *   **Action (Development Server Configuration):**
+        1.  In `frontend/vite.config.ts`, configure the development server's `proxy` option. All requests from the frontend to `/api` should be proxied to the backend Express server (e.g., `http://localhost:3000`). This is crucial to avoid CORS errors during local development.
+    *   **Action (Project Structure):**
+        1.  Create a basic directory structure inside `frontend/src/` for `components/`, `pages/`, `hooks/`, and `lib/`.
+        2.  Create a simple placeholder `HomePage.tsx` component to render.
+*   **Test:**
+    1.  Write a simple component test for `HomePage.tsx` to ensure the Vitest and React Testing Library setup is working correctly.
+    2.  Manually start both the backend (`npm run dev:backend`) and frontend (`npm run dev:frontend`) from the project root. Verify that the React app loads in the browser and that a test API call from a component (e.g., to `/api/health`) is successfully proxied to the backend and returns data.
+*   **Commit:** `feat(ui): P5_T4 initialize react frontend project with vite`
+
+---
+
+#### **Task 5: Build Foundational UI & Login Flow**
+
+*   **Goal:** To build the core application layout and the complete user authentication and onboarding journey, connecting the UI to the backend APIs.
+*   **Action:** Set up the React project with `react-router-dom`, a main layout component (header, footer), and basic styling.
+*   **Action:** Build the UI for the login flow, the post-login agreements page, and the account setup page. Wire these up to the corresponding backend APIs, including fetching and sending the CSRF token for all state-modifying requests.
+*   **Test:** Use Vitest and React Testing Library for component tests. Use Playwright for E2E tests to validate the complete login and onboarding user flow.
+*   **Commit:** `feat(ui): P5_T5 implement core layout and authentication flow`
+
+---
+
+#### **Task 6: Build Dashboard & Journal Pages**
+
+*   **Goal:** To implement the core data-driven pages of the application.
+*   **Action:** Create the Dashboard page, fetching and displaying the list of past journals from `GET /api/journals`.
+*   **Action:** Implement the "Start Journal" button, which calls `POST /api/journals` and navigates to the loading page.
+*   **Action:** Build the journal loading page that polls the `GET /api/journals/:id/status` endpoint.
+*   **Action:** Build the main journal view page with all its components (AGP chart, inputs, etc.), fetching data from the `GET /api/journals/:id` endpoint.
+*   **Test:** Write component tests with Vitest/React Testing Library and E2E tests with Playwright for these pages to ensure data is displayed correctly and user interactions work as expected.
+*   **Commit:** `feat(ui): P5_T6 implement dashboard and journal view pages`
 
 ### **Phase 6: Background Processing Implementation**
 
@@ -470,8 +731,5 @@ This section outlines high-level tasks that should be addressed as part of the p
       - Confirm that errors are properly captured and logged by the new system.
       - (Manual) Verify logs are accessible in the chosen storage solution.
     - **Commit:** `feat(ops): P6_T1 implement production logging solution`
-
-```
-
 ```
 ````
