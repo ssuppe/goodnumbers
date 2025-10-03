@@ -41,4 +41,26 @@ describe("Worker Job Processing", () => {
     });
     expect(mockPrismaUpdate).toHaveBeenCalledTimes(1);
   });
+
+  it("should update the journal status to FAILED if an error occurs", async () => {
+    const fakeJob: MockJob = { data: { journalId: "journal456" } };
+    const errorMessage = "AI pipeline failed";
+
+    // Arrange: Simulate a failure by having the main logic throw an error.
+    // The first mock call represents the attempt to set status to COMPLETE, which fails.
+    mockPrismaUpdate.mockRejectedValueOnce(new Error(errorMessage));
+
+    // Act & Assert: Expect the function to re-throw the error
+    await expect(processJournalJob(fakeJob)).rejects.toThrow(errorMessage);
+
+    // Assert: Check that our logic updated the journal to FAILED
+    expect(mockPrismaUpdate).toHaveBeenCalledWith({
+      where: { id: "journal456" },
+      data: {
+        status: "FAILED",
+        statusMessage: errorMessage,
+      },
+    });
+    expect(mockPrismaUpdate).toHaveBeenCalledTimes(2); // One for the failed update, one for the FAILED status update
+  });
 });
