@@ -1,33 +1,46 @@
-# Dependencies
-/node_modules
-
-# Build output
-/dist
-/build
-
-# Environment variables
+# Python
+__pycache__/
+*.py[cod]
+*.class
+.pytest_cache/
+.coverage
+htmlcov/
 .env*
 !.env.example
 
-# Logs
+# Node
+node_modules/
+.next
+.next/
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+.cache/
+dist/
+build/
 
-# Jest cache
-/coverage
-.jest-cache
+# VSCode
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
 
-# OS generated files
+# OS
 .DS_Store
 Thumbs.db
 
-# IDE settings
-.vscode/
-.idea/
+# Project specific
+_tmp/
+data/
 
-# Other workspace specific ignores
-goodnumbers-workspace2/
-proof_of_concept/
+.vercel
+.aider*
+
+pass*txt
+entries.json
+treatments.json
+*tar
+*gz
+
+# Ignore Python virtual environments
+venv/
 .venv/
+.aicodeprep-gui
+goodnumbers-workspace2/
