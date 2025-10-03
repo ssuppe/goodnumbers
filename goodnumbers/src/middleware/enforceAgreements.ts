@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from 'express';
 
 /**
  * This middleware acts as a strict API authorization gate.
@@ -8,7 +8,7 @@ import { Request, Response, NextFunction } from "express";
 export function enforceAgreements(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   // Allow PUT /api/user/settings to proceed if it's an attempt to sign agreements
   if (
@@ -26,7 +26,7 @@ export function enforceAgreements(
     return next();
   }
   return res.status(403).json({
-    error: "User has not signed the required agreements.",
-    code: "AGREEMENTS_NOT_SIGNED",
+    error: 'User has not signed the required agreements.',
+    code: 'AGREEMENTS_NOT_SIGNED',
   });
 }
