@@ -299,7 +299,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 - **Test:** Write integration tests using `supertest-session` for each endpoint. Crucially, tests must verify that ownership is enforced and that CSRF protection rejects requests without a valid token.
 - **Commit:** `feat(api): P3_T1 implement crud api for journals`
 
-#### **Task 2: Set Up Background Job Queue**
+#### **Task 2: Set Up Background Job Queue** - COMPLETE
 
 - **Goal:** Integrate a background job queue to handle the asynchronous, long-running process of journal generation, ensuring the web server remains responsive.
 - **Implementation Details:**
