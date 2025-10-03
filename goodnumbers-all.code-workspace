@@ -1,8 +1,12 @@
 {
   "folders": [
     {
-      "path": "./goodnumbers",
-      "name": "Frontend"
+      "path": "./backend",
+      "name": "backend"
+    },
+    {
+      "path": "./packages",
+      "name": "packages"
     },
 {
       "path": "./docs",
