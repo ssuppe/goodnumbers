@@ -13,7 +13,7 @@ This revised document now serves as a robust and accurate blueprint for the next
 
 Here is the complete, updated `IMPLEMENTATION_PLAN.md`:
 
-````markdown
+`````markdown
 # file: Docs/IMPLEMENTATION_PLAN.md
 
 # Goodnumbers Implementation Plan
@@ -144,6 +144,8 @@ describe("signIn callback", () => {
   });
 });
 ````
+`````
+
 ````
 
 This approach ensures that the mock is registered before your code imports the module, providing a reliable way to isolate dependencies in your tests.
@@ -217,12 +219,14 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Commit:** `feat(db): implement initial prisma schema`
 
 3.  **Task: Create Basic Express Server** - COMPLETE
-    - **Action:** Set up a minimal Express server application that listens on a port.
-    - **Action:** Add `helmet` and `express-rate-limit` middleware to set secure HTTP headers and provide basic DoS protection.
-    - **Action:** Create a public `/health` endpoint that returns a `200 OK` with a JSON body like `{"status": "ok"}`.
-    - **Action:** Install `zod` and establish a pattern for API input validation, to be used by all endpoints that accept data.
-    - **Action:** Implement a global, catch-all error-handling middleware that logs errors server-side and returns a generic 500 error message to the client in production.
-    - **Test:** In a new file at `goodnumbers/tests/integration/server.test.ts`, write a test using Jest and `supertest` that makes a request to the `/health` endpoint and asserts the response is correct.
+    - **Action:** Set up a minimal Express server application. **Best Practice Update:** The server architecture should be split into two files for testability and clarity.
+        - `src/index.ts`: This file defines and exports a `createApp()` factory function. It **does not** start a server itself, making it safe to import in test files.
+        - `src/server.ts`: This file imports `createApp()` and calls `app.listen()` to start the server. This file serves as the application's main entry point.
+    - **Action:** Add `helmet` and `express-rate-limit` middleware.
+    - **Action:** Create a public `/health` endpoint.
+    - **Action:** Install `zod` and establish a pattern for API input validation.
+    - **Action:** Implement a global, catch-all error-handling middleware.
+    - **Test:** In a new file at `goodnumbers/tests/integration/server.test.ts`, write a test using Jest and `supertest` that imports `createApp` and asserts the `/health` endpoint is correct.
     - **Commit:** `feat(server): add basic express server with health check and security hardening`
 
 4.  **Task: Build Credential Encryption Utility** - COMPLETE
@@ -470,3 +474,4 @@ This section outlines high-level tasks that should be addressed as part of the p
 ```
 
 ```
+````
