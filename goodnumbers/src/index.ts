@@ -89,7 +89,7 @@ export function createApp() {
     enforceAgreements, // First, authorize API access
     enforceAccountSetup, // Then, handle UI flow
     csrfProtection,
-    journalRoutes
+    journalRoutes,
   );
 
   // --- Health Check and other routes ---
@@ -149,7 +149,7 @@ export function createApp() {
     enforceAccountSetup, // Then, handle UI flow
     (req, res) => {
       res.send(`Welcome, ${escapeHtml(req.user!.email)}!`);
-    }
+    },
   );
 
   // --- Global Error Handler ---
