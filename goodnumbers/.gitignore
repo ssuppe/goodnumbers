@@ -15,3 +15,5 @@ yarn-error.log*
 # Jest cache
 /coverage
 .jest-cache
+
+goodnumbers-workspace2/
