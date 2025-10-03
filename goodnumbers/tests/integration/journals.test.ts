@@ -55,14 +55,16 @@ describe('POST /api/journals', () => {
     expect(res.status).toBe(403);
   });
 
-  it('should return 201 Created if the user is authenticated and CSRF token is valid', async () => {
+  it("should return 201 Created and status PENDING for a valid request", async () => {
     const res = await agent
-      .post('/api/journals')
-      .set('x-test-user-id', user1.id)
-      .send({ _csrf: csrfToken }); // FIX: Send token in body
+      .post("/api/journals")
+      .set("x-test-user-id", user1.id)
+      .send({ _csrf: csrfToken });
 
     expect(res.status).toBe(201);
     expect(res.body.journal).toBeDefined();
     expect(res.body.journal.userId).toBe(user1.id);
+    // THIS IS THE NEW ASSERTION: We verify the initial state is PENDING.
+    expect(res.body.journal.status).toBe("PENDING");
   });
 });
