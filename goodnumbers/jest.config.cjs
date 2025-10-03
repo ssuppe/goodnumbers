@@ -8,9 +8,9 @@ module.exports = {
     '^.+\\.tsx?$': ['ts-jest', { useESM: true, tsconfig: './tsconfig.json' }],
   },
   moduleNameMapper: {
-    // REMOVED: The problematic line '^(.+)\\.js$': '$1' is gone.
-    // ts-jest with useESM can now handle this resolution automatically
-    // without interfering with node_modules packages.
+    // This maps .js imports to .ts files for local relative imports in ESM.                                                            │
+    // It's crucial for Jest to find the source files when imports use .js extensions.                                                  │
+    '^(\\.{1,2}/.*)\\.js$': '$1',
 
     // This line remains correct for mocking file assets.
     '\\.(json)$': '<rootDir>/__mocks__/fileMock.cjs',
