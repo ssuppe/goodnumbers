@@ -18,8 +18,12 @@ export async function processJournalJob(job: Job) {
     console.log(`[Worker] Finished job ${job.id}`);
     return { status: 'done' };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`[Worker] Job ${job.id} failed for journal ${journalId}:`, errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `[Worker] Job ${job.id} failed for journal ${journalId}:`,
+      errorMessage,
+    );
 
     await prisma.journal.update({
       where: { id: journalId },
@@ -44,8 +48,12 @@ if (process.env.NODE_ENV !== 'test') {
     connection,
   });
 
-  worker.on('completed', (job) => console.log(`[Worker] Job ${job.id} has completed.`));
-  worker.on('failed', (job, err) => console.error(`[Worker] Job ${job?.id} failed: ${err.message}`));
+  worker.on('completed', (job) =>
+    console.log(`[Worker] Job ${job.id} has completed.`),
+  );
+  worker.on('failed', (job, err) =>
+    console.error(`[Worker] Job ${job?.id} failed: ${err.message}`),
+  );
 
   console.log(`[Worker] Listening for jobs on "${JOURNAL_QUEUE_NAME}"...`);
 }
