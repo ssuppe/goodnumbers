@@ -75,4 +75,48 @@ describe('User Data Privacy', () => {
     expect(deletedAccount).toBeNull();
     expect(deletedSession).toBeNull();
   });
+
+  // ADD THIS NEW TEST CASE
+  it("should delete GlycemicEventClusters when their parent Journal is deleted", async () => {
+    // Arrange: Create a user with a journal and a cluster
+    const user = await prisma.user.create({
+      data: {
+        email: `cascade-test-${Date.now()}@example.com`,
+        journals: {
+          create: {
+            status: "COMPLETE",
+            clusters: {
+              create: {
+                eventType: "HIGH",
+                eventCount: 5,
+                meanTimeMinutes: 720,
+                clusterDataJson: {},
+              },
+            },
+          },
+        },
+      },
+      include: { journals: { include: { clusters: true } } },
+    });
+    const journalId = user.journals[0].id;
+    const clusterId = user.journals[0].clusters[0].id;
+
+    // Assert precondition: The cluster exists
+    const clusterBeforeDelete = await prisma.glycemicEventCluster.findUnique({
+      where: { id: clusterId },
+    });
+    expect(clusterBeforeDelete).not.toBeNull();
+
+    // Act: Delete the parent journal
+    await prisma.journal.delete({ where: { id: journalId } });
+
+    // Assert postcondition: The cluster is now gone
+    const clusterAfterDelete = await prisma.glycemicEventCluster.findUnique({
+      where: { id: clusterId },
+    });
+    expect(clusterAfterDelete).toBeNull();
+
+    // Cleanup the user
+    await prisma.user.delete({ where: { id: user.id } });
+  });
 });
