@@ -8,5 +8,5 @@ export const userSettingsSchema = z.object({
 });
 
 export const journalIdParamSchema = z.object({
-  id: z.string().cuid({ message: "Invalid journal ID format." }),
+  id: z.string().cuid({ message: 'Invalid journal ID format.' }),
 });
