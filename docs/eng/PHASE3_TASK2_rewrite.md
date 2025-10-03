@@ -732,3 +732,377 @@ git commit -m "refactor(worker): add robust error handling to job processor"
 ## 5. Conclusion
 
 Congratulations. By completing this task, you have implemented one of the most critical and scalable pieces of our backend infrastructure. You have also created a sophisticated, two-tiered testing strategy that balances speed and confidence. You now have a fast, reliable mock-based test for the API and focused, robust unit tests for the worker's business logic. This foundation will serve us well as we continue to build out the application's features.
+Of course. This has been a long and arduous debugging journey, but the result is a much deeper understanding of the problem and a truly robust solution. It is critical to capture all of this knowledge in the final plan so that the junior engineer has a clear, correct, and educational path forward.
+
+I have completely rewritten the `PHASE3_TASK2_rewrite.md` document from the ground up. This new version incorporates all of our learnings:
+
+- **The Root Cause:** It starts by explaining the true problem—the `ioredis` library's incompatibility with the Jest ESM environment—and why it was causing all the integration tests to crash.
+- **The Global Solution:** It implements the global mock of `ioredis` as the very first step, ensuring a stable test environment _before_ we even begin the TDD cycle.
+- **A Cleaner TDD Flow:** With a stable environment, the Red-Green-Refactor steps are now much cleaner, more focused, and free of configuration-related errors.
+- **Architectural Best Practices:** It correctly implements the "lazy initialization" pattern for the queue connection, which is a superior application design.
+- **Targeted Mocking:** It uses a more targeted and easier-to-understand mocking strategy for the `queue.test.ts` file, now that the global crashes are solved.
+
+This document is the definitive guide. You can copy and paste it in its entirety.
+
+---
+
+# Goodnumbers — PHASE 3, TASK 2: Implement Asynchronous Job Queue
+
+**Version:** 7.0 (Definitive, with Battle-Hardened Testing Strategy)
+**Author:** Technical Lead
+**Date:** 2025-10-03
+**Status:** Approved for Implementation
+
+## 1. Overview & Purpose (The "Why")
+
+Welcome to a foundational task for the Goodnumbers application. The journal generation process is a heavy operation, involving external API calls, data analysis, and AI processing. If we were to run this process directly within an API request, it would take far too long, leading to request timeouts for the user and making our server unresponsive. This creates a poor user experience and a fragile system.
+
+To solve this, we are implementing an **asynchronous job queue**. This is a standard and powerful architectural pattern that decouples the initial, quick user request from the slow, intensive background work.
+
+Here’s how it works:
+
+1.  **The API (Producer):** The user's request to create a journal hits our API. The API's _only_ job is to create a placeholder record in the database with a `PENDING` status and then place a "job" onto a queue. It then immediately responds to the user with a `201 Created` status. This entire process is extremely fast.
+2.  **The Queue (Message Broker):** We will use Redis as a high-speed message broker that holds these jobs.
+3.  **The Worker (Consumer):** We will run a completely separate, standalone Node.js process. Its only job is to watch the queue for new jobs. When it sees one, it picks it up and performs all the heavy lifting (fetching data, calling AI, etc.).
+
+## 2. The Critical Lesson: Conquering the Test Environment
+
+Before writing a single line of application code, it is essential to understand and solve the core problem we have faced: **`ioredis`, the library used by our queue system, is incompatible with Jest's modern ES Module test environment.**
+
+When any of our integration tests ran `createApp()`, the application would eagerly try to import `bullmq`, which in turn tried to import `ioredis`. This caused a crash deep within `ioredis`'s code (`TypeError: self.auth is not a function`) that had nothing to do with our logic. This is why _all_ of our integration tests were failing, even simple ones.
+
+**The Solution: A Global Mock**
+
+The definitive solution is to tell Jest to **globally replace `ioredis` with a harmless fake** any time a test is running. This mock will satisfy `bullmq` without attempting any real network connections. This is a robust, standard pattern for dealing with problematic dependencies in a test environment.
+
+Our first step will be to implement this global mock to create a stable foundation for the rest of our work.
+
+## 3. The Implementation Plan
+
+This plan is now broken into two parts. Part 1 is a one-time setup to stabilize our entire test suite. Part 2 is the standard Red-Green-Refactor TDD cycle for building the feature.
+
+### **Part 1: Stabilizing the Test Environment (The Foundation)**
+
+This is our "Commit 0". We will fix the test environment before we write our failing feature tests.
+
+#### **Action 1: Create the Global `ioredis` Mock**
+
+Create a new file. It **must** be a CommonJS file (`.cjs`) to be compatible with how `bullmq` loads its dependencies.
+
+```javascript
+// file: tests/mocks/ioredis.mock.cjs
+"use strict";
+const EventEmitter = require("events");
+
+/**
+ * A simple, global mock for the ioredis library in CommonJS format.
+ * The 'jest' global is automatically provided by the test runner.
+ */
+class IORedisMock extends EventEmitter {
+  constructor(options = {}) {
+    super();
+    // Emit 'connect' immediately to simulate a successful connection.
+    // This is crucial for BullMQ to think it has a valid connection.
+    process.nextTick(() => this.emit("connect"));
+  }
+
+  disconnect = jest.fn();
+}
+
+// This structure handles different module import syntaxes, making it robust.
+module.exports = IORedisMock;
+module.exports.default = IORedisMock;
+```
+
+#### **Action 2: Configure Jest to Use the Mock**
+
+Update the `moduleNameMapper` in the Jest configuration to intercept all calls to `ioredis`.
+
+```javascript
+// file: goodnumbers/jest.config.cjs
+module.exports = {
+  preset: "ts-jest",
+  testEnvironment: "node",
+  testMatch: ["**/__tests__/**/*.ts?(x)", "**/?(*.)+(spec|test).ts?(x)"],
+  extensionsToTreatAsEsm: [".ts"],
+  transform: {
+    "^.+\\.tsx?$": ["ts-jest", { useESM: true, tsconfig: "./tsconfig.json" }],
+  },
+  moduleNameMapper: {
+    /**
+     * CRITICAL FIX: This line globally replaces `ioredis` with our harmless
+     * mock, solving the test suite crashes.
+     */
+    "^ioredis$": "<rootDir>/tests/mocks/ioredis.mock.cjs",
+
+    /**
+     * This rule is CRITICAL for resolving local module imports in an ESM project.
+     */
+    "^(\\.{1,2}/.*)\\.js$": "$1",
+
+    "\\.(json)$": "<rootDir>/__mocks__/fileMock.cjs",
+  },
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
+};
+```
+
+#### **Action 3: Verify a Stable Environment and Commit**
+
+Run the full test suite.
+
+```bash
+npm test
+```
+
+**Expected Outcome:** All existing tests should now **PASS**. The environment is stable. The crashes are gone. Now, and only now, can we begin feature development.
+
+```bash
+git add .
+git commit -m "chore(tests): add global mock for ioredis to stabilize test environment"
+```
+
+---
+
+### **Part 2: API and Worker Implementation (The TDD Cycle)**
+
+Now we follow our standard Red-Green-Refactor workflow on a stable foundation.
+
+#### Commit 1: RED — Write Failing Tests for the New Feature
+
+##### **Action 1: Update `journals.test.ts` Expectations**
+
+Modify `tests/integration/journals.test.ts` to assert that the created journal's `status` is `'PENDING'`.
+
+```typescript
+// file: tests/integration/journals.test.ts
+// ... (imports and beforeEach/afterEach remain the same)
+
+describe("POST /api/journals", () => {
+  // ... (beforeEach, afterEach, afterAll setup)
+
+  // ... (401 and 403 tests remain the same)
+
+  it("should return 201 Created and status PENDING for a valid request", async () => {
+    const res = await agent
+      .post("/api/journals")
+      .set("x-test-user-id", user1.id)
+      .send({ _csrf: csrfToken });
+
+    expect(res.status).toBe(201);
+    expect(res.body.journal).toBeDefined();
+    expect(res.body.journal.userId).toBe(user1.id);
+    // THIS IS THE NEW ASSERTION
+    expect(res.body.journal.status).toBe("PENDING");
+  });
+});
+```
+
+##### **Action 2: Create the Targeted Mocked Integration Test for the Queue**
+
+This test will verify that our API route correctly calls the queue logic. It will mock our _own module_ (`src/lib/queue.ts`) for perfect isolation.
+
+```typescript
+// file: tests/integration/queue.test.ts
+
+import "dotenv/config";
+import { describe, it, expect, beforeAll, afterAll, jest } from "@jest/globals";
+import { PrismaClient, User } from "@prisma/client";
+import session from "supertest-session";
+import * as http from "http";
+import type { Express } from "express";
+
+// --- This is the key to our targeted mocking pattern ---
+
+// 1. Create a mock queue object that we can control and inspect.
+const mockQueueInstance = {
+  add: jest.fn().mockResolvedValue({ id: "mock-job-id" }),
+};
+
+// 2. Tell Jest: "When the application asks for src/lib/queue.js,
+//    give it this fake version instead."
+jest.unstable_mockModule("../../src/lib/queue.js", () => ({
+  getJournalQueue: () => mockQueueInstance,
+  JOURNAL_QUEUE_NAME: "test-queue",
+}));
+
+// 3. Now, when we dynamically import our app, it will be wired up to our mock.
+const { createApp } = await import("../../src/index.js");
+
+// --- End of pattern ---
+
+const prisma = new PrismaClient();
+let app: Express;
+let server: http.Server;
+let agent: session.Session;
+let testUser: User;
+let csrfToken: string;
+
+describe("API to Mock Job Queue Integration", () => {
+  beforeAll(async () => {
+    app = createApp();
+    server = app.listen(0, async () => {
+      agent = session(app);
+      // ... database setup
+      await prisma.user.deleteMany();
+      testUser = await prisma.user.create({
+        data: {
+          email: `queue-test-user-${Date.now()}@test.com`,
+          agreementsSigned: true,
+          nightscoutUrl: "https://test.ns.com",
+        },
+      });
+      const res = await agent.get("/api/csrf-token");
+      csrfToken = res.body.csrfToken;
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
+    server.close();
+  });
+
+  beforeEach(() => {
+    mockQueueInstance.add.mockClear();
+  });
+
+  it("should call the queue.add method when creating a journal", async () => {
+    const res = await agent
+      .post("/api/journals")
+      .set("x-test-user-id", testUser.id)
+      .send({ _csrf: csrfToken });
+
+    expect(res.status).toBe(201);
+    const journalId = res.body.journal.id;
+
+    expect(mockQueueInstance.add).toHaveBeenCalledWith("process-journal", {
+      journalId: journalId,
+    });
+    expect(mockQueueInstance.add).toHaveBeenCalledTimes(1);
+  });
+});
+```
+
+##### **Action 3: Verify the "RED" State and Commit**
+
+Run the tests.
+
+```bash
+npm test
+```
+
+**Expected Outcome:** Both `journals.test.ts` and `queue.test.ts` will now fail on clean `expect()` assertions. This is our perfect "RED" state.
+
+```bash
+git add .
+git commit -m "test(api): add failing tests for job queuing on journal creation"
+```
+
+---
+
+#### Commit 2: GREEN — Implement the Feature and Make All Tests Pass
+
+This commit introduces the application code to make our failing tests turn green.
+
+##### **Action 1: Create the Lazy-Initialized Queue Module**
+
+This new architecture prevents the application from connecting to Redis unless it's actually needed.
+
+```typescript
+// file: src/lib/queue.ts
+import { Queue } from "bullmq";
+import IORedis from "ioredis";
+
+let queueInstance: Queue | null = null;
+
+export const JOURNAL_QUEUE_NAME =
+  process.env.QUEUE_NAME || "journal-processing";
+
+/**
+ * A singleton factory function to get the journal queue instance.
+ * It creates the connection and queue only on the first call.
+ */
+export function getJournalQueue(): Queue {
+  if (!queueInstance) {
+    const connection = new IORedis({
+      host: process.env.REDIS_HOST,
+      port: parseInt(process.env.REDIS_PORT!, 10),
+      password: process.env.REDIS_PASSWORD,
+      maxRetriesPerRequest: null,
+    });
+
+    queueInstance = new Queue(JOURNAL_QUEUE_NAME, {
+      connection,
+    });
+  }
+  return queueInstance;
+}
+```
+
+##### **Action 2: Update the Journal Route to Use the Queue**
+
+Modify `src/routes/journal.ts` to use our new factory function and add the job.
+
+```typescript
+// file: src/routes/journal.ts
+import { Router } from "express";
+import { prisma } from "../lib/prisma.js";
+import { getJournalQueue } from "../lib/queue.js"; // Import the factory function
+
+const router = Router();
+
+router.post("/", async (req, res, next) => {
+  const userId = req.user!.id;
+  let journal;
+
+  try {
+    // 1. Create the journal with PENDING status.
+    journal = await prisma.journal.create({
+      data: { userId, status: "PENDING" },
+    });
+
+    // 2. Get the queue and enqueue the job.
+    const journalQueue = getJournalQueue();
+    await journalQueue.add("process-journal", { journalId: journal.id });
+
+    res.status(201).json({ journal });
+  } catch (error) {
+    // 3. CRITICAL ROLLBACK LOGIC
+    if (journal) {
+      console.error(
+        `[API] CRITICAL: Job enqueue failed for journal ${journal.id}. Rolling back.`
+      );
+      await prisma.journal.delete({ where: { id: journal.id } });
+    }
+    next(error);
+  }
+});
+
+export default router;
+```
+
+##### **Action 3: Implement Remaining Setup**
+
+You will also need the `docker-compose.yml`, `worker.ts`, `ecosystem.config.cjs`, and updated `package.json` scripts from the previous plans. Ensure all dependencies (`bullmq`, `ioredis`, `pm2`) are installed.
+
+##### **Action 4: Verify Success and Commit**
+
+1.  **Run automated tests.** All tests should now **PASS**. This is our "GREEN" state.
+    ```bash
+    npm test
+    ```
+2.  **Manually test the full flow:**
+    1.  Run `just run` in one terminal.
+    2.  Run `just logs` in another.
+    3.  Trigger the `POST /api/journals` endpoint.
+    4.  Observe the logs to confirm the API responds instantly and the worker log appears shortly after.
+3.  **Commit the work.**
+    ```bash
+    git add .
+    git commit -m "feat(worker): integrate bullmq for background job processing"
+    ```
+
+---
+
+## 4. Conclusion
+
+Congratulations. After a significant debugging effort, you have not only implemented a scalable job queue system but have also built a robust, multi-layered, and stable test suite to support it. The patterns established here—global mocking for problematic dependencies and targeted mocking for application logic—are professional-grade techniques that will ensure our project is maintainable and reliable for the long term.
