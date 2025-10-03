@@ -18,7 +18,10 @@ export const bullmqMockRegistry = {
 };
 
 // This is the mock implementation of the BullMQ 'Queue' class.
-export const MockQueue = jest.fn().mockImplementation(function(this: MockQueueInstance, queueName: string) {
+export const MockQueue = jest.fn().mockImplementation(function (
+  this: MockQueueInstance,
+  queueName: string,
+) {
   // The properties and methods of our mock instance
   this.name = queueName;
   this.add = jest.fn().mockResolvedValue({ id: 'mock-job-id' });
