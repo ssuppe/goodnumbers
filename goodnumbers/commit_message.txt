@@ -1,0 +1,9 @@
+refactor(worker): P3_T2 add robust error handling to job processor
+
+This commit refactors the worker's job processing logic to include robust error handling and adds a corresponding unit test.
+
+Key changes include:
+- Added a new test case to `tests/unit/worker.test.ts` to verify that `processJournalJob` correctly updates a journal's status to 'FAILED' and re-throws the error when an exception occurs during processing.
+- Implemented error handling within `processJournalJob` in `src/worker.ts` to catch exceptions, update the journal status to 'FAILED' with an error message, and re-throw the error for BullMQ to handle.
+
+This completes the TDD cycle for worker error handling, ensuring the system gracefully manages failures during journal processing.
