@@ -6,7 +6,8 @@ import { Redis } from 'ioredis';
 
 let queueInstance: Queue | null = null;
 
-export const JOURNAL_QUEUE_NAME = process.env.QUEUE_NAME || 'journal-processing';
+export const JOURNAL_QUEUE_NAME =
+  process.env.QUEUE_NAME || 'journal-processing';
 
 /**
  * A singleton factory function to get the journal queue instance.
