@@ -16,6 +16,7 @@ import userRoutes from './routes/user.js';
 import { protect } from './middleware/auth.js';
 import { enforceAgreements } from './middleware/enforceAgreements.js';
 import { enforceAccountSetup } from './middleware/enforceAccountSetup.js'; // Updated import
+import { redirectIfNotAgreed } from './middleware/redirectIfNotAgreed.js';
 
 export function createApp() {
   // --- Fatal Error Checks ---
@@ -105,7 +106,7 @@ export function createApp() {
 <script src="/js/agreements.js"></script>
     `);
   });
-  app.get('/setup-account', protect, (req, res) => {
+  app.get('/setup-account', protect, redirectIfNotAgreed, (req, res) => {
     const prefilledUrl = escapeHtml(req.user?.nightscoutUrl);
     res.send(
       `
@@ -144,8 +145,8 @@ export function createApp() {
   app.get(
     '/dashboard',
     protect,
-    enforceAgreements,
-    enforceAccountSetup,
+    redirectIfNotAgreed, // Redirect if agreements not signed
+    enforceAccountSetup, // Then, handle UI flow
     (req, res) => {
       res.send(`Welcome, ${escapeHtml(req.user!.email)}!`);
     }
