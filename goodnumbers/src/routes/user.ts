@@ -25,7 +25,7 @@ const router = Router();
 router.put(
   '/settings',
   protect,
-  enforceAgreements, // Apply enforceAgreements here
+  enforceAgreements, // Re-add enforceAgreements here
   settingsLimiter,
   async (req, res) => {
   // SECURITY: The user's identity is sourced from the `req.user` object,
