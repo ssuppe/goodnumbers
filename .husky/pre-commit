@@ -7,7 +7,7 @@
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
 # 2. Define the path to your Node.js project folder relative to the root.
-PROJECT_DIR="$REPO_ROOT/goodnumbers"
+PROJECT_DIR="$REPO_ROOT/backend"
 
 # 3. Check if the project directory actually exists. If not, fail with a helpful message.
 if [ ! -d "$PROJECT_DIR" ]; then
