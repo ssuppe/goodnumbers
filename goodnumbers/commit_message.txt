@@ -1,10 +1,9 @@
-feat(worker): P3_T2 implement basic job processing logic and unit tests
+refactor(worker): P3_T2 add robust error handling to job processor
 
-This commit introduces the basic job processing logic for the worker and its corresponding unit tests.
+This commit refactors the worker's job processing logic to include robust error handling and adds a corresponding unit test.
 
 Key changes include:
-- Created `tests/unit/worker.test.ts` to define the expected behavior of the `processJournalJob` function. This test initially failed (RED state) as the worker logic was not yet fully implemented.
-- Refactored `src/worker.ts` to export `processJournalJob` and include the core logic to update a journal's status to 'COMPLETE' in the database. A `NODE_ENV !== 'test'` guard was added to prevent the worker from starting during test runs.
-- Ensured `tests/unit/worker.test.ts` now passes (GREEN state) by correctly mocking Prisma interactions using `jest.unstable_mockModule` and dynamically importing the worker logic.
+- Added a new test case to `tests/unit/worker.test.ts` to verify that `processJournalJob` correctly updates a journal's status to 'FAILED' and re-throws the error when an exception occurs during processing.
+- Implemented error handling within `processJournalJob` in `src/worker.ts` to catch exceptions, update the journal status to 'FAILED' with an error message, and re-throw the error for BullMQ to handle.
 
-This completes the TDD cycle for the worker's basic job processing, providing confidence that the worker can update journal statuses upon successful job completion.
+This completes the TDD cycle for worker error handling, ensuring the system gracefully manages failures during journal processing.
