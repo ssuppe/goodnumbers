@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from "express";
-import { prisma } from "../lib/prisma.js";
+import { Request, Response, NextFunction } from 'express';
+import { prisma } from '../lib/prisma.js';
 
 /**
  * This middleware handles UI flow for onboarding.
@@ -10,10 +10,10 @@ import { prisma } from "../lib/prisma.js";
 export async function enforceAccountSetup(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   if (!req.user) {
-    return res.status(401).json({ error: "Unauthorized." });
+    return res.status(401).json({ error: 'Unauthorized.' });
   }
 
   // The check for agreementsSigned is now handled by the 'enforceAgreements' middleware.
@@ -24,7 +24,7 @@ export async function enforceAccountSetup(
   });
 
   if (user && !user.nightscoutUrl) {
-    return res.redirect("/setup-account");
+    return res.redirect('/setup-account');
   }
 
   next();

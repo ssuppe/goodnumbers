@@ -77,17 +77,17 @@ describe('User Data Privacy', () => {
   });
 
   // ADD THIS NEW TEST CASE
-  it("should delete GlycemicEventClusters when their parent Journal is deleted", async () => {
+  it('should delete GlycemicEventClusters when their parent Journal is deleted', async () => {
     // Arrange: Create a user with a journal and a cluster
     const user = await prisma.user.create({
       data: {
         email: `cascade-test-${Date.now()}@example.com`,
         journals: {
           create: {
-            status: "COMPLETE",
+            status: 'COMPLETE',
             clusters: {
               create: {
-                eventType: "HIGH",
+                eventType: 'HIGH',
                 eventCount: 5,
                 meanTimeMinutes: 720,
                 clusterDataJson: {},

@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from 'express';
 
 /**
  * This middleware is for UI routes. If the user has not signed agreements,
@@ -7,7 +7,7 @@ import { Request, Response, NextFunction } from "express";
 export function redirectIfNotAgreed(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   if (req.user && !req.user.agreementsSigned) {
     return res.redirect('/agreements');
