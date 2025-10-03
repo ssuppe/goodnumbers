@@ -55,28 +55,28 @@ describe('POST /api/journals', () => {
     expect(res.status).toBe(403);
   });
 
-  it("should return 403 Forbidden if the user has not signed agreements", async () => {
+  it('should return 403 Forbidden if the user has not signed agreements', async () => {
     // Arrange: Create a user who has NOT signed agreements
     const unagreedUser = await prisma.user.create({
       data: {
         email: `unagreed-journal-user-${Date.now()}@test.com`,
         agreementsSigned: false, // Explicitly set to false
-        nightscoutUrl: "https://some-url.com", // Ensure they would otherwise pass the next step
+        nightscoutUrl: 'https://some-url.com', // Ensure they would otherwise pass the next step
       },
     });
 
     // Act
     const response = await agent
-      .post("/api/journals")
-      .set("x-test-user-id", unagreedUser.id)
+      .post('/api/journals')
+      .set('x-test-user-id', unagreedUser.id)
       .send({ _csrf: csrfToken });
 
     // Assert
     expect(response.status).toBe(403);
-    expect(response.body.code).toBe("AGREEMENTS_NOT_SIGNED");
+    expect(response.body.code).toBe('AGREEMENTS_NOT_SIGNED');
   });
 
-  it("should redirect to /setup-account if agreements are signed but account is not set up", async () => {
+  it('should redirect to /setup-account if agreements are signed but account is not set up', async () => {
     // Arrange: User has signed agreements but has no Nightscout URL
     const agreedUser = await prisma.user.create({
       data: {
@@ -88,13 +88,13 @@ describe('POST /api/journals', () => {
 
     // Act
     const response = await agent
-      .post("/api/journals")
-      .set("x-test-user-id", agreedUser.id)
+      .post('/api/journals')
+      .set('x-test-user-id', agreedUser.id)
       .send({ _csrf: csrfToken });
 
     // Assert
     expect(response.status).toBe(302); // Expect a redirect
-    expect(response.headers.location).toBe("/setup-account");
+    expect(response.headers.location).toBe('/setup-account');
   });
 
   it.skip('should return 201 Created and status PENDING for a valid request', async () => {

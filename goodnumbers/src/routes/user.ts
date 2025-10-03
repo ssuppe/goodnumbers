@@ -28,40 +28,46 @@ router.put(
   enforceAgreements, // Re-add enforceAgreements here
   settingsLimiter,
   async (req, res) => {
-  // SECURITY: The user's identity is sourced from the `req.user` object,
-  // which is securely populated by the upstream `protect` middleware.
-  // All subsequent operations are authorized for this user ID only.
-  const userId = req.user?.id;
-  if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
-  try {
-    const validatedSettings = userSettingsSchema.parse(req.body);
-    const dataToUpdate: z.infer<typeof userSettingsSchema> = {
-      ...validatedSettings,
-    };
-
-    // CRITICAL: Only encrypt the token if it's a non-null string.
-    if (typeof validatedSettings.nightscoutToken === 'string') {
-      dataToUpdate.nightscoutToken = encrypt(validatedSettings.nightscoutToken);
-    } else if (validatedSettings.nightscoutToken === null) {
-      dataToUpdate.nightscoutToken = null;
+    // SECURITY: The user's identity is sourced from the `req.user` object,
+    // which is securely populated by the upstream `protect` middleware.
+    // All subsequent operations are authorized for this user ID only.
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: dataToUpdate,
-    });
+    try {
+      const validatedSettings = userSettingsSchema.parse(req.body);
+      const dataToUpdate: z.infer<typeof userSettingsSchema> = {
+        ...validatedSettings,
+      };
 
-    res.status(200).json({ success: true });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ errors: error.issues });
+      // CRITICAL: Only encrypt the token if it's a non-null string.
+      if (typeof validatedSettings.nightscoutToken === 'string') {
+        dataToUpdate.nightscoutToken = encrypt(
+          validatedSettings.nightscoutToken,
+        );
+      } else if (validatedSettings.nightscoutToken === null) {
+        dataToUpdate.nightscoutToken = null;
+      }
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: dataToUpdate,
+      });
+
+      res.status(200).json({ success: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ errors: error.issues });
+      }
+      console.error(
+        `[API] Failed to update settings for user ${userId}:`,
+        error,
+      );
+      res.status(500).json({ error: 'Could not save settings.' });
     }
-    console.error(`[API] Failed to update settings for user ${userId}:`, error);
-    res.status(500).json({ error: 'Could not save settings.' });
-  }
-});
+  },
+);
 
 export default router;
