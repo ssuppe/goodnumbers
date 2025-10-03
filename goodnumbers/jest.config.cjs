@@ -1,4 +1,3 @@
-// goodnumbers/jest.config.cjs
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -8,11 +7,19 @@ module.exports = {
     '^.+\\.tsx?$': ['ts-jest', { useESM: true, tsconfig: './tsconfig.json' }],
   },
   moduleNameMapper: {
-    // This maps .js imports to .ts files for local relative imports in ESM.                                                            │
-    // It's crucial for Jest to find the source files when imports use .js extensions.                                                  │
+    /**
+     * This rule globally mocks 'ioredis' using our CommonJS mock file.
+     * This is CRITICAL to prevent connection errors in the test environment.
+     */
+    '^ioredis$': '<rootDir>/tests/mocks/ioredis.mock.cjs',
+
+    /**
+     * This rule is CRITICAL for resolving local module imports.
+     * It tells Jest how to find the .ts source file when an import uses a .js extension.
+     * This was the line I mistakenly removed.
+     */
     '^(\\.{1,2}/.*)\\.js$': '$1',
 
-    // This line remains correct for mocking file assets.
     '\\.(json)$': '<rootDir>/__mocks__/fileMock.cjs',
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
