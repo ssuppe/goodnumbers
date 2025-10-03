@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { protect } from '../middleware/auth.js';
+import { enforceAgreements } from '../middleware/enforceAgreements.js'; // Import it
 import { userSettingsSchema } from '../lib/validation.js';
 import { encrypt } from '../lib/encryption.js';
 import { z } from 'zod';
@@ -21,7 +22,12 @@ const settingsLimiter = rateLimit({
 
 const router = Router();
 
-router.put('/settings', protect, settingsLimiter, async (req, res) => {
+router.put(
+  '/settings',
+  protect,
+  enforceAgreements, // Apply enforceAgreements here
+  settingsLimiter,
+  async (req, res) => {
   // SECURITY: The user's identity is sourced from the `req.user` object,
   // which is securely populated by the upstream `protect` middleware.
   // All subsequent operations are authorized for this user ID only.
