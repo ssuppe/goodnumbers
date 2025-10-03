@@ -21,7 +21,7 @@ describe('PUT /api/user/settings', () => {
       testUser = await prisma.user.create({
         data: {
           email: `settings-user-${Date.now()}@test.com`,
-          agreementsSigned: false,
+          agreementsSigned: true, // Set to true to allow access past enforceAgreements
           nightscoutUrl: 'https://initial.url',
           nightscoutToken: 'initial-encrypted-token',
         },
@@ -60,6 +60,26 @@ describe('PUT /api/user/settings', () => {
       });
     expect(response.status).toBe(400);
     expect(response.body.errors).toBeDefined();
+  });
+
+  it('should return 403 Forbidden if the user has not signed agreements', async () => {
+    // Arrange: Create a user who has NOT signed agreements
+    const unagreedUser = await prisma.user.create({
+      data: {
+        email: `unagreed-user-${Date.now()}@test.com`,
+        agreementsSigned: false,
+      },
+    });
+
+    // Act
+    const response = await agent
+      .put('/api/user/settings')
+      .set('x-test-user-id', unagreedUser.id) // Authenticate as this user
+      .send({ preferredUnits: 'MMOL', _csrf: csrfToken });
+
+    // Assert
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe('AGREEMENTS_NOT_SIGNED');
   });
 
   it('should successfully update all settings and encrypt the token', async () => {
