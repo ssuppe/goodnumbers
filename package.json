@@ -1,4 +1,23 @@
 {
+  "name": "goodnumbers-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "build:backend": "npm run build -w backend",
+    "build:frontend": "npm run build -w frontend",
+    "test:backend": "npm test -w backend",
+    "test:frontend": "npm test -w frontend",
+    "lint": "npm run lint -ws --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.35.0",
