@@ -1,9 +1,9 @@
-import { Router } from "express";
-import { prisma } from "../lib/prisma.js";
+import { Router } from 'express';
+import { prisma } from '../lib/prisma.js';
 import { getJournalQueue } from '../lib/queue.js';
-import { journalIdParamSchema } from "../lib/validation.js"; // Import the new schema
-import { z } from "zod";
-import rateLimit from "express-rate-limit"; // 1. Import rate-limit
+import { journalIdParamSchema } from '../lib/validation.js'; // Import the new schema
+import { z } from 'zod';
+import rateLimit from 'express-rate-limit'; // 1. Import rate-limit
 
 const router = Router();
 
@@ -15,12 +15,12 @@ const statusLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: {
-    error: "Too many status requests. Please try again in a minute.",
+    error: 'Too many status requests. Please try again in a minute.',
   },
 });
 
 // Add a schema for userId validation
-const userIdSchema = z.string().cuid({ message: "Invalid user ID format." });
+const userIdSchema = z.string().cuid({ message: 'Invalid user ID format.' });
 
 router.post('/', async (req, res, next) => {
   const userId = req.user!.id;
@@ -41,7 +41,7 @@ router.post('/', async (req, res, next) => {
     // 3. CRITICAL ROLLBACK LOGIC: If enqueueing fails, delete the orphaned journal.
     if (journal) {
       console.error(
-        `[API] CRITICAL: Job enqueue failed for journal ${journal.id}. Rolling back.`
+        `[API] CRITICAL: Job enqueue failed for journal ${journal.id}. Rolling back.`,
       );
       await prisma.journal.delete({ where: { id: journal.id } });
     }
@@ -50,7 +50,7 @@ router.post('/', async (req, res, next) => {
 });
 
 // 3. Add the new route, applying the rate limiter before the handler.
-router.get("/:id/status", statusLimiter, async (req, res, next) => {
+router.get('/:id/status', statusLimiter, async (req, res, next) => {
   try {
     // A. Validate input first. This is our primary security gate.
     const { id: journalId } = journalIdParamSchema.parse(req.params);
@@ -76,10 +76,10 @@ router.get("/:id/status", statusLimiter, async (req, res, next) => {
       // potential enumeration attacks or bugs. Note that we do NOT log
       // any sensitive data from the request body or other headers.
       console.log(
-        `[INFO][SECURITY] Journal status not found. UserID='${userId}' attempted to access JournalID='${journalId}'`
+        `[INFO][SECURITY] Journal status not found. UserID='${userId}' attempted to access JournalID='${journalId}'`,
       );
       // Return a generic 404 to prevent ID enumeration.
-      return res.status(404).json({ error: "Journal not found." });
+      return res.status(404).json({ error: 'Journal not found.' });
     }
 
     // D. Return the data on success.

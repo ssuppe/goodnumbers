@@ -1,9 +1,9 @@
-import { PrismaClient } from "@prisma/client";
-import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
+import { PrismaClient } from '@prisma/client';
+import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 
 const prisma = new PrismaClient();
 
-describe("User Data Privacy", () => {
+describe('User Data Privacy', () => {
   let userId: string;
   let journalId: string;
   let accountId: string;
@@ -16,8 +16,8 @@ describe("User Data Privacy", () => {
         email: `test-privacy-${Date.now()}@example.com`,
         accounts: {
           create: {
-            type: "oauth",
-            provider: "google",
+            type: 'oauth',
+            provider: 'google',
             providerAccountId: `google-id-${Date.now()}`,
           },
         },
@@ -29,7 +29,7 @@ describe("User Data Privacy", () => {
         },
         journals: {
           create: {
-            status: "COMPLETE",
+            status: 'COMPLETE',
           },
         },
       },
@@ -46,7 +46,9 @@ describe("User Data Privacy", () => {
 
     console.log(`Created User ID: ${userId}`);
     console.log(`Created Journal ID: ${journalId}`);
-    const createdJournal = await prisma.journal.findUnique({ where: { id: journalId } });
+    const createdJournal = await prisma.journal.findUnique({
+      where: { id: journalId },
+    });
     console.log(`Journal exists before deletion: ${!!createdJournal}`);
   });
 
@@ -54,7 +56,7 @@ describe("User Data Privacy", () => {
     await prisma.$disconnect();
   });
 
-  it("should delete all related data when a user is deleted", async () => {
+  it('should delete all related data when a user is deleted', async () => {
     // 2. Delete the user
     await prisma.user.delete({ where: { id: userId } });
 
