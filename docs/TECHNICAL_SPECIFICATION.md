@@ -14,16 +14,11 @@ The goal of this specification is to provide a developer-ready document that out
 
 ### 2.1. Functional Requirements
 
-#### 2.1.1. Pre-Release Access Barrier
+### 2.1.1. User Authentication (Auth.js)
 
-- **Goal:** Restrict site-wide access to a pre-approved list of beta testers.
-- **Mechanism:** An Express.js middleware will intercept all requests.
-- **User Experience:**
-  - Unauthenticated users are redirected to a minimal barrier login page.
-  - The page will have a "Private Beta Access" headline and fields for a shared username and password.
-  - On successful login, a secure, httpOnly cookie is set (e.g., 7-day expiry), and the user is redirected to their original destination.
-  - On failure, an error message is displayed.
-- **Credential Management:** The shared username and password MUST be supplied via server-side environment variables and NOT hardcoded.
+- **Access Control:** ...
+- **Provider:** Google OAuth ...
+- **Configuration Note:** The `AUTH_URL` environment variable should be set to the origin only (e.g., `http://localhost:3000`), as the `/api/auth` base path is configured within the Express application.
 
 #### 2.1.2. User Authentication (Auth.js)
 
@@ -147,13 +142,19 @@ The goal of this specification is to provide a developer-ready document that out
 
 ## 3. Architecture
 
-The system is a monolithic application designed to run in a single Docker container, managed by `pm2` to run two concurrent processes.
+The system is a monolithic application designed to run in a single Docker container, managed by `pm2` to run two concurrent processes. For development, `nodemon` is used to watch for file changes and trigger rebuilds and reloads.
 
-- **Web Server Process (Express.js):** Handles all user-facing HTTP requests, serves the React frontend, manages authentication via Auth.js, and exposes the REST API.
-- **Background Worker Process (Node.js):** Executes the long-running journal generation jobs. It is completely decoupled from the web server to ensure the UI remains responsive.
-- **Job Queue (BullMQ):** A Redis-backed queue that mediates between the web server and the background worker. When a user starts a new journal, the web server enqueues a job, which the worker then picks up for processing.
-- **Database (SQLite):** A single SQLite database file provides persistent storage. It will be configured to run in Write-Ahead Logging (WAL) mode to handle concurrent access from the web and worker processes.
-- **Deployment:** The entire application (web server, worker, Redis) is containerized with Docker and deployed on a single Google Compute Engine (GCE) instance.
+- **Web Server Process (Express.js):**
+  - **Entry Point:** `dist/server.js`
+  - **Mode:** Runs in `fork` mode.
+  - **Responsibilities:** Handles all user-facing HTTP requests, serves the React frontend, manages authentication, and exposes the REST API.
+- **Background Worker Process (Node.js):**
+  - **Entry Point:** `dist/worker.js`
+  - **Mode:** Runs in `fork` mode.
+  - **Responsibilities:** Executes the long-running journal generation jobs.
+- **Job Queue (BullMQ):** A Redis-backed queue that mediates between the web server and the background worker.
+- **Database (SQLite):** A single SQLite database file provides persistent storage.
+- **Deployment:** The entire application is containerized with Docker and deployed on a single Google Compute Engine (GCE) instance.
 
 ### 3.1. Analysis Pipeline
 
@@ -163,6 +164,15 @@ The backend analysis pipeline processes raw Nightscout data into insights.
 2.  **Event Detection (`detect_events.ts`):** Individual glycemic events (e.g., `HYPOGLYCEMIA`) are identified.
 3.  **Event Classification (`event_classifier.ts`):** Events are given context (e.g., `HIGH_AFTER_UNCOVERED_MEAL`).
 4.  **Time-Based Clustering (`time_clustering.ts`):** Classified events are grouped by time of day into recurring patterns (`TimeCluster` objects), which are then stored.
+
+### 3.2. Environment Configuration
+
+The project uses a multi-file environment variable strategy:
+
+- **`.env`**: Read exclusively by `docker-compose`. It contains variables needed to configure the services themselves, such as `REDIS_PASSWORD`.
+- **`.env.development`**: Read by the Node.js application when `NODE_ENV=development`. Contains application secrets and connection details for the local development environment.
+- **`.env.production`**: Read by the Node.js application when `NODE_ENV=production`. Contains secrets for the live production environment.
+- **`.env.test`**: Read by Jest during automated testing.
 
 ## 4. Data Handling
 

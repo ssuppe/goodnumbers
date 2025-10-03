@@ -456,25 +456,42 @@ console.log(`[Worker] Listening for jobs on "${JOURNAL_QUEUE_NAME}"...`);
 
 ##### **Action 7: Create PM2 Ecosystem Configuration**
 
-```javascript
+This file tells the PM2 process manager how to run our applications. We will configure it to use the more stable `fork` mode and explicitly disable its built-in watcher, as `nodemon` will be handling that for us in development.
+
+````javascript
 // file: goodnumbers/ecosystem.config.cjs
 module.exports = {
   apps: [
     {
-      name: "goodnumbers-web",
-      script: "./dist/index.js",
-      exec_mode: "cluster",
-      watch: ["./dist"],
+      name: 'goodnumbers-web',
+      script: './dist/server.js', // CORRECTED: Point to the new server entry point
+      exec_mode: 'fork',
+      watch: false, // CRITICAL: Disable PM2's watcher
+      ignore_watch: ['node_modules', 'prisma'],
+      restart_delay: 5000,
+      env_production: {
+        NODE_ENV: 'production',
+      },
+      env_development: {
+        NODE_ENV: 'development',
+      },
     },
     {
-      name: "goodnumbers-worker",
-      script: "./dist/worker.js",
-      exec_mode: "fork",
-      watch: ["./dist"],
+      name: 'goodnumbers-worker',
+      script: './dist/worker.js',
+      exec_mode: 'fork',
+      watch: false, // CRITICAL: Disable PM2's watcher
+      ignore_watch: ['node_modules', 'prisma'],
+      restart_delay: 5000,
+      env_production: {
+        NODE_ENV: 'production',
+      },
+      env_development: {
+        NODE_ENV: 'development',
+      },
     },
   ],
-};
-```
+};```
 
 ##### **Action 8: Add/Update Scripts in `package.json`**
 
@@ -485,7 +502,7 @@ module.exports = {
   "scripts": {
     "start": "pm2 start ecosystem.config.cjs --env production",
     "stop": "pm2 stop ecosystem.config.cjs && pm2 delete ecosystem.config.cjs",
-    "dev": "pm2 start ecosystem.config.cjs --watch",
+    "dev": "nodemon --watch src --ext ts --exec \"npm run build && pm2 startOrReload ecosystem.config.cjs --env development\"",
     "logs": "pm2 logs",
     "build": "tsc",
     "test": "NODE_OPTIONS=\"--experimental-vm-modules\" jest --runInBand",
@@ -494,7 +511,7 @@ module.exports = {
   }
   // ...
 }
-```
+````
 
 ##### **Action 9: Verify Success and Commit**
 
