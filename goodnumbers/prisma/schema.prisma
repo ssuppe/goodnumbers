@@ -66,7 +66,7 @@ model Journal {
 model GlycemicEventCluster {
   id                  String    @id @default(cuid())
   journalId           String
-  journal             Journal   @relation(fields: [journalId], references: [id])
+  journal             Journal   @relation(fields: [journalId], references: [id], onDelete: Cascade)
 
   // Cluster summary data
   eventType           String
