@@ -18,6 +18,6 @@ if (fs.existsSync(specificEnvPath)) {
   dotenv.config({ path: specificEnvPath, override: true });
 } else {
   console.log(
-    `[env] No specific environment file found at ${specificEnvPath}. Using system variables.`
+    `[env] No specific environment file found at ${specificEnvPath}. Using system variables.`,
   );
 }
