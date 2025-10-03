@@ -1,28 +1,22 @@
 import 'dotenv/config';
 import { describe, it, expect, beforeAll, afterAll, jest } from '@jest/globals';
+// NEW: Import PrismaClient to interact with the database
 import { PrismaClient, User } from '@prisma/client';
 import session from 'supertest-session';
 import * as http from 'http';
 import type { Express } from 'express';
 
-// --- This is the new, targeted mocking pattern ---
+// --- This is the key to our targeted mocking pattern ---
 
-// 1. Create our mock queue instance in the test scope.
 const mockQueueInstance = {
   add: jest.fn().mockResolvedValue({ id: 'mock-job-id' }),
 };
 
-// 2. Mock our *own* queue module. We tell Jest: "When the application asks
-//    for src/lib/queue.ts, give it this version instead."
 jest.unstable_mockModule('../../src/lib/queue.js', () => ({
-  // Provide a fake getJournalQueue function that returns our mock instance.
   getJournalQueue: () => mockQueueInstance,
-  // Also provide the queue name constant.
   JOURNAL_QUEUE_NAME: 'test-queue',
 }));
 
-// 3. Dynamically import the app. Now when it loads and calls getJournalQueue(),
-//    it will receive our mock instance.
 const { createApp } = await import('../../src/index.js');
 
 // --- End of pattern ---
@@ -38,47 +32,58 @@ describe('API to Mock Job Queue Integration', () => {
   beforeAll(async () => {
     app = createApp();
     await new Promise<void>((resolve) => {
-      server = app.listen(0, resolve);
+      server = app.listen(0, async () => {
+        agent = session(app);
+        await prisma.journal.deleteMany({}); // Clean journals table
+        await prisma.user.deleteMany();
+        testUser = await prisma.user.create({
+          data: {
+            email: `queue-test-user-${Date.now()}@test.com`,
+            agreementsSigned: true,
+            nightscoutUrl: 'https://test.ns.com',
+          },
+        });
+        const res = await agent.get('/api/csrf-token');
+        csrfToken = res.body.csrfToken;
+        resolve(); // Signal that setup is complete
+      });
     });
-    agent = session(app);
-
-    await prisma.journal.deleteMany({});
-    await prisma.user.deleteMany({});
-    testUser = await prisma.user.create({
-      data: {
-        email: `final-queue-test-${Date.now()}@example.com`,
-        agreementsSigned: true,
-        nightscoutUrl: 'https://final-queue.ns.com',
-      },
-    });
-
-    const tokenRes = await agent.get('/api/csrf-token');
-    csrfToken = tokenRes.body.csrfToken;
   });
 
   afterAll(async () => {
     await prisma.$disconnect();
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
-  
+
   beforeEach(() => {
     mockQueueInstance.add.mockClear();
   });
 
-  it('POST /api/journals should create a journal and add a job to the mock queue', async () => {
-    // Act
-    const response = await agent
+  // NEW: The test name is now more descriptive of its expanded responsibilities.
+  it('should create a PENDING journal in the DB and call the queue', async () => {
+    const res = await agent
       .post('/api/journals')
       .set('x-test-user-id', testUser.id)
       .send({ _csrf: csrfToken });
 
-    expect(response.status).toBe(201);
-    const journalId = response.body.journal.id;
+    expect(res.status).toBe(201);
+    const journalId = res.body.journal.id;
+    expect(journalId).toBeDefined();
 
-    // Assert
+    // --- Assertions ---
+
+    // 1. Verify the queue interaction (same as before)
     expect(mockQueueInstance.add).toHaveBeenCalledWith('process-journal', {
       journalId: journalId,
     });
     expect(mockQueueInstance.add).toHaveBeenCalledTimes(1);
+
+    // 2. NEW: Verify the database interaction
+    const newJournal = await prisma.journal.findUnique({
+      where: { id: journalId },
+    });
+    expect(newJournal).not.toBeNull();
+    expect(newJournal?.userId).toBe(testUser.id);
+    expect(newJournal?.status).toBe('PENDING'); // This is the critical check
   });
 });
