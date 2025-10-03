@@ -6,3 +6,7 @@ export const userSettingsSchema = z.object({
   preferredUnits: z.enum(['MGDL', 'MMOL']).optional(),
   agreementsSigned: z.boolean().optional(),
 });
+
+export const journalIdParamSchema = z.object({
+  id: z.string().cuid({ message: "Invalid journal ID format." }),
+});
