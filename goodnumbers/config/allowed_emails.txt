@@ -1,4 +1,0 @@
-# Add emails of beta testers below, one per line.
-# Lines starting with # and empty lines are ignored.
-your.email@gmail.com
-goodnumbersmain@gmail.com

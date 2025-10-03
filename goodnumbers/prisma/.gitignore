@@ -1,3 +1,0 @@
-# Ignore local database files
-*.db
-*.db-journal
