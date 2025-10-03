@@ -1,8 +1,6 @@
 // file: src/worker.ts
 
-import './lib/env.js';
 import { Worker, Job } from 'bullmq';
-// FIX: Use a namespace import to safely access the default export.
 import { Redis } from 'ioredis';
 import { JOURNAL_QUEUE_NAME } from './lib/queue.js';
 import { prisma } from './lib/prisma.js';
@@ -32,9 +30,9 @@ export async function processJournalJob(job: Job) {
 }
 
 // --- Worker Setup ---
+// This guard prevents the worker from starting during tests.
 if (process.env.NODE_ENV !== 'test') {
   console.log('[Worker] Starting up...');
-  // FIX: Access the constructor via the namespace's .default property. This is type-safe.
   const connection = new Redis({
     host: process.env.REDIS_HOST,
     port: parseInt(process.env.REDIS_PORT!, 10),
