@@ -1,12 +1,12 @@
-Of course. Here is the complete, rewritten implementation plan. I have incorporated all the changes we discussed to pivot to a mock-based testing strategy, add dedicated unit tests for the worker, and improve the overall structure and clarity for the junior engineer.
+Of course. After our detailed discussion and iterative debugging, we've arrived at a robust, modern, and reliable plan. This final version incorporates the correct testing pattern (`jest.unstable_mockModule`) and follows a clear TDD process for both the API and the worker logic.
 
-You can copy and paste the entire content below.
+Here is the complete, final version of the `PHASE3_TASK2_rewrite.md` document for you to copy and paste.
 
 ---
 
 # Goodnumbers — PHASE 3, TASK 2: Implement Asynchronous Job Queue
 
-**Version:** 5.0 (Revised with Mock-Based Integration Testing)
+**Version:** 6.0 (Final, with Modern Mocking Patterns)
 **Author:** Technical Lead
 **Date:** 2025-10-03
 **Status:** Approved for Implementation
@@ -31,7 +31,7 @@ For a feature like this that interacts with an external service (Redis), a matur
 
 - **Tier 1: Mocked Integration Tests (Fast Feedback)**
   - **Goal:** To verify our application's internal logic _without_ touching the real external service. For this task, it answers the question: "Does my API endpoint correctly call the `queue.add()` function when it's supposed to?"
-  - **Method:** We use Jest's mocking capabilities to replace the `bullmq` library with a lightweight, in-memory fake version that we control.
+  - **Method:** We use Jest's `unstable_mockModule` capability to replace the `bullmq` library with a lightweight, in-memory fake version that we control.
   - **Benefits:** These tests are extremely fast, 100% reliable, and require zero external dependencies (no Docker needed). They are perfect for running constantly during local development.
 
 - **Tier 2: "True" Integration Tests (High Confidence)**
@@ -153,65 +153,17 @@ describe("POST /api/journals", () => {
 });
 ```
 
-##### **Action 2: Create a Reusable Manual Mock for BullMQ**
+##### **Action 2: Delete the Old Mock File**
 
-A "manual mock" is a convention where we tell Jest exactly how to fake a library. This gives us full control and makes our tests clean and reliable.
+Our new mocking pattern does not use the `__mocks__` directory, which will keep our project cleaner.
 
-Create a new directory and file at `tests/__mocks__/bullmq.ts`.
-
-```typescript
-// file: tests/__mocks__/bullmq.ts
-
-import { jest } from "@jest/globals";
-
-// This is our in-memory fake database for jobs.
-// Using a dictionary of arrays lets us mimic job states like 'waiting'.
-let jobs = {
-  waiting: [],
-};
-
-// This is the mock implementation of the BullMQ 'Queue' class.
-export const Queue = jest.fn().mockImplementation((queueName) => {
-  return {
-    name: queueName,
-    // The `add` method is called by our application code.
-    add: jest.fn().mockImplementation(async (jobName, jobData) => {
-      const newJob = {
-        id: Math.random().toString(), // A simple unique ID for testing
-        name: jobName,
-        data: jobData,
-      };
-      jobs.waiting.push(newJob);
-      return newJob;
-    }),
-    // The `getJobs` method is used by our test to check the queue's state.
-    getJobs: jest.fn().mockImplementation(async (states) => {
-      let results = [];
-      for (const state of states) {
-        if (jobs[state]) {
-          results = results.concat(jobs[state]);
-        }
-      }
-      return results;
-    }),
-    // `obliterate` is used by tests to ensure a clean slate.
-    obliterate: jest.fn().mockImplementation(async () => {
-      jobs = { waiting: [] };
-    }),
-    // `close` is used by tests for graceful shutdown.
-    close: jest.fn().mockResolvedValue(undefined),
-  };
-});
-
-// Helper function to access the mock's internal state from a test.
-export const getMockQueue = () => ({
-  jobs,
-});
+```bash
+rm -f tests/__mocks__/bullmq.ts
 ```
 
 ##### **Action 3: Create the Mocked Integration Test**
 
-This test will verify our API's logic using the mock we just created.
+This test uses the modern `jest.unstable_mockModule` pattern. It gives us explicit control over when the mock is registered and when the application code is loaded, guaranteeing reliability.
 
 Create a new file at `tests/integration/queue.test.ts`.
 
@@ -224,11 +176,37 @@ import { PrismaClient, User } from "@prisma/client";
 import session from "supertest-session";
 import * as http from "http";
 import type { Express } from "express";
-import { createApp } from "../../src/index.js";
-import { Queue, getMockQueue } from "bullmq"; // Import the mocked version
 
-// Tell Jest to use our manual mock instead of the real 'bullmq' library.
-jest.mock("bullmq");
+// --- This is the key to the new, reliable pattern ---
+
+// We will store the mock instance here, in a scope accessible to the entire test suite.
+let mockQueueInstance: any;
+
+// 1. Define the mock implementation for the Queue class.
+const MockQueue = jest.fn().mockImplementation((_queueName) => {
+  const instance = {
+    name: _queueName,
+    add: jest.fn().mockResolvedValue({ id: "mock-job-id" }),
+    obliterate: jest.fn().mockResolvedValue(undefined),
+    close: jest.fn().mockResolvedValue(undefined),
+    getJobs: jest.fn().mockResolvedValue([]), // Default to empty array
+  };
+  // When a new instance is created, we capture it in our shared variable.
+  mockQueueInstance = instance;
+  return instance;
+});
+
+// 2. Register the mock using the modern API. This tells Jest: "When you see an
+//    import for 'bullmq', provide this mock object instead."
+jest.unstable_mockModule("bullmq", () => ({
+  Queue: MockQueue,
+}));
+
+// 3. NOW, we can dynamically import the application code. This guarantees that
+//    it gets our mocked version of BullMQ when it loads.
+const { createApp } = await import("../../src/index.js");
+
+// --- End of the new pattern ---
 
 const prisma = new PrismaClient();
 let app: Express;
@@ -237,11 +215,11 @@ let agent: session.Session;
 let testUser: User;
 let csrfToken: string;
 
-// We need a way to reference the mock instance inside our tests.
-let mockQueueInstance: any;
-
 describe("API to Mock Job Queue Integration", () => {
   beforeAll(async () => {
+    // By the time this runs, `createApp` is available and the mock is in place.
+    // The `new Queue()` call inside the app's import chain will have already
+    // been captured and stored in our `mockQueueInstance` variable.
     app = createApp();
     await new Promise<void>((resolve) => {
       server = app.listen(0, resolve);
@@ -252,18 +230,14 @@ describe("API to Mock Job Queue Integration", () => {
     await prisma.user.deleteMany({});
     testUser = await prisma.user.create({
       data: {
-        email: `mock-queue-test-${Date.now()}@example.com`,
+        email: `final-queue-test-${Date.now()}@example.com`,
         agreementsSigned: true,
-        nightscoutUrl: "https://mock-queue.ns.com",
+        nightscoutUrl: "https://final-queue.ns.com",
       },
     });
 
     const tokenRes = await agent.get("/api/csrf-token");
     csrfToken = tokenRes.body.csrfToken;
-
-    // Get a reference to the mock instance created by the app
-    mockQueueInstance = (Queue as jest.Mock).mock.results[0].value;
-    await mockQueueInstance.obliterate(); // Clear the mock queue
   });
 
   afterAll(async () => {
@@ -271,8 +245,16 @@ describe("API to Mock Job Queue Integration", () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
+  beforeEach(() => {
+    // Clear mock history before each test for isolation.
+    mockQueueInstance.add.mockClear();
+  });
+
   it("POST /api/journals should create a journal and add a job to the mock queue", async () => {
-    // Act
+    // Assert Pre-condition: Make sure we have our mock instance before we act.
+    expect(mockQueueInstance).toBeDefined();
+
+    // Act: Call the API endpoint.
     const response = await agent
       .post("/api/journals")
       .set("x-test-user-id", testUser.id)
@@ -281,16 +263,11 @@ describe("API to Mock Job Queue Integration", () => {
     expect(response.status).toBe(201);
     const journalId = response.body.journal.id;
 
-    // Assert
-    // Check that our application code called the mock's `add` method correctly.
+    // Assert: Check that our application code called the mock instance's `add` method correctly.
     expect(mockQueueInstance.add).toHaveBeenCalledWith("process-journal", {
       journalId: journalId,
     });
-
-    // We can also check the mock's internal state.
-    const jobsInQueue = getMockQueue().jobs.waiting;
-    expect(jobsInQueue).toHaveLength(1);
-    expect(jobsInQueue[0].data.journalId).toBe(journalId);
+    expect(mockQueueInstance.add).toHaveBeenCalledTimes(1);
   });
 });
 ```
@@ -337,10 +314,11 @@ volumes:
 
 ##### **Action 2: Install Dependencies**
 
-````bash
+```bash
 cd goodnumbers
 npm install bullmq ioredis
-npm install --save-dev pm2```
+npm install --save-dev pm2
+```
 
 ##### **Action 3: Update Environment Configuration**
 
@@ -354,7 +332,7 @@ REDIS_PORT=6379
 REDIS_PASSWORD=a-very-secure-and-long-password-for-local-dev
 REDIS_DB=0
 QUEUE_NAME=journal-processing
-````
+```
 
 ```bash
 # file: goodnumbers/.env.test
@@ -373,9 +351,10 @@ QUEUE_NAME=journal-processing-test
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
 
-// NOTE: We are intentionally not using the IORedis compatibility layer here
-// as it was part of the previous attempt. BullMQ handles the Redis connection.
-const connection = new IORedis(process.env.REDIS_URL!, {
+const connection = new IORedis({
+  host: process.env.REDIS_HOST,
+  port: parseInt(process.env.REDIS_PORT!, 10),
+  password: process.env.REDIS_PASSWORD,
   maxRetriesPerRequest: null,
 });
 
@@ -438,7 +417,10 @@ import IORedis from "ioredis";
 import { JOURNAL_QUEUE_NAME } from "./lib/queue.js";
 
 console.log("[Worker] Starting up...");
-const connection = new IORedis(process.env.REDIS_URL!, {
+const connection = new IORedis({
+  host: process.env.REDIS_HOST,
+  port: parseInt(process.env.REDIS_PORT!, 10),
+  password: process.env.REDIS_PASSWORD,
   maxRetriesPerRequest: null,
 });
 
@@ -482,11 +464,13 @@ module.exports = {
       name: "goodnumbers-web",
       script: "./dist/index.js",
       exec_mode: "cluster",
+      watch: ["./dist"],
     },
     {
       name: "goodnumbers-worker",
       script: "./dist/worker.js",
       exec_mode: "fork",
+      watch: ["./dist"],
     },
   ],
 };
@@ -569,14 +553,13 @@ describe("Worker Job Processing", () => {
     (prisma.journal.update as jest.Mock).mockResolvedValue({});
 
     // Act: Call the function we want to test
-    await processJournalJob(fakeJob);
+    await processJournalJob(fakeJob as any); // Use `as any` to satisfy type checking for the mock
 
     // Assert: Check that our logic updated the journal correctly
     expect(prisma.journal.update).toHaveBeenCalledWith({
       where: { id: "journal123" },
       data: {
         status: "COMPLETE",
-        // In the future, we'll assert more data is saved here
       },
     });
     expect(prisma.journal.update).toHaveBeenCalledTimes(1);
@@ -597,7 +580,7 @@ Now, we make the test pass.
 
 ##### **Action 1: Refactor `src/worker.ts`**
 
-Modify the worker to export the processing logic so we can test it.
+Modify the worker to export the processing logic and to prevent the worker from starting up in the `test` environment.
 
 ```typescript
 // file: src/worker.ts
@@ -605,7 +588,7 @@ import "./lib/env.js";
 import { Worker, Job } from "bullmq";
 import IORedis from "ioredis";
 import { JOURNAL_QUEUE_NAME } from "./lib/queue.js";
-import { prisma } from "./lib/prisma.js"; // Import prisma
+import { prisma } from "./lib/prisma.js";
 
 // --- Exported Job Logic for Testability ---
 export async function processJournalJob(job: Job) {
@@ -626,9 +609,13 @@ export async function processJournalJob(job: Job) {
 }
 
 // --- Worker Setup ---
+// This guard prevents the worker from starting during tests.
 if (process.env.NODE_ENV !== "test") {
   console.log("[Worker] Starting up...");
-  const connection = new IORedis(process.env.REDIS_URL!, {
+  const connection = new IORedis({
+    host: process.env.REDIS_HOST,
+    port: parseInt(process.env.REDIS_PORT!, 10),
+    password: process.env.REDIS_PASSWORD,
     maxRetriesPerRequest: null,
   });
 
@@ -670,13 +657,15 @@ it("should update the journal status to FAILED if an error occurs", async () => 
   const fakeJob = { data: { journalId: "journal456" } };
   const errorMessage = "AI pipeline failed";
 
-  // Arrange: Simulate a failure by having the DB call throw an error
+  // Arrange: Simulate a failure by having the main logic throw an error.
+  // The first mock call represents the attempt to set status to COMPLETE, which fails.
   (prisma.journal.update as jest.Mock)
-    .mockRejectedValueOnce(new Error(errorMessage)) // First call fails
-    .mockResolvedValueOnce({}); // Second call (to set FAILED status) succeeds
+    .mockRejectedValueOnce(new Error(errorMessage))
+    // The second mock call represents the attempt to set status to FAILED, which succeeds.
+    .mockResolvedValueOnce({});
 
   // Act
-  await processJournalJob(fakeJob);
+  await expect(processJournalJob(fakeJob as any)).rejects.toThrow(errorMessage);
 
   // Assert
   expect(prisma.journal.update).toHaveBeenCalledTimes(2);
@@ -726,7 +715,7 @@ export async function processJournalJob(job: Job) {
         statusMessage: errorMessage,
       },
     });
-    // Re-throw the error so BullMQ knows the job failed
+    // Re-throw the error so BullMQ knows the job failed and can handle retries, etc.
     throw error;
   }
 }
