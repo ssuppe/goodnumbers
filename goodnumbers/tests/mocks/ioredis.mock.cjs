@@ -11,7 +11,14 @@ class IORedisMock extends EventEmitter {
   disconnect = jest.fn();
 }
 
-// CRITICAL FIX: This structure handles different module import syntaxes.
-// It makes the class available as the main export AND as the default export.
-module.exports = IORedisMock;
-module.exports.default = IORedisMock;
+/**
+ * CRITICAL FIX: We now export an object that has a `Redis` property.
+ * This perfectly matches the `import { Redis } from 'ioredis'` syntax
+ * used in the application code.
+ *
+ * We also keep the `default` export for full compatibility.
+ */
+module.exports = {
+  Redis: IORedisMock,
+  default: IORedisMock,
+};
