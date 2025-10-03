@@ -14,7 +14,9 @@ import journalRoutes from './routes/journal.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import userRoutes from './routes/user.js';
 import { protect } from './middleware/auth.js';
-import { enforceOnboarding } from './middleware/onboarding.js';
+import { enforceAgreements } from './middleware/enforceAgreements.js';
+import { enforceAccountSetup } from './middleware/enforceAccountSetup.js'; // Updated import
+import { redirectIfNotAgreed } from './middleware/redirectIfNotAgreed.js';
 
 export function createApp() {
   // --- Fatal Error Checks ---
@@ -80,10 +82,12 @@ export function createApp() {
 
   // Now, apply protection to all subsequent API routes.
   app.use('/api/user', protect, csrfProtection, userRoutes);
+  // Apply the full, secure middleware chain to the journals API
   app.use(
     '/api/journals',
     protect,
-    enforceOnboarding,
+    enforceAgreements, // First, authorize API access
+    enforceAccountSetup, // Then, handle UI flow
     csrfProtection,
     journalRoutes,
   );
@@ -102,7 +106,7 @@ export function createApp() {
 <script src="/js/agreements.js"></script>
     `);
   });
-  app.get('/setup-account', protect, (req, res) => {
+  app.get('/setup-account', protect, redirectIfNotAgreed, (req, res) => {
     const prefilledUrl = escapeHtml(req.user?.nightscoutUrl);
     res.send(
       `
@@ -137,9 +141,16 @@ export function createApp() {
     `,
     );
   });
-  app.get('/dashboard', protect, enforceOnboarding, (req, res) => {
-    res.send(`Welcome, ${escapeHtml(req.user!.email)}!`);
-  });
+  // Update the dashboard route as well
+  app.get(
+    '/dashboard',
+    protect,
+    redirectIfNotAgreed, // Redirect if agreements not signed
+    enforceAccountSetup, // Then, handle UI flow
+    (req, res) => {
+      res.send(`Welcome, ${escapeHtml(req.user!.email)}!`);
+    },
+  );
 
   // --- Global Error Handler ---
   app.use(errorHandler);
