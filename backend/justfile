@@ -1,4 +1,8 @@
-# --- SERVICE MANAGEMENT (for Development) ---
+# file: backend/justfile
+# This file manages the external Docker services required by the backend.
+# All npm-related commands should be run from the monorepo root (e.g., `npm test -w backend`).
+
+# --- SERVICE MANAGEMENT (for Development & Testing) ---
 services-up:
     @echo "Starting Redis container for development..."
     @docker compose up -d
@@ -7,49 +11,18 @@ services-down:
     @echo "Stopping and removing development Redis container..."
     @docker compose down
 
-# --- APPLICATION MANAGEMENT (for Development) ---
-build:
-    @npm run build
-
-dev:
-    @npm run dev
-
-stop:
-    @npm run stop
-
-logs:
-    @npm run logs
-
-# --- COMBINED WORKFLOWS (for Development) ---
-run: build services-up dev
-
-# --- UTILITIES ---
-clean: stop services-down
-    @echo "Removing node_modules..."
-    @rm -rf node_modules
-
-# =============================================================
-# === TESTING WORKFLOWS =======================================
-# =============================================================
-
-# Starts the Redis service required for a "Tier 2" integration test.
 test-env-up:
     @echo "Starting Redis container for testing..."
     @docker compose up -d redis
 
-# Stops the Redis service used for testing.
 test-env-down:
     @echo "Stopping Redis container for testing..."
     @docker compose down
 
-# Runs the entire test suite.
-test:
-    @echo "Running the test suite..."
-    @npm test
-
-# The all-in-one command for a "Tier 2" CI-style test run.
+# --- ORCHESTRATION WORKFLOWS ---
+# This is a high-value recipe for running a full CI-style test cycle locally.
 test-ci:
     @echo "Running CI test cycle: Starting services -> Running tests -> Tearing down..."
     @just test-env-up
-    @npm test
+    @npm test -w backend # Corrected to use monorepo npm script
     @just test-env-down
