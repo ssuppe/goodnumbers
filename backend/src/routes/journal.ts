@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { getJournalQueue } from '../lib/queue.js';
-import { journalIdParamSchema } from '../lib/validation.js'; // Import the new schema
+import { journalIdParamSchema } from '@goodnumbers/schemas'; // Import the new schema
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit'; // 1. Import rate-limit
 
