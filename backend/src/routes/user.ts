@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { protect } from '../middleware/auth.js';
 import { enforceAgreements } from '../middleware/enforceAgreements.js'; // Import it
-import { userSettingsSchema } from '../lib/validation.js';
+import { userSettingsSchema } from '@goodnumbers/schemas';
 import { encrypt } from '../lib/encryption.js';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
