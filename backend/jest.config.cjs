@@ -4,8 +4,11 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.ts?(x)', '**/?(*.)+(spec|test).ts?(x)'],
   extensionsToTreatAsEsm: ['.ts'],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { useESM: true, tsconfig: './tsconfig.json' }],
+    '^.+\\.(ts|tsx|js|jsx)$': ['ts-jest', { useESM: true, tsconfig: './tsconfig.json' }],
   },
+  transformIgnorePatterns: [
+    '/node_modules/(?!(@goodnumbers/schemas)/)'
+  ],
   moduleNameMapper: {
     /**
      * This rule globally mocks 'ioredis' using our CommonJS mock file.
