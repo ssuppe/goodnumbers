@@ -1,92 +1,61 @@
-Of course. Here is the complete, final, and highly detailed engineering plan. It incorporates all of our refinements, including the path alias, the targeted `prismock` strategy, correct variable scoping, and specific instructions for every single test file.
+Of course. You are right to request an iterative plan. A "big bang" refactor is risky and frustrating. A step-by-step approach where we verify each change provides a tight feedback loop, builds confidence, and makes debugging much easier.
 
-This document is designed to be a comprehensive guide that a junior engineer can follow step-by-step to successfully complete the migration.
+I have created a new, complete, and highly detailed plan that follows this iterative philosophy. It incorporates the crucial correction to keep and use `supertest-session` and provides the exact code and commands for each step.
+
+This is the definitive guide to follow.
 
 ---
 
-# Goodnumbers — `todo.md` (Final Version)
+### **Definitive Engineering Plan: Iterative Migration to Vitest and Prismock**
 
-## TL;DR
+**Objective:** To migrate the `backend` test suite from Jest to Vitest, integrating `prismock` to eliminate flaky, database-driven tests. We will refactor and verify one test file at a time to ensure a stable and predictable process.
 
-Migrate the backend test runner from Jest to Vitest and integrate the `prismock` library. This will resolve ESM compatibility issues, eliminate flaky tests caused by database race conditions, and significantly improve the speed and reliability of the test suite by using an in-memory database for most tests.
+---
 
-## Invariants (do not change)
+### **Step 1: Foundational Setup**
 
-- **Data Segregation**: A user can **only** access data they own. All database queries for specific resources must include a `WHERE userId = '...'` clause.
-- **Data Privacy**: Deleting a parent resource (like a `User` or `Journal`) **must** trigger the deletion of all its child data to prevent orphaned, sensitive information.
-- **Server-Side Authorization**: The server **must not** trust the client. All access-control decisions must be made and enforced on the server.
+This is the one essential "big bang" step. We must get the core testing infrastructure in place before we can test individual files.
 
-## Assumptions & Scope
-
-- **Assumption**: All tasks up to and including Phase 5, Task 2 (`feat/phase5-task2-shared-schemas`) are complete and have been merged into the `phase5develop` branch.
-- **Assumption**: The primary motivation is to fix test flakiness and improve test performance by moving from a real database in tests to an in-memory mock.
-- **Scope**: This task is strictly limited to the `backend` workspace. It involves swapping testing dependencies, creating new configuration files for Vitest, and refactoring existing test files to use the Vitest API and `prismock`.
-- **Out of Scope**: This task does not involve adding new application features, writing new feature tests, or modifying any code in the `frontend` or `packages` workspaces.
-
-## Objectives
-
-1.  **Replace Test Runner**: Successfully remove all Jest-related dependencies and configuration from the `backend` workspace and replace them with Vitest.
-2.  **Eliminate Flakiness**: Integrate `prismock` to mock the Prisma client in API-level integration tests, ensuring each test runs in a perfectly isolated, in-memory database.
-3.  **Guarantee No Regressions**: Ensure 100% of the tests pass under the new Vitest and Prismock setup.
-4.  **Improve Maintainability**: Introduce a new `@src` path alias to make test file imports cleaner and more resilient to refactoring.
-5.  **Preserve Confidence**: Retain a small number of critical tests (`database.test.ts`, `privacy.test.ts`) that run against a real test database to verify fundamental connectivity and schema behavior.
-
-## Acceptance Gates
-
-1.  The command `npm test -w backend`, run from the project root, **must pass** all tests using the Vitest runner.
-2.  The files `backend/tests/integration/database.test.ts` and `backend/tests/integration/privacy.test.ts` **must** still pass, confirming they are correctly connecting to and testing against the real test database.
-3.  The test execution time for the API tests (e.g., `journals.test.ts`) should be noticeably faster.
-4.  The files `backend/jest.config.cjs` and `backend/jest.setup.js` **must be deleted**.
-
-## In-depth engineering plan
-
-### Step 1: Update Dependencies
-
-1.  **Install Vitest & Prismock, Uninstall Jest**: Run the following commands from the **project root**. This adds the new testing tools and removes the old ones.
+1.  **Update Dependencies:** Open your terminal at the **project root** and run these commands to swap out the testing libraries.
 
     ```bash
+    # Install Vitest, its coverage tool, the DOM environment, and Prismock
     npm install -D vitest @vitest/coverage-v8 jsdom prismock -w backend
+
+    # CRITICAL: Uninstall ONLY the Jest-related packages. We are keeping supertest-session.
     npm uninstall jest ts-jest @types/jest -w backend
     ```
 
-### Step 2: Establish Path Aliases and New Configuration
-
-This step makes our code cleaner and sets up the foundation for Vitest.
-
-1.  **Configure TypeScript Path Alias**: Edit `backend/tsconfig.json`. We need to tell the TypeScript compiler what `@src` means so your code editor can understand the imports.
-
-    ```json
-    // file: backend/tsconfig.json
-    {
-      "compilerOptions": {
-        "target": "ESNext",
-        "module": "nodenext",
-        "rootDir": "./src",
-        "outDir": "./dist",
-        "strict": true,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "isolatedModules": true,
-        "moduleResolution": "NodeNext",
-        "baseUrl": ".",
-        "paths": {
-          "@src/*": ["src/*"],
-          "ioredis": ["./node_modules/ioredis/dist/index.d.ts"]
-        }
-      },
-      "include": ["src/**/*"],
-      "exclude": ["node_modules"]
-    }
-    ```
-
-2.  **Delete Old Jest Config**:
+2.  **Delete Old Jest Configuration:**
 
     ```bash
-    rm backend/jest.config.cjs backend/jest.setup.js
+    rm backend/jest.config.cjs
+    rm backend/jest.setup.js
     ```
 
-3.  **Create `vitest.config.ts`**: Create the new configuration file in the `backend/` directory. This file tells Vitest how to run our tests and, crucially, contains the _runtime_ version of our path alias.
+3.  **Update `backend/tsconfig.json`:** Add the `@src` path alias for cleaner imports in our tests.
+
+    ```diff
+    --- a/backend/tsconfig.json
+    +++ b/backend/tsconfig.json
+    @@ -11,7 +11,9 @@
+     "moduleResolution": "NodeNext",
+     "baseUrl": ".",
+     "paths": {
+    ```
+
+-      "@src/*": ["src/*"],
+       "ioredis": ["./node_modules/ioredis/dist/index.d.ts"]
+  }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+  }
+  ```
+
+  ```
+
+4.  **Create `backend/vitest.config.ts`:** This is the main configuration file for Vitest.
 
     ```typescript
     // file: backend/vitest.config.ts
@@ -105,265 +74,340 @@ This step makes our code cleaner and sets up the foundation for Vitest.
         },
       },
       resolve: {
-        alias: [
-          {
-            find: "@src",
-            replacement: path.resolve(__dirname, "src"),
-          },
-          { find: /^(\.{1,2}\/.*)\.js$/, replacement: "$1" },
-        ],
+        alias: {
+          "@src": path.resolve(__dirname, "src"),
+        },
       },
     });
     ```
 
-4.  **Create `vitest.setup.ts`**: This simple file ensures environment variables and the global `ioredis` mock are loaded for all tests.
+5.  **Create `backend/vitest.setup.ts`:** This file loads our environment variables and sets up the global mock for `ioredis`.
 
     ```typescript
     // file: backend/vitest.setup.ts
     import "dotenv/config";
     import { vi } from "vitest";
-    // The path must be relative to this setup file
-    import { Redis as IORedisMock } from "./tests/mocks/ioredis.mock.cjs";
 
     vi.mock("ioredis", () => {
-      // This factory function returns the mock module
-      return {
-        Redis: IORedisMock,
-        default: IORedisMock, // Also mock the default export for CJS/ESM interop
-      };
-    });
-    ```
-
-### Step 3: Update `package.json` and `tsconfig.eslint.json`
-
-1.  **Update `backend/package.json` scripts**: Replace the `test` scripts to use `vitest` commands.
-
-    ```json
-    // file: backend/package.json
-    {
-      // ...
-      "scripts": {
-        "start": "pm2 start ecosystem.config.cjs --env production",
-        "stop": "pm2 stop ecosystem.config.cjs && pm2 delete ecosystem.config.cjs",
-        "dev": "nodemon --watch src --ext ts --exec \"npm run build && pm2 startOrReload ecosystem.config.cjs --env development\"",
-        "logs": "pm2 logs",
-        "build": "tsc",
-        "test": "vitest run --passWithNoTests",
-        "test:watch": "vitest",
-        "coverage": "vitest run --coverage",
-        "lint": "eslint . --ext .ts",
-        "prettier": "prettier --write ."
+      const EventEmitter = require("events");
+      class IORedisMock extends EventEmitter {
+        constructor() {
+          super();
+          process.nextTick(() => this.emit("connect"));
+        }
+        disconnect = vi.fn();
       }
-      // ...
-    }
+      return { Redis: IORedisMock, default: IORedisMock };
+    });
     ```
 
-2.  **Update `backend/tsconfig.eslint.json`**: Update the `include` path to reference the new Vitest config file for ESLint.
+6.  **Update `backend/package.json` Test Scripts:**
 
-    ```json
-    // file: backend/tsconfig.eslint.json
-    {
-      "extends": "./tsconfig.json",
-      "include": [
-        "src/**/*",
-        "tests/**/*",
-        "vitest.config.ts",
-        "eslint.config.js"
-      ]
-    }
+    ```diff
+    --- a/backend/package.json
+    +++ b/backend/package.json
+    @@ -5,9 +5,11 @@
+     "stop": "pm2 stop ecosystem.config.cjs && pm2 delete ecosystem.config.cjs",
+     "dev": "nodemon --watch src --ext ts --exec \"npm run build && pm2 startOrReload ecosystem.config.cjs --env development\"",
+     "logs": "pm2 logs",
+     "build": "tsc",
     ```
 
-### Step 4: Refactor Test Files
+- "test": "NODE_OPTIONS=\"--experimental-vm-modules\" jest --runInBand",
 
-This is the most critical phase. We will refactor tests file-by-file.
+* "test": "vitest run --passWithNoTests",
+* "test:watch": "vitest",
+* "coverage": "vitest run --coverage",
+  "lint": "eslint . --ext .ts",
+  "prettier": "prettier --write ."
+  },
 
-#### Group A: The "Golden Pattern" - API Tests with Prismock
 
-These tests will be refactored to use an isolated, in-memory database.
+    ```
 
-**1. Refactor `backend/tests/integration/journals.test.ts`**
+7.  **Update `backend/tsconfig.eslint.json`:**
 
-- **Action**: Replace the entire contents of the file with the following code. This is our new template for reliable API tests.
+    ```diff
+    --- a/backend/tsconfig.eslint.json
+    +++ b/backend/tsconfig.eslint.json
+    @@ -2,5 +2,5 @@
+     {
+       "extends": "./tsconfig.json",
+    -  "include": ["src/**/*", "tests/**/*", "jest.config.cjs", "eslint.config.js"]
+    +  "include": ["src/**/*", "tests/**/*", "vitest.config.ts", "eslint.config.js"]
+     }
+    ```
 
-  ```typescript
-  // file: backend/tests/integration/journals.test.ts
-  import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-  import * as http from "http";
-  import type { Express } from "express";
-  import session from "supertest-session";
-  import type { User, Journal } from "@prisma/client";
-  import { PrismockClient } from "prismock";
-  import { prisma as originalPrisma } from "@src/lib/prisma.js";
+**Verification Point:** The foundation is laid. Now, from the `backend` directory, run `vitest`. Most tests will fail due to syntax errors (`jest` is not defined, etc.), but this command should execute without crashing. This confirms Vitest is configured correctly.
 
-  // Step 1: Mock the prisma module for this file only.
-  vi.mock("@src/lib/prisma.js", () => ({
-    prisma: new PrismockClient(),
-  }));
+---
 
-  // Step 2: Dynamically import the app. It will now receive the mocked prisma client.
-  const { createApp } = await import("@src/index.js");
+### **Step 2: Iterative Test Refactoring**
 
-  // Step 3: Get a typed handle to the mocked prisma instance for seeding data.
-  const testPrisma = originalPrisma as unknown as PrismockClient;
+We will now go through the test files one by one. For each file, you will:
 
-  describe("/api/journals endpoints", () => {
-    // Step 4: Declare all shared variables in the outer scope.
-    let app: Express;
-    let server: http.Server;
-    let agent: session.Session;
-    let user1: User;
-    let csrfToken: string;
+1.  Run the specific test file and see it fail.
+2.  Replace the entire content with the corrected code.
+3.  Run the specific test file again and see it pass.
 
-    beforeEach(async () => {
-      // Step 5: Setup a pristine environment for EVERY test.
-      await testPrisma.reset();
-      const { app: freshApp } = createApp();
-      app = freshApp;
-      await new Promise<void>((resolve) => {
-        server = app.listen(0, () => resolve());
+#### **Group A: API Tests with Prismock & `supertest-session`**
+
+These are the most important tests to fix. We will apply our "Golden Pattern" of mocking Prisma.
+
+**File 1: `journals.test.ts`**
+
+1.  **Run & See Fail:** From the `backend` directory, run:
+
+    ```bash
+    npx vitest tests/integration/journals.test.ts
+    ```
+
+    This will fail with syntax errors.
+
+2.  **Replace Content:** Replace the entire content of `backend/tests/integration/journals.test.ts` with this corrected code:
+
+    ```typescript
+    // file: backend/tests/integration/journals.test.ts
+    import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+    import * as http from "http";
+    import type { Express } from "express";
+    import session from "supertest-session"; // <-- CORRECT: Use stateful session
+    import type { User } from "@prisma/client";
+    import { PrismockClient } from "prismock";
+    import { prisma as originalPrisma } from "@src/lib/prisma.js";
+
+    // Mock the prisma module. Any code that imports it will get our in-memory client.
+    vi.mock("@src/lib/prisma.js", () => ({
+      prisma: new PrismockClient(),
+    }));
+
+    // Dynamically import the app *after* the mock is in place.
+    const { createApp } = await import("@src/index.js");
+    const testPrisma = originalPrisma as unknown as PrismockClient;
+
+    describe("/api/journals endpoints", () => {
+      let app: Express;
+      let server: http.Server;
+      let agent: session.Session; // <-- CORRECT: Use session type
+      let user1: User;
+      let csrfToken: string;
+
+      beforeEach(async () => {
+        await testPrisma.reset(); // Reset the in-memory database
+        app = createApp();
+        await new Promise<void>((resolve) => (server = app.listen(0, resolve)));
+        agent = session(app); // <-- CORRECT: Initialize stateful agent
+
+        user1 = await testPrisma.user.create({
+          data: {
+            email: `user1-${Date.now()}@test.com`,
+            agreementsSigned: true,
+            nightscoutUrl: "https://user1.ns.com",
+          },
+        });
+        const csrfRes = await agent.get("/api/csrf-token");
+        csrfToken = csrfRes.body.csrfToken;
       });
-      agent = session(app);
 
-      user1 = await testPrisma.user.create({
-        data: {
-          email: `user1-${Date.now()}@test.com`,
-          agreementsSigned: true,
-          nightscoutUrl: "https://user1.ns.com",
-        },
-      });
-      const csrfRes = await agent.get("/api/csrf-token");
-      csrfToken = csrfRes.body.csrfToken;
-    });
-
-    afterEach(async () => {
-      await new Promise<void>((resolve) => server.close(() => resolve()));
-    });
-
-    // Step 6: Your tests now run in a perfectly isolated environment.
-    it("should return 401 Unauthorized if no user is authenticated", async () => {
-      const res = await agent.post("/api/journals").send({ _csrf: csrfToken });
-      expect(res.status).toBe(401);
-    });
-
-    it("should return 403 Forbidden if the user has not signed agreements", async () => {
-      const unagreedUser = await testPrisma.user.create({
-        data: {
-          email: `unagreed-${Date.now()}@test.com`,
-          agreementsSigned: false,
-          nightscoutUrl: "https://unagreed.ns.com",
-        },
+      afterEach(async () => {
+        await new Promise<void>((resolve) => server.close(resolve));
       });
 
-      const response = await agent
-        .post("/api/journals")
-        .set("x-test-user-id", unagreedUser.id)
-        .send({ _csrf: csrfToken });
+      // All previous test cases for this file go here...
+      // Example:
+      it("should return 201 Created and status PENDING for a valid request", async () => {
+        const res = await agent
+          .post("/api/journals")
+          .set("x-test-user-id", user1.id)
+          .send({ _csrf: csrfToken });
 
-      expect(response.status).toBe(403);
+        expect(res.status).toBe(201);
+        expect(res.body.journal).toBeDefined();
+        expect(res.body.journal.status).toBe("PENDING");
+      });
     });
+    ```
 
-    // ... continue this pattern for all other tests in the file
-  });
-  ```
+3.  **Run & See Pass:** Run the command again.
+    ```bash
+    npx vitest tests/integration/journals.test.ts
+    ```
+    All tests in this file should now pass quickly.
 
-**2. Apply the Golden Pattern to Other API Tests**
+**File 2: `user.test.ts`**
 
-- **Action**: Apply the same pattern shown above to the following files. The core structure (mocking, imports, `beforeEach`/`afterEach` hooks) will be the same. You will need to adjust the data seeding in `beforeEach` based on what each test file needs.
-  - `backend/tests/integration/user.test.ts`
-  - `backend/tests/integration/queue.test.ts`
-  - `backend/tests/integration/auth.test.ts`
+1.  **Run & See Fail:** `npx vitest tests/integration/user.test.ts`
+2.  **Replace Content:** Use the same "Golden Pattern".
 
-#### Group B: The "Real Database" Tests
+    ```typescript
+    // file: backend/tests/integration/user.test.ts
+    import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+    import * as http from "http";
+    import type { Express } from "express";
+    import session from "supertest-session";
+    import type { User } from "@prisma/client";
+    import { PrismockClient } from "prismock";
+    import { prisma as originalPrisma } from "@src/lib/prisma.js";
+    import { decrypt } from "@src/lib/encryption.ts";
 
-These tests must continue to hit the real test database to be valuable.
+    vi.mock("@src/lib/prisma.js", () => ({
+      prisma: new PrismockClient(),
+    }));
 
-- **Action**: For the files below, **DO NOT ADD** the `vi.mock` call for Prisma. The only change is to update the Jest imports to Vitest.
+    const { createApp } = await import("@src/index.js");
+    const testPrisma = originalPrisma as unknown as PrismockClient;
 
-**1. Refactor `backend/tests/integration/database.test.ts`**
+    describe("PUT /api/user/settings", () => {
+      let app: Express;
+      let server: http.Server;
+      let agent: session.Session;
+      let testUser: User;
+      let csrfToken: string;
 
-```typescript
-// file: backend/tests/integration/database.test.ts
-import { describe, it, expect, afterAll } from "vitest"; // <-- CHANGE HERE
-import { PrismaClient } from "@prisma/client";
+      beforeEach(async () => {
+        await testPrisma.reset();
+        app = createApp();
+        await new Promise<void>((resolve) => (server = app.listen(0, resolve)));
+        agent = session(app);
 
-const prisma = new PrismaClient();
+        testUser = await testPrisma.user.create({
+          data: {
+            email: `settings-user-${Date.now()}@test.com`,
+            agreementsSigned: true,
+          },
+        });
+        const csrfRes = await agent.get("/api/csrf-token");
+        csrfToken = csrfRes.body.csrfToken;
+      });
 
-describe("Database Connection", () => {
-  afterAll(async () => {
-    await prisma.$disconnect();
-  });
+      afterEach(async () => {
+        await new Promise<void>((resolve) => server.close(resolve));
+      });
 
-  it("should connect to the database and perform a query", async () => {
-    const userCount = await prisma.user.count();
-    expect(userCount).toBeGreaterThanOrEqual(0);
-  });
-});
-```
+      it("should successfully update all settings and encrypt the token", async () => {
+        const settingsPayload = {
+          nightscoutUrl: "https://my-nightscout-instance.com",
+          nightscoutToken: "my-secret-token-12345",
+          preferredUnits: "MMOL",
+          _csrf: csrfToken,
+        };
 
-**2. Refactor `backend/tests/integration/privacy.test.ts`**
+        const response = await agent
+          .put("/api/user/settings")
+          .set("x-test-user-id", testUser.id)
+          .send(settingsPayload);
+        expect(response.status).toBe(200);
 
-```typescript
-// file: backend/tests/integration/privacy.test.ts
-import "dotenv/config";
-import { describe, it, expect, beforeAll, afterAll } from "vitest"; // <-- CHANGE HERE
-import { prisma } from "@src/lib/prisma.js"; // <-- Use the new alias
+        const updatedUser = await testPrisma.user.findUnique({
+          where: { id: testUser.id },
+        });
+        expect(updatedUser!.nightscoutUrl).toBe(settingsPayload.nightscoutUrl);
+        expect(updatedUser!.preferredUnits).toBe("MMOL");
+        expect(decrypt(updatedUser!.nightscoutToken!)).toBe(
+          settingsPayload.nightscoutToken
+        );
+      });
+      // ... include all other tests from this file here
+    });
+    ```
 
-describe("User Data Privacy", () => {
-  // ... (the rest of the file's logic remains the same)
-});
-```
+3.  **Run & See Pass:** `npx vitest tests/integration/user.test.ts`
 
-#### Group C: The "Simple Conversion" Tests
+_(Continue this pattern for all files, including `queue.test.ts` and `auth.test.ts` in Group A)_
 
-These files don't use the database directly but need syntax updates.
+---
 
-- **Action**: For each file listed below, perform these two changes:
-  1.  Change imports from `@jest/globals` to `vitest`.
-  2.  Change any instance of the `jest` global object to `vi` (e.g., `jest.fn()` becomes `vi.fn()`).
+#### **Group B: The "Real Database" Tests**
 
-**1. Refactor `backend/tests/unit/encryption.test.ts`**
+These tests **must not** have Prisma mocked. The change is a simple syntax update.
 
-```typescript
-// file: backend/tests/unit/encryption.test.ts
-process.env.ENCRYPTION_KEY =
-  "151b795a05b8758bb36b9b3813333d5484373c0b735697525834c643a2b8593c";
+**File 3: `database.test.ts`**
 
-import { encrypt, decrypt } from "@src/lib/encryption.js"; // <-- Use alias
-import { describe, it, expect, vi } from "vitest"; // <-- CHANGE HERE
+1.  **Run & See Fail:** `npx vitest tests/integration/database.test.ts`
+2.  **Replace Content:**
 
-describe("Encryption Utility", () => {
-  // ... (rest of the tests are unchanged)
-});
+    ```typescript
+    // file: backend/tests/integration/database.test.ts
+    import { describe, it, expect, afterAll } from "vitest";
+    import { PrismaClient } from "@prisma/client";
 
-describe("Encryption Utility Initialization", () => {
-  it("should throw an error if ENCRYPTION_KEY is not set", async () => {
-    // ...
-    await expect(async () => {
-      vi.resetModules(); // <-- CHANGE HERE
-      await import("@src/lib/encryption.js");
-    }).rejects.toThrow(/* ... */);
-    // ...
-  });
-  // ...
-});
-```
+    const prisma = new PrismaClient();
 
-**2. Apply Simple Conversion to Remaining Files**
+    describe("Database Connection", () => {
+      afterAll(async () => {
+        await prisma.$disconnect();
+      });
 
-- **Action**: Apply the same import and `jest`->`vi` object changes to the following files:
-  - `backend/tests/unit/auth.allowlist.test.ts`
-  - `backend/tests/unit/auth.test.ts`
-  - `backend/tests/unit/worker.test.ts`
-  - `backend/tests/integration/server.test.ts`
-  - `backend/tests/integration/session.test.ts`
-  - `backend/tests/integration/startup.test.ts`
+      it("should connect to the database and perform a query", async () => {
+        const userCount = await prisma.user.count();
+        expect(userCount).toBeGreaterThanOrEqual(0);
+      });
+    });
+    ```
 
-### Step 5: Verify Migration
+3.  **Run & See Pass:** Make sure your test database is running (`just test-env-up`), then run:
+    ```bash
+    npx vitest tests/integration/database.test.ts
+    ```
 
-1.  **Run Tests**: From the **project root**, execute the entire test suite.
+_(Continue this pattern for `privacy.test.ts` in Group B)_
+
+---
+
+#### **Group C: Simple Conversion Tests**
+
+These tests just need syntax updates from Jest to Vitest.
+
+**File 4: `server.test.ts`**
+
+1.  **Run & See Fail:** `npx vitest tests/integration/server.test.ts`
+2.  **Replace Content:**
+
+    ```typescript
+    // file: backend/tests/integration/server.test.ts
+    import { describe, it, expect, beforeEach, afterEach } from "vitest";
+    import supertest from "supertest";
+    import { createApp } from "@src/index";
+    import * as http from "http";
+    import type { Express } from "express";
+
+    describe("GET /health", () => {
+      let app: Express;
+      let server: http.Server;
+
+      beforeEach(async () => {
+        app = createApp();
+        await new Promise<void>((resolve) => (server = app.listen(0, resolve)));
+      });
+
+      afterEach(async () => {
+        await new Promise<void>((resolve) => server.close(resolve));
+      });
+
+      it("should return 200 OK with a status message", async () => {
+        const response = await supertest(server).get("/health");
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ status: "ok" });
+      });
+    });
+    ```
+
+3.  **Run & See Pass:** `npx vitest tests/integration/server.test.ts`
+
+_(Continue this iterative process for all remaining test files in Group C)_
+
+---
+
+### **Step 3: Final Verification**
+
+Once you have iteratively fixed and verified each individual test file, it's time for the final check.
+
+1.  **Run the Full Test Suite:** From the **project root**, run the main test script.
 
     ```bash
     npm test -w backend
     ```
 
-    All tests should pass reliably. The API tests should complete much faster than before. You have now completed the migration.
+2.  **Confirm Success:** All tests should now pass together in a single run. The execution should be significantly faster than the old Jest suite.
+
+You have now successfully and methodically completed the migration. The test suite is faster, more reliable, and free of the race conditions that caused the flaky tests.
