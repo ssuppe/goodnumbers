@@ -1,0 +1,19 @@
+{
+"mcpServers": {
+    "filesystem": {
+        "command": "npx",
+        "args": [
+            "-y",
+            "@modelcontextprotocol/server-filesystem",
+            "/home/ssuppe/vscode/goodnumbers-workspace"
+        ]
+    },
+    "context7": {
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "PLACEHOLDER_CONTEXT7_API_KEY_2"
+      }
+    }
+}
+}
+

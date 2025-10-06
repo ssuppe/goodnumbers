@@ -1,13 +1,14 @@
-import { PrismaClient } from '@prisma/client';
+import { describe, it, expect, afterAll } from "vitest";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-describe('Database Connection', () => {
+describe("Database Connection", () => {
   afterAll(async () => {
     await prisma.$disconnect();
   });
 
-  it('should connect to the database and perform a query', async () => {
+  it("should connect to the database and perform a query", async () => {
     const userCount = await prisma.user.count();
     expect(userCount).toBeGreaterThanOrEqual(0);
   });

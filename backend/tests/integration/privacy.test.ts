@@ -1,5 +1,5 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 
 const prisma = new PrismaClient();
 
