@@ -172,7 +172,7 @@ The project uses a multi-file environment variable strategy:
 - **`.env`**: Read exclusively by `docker-compose`. It contains variables needed to configure the services themselves, such as `REDIS_PASSWORD`.
 - **`.env.development`**: Read by the Node.js application when `NODE_ENV=development`. Contains application secrets and connection details for the local development environment.
 - **`.env.production`**: Read by the Node.js application when `NODE_ENV=production`. Contains secrets for the live production environment.
-- **`.env.test`**: Read by Jest during automated testing.
+- `.env.test`: Read by Vitest during automated testing.
 
 ## 4. Data Handling
 
