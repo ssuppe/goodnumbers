@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import * as http from 'http';
-import type { Express } from 'express';
+import type { Express, Request, Response, NextFunction } from 'express';
 
 // 1. Mock the module
 const mockGetSession = vi.fn();
-const mockExpressAuth = vi.fn(() => (req: Request, res: Response, next: Function) => next());
+const mockExpressAuth = vi.fn(() => (req: Request, res: Response, next: NextFunction) => next());
 
 vi.mock('@auth/express', () => ({
   getSession: mockGetSession,
