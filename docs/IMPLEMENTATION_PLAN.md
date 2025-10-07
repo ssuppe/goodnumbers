@@ -514,6 +514,10 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 ---
 
+#### ** Task 2.5: Migrate from jest to vitest
+
+* Objective: Move from jest to vitest.
+
 #### **Task 3: Create Shared `@goodnumbers/types` Package for Prisma**
 
 *   **Objective:** To configure Prisma to generate its client types into a shared package, allowing the frontend to import data types like `User` and `Journal` without bundling the Prisma client itself.
