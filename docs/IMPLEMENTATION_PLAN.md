@@ -42,7 +42,7 @@ For services that interact with external dependencies like a database or a Redis
 
 1.  **Tier 1: Mocked Integration Tests (Fast Feedback)**
     - **Purpose:** To verify the application's internal logic and the "contract" between different parts of our code. For example, ensuring an API route correctly calls a specific function from our queue library.
-    - **Mechanism:** We use Jest's mocking capabilities (`jest.unstable_mockModule`) to replace the real external dependency with a controlled, in-memory version.
+    - **Mechanism:** We use Vitest's mocking capabilities (`vi.mock`) to replace the real external dependency with a controlled, in-memory version.
     - **Characteristics:** These tests are extremely fast, reliable, and can run in parallel without interfering with each other. They are ideal for running frequently during local development.
     - **Example:** `tests/integration/queue.test.ts`
 
@@ -54,12 +54,12 @@ For services that interact with external dependencies like a database or a Redis
 
 3.  **Unit Testing:**
     - **Goal:** To test the smallest pieces of logic (e.g., a single utility function) in complete isolation.
-    - **Tool:** **Jest** will be used for its test runner, assertion library (`expect`), and mocking capabilities.
+    - **Tool:** **Vitest** will be used for its test runner, assertion library (`expect`), and mocking capabilities.
 
 4.  **Integration Testing:**
     - **Goal:** To test how multiple units work together.
-    - **Backend Tools:** **Jest** and **`supertest-session`** will be used to test Express API endpoints. `supertest-session` is critical for correctly managing cookies and state in tests involving authentication and CSRF protection.
-    - **Frontend Tools:** **Jest** and **React Testing Library** will be used to test React components, ensuring they render and behave correctly from a user's perspective.
+    - **Backend Tools:** **Vitest** and **`supertest-session`** will be used to test Express API endpoints. `supertest-session` is critical for correctly managing cookies and state in tests involving authentication and CSRF protection.
+    - **Frontend Tools:** **Vitest** and **React Testing Library** will be used to test React components, ensuring they render and behave correctly from a user's perspective.
 
 5.  **End-to-End (E2E) Testing:**
     - **Goal:** To test critical user journeys from start to finish in a real browser environment.
@@ -115,20 +115,20 @@ afterEach((done) => {
 
 ### 2.4. Mocking with ES Modules
 
-When using ES Modules (`"type": "module"` in `package.json`), the standard `jest.mock()` function can be unreliable for mocking modules, especially built-in Node.js modules like `fs/promises`. This is due to the way ES Modules are loaded and how Jest's hoisting mechanism works.
+When using ES Modules (`"type": "module"` in `package.json`), mocking modules requires careful consideration. Vitest provides a robust mocking API.
 
 **Recommended Approach:**
 
-To reliably mock modules in an ES Module environment, use the experimental `jest.unstable_mockModule()` API combined with dynamic `import()`.
+To reliably mock modules in an ES Module environment, use `vi.mock()` combined with dynamic `import()`.
 
 **Example (`auth.test.ts`):**
 
 ```typescript
-import { jest, describe, it, expect } from "@jest/globals";
+import { vi, describe, it, expect } from "vitest";
 
 // Mock fs/promises *before* importing the auth module
-jest.unstable_mockModule("fs/promises", () => ({
-  readFile: jest.fn(),
+vi.mock("fs/promises", () => ({
+  readFile: vi.fn(),
 }));
 
 // Dynamically import the modules
@@ -138,7 +138,7 @@ const { authConfig } = await import("../../src/lib/auth"); // Assuming authConfi
 describe("signIn callback", () => {
   it("should allow a user on the allowlist", async () => {
     // Configure the mock for this test
-    (readFile as jest.Mock).mockResolvedValue("user@example.com\n");
+    (readFile as ReturnType<typeof vi.fn>).mockResolvedValue("user@example.com\n");
 
     // ... rest of the test
   });
@@ -206,7 +206,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 1.  **Task: Initialize Project & Dependencies** - COMPLETE
     - Make a new subfolder calld 'goodnumbers' which will be the project root
     - **Action:** Set up the Node.js project (`npm init`), install core dependencies (Express, Prisma, TypeScript), and configure project files (`tsconfig.json`, `.pylintrc`, `.prettierrc`).
-    - **Action:** Install testing dependencies: `jest`, `ts-jest`, `@types/jest`, `supertest`.
+    - **Action:** Install testing dependencies: `vitest`, `@vitest/coverage-v8`, `jsdom`, `prismock`, `supertest`.
     - **Test:** Confirm the project compiles (`tsc`), lints, and the test runner executes without errors.
     - **Commit:** `chore: Initial project setup and configuration`
 
@@ -226,13 +226,13 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Action:** Create a public `/health` endpoint.
     - **Action:** Install `zod` and establish a pattern for API input validation.
     - **Action:** Implement a global, catch-all error-handling middleware.
-    - **Test:** In a new file at `goodnumbers/tests/integration/server.test.ts`, write a test using Jest and `supertest` that imports `createApp` and asserts the `/health` endpoint is correct.
+    - **Test:** In a new file at `goodnumbers/tests/integration/server.test.ts`, write a test using Vitest and `supertest` that imports `createApp` and asserts the `/health` endpoint is correct.
     - **Commit:** `feat(server): add basic express server with health check and security hardening`
 
 4.  **Task: Build Credential Encryption Utility** - COMPLETE
     - **Action:** Create a self-contained utility module (`encryption.ts`) with `encrypt` and `decrypt` functions using Node.js's built-in `crypto` module, as specified for handling Nightscout credentials.
     - **Action:** Install and configure `dotenv` to load the `ENCRYPTION_KEY` from a `.env` file in the application's entry point.
-    - **Test:** Write unit tests using Jest for the encryption utility. Ensure that `decrypt(encrypt(data))` returns the original data. Test edge cases like empty or null inputs and initialization failures.
+    - **Test:** Write unit tests using Vitest for the encryption utility. Ensure that `decrypt(encrypt(data))` returns the original data. Test edge cases like empty or null inputs and initialization failures.
     - **Commit:** `feat(utils): create encryption utility for sensitive data`
 
 ---
@@ -674,19 +674,19 @@ For each task listed in the implementation phases below, the following GitHub-in
 1.  **Task: Implement Data Fetching & Analysis**
     - **Action:** In the background worker, implement the logic to fetch data from a user's Nightscout instance (decrypting credentials first).
     - **Action:** Integrate the existing analysis scripts to process the raw data into structured insights and `TimeCluster` objects.
-    - **Test:** Write unit tests using Jest for the data fetching and analysis pipeline, heavily mocking the external Nightscout API.
+    - **Test:** Write unit tests using Vitest for the data fetching and analysis pipeline, heavily mocking the external Nightscout API.
     - **Commit:** `feat(worker): P6_T1 implement nightscout data fetching and statistical analysis`
 
 2.  **Task: Implement AI & TTS Pipeline**
     - **Action:** Implement the multi-pass Gemini calls to generate the script and description.
     - **Action:** Implement the call to the TTS service to generate the audio file.
     - **Action:** Implement robust error handling for each step of this pipeline.
-    - **Test:** Write integration tests using Jest for this pipeline, mocking the Gemini and TTS APIs to ensure the flow works and that errors are handled gracefully.
+    - **Test:** Write integration tests using Vitest for this pipeline, mocking the Gemini and TTS APIs to ensure the flow works and that errors are handled gracefully.
     - **Commit:** `feat(worker): P6_T2 implement ai and tts generation pipeline`
 
 3.  **Task: Finalize Job and Update Database**
     - **Action:** Implement the final step in the worker, where all generated artifacts (podcast URL, chart data, etc.) are saved to the `Journal` and `GlycemicEventCluster` tables in the database. The journal `status` should be updated to `COMPLETE`.
-    - **Test:** Write a full integration test using Jest for the background worker that runs through the entire (mocked) process and verifies that the database is updated correctly at the end.
+    - **Test:** Write a full integration test using Vitest for the background worker that runs through the entire (mocked) process and verifies that the database is updated correctly at the end.
     - **Commit:** `feat(worker): P6_T3 finalize job by saving all generated data`
 
 ## 5. Deployment and Security Hardening
