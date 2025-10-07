@@ -23,6 +23,7 @@
     "@auth/express": "^0.11.0",
     "@auth/prisma-adapter": "^2.10.0",
     "@goodnumbers/schemas": "file:../packages/schemas",
+    "@goodnumbers/types": "file:../packages/types",
     "@prisma/client": "^6.14.0",
     "body-parser": "^1.20.2",
     "bullmq": "^5.60.0",

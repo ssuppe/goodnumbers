@@ -5,6 +5,7 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../../packages/types/src/generated/client"
 }
 
 // Enum for type safety on user's preferred glucose units
