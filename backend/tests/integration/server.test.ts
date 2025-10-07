@@ -1,24 +1,26 @@
-import request from 'supertest';
-import { createApp } from '../../src/index.ts'; // Import the factory
-import * as http from 'http';
-import type { Express } from 'express';
+// file: backend/tests/integration/server.test.ts
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import supertest from "supertest";
+import { createApp } from "@src/index";
+import * as http from "http";
+import type { Express } from "express";
 
-let server: http.Server;
-let app: Express; // To hold the app instance
+describe("GET /health", () => {
+  let app: Express;
+  let server: http.Server;
 
-beforeEach((done) => {
-  app = createApp(); // Create a new app instance for each test
-  server = app.listen(0, done);
-});
+  beforeEach(async () => {
+    app = createApp();
+    await new Promise<void>((resolve) => (server = app.listen(0, resolve)));
+  });
 
-afterEach((done) => {
-  server.close(done);
-});
+  afterEach(async () => {
+    await new Promise<void>((resolve) => server.close(resolve));
+  });
 
-describe('GET /health', () => {
-  it('should return 200 OK with a status message', async () => {
-    const response = await request(server).get('/health');
+  it("should return 200 OK with a status message", async () => {
+    const response = await supertest(server).get("/health");
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ status: 'ok' });
+    expect(response.body).toEqual({ status: "ok" });
   });
 });

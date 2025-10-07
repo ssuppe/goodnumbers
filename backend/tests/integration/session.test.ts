@@ -1,43 +1,37 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import * as http from 'http';
-import { jest } from '@jest/globals';
-import type { Express } from 'express';
+import type { Express, Request, Response, NextFunction } from 'express';
 
 // 1. Mock the module
-jest.unstable_mockModule('@auth/express', () => ({
-  getSession: jest.fn(),
-  // Add ExpressAuth to the mock
-  ExpressAuth: jest.fn(
-    () => (req: Request, res: Response, next: NextFunction) => next(),
-  ), // Mock it as a simple middleware
+const mockGetSession = vi.fn();
+const mockExpressAuth = vi.fn(() => (req: Request, res: Response, next: NextFunction) => next());
+
+vi.mock('@auth/express', () => ({
+  getSession: mockGetSession,
+  ExpressAuth: mockExpressAuth,
 }));
 
-// 2. Dynamically import the mocked function and the app factory
-const { getSession } = await import('@auth/express');
-const { createApp } = await import('../../src/index.ts');
-
-// 3. Type assertions for clarity
-const mockedGetSession = getSession as jest.Mock;
+// Dynamically import the app factory
+let createApp: () => Express;
 let app: Express;
 let server: http.Server;
 
-beforeEach((done) => {
-  // 4. Create the app instance *after* mocks are in place
-  app = createApp();
-  server = app.listen(0, done);
-});
-
-afterEach((done) => {
-  server.close(done);
-});
-
-beforeEach(() => {
-  mockedGetSession.mockClear();
-});
-
 describe('GET /api/session', () => {
+  beforeEach(async () => {
+    vi.resetModules(); // Ensure fresh import of createApp
+    ({ createApp } = await import('@src/index.ts')); // Dynamically import createApp
+    app = createApp();
+    await new Promise<void>((resolve) => (server = app.listen(0, resolve)));
+    mockGetSession.mockClear(); // Clear mock history
+  });
+
+  afterEach(async () => {
+    await new Promise<void>((resolve) => server.close(resolve));
+  });
+
   it('should return null when the user is not authenticated', async () => {
-    mockedGetSession.mockResolvedValue(null);
+    mockGetSession.mockResolvedValue(null);
 
     const response = await request(server).get('/api/session');
 
@@ -54,7 +48,7 @@ describe('GET /api/session', () => {
       },
       expires: new Date(Date.now() + 3600 * 1000).toISOString(),
     };
-    mockedGetSession.mockResolvedValue(mockSession);
+    mockGetSession.mockResolvedValue(mockSession);
 
     const response = await request(server).get('/api/session');
 

@@ -9,7 +9,9 @@
     "dev": "nodemon --watch src --ext ts --exec \"npm run build && pm2 startOrReload ecosystem.config.cjs --env development\"",
     "logs": "pm2 logs",
     "build": "tsc",
-    "test": "NODE_OPTIONS=\"--experimental-vm-modules\" jest --runInBand",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
     "lint": "eslint . --ext .ts",
     "prettier": "prettier --write ."
   },
@@ -20,8 +22,8 @@
   "dependencies": {
     "@auth/express": "^0.11.0",
     "@auth/prisma-adapter": "^2.10.0",
-    "@prisma/client": "^6.14.0",
     "@goodnumbers/schemas": "file:../packages/schemas",
+    "@prisma/client": "^6.14.0",
     "body-parser": "^1.20.2",
     "bullmq": "^5.60.0",
     "cookie-parser": "^1.4.6",
@@ -39,22 +41,23 @@
     "@eslint/js": "^9.33.0",
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.3",
-    "@types/jest": "^30.0.0",
     "@types/node": "^24.3.0",
     "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^8.39.1",
     "@typescript-eslint/parser": "^8.39.1",
+    "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^9.33.0",
     "fast-check": "^4.3.0",
     "globals": "^16.3.0",
-    "jest": "^30.0.5",
+    "jsdom": "^27.0.0",
     "nodemon": "^3.1.10",
     "prettier": "^3.6.2",
+    "prismock": "^1.35.4",
     "supertest": "^7.1.4",
     "supertest-session": "^5.0.1",
-    "ts-jest": "^29.4.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.39.1"
+    "typescript-eslint": "^8.39.1",
+    "vitest": "^3.2.4"
   }
 }
