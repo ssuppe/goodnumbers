@@ -1,19 +1,5 @@
-Of course. It is a sign of a mature engineering process to continually refine the plan based on the realities of implementation. An accurate roadmap is essential for success.
+Of course. Here is the complete, updated `Docs/IMPLEMENTATION_PLAN.md` file with the new changes integrated.
 
-I have performed a deep analysis of the remaining tasks in the `IMPLEMENTATION_PLAN.md` and have updated it extensively to align with the current state of the codebase, address critical gaps, and add the necessary detail for your senior engineer to draft their design documents.
-
-The key changes I've made are:
-
-1.  **Fixed a Critical Data-Integrity Bug:** The plan now includes an explicit task to correct a bug where `GlycemicEventCluster` records were not being deleted when a journal was deleted. This is a crucial privacy and data-integrity fix.
-2.  **Added the Missing Frontend Project Setup:** The plan was missing the entire step of creating and configuring the React frontend application. I have added a new, detailed task at the beginning of Phase 5 to address this, including setting up the build tools, development server proxy, and testing environment.
-3.  **Aligned the Plan with Reality:** The task to remove PII from logs was already completed ahead of schedule in the code. I have updated the plan to reflect this, marking the task as complete.
-4.  **Enriched Task Details:** I have added more specific implementation details to the upcoming tasks, such as clarifying the exact changes needed for the `POST /api/journals` endpoint, to ensure the requirements are crystal clear.
-
-This revised document now serves as a robust and accurate blueprint for the next phases of development.
-
-Here is the complete, updated `IMPLEMENTATION_PLAN.md`:
-
-`````markdown
 # file: Docs/IMPLEMENTATION_PLAN.md
 
 # Goodnumbers Implementation Plan
@@ -144,9 +130,6 @@ describe("signIn callback", () => {
   });
 });
 ````
-`````
-
-````
 
 This approach ensures that the mock is registered before your code imports the module, providing a reliable way to isolate dependencies in your tests.
 
@@ -220,8 +203,8 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 3.  **Task: Create Basic Express Server** - COMPLETE
     - **Action:** Set up a minimal Express server application. **Best Practice Update:** The server architecture should be split into two files for testability and clarity.
-        - `src/index.ts`: This file defines and exports a `createApp()` factory function. It **does not** start a server itself, making it safe to import in test files.
-        - `src/server.ts`: This file imports `createApp()` and calls `app.listen()` to start the server. This file serves as the application's main entry point.
+      - `src/index.ts`: This file defines and exports a `createApp()` factory function. It **does not** start a server itself, making it safe to import in test files.
+      - `src/server.ts`: This file imports `createApp()` and calls `app.listen()` to start the server. This file serves as the application's main entry point.
     - **Action:** Add `helmet` and `express-rate-limit` middleware.
     - **Action:** Create a public `/health` endpoint.
     - **Action:** Install `zod` and establish a pattern for API input validation.
@@ -379,15 +362,15 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 #### **Task 1: Establish Monorepo with npm Workspaces**
 
-*   **Objective:** To restructure the project from a single-package setup into a multi-package monorepo using npm workspaces. This is the foundational step for all full-stack development.
-*   **Risks & Mitigations:**
-    *   **Risk:** Incorrectly configured `package.json` files can lead to dependency resolution issues.
-        *   **Mitigation:** This plan provides exact templates for the new configuration files. The engineer must follow the backup and migration steps precisely.
-    *   **Risk:** Confusion about where to run `npm` commands.
-        *   **Mitigation:** The plan includes new root-level scripts and documentation explaining that `npm install` must now be run from the project root.
-*   **Implementation Notes:**
-    *   This is primarily a file-moving and configuration task. It should be done on a dedicated branch.
-    *   **Crucial Naming Convention Change:** The existing backend directory, currently named `Frontend/`, **must** be renamed to `backend/` for clarity and to avoid confusion with the actual frontend application we are about to create.
+- **Objective:** To restructure the project from a single-package setup into a multi-package monorepo using npm workspaces. This is the foundational step for all full-stack development.
+- **Risks & Mitigations:**
+  - **Risk:** Incorrectly configured `package.json` files can lead to dependency resolution issues.
+    - **Mitigation:** This plan provides exact templates for the new configuration files. The engineer must follow the backup and migration steps precisely.
+  - **Risk:** Confusion about where to run `npm` commands.
+    - **Mitigation:** The plan includes new root-level scripts and documentation explaining that `npm install` must now be run from the project root.
+- **Implementation Notes:**
+  - This is primarily a file-moving and configuration task. It should be done on a dedicated branch.
+  - **Crucial Naming Convention Change:** The existing backend directory, currently named `Frontend/`, **must** be renamed to `backend/` for clarity and to avoid confusion with the actual frontend application we are about to create.
 
 ##### **In-depth Engineering Plan (Task 1)**
 
@@ -403,11 +386,7 @@ For each task listed in the implementation phases below, the following GitHub-in
       "name": "goodnumbers-monorepo",
       "version": "1.0.0",
       "private": true,
-      "workspaces": [
-        "backend",
-        "frontend",
-        "packages/*"
-      ],
+      "workspaces": ["backend", "frontend", "packages/*"],
       "scripts": {
         "dev:backend": "npm run dev -w backend",
         "dev:frontend": "npm run dev -w frontend",
@@ -440,8 +419,8 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 #### **Task 2: Create Shared `@goodnumbers/schemas` Package**
 
-*   **Objective:** To extract the environment-agnostic Zod validation schemas into a dedicated, shared internal package that both the frontend and backend can consume.
-*   **Acceptance Gate:** The backend application must be refactored to import schemas from the new `@goodnumbers/schemas` package, and all backend integration tests must continue to pass.
+- **Objective:** To extract the environment-agnostic Zod validation schemas into a dedicated, shared internal package that both the frontend and backend can consume.
+- **Acceptance Gate:** The backend application must be refactored to import schemas from the new `@goodnumbers/schemas` package, and all backend integration tests must continue to pass.
 
 ##### **In-depth Engineering Plan (Task 2)**
 
@@ -502,7 +481,7 @@ For each task listed in the implementation phases below, the following GitHub-in
         // ... other dependencies
         "@goodnumbers/schemas": "workspace:*",
         "zod": "^4.1.8"
-      },
+      }
       // ...
     }
     ```
@@ -514,14 +493,14 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 ---
 
-#### ** Task 2.5: Migrate from jest to vitest
+#### \*\* Task 2.5: Migrate from jest to vitest
 
-* Objective: Move from jest to vitest.
+- Objective: Move from jest to vitest.
 
 #### **Task 3: Create Shared `@goodnumbers/types` Package for Prisma**
 
-*   **Objective:** To configure Prisma to generate its client types into a shared package, allowing the frontend to import data types like `User` and `Journal` without bundling the Prisma client itself.
-*   **Acceptance Gate:** The backend can import Prisma types from `@goodnumbers/types` and all tests pass.
+- **Objective:** To configure Prisma to generate its client types into a shared package, allowing the frontend to import data types like `User` and `Journal` without bundling the Prisma client itself.
+- **Acceptance Gate:** The backend can import Prisma types from `@goodnumbers/types` and all tests pass.
 
 ##### **In-depth Engineering Plan (Task 3)**
 
@@ -547,33 +526,33 @@ For each task listed in the implementation phases below, the following GitHub-in
     ```
 
 2.  **Create `tsconfig.json` and a root `tsconfig.base.json`:**
-    *   **Base Config (in project root):**
-        ```json
-        // file: tsconfig.base.json
-        {
-          "compilerOptions": {
-            "target": "ESNext",
-            "module": "ESNext",
-            "strict": true,
-            "esModuleInterop": true,
-            "skipLibCheck": true,
-            "forceConsistentCasingInFileNames": true,
-            "moduleResolution": "bundler"
-          }
+    - **Base Config (in project root):**
+      ```json
+      // file: tsconfig.base.json
+      {
+        "compilerOptions": {
+          "target": "ESNext",
+          "module": "ESNext",
+          "strict": true,
+          "esModuleInterop": true,
+          "skipLibCheck": true,
+          "forceConsistentCasingInFileNames": true,
+          "moduleResolution": "bundler"
         }
-        ```
-    *   **Package-specific Config:**
-        ```json
-        // file: packages/types/tsconfig.json
-        {
-           "extends": "../../tsconfig.base.json",
-           "compilerOptions": {
-            "outDir": "dist",
-            "declaration": true
-           },
-           "include": ["src"]
-        }
-        ```
+      }
+      ```
+    - **Package-specific Config:**
+      ```json
+      // file: packages/types/tsconfig.json
+      {
+        "extends": "../../tsconfig.base.json",
+        "compilerOptions": {
+          "outDir": "dist",
+          "declaration": true
+        },
+        "include": ["src"]
+      }
+      ```
 
 **Step 2: Configure Prisma Generator**
 
@@ -593,7 +572,7 @@ For each task listed in the implementation phases below, the following GitHub-in
     ```typescript
     // file: packages/types/src/index.ts
     // This exports all the generated types like `User`, `Journal`, etc.
-    export * from './generated/client';
+    export * from "./generated/client";
     ```
 
 3.  **Generate Prisma Client:** From the `backend/` directory, run `npx prisma generate`. This will create the types in the new shared location.
@@ -618,58 +597,60 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 ---
 
-#### **Task 4: Initialize React Frontend Project**
+#### **Task 4: Initialize React Frontend Project** - **CURRENT TASK**
 
-*   **Goal:** To create the foundational project structure and development environment for our React single-page application (SPA).
-*   **Implementation Details:**
-    *   **Action (Project Scaffolding):**
-        1.  Create a new directory at the project root named `frontend/`.
-        2.  Inside `frontend/`, initialize a new Node.js project (`npm init`).
-        3.  Use a modern build tool like **Vite** to scaffold a new React project with TypeScript (`npm create vite@latest . -- --template react-ts`).
-    *   **Action (Dependency Installation):**
-        1.  From the project root, run `npm install`. This will install the frontend's dependencies and also link the shared workspaces.
-        2.  Install core frontend libraries: `npm install react-router-dom axios -w frontend`.
-        3.  Install testing libraries: `npm install -D vitest @testing-library/react jsdom -w frontend`.
-        4.  In `frontend/package.json`, manually add the workspace dependencies:
-            ```json
-            "dependencies": {
-              // ... other deps
-              "@goodnumbers/schemas": "workspace:*",
-              "@goodnumbers/types": "workspace:*"
-            }
-            ```
-        5.  Run `npm install` from the root one more time to link them.
-    *   **Action (Development Server Configuration):**
-        1.  In `frontend/vite.config.ts`, configure the development server's `proxy` option. All requests from the frontend to `/api` should be proxied to the backend Express server (e.g., `http://localhost:3000`). This is crucial to avoid CORS errors during local development.
-    *   **Action (Project Structure):**
-        1.  Create a basic directory structure inside `frontend/src/` for `components/`, `pages/`, `hooks/`, and `lib/`.
-        2.  Create a simple placeholder `HomePage.tsx` component to render.
-*   **Test:**
-    1.  Write a simple component test for `HomePage.tsx` to ensure the Vitest and React Testing Library setup is working correctly.
-    2.  Manually start both the backend (`npm run dev:backend`) and frontend (`npm run dev:frontend`) from the project root. Verify that the React app loads in the browser and that a test API call from a component (e.g., to `/api/health`) is successfully proxied to the backend and returns data.
-*   **Commit:** `feat(ui): P5_T4 initialize react frontend project with vite`
+- **Goal:** To create the foundational project structure and development environment for our React single-page application (SPA).
+- **Implementation Details:**
+  - **Sub-Task 4.1: Project Scaffolding & Configuration:**
+    - **Action:** Create a `frontend/` directory and use **Vite** to scaffold a new React+TypeScript project within it.
+    - **Action:** Install core dependencies (`react-router-dom`, `axios`) and testing libraries (`vitest`, `@testing-library/react`, `jsdom`).
+    - **Action:** In `frontend/package.json`, add the `@goodnumbers/schemas` and `@goodnumbers/types` as workspace dependencies, then run `npm install` from the root to link them.
+    - **Action:** Configure the Vite dev server proxy in `frontend/vite.config.ts` to forward `/api` requests to the backend at `http://localhost:3000`.
+    - **Action:** Create a `.env` file in `frontend/` for client-side environment variables.
+  - **Sub-Task 4.2: Establish Core App Structure:**
+    - **Action:** Create a basic directory structure: `src/components`, `src/pages`, `src/hooks`, `src/lib`.
+    - **Action:** Implement a global CSS file (`src/index.css`) and define the color palette from the PRD as CSS variables for the design system.
+    - **Action:** Create a centralized API client module in `src/lib/api.ts`. This module will use `axios` and be the single point of contact for all backend communication, including handling CSRF tokens.
+    - **Action:** Create a simple placeholder `HomePage.tsx` component.
+- **Test:**
+  1.  Write a simple component test for `HomePage.tsx` to ensure the Vitest and React Testing Library setup is working correctly.
+  2.  Manually start both the backend (`npm run dev:backend`) and frontend (`npm run dev:frontend`) from the project root. Verify that the React app loads in the browser and that a test API call from a component (e.g., to `/api/health`) is successfully proxied to the backend and returns data.
+- **Commit:** `feat(ui): P5_T4 initialize react frontend project with vite`
 
 ---
 
-#### **Task 5: Build Foundational UI & Login Flow**
+#### **Task 5: Build Foundational UI & Authentication Flow**
 
-*   **Goal:** To build the core application layout and the complete user authentication and onboarding journey, connecting the UI to the backend APIs.
-*   **Action:** Set up the React project with `react-router-dom`, a main layout component (header, footer), and basic styling.
-*   **Action:** Build the UI for the login flow, the post-login agreements page, and the account setup page. Wire these up to the corresponding backend APIs, including fetching and sending the CSRF token for all state-modifying requests.
-*   **Test:** Use Vitest and React Testing Library for component tests. Use Playwright for E2E tests to validate the complete login and onboarding user flow.
-*   **Commit:** `feat(ui): P5_T5 implement core layout and authentication flow`
+- **Goal:** To build the core application layout and the complete user authentication and onboarding journey, connecting the UI to the backend APIs.
+- **Sub-Task 5.1: Implement App Shell & Routing:**
+  - **Action:** Set up `react-router-dom` with routes for the main pages (Home, Dashboard, Agreements, Setup).
+  - **Action:** Create a main `Layout.tsx` component that includes a shared header and footer.
+  - **Action:** Create a global AuthContext/Provider to manage and share the user's session state throughout the application.
+- **Sub-Task 5.2: Build Login & Session Handling:**
+  - **Action:** Create a page/component that checks the session status (`GET /api/session`). If logged in, it should redirect to the dashboard. If logged out, it should display a "Sign in with Google" button that correctly links to the `POST /api/auth/signin/google` backend endpoint (after fetching a CSRF token).
+- **Sub-Task 5.3: Build Onboarding Pages:**
+  - **Action:** Build the "Agreements" page UI.
+  - **Action:** Build the "Account Setup" page UI.
+  - **Action:** Connect both pages to the `PUT /api/user/settings` endpoint, ensuring the CSRF token is fetched from `GET /api/csrf-token` and sent with the request via the centralized API client.
+- **Test:** Write component tests for each new page. Add E2E tests with Playwright to validate the complete login -> agree -> setup -> dashboard flow.
+- **Commit:** `feat(ui): P5_T5 implement core layout and authentication flow`
 
 ---
 
 #### **Task 6: Build Dashboard & Journal Pages**
 
-*   **Goal:** To implement the core data-driven pages of the application.
-*   **Action:** Create the Dashboard page, fetching and displaying the list of past journals from `GET /api/journals`.
-*   **Action:** Implement the "Start Journal" button, which calls `POST /api/journals` and navigates to the loading page.
-*   **Action:** Build the journal loading page that polls the `GET /api/journals/:id/status` endpoint.
-*   **Action:** Build the main journal view page with all its components (AGP chart, inputs, etc.), fetching data from the `GET /api/journals/:id` endpoint.
-*   **Test:** Write component tests with Vitest/React Testing Library and E2E tests with Playwright for these pages to ensure data is displayed correctly and user interactions work as expected.
-*   **Commit:** `feat(ui): P5_T6 implement dashboard and journal view pages`
+- **Goal:** To implement the core data-driven pages of the application.
+- **Sub-Task 6.1: Build Dashboard Page:**
+  - **Action:** Implement the UI for the Dashboard, including the "Start Journal" card and the "Past weeks" list.
+  - **Action:** Fetch and display the list of journals from the `GET /api/journals` endpoint.
+  - **Action:** Wire the "Start Journal" button to call `POST /api/journals` and navigate the user to the new journal's loading page.
+- **Sub-Task 6.2: Build Journal Loading & View Pages:**
+  - **Action:** Create the journal loading page that polls the `GET /api/journals/:id/status` endpoint and displays progress.
+  - **Action:** Build the main journal view page with all its components (AGP chart, inputs, etc.) as a read-only view first, fetching data from the `GET /api/journals/:id` endpoint.
+- **Sub-Task 6.3: Implement Journal Editing:**
+  - **Action:** Add editing and saving functionality to the journal page, connecting the "Save" button to the `PUT /api/journals/:id` endpoint.
+- **Test:** Write component tests with Vitest/React Testing Library and E2E tests with Playwright for these pages to ensure data is displayed correctly and user interactions work as expected.
+- **Commit:** `feat(ui): P5_T6 implement dashboard and journal view pages`
 
 ### **Phase 6: Background Processing Implementation**
 
@@ -727,5 +708,3 @@ This section outlines high-level tasks that should be addressed as part of the p
       - Confirm that errors are properly captured and logged by the new system.
       - (Manual) Verify logs are accessible in the chosen storage solution.
     - **Commit:** `feat(ops): P6_T1 implement production logging solution`
-```
-````
