@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PrismaClient } from '@prisma/client'; // Import for typing
+import type { PrismaClient } from "@goodnumbers/types";
 
 // Mock the Prisma client using vi.mock
 const mockPrismaUpdate = vi.fn();
