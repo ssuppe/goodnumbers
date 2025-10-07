@@ -1,38 +1,39 @@
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { PrismaClient } from '@prisma/client'; // Import for typing
 
-// Mock the Prisma client using unstable_mockModule
-const mockPrismaUpdate = jest.fn();
-jest.unstable_mockModule('../../src/lib/prisma.js', () => ({
+// Mock the Prisma client using vi.mock
+const mockPrismaUpdate = vi.fn();
+vi.mock('@src/lib/prisma.js', () => ({
   prisma: {
     journal: {
       update: mockPrismaUpdate,
     },
-  },
+  } as unknown as PrismaClient, // Type assertion for the mock
 }));
 
 // Dynamically import the module under test after the mock is set up
-const { processJournalJob } = await import('../../src/worker.js');
+// This will be done inside each test after vi.resetModules()
+let processJournalJob: (job: MockJob) => Promise<void>;
 
 interface MockJob {
   data: { journalId: string };
 }
 
 describe('Worker Job Processing', () => {
-  beforeEach(() => {
-    // Clear mock history before each test
+  beforeEach(async () => {
     mockPrismaUpdate.mockClear();
+    vi.resetModules(); // Reset modules to ensure fresh import of worker.js
+    // Dynamically import processJournalJob here to pick up the mock
+    ({ processJournalJob } = await import('@src/worker.js'));
   });
 
   it('should update the journal status to COMPLETE on successful processing', async () => {
     const fakeJob: MockJob = { data: { journalId: 'journal123' } };
 
-    // For now, let's assume success and mock the DB returning a record
     mockPrismaUpdate.mockResolvedValue({});
 
-    // Act: Call the function we want to test
     await processJournalJob(fakeJob);
 
-    // Assert: Check that our logic updated the journal correctly
     expect(mockPrismaUpdate).toHaveBeenCalledWith({
       where: { id: 'journal123' },
       data: {
@@ -46,14 +47,10 @@ describe('Worker Job Processing', () => {
     const fakeJob: MockJob = { data: { journalId: 'journal456' } };
     const errorMessage = 'AI pipeline failed';
 
-    // Arrange: Simulate a failure by having the main logic throw an error.
-    // The first mock call represents the attempt to set status to COMPLETE, which fails.
     mockPrismaUpdate.mockRejectedValueOnce(new Error(errorMessage));
 
-    // Act & Assert: Expect the function to re-throw the error
     await expect(processJournalJob(fakeJob)).rejects.toThrow(errorMessage);
 
-    // Assert: Check that our logic updated the journal to FAILED
     expect(mockPrismaUpdate).toHaveBeenCalledWith({
       where: { id: 'journal456' },
       data: {
@@ -61,6 +58,6 @@ describe('Worker Job Processing', () => {
         statusMessage: errorMessage,
       },
     });
-    expect(mockPrismaUpdate).toHaveBeenCalledTimes(2); // One for the failed update, one for the FAILED status update
+    expect(mockPrismaUpdate).toHaveBeenCalledTimes(2);
   });
 });
