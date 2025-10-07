@@ -1,8 +1,9 @@
 import "dotenv/config";
 import { vi } from "vitest";
 
+import { EventEmitter } from "events";
+
 vi.mock("ioredis", () => {
-  const EventEmitter = require("events");
   class IORedisMock extends EventEmitter {
     constructor() {
       super();
