@@ -107,10 +107,10 @@ This document outlines the plan to extract Prisma-generated TypeScript types int
     ```bash
     gh issue create --title "feat(types): P5_T3 Create shared types package for Prisma" --body "As per the design doc, this task involves creating the @goodnumbers/types package to share Prisma-generated types across the monorepo. This will enable full-stack type safety."
     ```
-2.  **Branch:** Create a new feature branch from the `develop` branch.
+2.  **Branch:** Create a new feature branch from the `phase5develop` branch.
     ```bash
-    git checkout develop
-    git pull origin develop
+    git checkout phase5develop
+    git pull origin phase5develop
     git checkout -b feat/P5_T3-shared-prisma-types
     ```
 3.  **Commits:** Use **Conventional Commits**. The work should be broken down into logical, atomic commits.
@@ -241,7 +241,9 @@ This refactor will be validated by a combination of regression testing, static a
 *      "exclude": ["node_modules", "dist"]
 
 -      "include": ["src"]
+
   }
+
   ```
 
   ```
@@ -249,6 +251,7 @@ This refactor will be validated by a combination of regression testing, static a
 ### Step 3: Configure Prisma, Generate, and Link
 
 1.  **Modify `backend/prisma/schema.prisma`:** Update the `generator client` block to redirect the type output to our new shared package. The relative path is critical.
+
     ````diff
     --- a/backend/prisma/schema.prisma
     +++ b/backend/prisma/schema.prisma
@@ -273,6 +276,7 @@ This refactor will be validated by a combination of regression testing, static a
     ```bash
     (cd backend && npx prisma generate)
     ````
+
 2.  **Add Workspace Dependency to `backend/package.json`:** Explicitly add `@goodnumbers/types` as a workspace dependency for the backend application.
     ```json
      "dependencies": {
