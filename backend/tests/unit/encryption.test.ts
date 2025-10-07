@@ -3,8 +3,8 @@
 process.env.ENCRYPTION_KEY =
   'YOUR_32_BYTE_HEX_KEY_HERE';
 
-import { encrypt, decrypt } from '../../src/lib/encryption';
-import { jest } from '@jest/globals';
+import { encrypt, decrypt } from '@src/lib/encryption'; // Use @src alias
+import { describe, it, expect, afterEach, vi } from 'vitest'; // Use vi from vitest
 
 describe('Encryption Utility', () => {
   it('should encrypt and decrypt a string successfully', () => {
@@ -44,7 +44,6 @@ describe('Encryption Utility', () => {
     const encrypted = encrypt(originalText);
     const parts = encrypted.split(':');
 
-    // Tamper with the ciphertext by changing a character
     const tamperedCiphertext =
       Buffer.from(parts[2], 'base64').toString('hex').slice(0, -2) + '00';
     const tamperedPayload = `${parts[0]}:${parts[1]}:${Buffer.from(
@@ -52,15 +51,12 @@ describe('Encryption Utility', () => {
       'hex',
     ).toString('base64')}`;
 
-    // The GCM authentication step in `decrypt` should fail
     expect(() => decrypt(tamperedPayload)).toThrow(
       'Unsupported state or unable to authenticate data',
     );
   });
 
   it('should throw an error for null or undefined input', () => {
-    // FIX: Disable the 'no-explicit-any' rule for these specific lines
-    // where we are intentionally testing invalid runtime input.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(() => encrypt(null as any)).toThrow(
       'Plaintext cannot be null or undefined.',
@@ -82,34 +78,32 @@ describe('Encryption Utility', () => {
 
 // This separate suite tests the module's initialization logic
 describe('Encryption Utility Initialization', () => {
+  const originalEnvKey = process.env.ENCRYPTION_KEY; // Moved here to be outside afterEach
+
+  afterEach(() => {
+    process.env.ENCRYPTION_KEY = originalEnvKey; // Restore original environment
+    vi.resetModules(); // Important to clear module cache
+  });
+
   it('should throw an error if ENCRYPTION_KEY is not set', async () => {
-    const originalEnvKey = process.env.ENCRYPTION_KEY;
     delete process.env.ENCRYPTION_KEY;
 
     await expect(async () => {
-      jest.resetModules();
-      // FIX: Use a bare import for its side-effects (initialization)
-      // This avoids creating unused variables.
-      await import('../../src/lib/encryption');
+      vi.resetModules(); // Use Vitest's resetModules
+      await import('@src/lib/encryption'); // Use @src alias
     }).rejects.toThrow(
       'FATAL: ENCRYPTION_KEY environment variable is not set.',
     );
-
-    process.env.ENCRYPTION_KEY = originalEnvKey;
   });
 
   it('should throw an error if ENCRYPTION_KEY is not a 32-byte hex string', async () => {
-    const originalEnvKey = process.env.ENCRYPTION_KEY;
     process.env.ENCRYPTION_KEY = 'this-is-not-a-valid-32-byte-hex-key';
 
     await expect(async () => {
-      jest.resetModules();
-      // FIX: Use a bare import for its side-effects.
-      await import('../../src/lib/encryption');
+      vi.resetModules(); // Use Vitest's resetModules
+      await import('@src/lib/encryption'); // Use @src alias
     }).rejects.toThrow(
       'FATAL: ENCRYPTION_KEY must be a 32-byte (64-character) hex string.',
     );
-
-    process.env.ENCRYPTION_KEY = originalEnvKey;
   });
 });

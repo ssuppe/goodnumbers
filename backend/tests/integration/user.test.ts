@@ -1,45 +1,45 @@
-import session from 'supertest-session'; // FIX: Use supertest-session
-import * as http from 'http';
-import { PrismaClient, User } from '@prisma/client';
-import { decrypt } from '../../src/lib/encryption.ts';
-import type { Express } from 'express';
-import { createApp } from '../../src/index.ts';
+// file: backend/tests/integration/user.test.ts
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import * as http from "http";
+import type { Express } from "express";
+import session from "supertest-session";
+import type { User } from "@prisma/client";
+import { PrismockClient } from "prismock";
+import { prisma as originalPrisma } from "@src/lib/prisma.js";
+import { decrypt } from "@src/lib/encryption.ts";
 
-const prisma = new PrismaClient();
-let server: http.Server;
-let testUser: User;
-let app: Express;
-let agent: session.Session; // FIX: Use session agent
-let csrfToken: string; // FIX: Variable for token
+vi.mock("@src/lib/prisma.js", () => ({
+  prisma: new PrismockClient(),
+}));
 
-describe('PUT /api/user/settings', () => {
-  beforeEach((done) => {
+const { createApp } = await import("@src/index.js");
+const testPrisma = originalPrisma as unknown as PrismockClient;
+
+describe("PUT /api/user/settings", () => {
+  let app: Express;
+  let server: http.Server;
+  let agent: session.Session;
+  let testUser: User;
+  let csrfToken: string;
+
+  beforeEach(async () => {
+    await testPrisma.reset();
     app = createApp();
-    server = app.listen(0, async () => {
-      agent = session(app); // FIX: Initialize session agent
-      await prisma.user.deleteMany();
-      testUser = await prisma.user.create({
-        data: {
-          email: `settings-user-${Date.now()}@test.com`,
-          agreementsSigned: true, // Set to true to allow access past enforceAgreements
-          nightscoutUrl: 'https://initial.url',
-          nightscoutToken: 'initial-encrypted-token',
-        },
-      });
-      // FIX: Fetch CSRF token before tests run
-      const csrfRes = await agent.get('/api/csrf-token');
-      csrfToken = csrfRes.body.csrfToken;
-      done();
+    await new Promise<void>((resolve) => (server = app.listen(0, resolve)));
+    agent = session(app);
+
+    testUser = await testPrisma.user.create({
+      data: {
+        email: `settings-user-${Date.now()}@test.com`,
+        agreementsSigned: true,
+      },
     });
+    const csrfRes = await agent.get("/api/csrf-token");
+    csrfToken = csrfRes.body.csrfToken;
   });
 
-  afterEach((done) => {
-    server.close(done);
-  });
-
-  afterAll(async () => {
-    await prisma.user.deleteMany();
-    await prisma.$disconnect();
+  afterEach(async () => {
+    await new Promise<void>((resolve) => server.close(resolve));
   });
 
   it('should return 401 Unauthorized if no user is authenticated', async () => {
@@ -63,48 +63,43 @@ describe('PUT /api/user/settings', () => {
   });
 
   it('should return 403 Forbidden if the user has not signed agreements', async () => {
-    // Arrange: Create a user who has NOT signed agreements
-    const unagreedUser = await prisma.user.create({
+    const unagreedUser = await testPrisma.user.create({
       data: {
         email: `unagreed-user-${Date.now()}@test.com`,
         agreementsSigned: false,
       },
     });
 
-    // Act
     const response = await agent
       .put('/api/user/settings')
-      .set('x-test-user-id', unagreedUser.id) // Authenticate as this user
+      .set('x-test-user-id', unagreedUser.id)
       .send({ preferredUnits: 'MMOL', _csrf: csrfToken });
 
-    // Assert
     expect(response.status).toBe(403);
     expect(response.body.code).toBe('AGREEMENTS_NOT_SIGNED');
   });
 
-  it('should successfully update all settings and encrypt the token', async () => {
+  it("should successfully update all settings and encrypt the token", async () => {
     const settingsPayload = {
-      nightscoutUrl: 'https://my-nightscout-instance.com',
-      nightscoutToken: 'my-secret-token-12345',
-      preferredUnits: 'MMOL',
-      agreementsSigned: true,
-      _csrf: csrfToken, // FIX: Include token
+      nightscoutUrl: "https://my-nightscout-instance.com",
+      nightscoutToken: "my-secret-token-12345",
+      preferredUnits: "MMOL",
+      _csrf: csrfToken,
     };
 
     const response = await agent
-      .put('/api/user/settings')
-      .set('x-test-user-id', testUser.id)
+      .put("/api/user/settings")
+      .set("x-test-user-id", testUser.id)
       .send(settingsPayload);
     expect(response.status).toBe(200);
 
-    const updatedUser = await prisma.user.findUnique({
+    const updatedUser = await testPrisma.user.findUnique({
       where: { id: testUser.id },
     });
-    expect(updatedUser!.agreementsSigned).toBe(true);
     expect(updatedUser!.nightscoutUrl).toBe(settingsPayload.nightscoutUrl);
-    expect(updatedUser!.preferredUnits).toBe('MMOL');
+    expect(updatedUser!.preferredUnits).toBe("MMOL");
     expect(decrypt(updatedUser!.nightscoutToken!)).toBe(
-      settingsPayload.nightscoutToken,
+      settingsPayload.nightscoutToken
     );
   });
 });
