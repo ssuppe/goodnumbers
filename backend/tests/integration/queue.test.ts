@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vites
 import session from "supertest-session";
 import * as http from "http";
 import type { Express } from "express";
-import type { User } from "@prisma/client";
+import type { User } from "@goodnumbers/types";
 import { PrismockClient } from "prismock";
 import { prisma as originalPrisma } from "@src/lib/prisma.js";
 

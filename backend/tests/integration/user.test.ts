@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as http from "http";
 import type { Express } from "express";
 import session from "supertest-session";
-import type { User } from "@prisma/client";
+import type { User } from "@goodnumbers/types";
 import { PrismockClient } from "prismock";
 import { prisma as originalPrisma } from "@src/lib/prisma.js";
 import { decrypt } from "@src/lib/encryption.ts";
