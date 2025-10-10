@@ -1,0 +1,12 @@
+refactor(test): stabilize integration test architecture
+
+Refactored the entire integration test suite to resolve persistent, non-deterministic failures. The previous architecture suffered from race conditions and inconsistent database state.
+
+Key changes include:
+- Centralized the test database creation and migration into the global `vitest.setup.ts` file, ensuring all test files run against a single, consistent database instance.
+- Removed all file-local database setup and teardown logic from individual integration test files (`journals.test.ts`, `queue.test.ts`, etc.).
+- Enforced the use of a single, shared Prisma client instance across both the test setup code and the application code under test, eliminating state conflicts.
+- Refactored the `enforceAccountSetup` middleware to remove a redundant database query, fixing a subtle race condition and improving efficiency.
+- Replaced hardcoded IDs in tests with programmatically generated data for improved maintainability and resilience.
+
+This resolves all previous test failures and establishes a stable, reliable, and deterministic foundation for the backend test suite.
