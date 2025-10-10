@@ -15,8 +15,6 @@
     "test:backend": "npm test -w backend",
     "test:frontend": "npm test -w frontend",
     "lint": "npm run lint -ws --if-present",
-    "postinstall": "npm run build -w @goodnumbers/schemas && npm run build -w @goodnumbers/types",
-
     "prepare": "husky"
   },
   "devDependencies": {

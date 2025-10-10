@@ -13,6 +13,7 @@ node_modules/
 .next
 .next/
 *.log
+*.tsbuildinfo
 .cache/
 dist/
 build/
@@ -45,3 +46,4 @@ venv/
 .aicodeprep-gui
 goodnumbers-workspace2/
 proof_of_concept/
+commit_message.txt
