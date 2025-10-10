@@ -15,6 +15,14 @@ export default defineConfig({
   resolve: {
     alias: {
       "@src": path.resolve(__dirname, "src"),
+      "@goodnumbers/schemas": path.resolve(
+        __dirname,
+        "../packages/schemas/src/index.ts"
+      ),
+      "@goodnumbers/types": path.resolve(
+        __dirname,
+        "../packages/types/src/index.ts"
+      ),
     },
   },
 });

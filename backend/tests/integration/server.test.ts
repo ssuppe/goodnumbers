@@ -5,7 +5,7 @@ import { createApp } from "@src/index";
 import * as http from "http";
 import type { Express } from "express";
 
-describe("GET /health", () => {
+describe("GET /api/health", () => {
   let app: Express;
   let server: http.Server;
 
@@ -19,7 +19,7 @@ describe("GET /health", () => {
   });
 
   it("should return 200 OK with a status message", async () => {
-    const response = await supertest(server).get("/health");
+    const response = await supertest(server).get("/api/health");
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: "ok" });
   });
