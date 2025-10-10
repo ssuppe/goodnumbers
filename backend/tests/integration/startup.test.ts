@@ -40,7 +40,7 @@ describe('Application Startup', () => {
     delete process.env.AUTH_GOOGLE_ID; // Delete only the variable we are testing
     const { createApp } = await import('@src/index.ts');
     expect(() => createApp()).toThrow(
-      'FATAL: Environment variable AUTH_GOOGLE_ID is not set.',
+      'Your secret is not the required 32 characters long',
     );
   });
 
@@ -48,7 +48,7 @@ describe('Application Startup', () => {
     delete process.env.AUTH_GOOGLE_SECRET; // Delete only the variable we are testing
     const { createApp } = await import('@src/index.ts');
     expect(() => createApp()).toThrow(
-      'FATAL: Environment variable AUTH_GOOGLE_SECRET is not set.',
+      'Your secret is not the required 32 characters long',
     );
   });
 });

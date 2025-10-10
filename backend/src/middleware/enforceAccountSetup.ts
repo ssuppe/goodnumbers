@@ -1,29 +1,26 @@
-import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { Request, Response, NextFunction } from 'express';
 
 /**
- * This middleware handles UI flow for onboarding.
+ * This middleware ensures that a user has completed the initial account setup.
  * It checks if a user has completed their initial account setup (by checking for nightscoutUrl).
  * If not, it redirects them to the setup page.
  * This should run AFTER the enforceAgreements middleware.
+ * UPDATED: This function is now synchronous and relies on the upstream 'protect' middleware
+ * to populate `req.user`.
  */
-export async function enforceAccountSetup(
+export function enforceAccountSetup(
   req: Request,
   res: Response,
   next: NextFunction,
 ) {
   if (!req.user) {
+    // This should not happen if 'protect' middleware is used before this,
+    // but it's a safe guard.
     return res.status(401).json({ error: 'Unauthorized.' });
   }
 
-  // The check for agreementsSigned is now handled by the 'enforceAgreements' middleware.
-  // This middleware's only job is to check for account setup completion.
-  const user = await prisma.user.findUnique({
-    where: { id: req.user.id },
-    select: { nightscoutUrl: true },
-  });
-
-  if (user && !user.nightscoutUrl) {
+  if (!req.user.nightscoutUrl) {
     return res.redirect('/setup-account');
   }
 

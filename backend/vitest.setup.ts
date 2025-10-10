@@ -1,3 +1,23 @@
+import crypto from 'crypto';
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { afterAll } from 'vitest';
+
+// Generate a unique database file for the entire test run.
+const dbFile = `test-${crypto.randomUUID()}.db`;
+const dbPath = path.join(__dirname, dbFile);
+process.env.DATABASE_URL = `file:${dbFile}`;
+
+// Apply migrations to the test database before any tests run.
+execSync('npx prisma migrate deploy');
+
+// Schedule cleanup of the database file after all tests have run.
+afterAll(() => {
+  if (fs.existsSync(dbPath)) {
+    fs.unlinkSync(dbPath);
+  }
+});
 import "dotenv/config";
 
 // NOTE: We do not import `vi` here. Vitest makes it globally available in the setup file.
