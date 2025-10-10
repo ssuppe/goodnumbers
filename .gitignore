@@ -13,6 +13,7 @@ node_modules/
 .next
 .next/
 *.log
+*.tsbuildinfo
 .cache/
 dist/
 build/
