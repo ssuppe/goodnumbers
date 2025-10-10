@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@src/lib/prisma.js';
 
 describe('User Data Privacy', () => {
   let userId: string;
