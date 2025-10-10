@@ -93,7 +93,7 @@ export function createApp() {
   );
 
   // --- Health Check and other routes ---
-  app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
+  app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok' }));
   app.get('/api/session', async (req, res) =>
     res.json(await getSession(req, authConfig)),
   );
