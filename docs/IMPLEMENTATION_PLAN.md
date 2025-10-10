@@ -626,6 +626,7 @@ For each task listed in the implementation phases below, the following GitHub-in
   - **Action:** Set up `react-router-dom` with routes for the main pages (Home, Dashboard, Agreements, Setup).
   - **Action:** Create a main `Layout.tsx` component that includes a shared header and footer.
   - **Action:** Create a global AuthContext/Provider to manage and share the user's session state throughout the application.
+
 - **Sub-Task 5.2: Build Login & Session Handling:**
   - **Action:** Create a page/component that checks the session status (`GET /api/session`). If logged in, it should redirect to the dashboard. If logged out, it should display a "Sign in with Google" button that correctly links to the `POST /api/auth/signin/google` backend endpoint (after fetching a CSRF token).
 - **Sub-Task 5.3: Build Onboarding Pages:**
