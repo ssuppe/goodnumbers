@@ -96,6 +96,12 @@ export const authConfig: ExpressAuthConfig = {
       }
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith(process.env.FRONTEND_URL as string)) {
+        return url;
+      }
+      return process.env.FRONTEND_URL as string;
+    },
   },
 };
 

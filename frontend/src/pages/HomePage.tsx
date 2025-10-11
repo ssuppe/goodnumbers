@@ -6,7 +6,7 @@ const getDummyUser = (): User | null => {
   return null;
 };
 
-export function HomePage() {
+export default function HomePage() {
   getDummyUser();
 
   return (
