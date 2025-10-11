@@ -3,11 +3,11 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
-import * as AuthContext from '../contexts/AuthContext';
+import * as useAuth from '../hooks/useAuth';
 
 // Mock the useAuth hook
-vi.mock('../contexts/AuthContext');
-const useAuthMock = vi.mocked(AuthContext.useAuth);
+vi.mock('../hooks/useAuth');
+const useAuthMock = vi.mocked(useAuth.useAuth);
 
 // A helper component to display the current path
 const LocationDisplay = () => <div>Current Path: {useLocation().pathname}</div>;
