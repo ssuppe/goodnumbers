@@ -28,11 +28,19 @@ if [ -z "$STAGED_FILES" ]; then
   exit 0
 fi
 
+# POSIX sh compatible code
 for FILE in $STAGED_FILES; do
-  if [[ ! "$FILE" =~ ^docs/ ]]; then
-    ONLY_DOCS_CHANGED=false
-    break
-  fi
+  # Check if the file name DOES NOT start with 'docs/'
+  case "$FILE" in
+    docs/*)
+      # It matches docs/*, so we do nothing and continue the loop
+      ;;
+    *)
+      # It does NOT match docs/* (i.e., it's a non-docs change)
+      ONLY_DOCS_CHANGED=false
+      break
+      ;;
+  esac
 done
 
 if [ "$ONLY_DOCS_CHANGED" = true ]; then
