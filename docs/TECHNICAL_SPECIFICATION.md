@@ -41,10 +41,10 @@ The goal of this specification is to provide a developer-ready document that out
 #### 2.1.3. Homepage
 
 - A static, public-facing page that describes the application's value proposition.
-- Contains a "See a demo" button linking to the Demo Page.
-- Contains a "Login / Register" button linking to the Auth.js login page.
-- Includes a persistent, non-dismissible banner with the medical use disclaimer.
-- Must be fully mobile-responsive.
+- Contains a "See a demo" button linking to the Demo Page (Secondary CTA style).
+- Contains a "Login / Register" button linking to the Auth.js login page (Primary CTA style).
+- Includes a persistent, non-dismissible, sticky critical alert banner with the medical use disclaimer.
+- Must be fully mobile-responsive and adhere to the V3 Design System.
 
 #### 2.1.4. Account Setup
 
@@ -351,8 +351,8 @@ All endpoints are protected by authentication middleware.
 
 ## 6. Error Handling
 
-- **Nightscout Connection Failure:** If the app cannot connect to Nightscout, a persistent, non-dismissible red banner is shown on the Dashboard. The "Start Journal" button is disabled with a tooltip explaining the issue.
-- **No Usable CGM Data:** If a user starts a journal but no data is found for the last 7 days, the creation is aborted. A red banner is shown on the Dashboard explaining that no data was found.
+- **Nightscout Connection Failure:** If the app cannot connect to Nightscout, a persistent, non-dismissible critical red banner (`--feedback-critical-color`) is shown on the Dashboard. The "Start Journal" button is disabled with a tooltip explaining the issue.
+- **No Usable CGM Data:** If a user starts a journal but no data is found for the last 7 days, the creation is aborted. A critical red banner (`--feedback-critical-color`) is shown on the Dashboard explaining that no data was found.
 - **Insufficient Data Warning:** If < 7 days of data are found, the journal is still generated, but a non-blocking warning banner is displayed at the top of the journal page.
 - **Audio File Failure:** If the podcast audio file fails to generate or load, an error message is displayed in place of the audio player.
 - **Secure Production Error Handling:** The application MUST include a global error-handling middleware in Express. In a production environment, this middleware MUST prevent leaking technical details or stack traces. It should log the full error server-side for debugging and return a generic, non-revealing error message to the client (e.g., `{"error": "An internal server error occurred."}`).
