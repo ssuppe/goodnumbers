@@ -6,31 +6,75 @@
 # 1. Find the absolute path to the root of the git repository.
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
-# 2. Define the path to your Node.js project folder relative to the root.
-PROJECT_DIR="$REPO_ROOT/backend"
-
-# 3. Check if the project directory actually exists. If not, fail with a helpful message.
-if [ ! -d "$PROJECT_DIR" ]; then
-  echo "❌ ERROR: Pre-commit hook could not find the project directory at '$PROJECT_DIR'."
-  echo "Please ensure your project is located in a 'goodnumbers' subfolder within the repository."
+# 2. Check if the backend and frontend project directories actually exist.
+if [ ! -d "$REPO_ROOT/backend" ]; then
+  echo "❌ ERROR: Pre-commit hook could not find the backend project directory at '$REPO_ROOT/backend'."
+  echo "Please ensure your project is located in a 'backend' subfolder within the repository."
   exit 1
 fi
 
-# --- Execute checks from the correct directory ---
-echo "› Executing pre-commit checks in '$PROJECT_DIR'..."
-cd "$PROJECT_DIR" || exit 1
+if [ ! -d "$REPO_ROOT/frontend" ]; then
+  echo "❌ ERROR: Pre-commit hook could not find the frontend project directory at '$REPO_ROOT/frontend'."
+  echo "Please ensure your project is located in a 'frontend' subfolder within the repository."
+  exit 1
+fi
 
-echo "› Running linter..."
-npm run lint
+# --- Check for docs-only changes ---
+ONLY_DOCS_CHANGED=true
+STAGED_FILES=$(git diff --cached --name-only)
+
+if [ -z "$STAGED_FILES" ]; then
+  echo "› No staged files found. Skipping pre-commit checks."
+  exit 0
+fi
+
+for FILE in $STAGED_FILES; do
+  if [[ ! "$FILE" =~ ^docs/ ]]; then
+    ONLY_DOCS_CHANGED=false
+    break
+  fi
+done
+
+if [ "$ONLY_DOCS_CHANGED" = true ]; then
+  echo "› Only changes in 'docs/' folder detected. Skipping lint, build, and test checks."
+  exit 0
+fi
+
+# --- Execute checks from the repository root using workspace scripts ---
+echo "› Executing pre-commit checks from '$REPO_ROOT'..."
+
+echo "› Running linter for all workspaces..."
+npm run lint -ws --if-present
 if [ $? -ne 0 ]; then
   echo "❌ Linting failed. Commit aborted."
   exit 1
 fi
 
-echo "› Running TypeScript build..."
-npm run build
+echo "› Running TypeScript build for backend..."
+npm run build -w backend
 if [ $? -ne 0 ]; then
-  echo "❌ TypeScript build failed. Commit aborted."
+  echo "❌ TypeScript build for backend failed. Commit aborted."
+  exit 1
+fi
+
+echo "› Running tests for backend..."
+npm test -w backend
+if [ $? -ne 0 ]; then
+  echo "❌ Tests for backend failed. Commit aborted."
+  exit 1
+fi
+
+echo "› Running TypeScript build for frontend..."
+npm run build -w frontend
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript build for frontend failed. Commit aborted."
+  exit 1
+fi
+
+echo "› Running tests for frontend..."
+npm test -w frontend
+if [ $? -ne 0 ]; then
+  echo "❌ Tests for frontend failed. Commit aborted."
   exit 1
 fi
 
