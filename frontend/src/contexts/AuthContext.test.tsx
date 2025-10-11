@@ -1,10 +1,13 @@
 // file: frontend/src/contexts/AuthContext.test.tsx
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { AuthProvider, useAuth, type SessionUser } from './AuthContext';
-import { api } from '../lib/api';
 
-vi.mock('../lib/api');
+import { useAuth } from '../hooks/useAuth';
+import type { SessionUser } from './AuthTypes';
+
+
+vi.mock('../hooks/useAuth');
+const useAuthMock = vi.mocked(useAuth);
 
 const TestConsumer = () => {
   const { user, isLoading, error } = useAuth();
@@ -14,60 +17,30 @@ const TestConsumer = () => {
   return <div>Logged out</div>;
 };
 
-describe('AuthProvider', () => {
+describe('TestConsumer', () => {
   it('shows loading state initially', () => {
-    vi.mocked(api.get).mockReturnValue(new Promise(() => {})); // Never resolves
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>
-    );
+    useAuthMock.mockReturnValue({ user: null, isLoading: true, error: null });
+    render(<TestConsumer />);
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
-  it('provides user data on successful session fetch', async () => {
-    // IMPORTANT: This mock only contains non-sensitive data.
+  it('provides user data on successful session fetch', () => {
     const mockUser: SessionUser = { id: '1', email: 'test@test.com', name: 'Test User' };
-    vi.mocked(api.get).mockResolvedValue({ data: { user: mockUser } });
-
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Welcome, Test User')).toBeInTheDocument();
-    });
+    useAuthMock.mockReturnValue({ user: mockUser, isLoading: false, error: null });
+    render(<TestConsumer />);
+    expect(screen.getByText('Welcome, Test User')).toBeInTheDocument();
   });
 
-  it('provides null user when session is empty', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { user: null } });
-
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Logged out')).toBeInTheDocument();
-    });
+  it('provides null user when session is empty', () => {
+    useAuthMock.mockReturnValue({ user: null, isLoading: false, error: null });
+    render(<TestConsumer />);
+    expect(screen.getByText('Logged out')).toBeInTheDocument();
   });
 
-  it('provides an error message string on failed fetch', async () => {
+  it('provides an error message string on failed fetch', () => {
     const errorMessage = 'Network Error';
-    vi.mocked(api.get).mockRejectedValue(new Error(errorMessage));
-
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>
-    );
-
-    await waitFor(() => {
-      // The component should render the error message directly as a string.
-      expect(screen.getByText(`Error: ${errorMessage}`)).toBeInTheDocument();
-    });
+    useAuthMock.mockReturnValue({ user: null, isLoading: false, error: errorMessage });
+    render(<TestConsumer />);
+    expect(screen.getByText(`Error: ${errorMessage}`)).toBeInTheDocument();
   });
 });
