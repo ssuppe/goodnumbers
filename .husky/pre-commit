@@ -1,6 +1,6 @@
 # .husky/pre-commit
 
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 # --- Robustly find the project directory ---
 # 1. Find the absolute path to the root of the git repository.
