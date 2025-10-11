@@ -10,7 +10,7 @@
   "scripts": {
     "dev:backend": "npm run dev -w backend",
     "dev:frontend": "npm run dev -w frontend",
-    "build:backend": "npm run build -w backend",
+    "build:backend": "npm run build -w @goodnumbers/schemas && npm run build -w @goodnumbers/types && npm run build -w backend",
     "build:frontend": "npm run build -w frontend",
     "test:backend": "npm test -w backend",
     "test:frontend": "npm test -w frontend",
