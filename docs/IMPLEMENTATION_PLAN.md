@@ -609,7 +609,7 @@ For each task listed in the implementation phases below, the following GitHub-in
     - **Action:** Create a `.env` file in `frontend/` for client-side environment variables.
   - **Sub-Task 4.2: Establish Core App Structure:**
     - **Action:** Create a basic directory structure: `src/components`, `src/pages`, `src/hooks`, `src/lib`.
-    - **Action:** Implement a global CSS file (`src/index.css`) and define the color palette from the PRD as CSS variables for the design system.
+    - **Action:** Implement a global CSS file (`src/index.css`) and define the V3 color palette from the `homepage_spec.md` as CSS variables for the design system.
     - **Action:** Create a centralized API client module in `src/lib/api.ts`. This module will use `axios` and be the single point of contact for all backend communication, including handling CSRF tokens.
     - **Action:** Create a simple placeholder `HomePage.tsx` component.
 - **Test:**
@@ -624,11 +624,11 @@ For each task listed in the implementation phases below, the following GitHub-in
 - **Goal:** To build the core application layout and the complete user authentication and onboarding journey, connecting the UI to the backend APIs.
 - **Sub-Task 5.1: Implement App Shell & Routing:**
   - **Action:** Set up `react-router-dom` with routes for the main pages (Home, Dashboard, Agreements, Setup).
-  - **Action:** Create a main `Layout.tsx` component that includes a shared header and footer.
+  - **Action:** Create a main `Layout.tsx` component that includes the Critical Alert Banner, Main Header, and Footer as specified in `docs/design/homepage_spec.md`.
   - **Action:** Create a global AuthContext/Provider to manage and share the user's session state throughout the application.
 
 - **Sub-Task 5.2: Build Login & Session Handling:**
-  - **Action:** Create a page/component that checks the session status (`GET /api/session`). If logged in, it should redirect to the dashboard. If logged out, it should display a "Sign in with Google" button that correctly links to the `POST /api/auth/signin/google` backend endpoint (after fetching a CSRF token).
+  - **Action:** Create a page/component that checks the session status (`GET /api/session`). If logged in, it should redirect to the dashboard. If logged out, it should display a "Sign in with Google" button (styled as a Primary CTA) that correctly links to the `POST /api/auth/signin/google` backend endpoint (after fetching a CSRF token).
 - **Sub-Task 5.3: Build Onboarding Pages:**
   - **Action:** Build the "Agreements" page UI.
   - **Action:** Build the "Account Setup" page UI.
