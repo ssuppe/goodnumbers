@@ -1,6 +1,6 @@
 // file: frontend/src/components/ProtectedRoute.tsx
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 export function ProtectedRoute() {
   const { user, isLoading, error } = useAuth();

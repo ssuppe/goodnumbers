@@ -1,29 +1,16 @@
 // file: frontend/src/contexts/AuthContext.tsx
 import {
-  createContext,
   useState,
   useEffect,
   useMemo,
-  useContext,
   type ReactNode,
 } from 'react';
 import { api } from '../lib/api';
+import type { SessionUser } from './AuthTypes';
 
-// This is the SAFE user type. It includes only what the UI needs
-// and explicitly omits sensitive tokens.
-export interface SessionUser {
-  id: string;
-  name?: string | null;
-  email?: string | null;
-}
 
-interface AuthContextType {
-  user: SessionUser | null;
-  isLoading: boolean;
-  error: string | null; // Error is now a string for security
-}
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext } from './AuthContextDefinition';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
@@ -45,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    fetchSession();
+    void fetchSession();
   }, []);
 
   const value = useMemo(
@@ -56,10 +43,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
+

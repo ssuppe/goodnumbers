@@ -55,5 +55,12 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
     },
+  },
+  // Test-specific configuration
+  {
+    files: ["src/**/*.test.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/unbound-method": "off",
+    },
   }
 );
