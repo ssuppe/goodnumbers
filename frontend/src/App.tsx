@@ -5,6 +5,9 @@ import HomePage from './pages/HomePage';
 import DashboardPage from './pages/DashboardPage';
 import AgreementsPage from './pages/AgreementsPage';
 import SetupPage from './pages/SetupPage';
+import DemoPage from './pages/DemoPage';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
 
 const router = createBrowserRouter([
   {
@@ -14,6 +17,18 @@ const router = createBrowserRouter([
       {
         index: true,
         element: <HomePage />,
+      },
+      {
+        path: 'demo',
+        element: <DemoPage />,
+      },
+      {
+        path: 'privacy',
+        element: <PrivacyPage />,
+      },
+      {
+        path: 'terms',
+        element: <TermsPage />,
       },
       {
         element: <ProtectedRoute />,
