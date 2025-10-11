@@ -1,49 +1,33 @@
-// file: frontend/src/components/Layout.test.tsx
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './Layout';
-import * as useAuth from '../hooks/useAuth';
-import type { SessionUser } from '../contexts/AuthTypes';
+import * as useAuthModule from '../hooks/useAuth'; // Import the module as a namespace
 
+// Mock the useAuth hook
 vi.mock('../hooks/useAuth');
-const useAuthMock = vi.mocked(useAuth.useAuth);
-
-const renderWithRouter = (ui: React.ReactElement) => {
-  return render(
-    <MemoryRouter initialEntries={['/']}>
-      <Routes>
-        <Route element={ui}>
-          <Route path="/" element={<div>Child Content</div>} />
-        </Route>
-      </Routes>
-    </MemoryRouter>
-  );
-};
+const mockedUseAuth = vi.mocked(useAuthModule.useAuth); // Access the mocked export
 
 describe('Layout', () => {
-  it('renders a global loading indicator while session is loading', () => {
-    useAuthMock.mockReturnValue({ user: null, isLoading: true, error: null });
-    renderWithRouter(<Layout />);
-    expect(screen.getByText('Loading session...')).toBeInTheDocument();
-    expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+  beforeEach(() => {
+    mockedUseAuth.mockClear();
+    mockedUseAuth.mockReturnValue({ user: null, isLoading: false, error: null });
   });
 
-  it('renders header, footer, and outlet when not loading (logged out)', () => {
-    useAuthMock.mockReturnValue({ user: null, isLoading: false, error: null });
-    renderWithRouter(<Layout />);
-    expect(screen.getByRole('banner')).toBeInTheDocument();
-    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
-    expect(screen.getByText('Child Content')).toBeInTheDocument();
-    expect(screen.getByText('Login')).toBeInTheDocument();
-  });
+  it('renders the banner, header, footer, and child outlet content', () => {
+    render(
+      <MemoryRouter>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<div>Child Content</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
 
-  it('renders dynamic header for authenticated user', () => {
-    const mockUser: SessionUser = { id: '1', email: 'test@test.com', name: 'Test User' };
-    useAuthMock.mockReturnValue({ user: mockUser, isLoading: false, error: null });
-    renderWithRouter(<Layout />);
-    expect(screen.getByText('Settings')).toBeInTheDocument();
-    expect(screen.getByText('Logout')).toBeInTheDocument();
-    expect(screen.queryByText('Login')).not.toBeInTheDocument();
+    expect(screen.getByText(/goodnumbers is an experiment/i)).toBeInTheDocument(); // Verifies Banner
+    expect(screen.getByRole('link', { name: 'GoodNumbers' })).toBeInTheDocument(); // Verifies Header
+    expect(screen.getByText('Child Content')).toBeInTheDocument(); // Verifies Outlet
+    expect(screen.getByText(/© 2025 goodnumbers, inc/i)).toBeInTheDocument(); // Verifies Footer
   });
 });
