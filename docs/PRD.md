@@ -36,12 +36,11 @@ This section outlines the core principles of the GoodNumbers visual identity and
 
 The palette is unified and intentional, using a primary green for positive actions and a distinct red for critical alerts.
 
-- **Primary Color (Soft Green):** Used for all interactive elements, including buttons, links, selected states, and informational icons. This color signifies growth, positive action, and forward progress.
+- **Primary Color (Primary Blue):** Used for all interactive elements, including buttons, links, selected states, and informational icons. This color signifies trust, stability, and positive action.
 
-  - `--primary-color: #4CAF50`
-  - `--primary-color-hover: #5cb85c`
-  - `--primary-color-active: #449d44`
-  - `--primary-background-light: #E8F5E9` (for selected item backgrounds)
+  - `--primary-color: #1976d2`
+  - `--primary-color-hover: #1e88e5`
+  - `--primary-color-active: #1976d2`
 
 - **Critical Alert Color (Red):** Reserved exclusively for high-priority warnings to ensure its significance is not diluted. Its primary use is for the site-wide medical disclaimer banner.
 
@@ -66,8 +65,8 @@ The palette is unified and intentional, using a primary green for positive actio
 
 - **Banner Component:** The primary site banner uses a solid red (`--feedback-critical-color`) background with high-contrast white text. This makes the medical disclaimer impossible to miss.
 - **Buttons:**
-  - **Primary:** Solid green background with white text. Used for main calls-to-action (e.g., "Login", "Start Journal").
-  - **Secondary:** Transparent background with a green border and text. Used for less prominent actions (e.g., "View" on a historical journal).
+  - **Primary:** Solid blue background with white text. Used for main calls-to-action (e.g., "Login", "Start Journal").
+  - **Secondary:** Transparent background with a blue border and text. Used for less prominent actions (e.g., "View" on a historical journal).
 - **Cards:** Content is organized into cards with a white background, large rounded corners (`12px`), and a light box shadow. This separates information into clean, manageable chunks.
 - **Insight Taxonomy:** A clear visual language is used to classify AI-generated insights. Each insight has a neutral gray background, with the icon colored according to importance:
   - **Critical (🚨):** Red
@@ -475,7 +474,7 @@ To ensure an optimal experience on smaller screens, the chart will adapt as foll
   - `CRITICAL`: **Red warning icon** (e.g., `IconAlertCircle`) and **red text**.
   - `SERIOUS`: **Red warning icon** and **black text**.
   - `IMPORTANT`: **Lightbulb icon** (💡) and **black text**.
-  - `INFO`: **Blue "i" icon** (e.g., `IconInfoCircle`) and **black text**.
+  - `INFO`: **Green "i" icon** (e.g., `IconInfoCircle`) and **black text**.
 * **Interaction:** The insights list is read-only and does not interact with the chart above it.
 
 ##### 2.3 Subjective User Inputs
