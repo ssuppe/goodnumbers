@@ -1,5 +1,3 @@
-# .husky/pre-commit
-
 #!/usr/bin/env bash
 
 # --- Robustly find the project directory ---
@@ -19,8 +17,10 @@ if [ ! -d "$REPO_ROOT/frontend" ]; then
   exit 1
 fi
 
-# --- Check for docs-only changes ---
-ONLY_DOCS_CHANGED=true
+# --- Check for docs-only changes and other allowed skips ---
+# The logic here is: ONLY_SKIP_ALLOWED=true until we find a staged file
+# that is NOT in 'docs/', NOT a '.code-workspace' file, and NOT in '.gemini/'.
+ONLY_SKIP_ALLOWED=true
 STAGED_FILES=$(git diff --cached --name-only)
 
 if [ -z "$STAGED_FILES" ]; then
@@ -30,21 +30,33 @@ fi
 
 # POSIX sh compatible code
 for FILE in $STAGED_FILES; do
-  # Check if the file name DOES NOT start with 'docs/'
+  # Check if the file name matches any of the skip patterns
   case "$FILE" in
+    # 1. Matches 'docs/' subfolder
     docs/*)
-      # It matches docs/*, so we do nothing and continue the loop
+      # Skip allowed
       ;;
+
+    # 2. Matches files ending in '.code-workspace'
+    *.code-workspace)
+      # Skip allowed
+      ;;
+
+    # 3. Matches files in the '.gemini/' subfolder
+    .gemini/*)
+      # Skip allowed
+      ;;
+
     *)
-      # It does NOT match docs/* (i.e., it's a non-docs change)
-      ONLY_DOCS_CHANGED=false
+      # It does NOT match any of the skip patterns (i.e., it's a significant change)
+      ONLY_SKIP_ALLOWED=false
       break
       ;;
   esac
 done
 
-if [ "$ONLY_DOCS_CHANGED" = true ]; then
-  echo "› Only changes in 'docs/' folder detected. Skipping lint, build, and test checks."
+if [ "$ONLY_SKIP_ALLOWED" = true ]; then
+  echo "› Only changes in 'docs/', '.code-workspace' files, or '.gemini/' folder detected. Skipping lint, build, and test checks."
   exit 0
 fi
 
