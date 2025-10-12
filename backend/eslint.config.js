@@ -4,6 +4,7 @@ import pluginJs from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default [
+  { files: ['src/**/*.{ts,js}', 'tests/**/*.{ts,js}', '*.js', '*.cjs'], }, // Explicitly define files to lint
   {
     languageOptions: {
       globals: {
@@ -48,6 +49,6 @@ export default [
     },
   },
   {
-    ignores: ['dist/**'],
+    ignores: ['dist/**', 'frontend/**'],
   },
 ];

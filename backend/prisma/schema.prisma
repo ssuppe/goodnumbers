@@ -32,6 +32,7 @@ model User {
   // Application-specific settings
   nightscoutUrl   String?
   nightscoutToken String?
+  nightscoutTokenLast3 String?
   preferredUnits  GlucoseUnit @default(MGDL)
   rssToken        String    @unique @default(cuid())
 }

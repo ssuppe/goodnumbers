@@ -1430,6 +1430,7 @@ export namespace Prisma {
     agreementsSigned: boolean | null
     nightscoutUrl: string | null
     nightscoutToken: string | null
+    nightscoutTokenLast3: string | null
     preferredUnits: $Enums.GlucoseUnit | null
     rssToken: string | null
   }
@@ -1443,6 +1444,7 @@ export namespace Prisma {
     agreementsSigned: boolean | null
     nightscoutUrl: string | null
     nightscoutToken: string | null
+    nightscoutTokenLast3: string | null
     preferredUnits: $Enums.GlucoseUnit | null
     rssToken: string | null
   }
@@ -1456,6 +1458,7 @@ export namespace Prisma {
     agreementsSigned: number
     nightscoutUrl: number
     nightscoutToken: number
+    nightscoutTokenLast3: number
     preferredUnits: number
     rssToken: number
     _all: number
@@ -1471,6 +1474,7 @@ export namespace Prisma {
     agreementsSigned?: true
     nightscoutUrl?: true
     nightscoutToken?: true
+    nightscoutTokenLast3?: true
     preferredUnits?: true
     rssToken?: true
   }
@@ -1484,6 +1488,7 @@ export namespace Prisma {
     agreementsSigned?: true
     nightscoutUrl?: true
     nightscoutToken?: true
+    nightscoutTokenLast3?: true
     preferredUnits?: true
     rssToken?: true
   }
@@ -1497,6 +1502,7 @@ export namespace Prisma {
     agreementsSigned?: true
     nightscoutUrl?: true
     nightscoutToken?: true
+    nightscoutTokenLast3?: true
     preferredUnits?: true
     rssToken?: true
     _all?: true
@@ -1583,6 +1589,7 @@ export namespace Prisma {
     agreementsSigned: boolean
     nightscoutUrl: string | null
     nightscoutToken: string | null
+    nightscoutTokenLast3: string | null
     preferredUnits: $Enums.GlucoseUnit
     rssToken: string
     _count: UserCountAggregateOutputType | null
@@ -1613,6 +1620,7 @@ export namespace Prisma {
     agreementsSigned?: boolean
     nightscoutUrl?: boolean
     nightscoutToken?: boolean
+    nightscoutTokenLast3?: boolean
     preferredUnits?: boolean
     rssToken?: boolean
     accounts?: boolean | User$accountsArgs<ExtArgs>
@@ -1630,6 +1638,7 @@ export namespace Prisma {
     agreementsSigned?: boolean
     nightscoutUrl?: boolean
     nightscoutToken?: boolean
+    nightscoutTokenLast3?: boolean
     preferredUnits?: boolean
     rssToken?: boolean
   }, ExtArgs["result"]["user"]>
@@ -1643,6 +1652,7 @@ export namespace Prisma {
     agreementsSigned?: boolean
     nightscoutUrl?: boolean
     nightscoutToken?: boolean
+    nightscoutTokenLast3?: boolean
     preferredUnits?: boolean
     rssToken?: boolean
   }, ExtArgs["result"]["user"]>
@@ -1656,11 +1666,12 @@ export namespace Prisma {
     agreementsSigned?: boolean
     nightscoutUrl?: boolean
     nightscoutToken?: boolean
+    nightscoutTokenLast3?: boolean
     preferredUnits?: boolean
     rssToken?: boolean
   }
 
-  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "email" | "emailVerified" | "image" | "agreementsSigned" | "nightscoutUrl" | "nightscoutToken" | "preferredUnits" | "rssToken", ExtArgs["result"]["user"]>
+  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "email" | "emailVerified" | "image" | "agreementsSigned" | "nightscoutUrl" | "nightscoutToken" | "nightscoutTokenLast3" | "preferredUnits" | "rssToken", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     accounts?: boolean | User$accountsArgs<ExtArgs>
     sessions?: boolean | User$sessionsArgs<ExtArgs>
@@ -1686,6 +1697,7 @@ export namespace Prisma {
       agreementsSigned: boolean
       nightscoutUrl: string | null
       nightscoutToken: string | null
+      nightscoutTokenLast3: string | null
       preferredUnits: $Enums.GlucoseUnit
       rssToken: string
     }, ExtArgs["result"]["user"]>
@@ -2122,6 +2134,7 @@ export namespace Prisma {
     readonly agreementsSigned: FieldRef<"User", 'Boolean'>
     readonly nightscoutUrl: FieldRef<"User", 'String'>
     readonly nightscoutToken: FieldRef<"User", 'String'>
+    readonly nightscoutTokenLast3: FieldRef<"User", 'String'>
     readonly preferredUnits: FieldRef<"User", 'GlucoseUnit'>
     readonly rssToken: FieldRef<"User", 'String'>
   }
@@ -8165,6 +8178,7 @@ export namespace Prisma {
     agreementsSigned: 'agreementsSigned',
     nightscoutUrl: 'nightscoutUrl',
     nightscoutToken: 'nightscoutToken',
+    nightscoutTokenLast3: 'nightscoutTokenLast3',
     preferredUnits: 'preferredUnits',
     rssToken: 'rssToken'
   };
@@ -8367,6 +8381,7 @@ export namespace Prisma {
     agreementsSigned?: BoolFilter<"User"> | boolean
     nightscoutUrl?: StringNullableFilter<"User"> | string | null
     nightscoutToken?: StringNullableFilter<"User"> | string | null
+    nightscoutTokenLast3?: StringNullableFilter<"User"> | string | null
     preferredUnits?: EnumGlucoseUnitFilter<"User"> | $Enums.GlucoseUnit
     rssToken?: StringFilter<"User"> | string
     accounts?: AccountListRelationFilter
@@ -8383,6 +8398,7 @@ export namespace Prisma {
     agreementsSigned?: SortOrder
     nightscoutUrl?: SortOrderInput | SortOrder
     nightscoutToken?: SortOrderInput | SortOrder
+    nightscoutTokenLast3?: SortOrderInput | SortOrder
     preferredUnits?: SortOrder
     rssToken?: SortOrder
     accounts?: AccountOrderByRelationAggregateInput
@@ -8403,6 +8419,7 @@ export namespace Prisma {
     agreementsSigned?: BoolFilter<"User"> | boolean
     nightscoutUrl?: StringNullableFilter<"User"> | string | null
     nightscoutToken?: StringNullableFilter<"User"> | string | null
+    nightscoutTokenLast3?: StringNullableFilter<"User"> | string | null
     preferredUnits?: EnumGlucoseUnitFilter<"User"> | $Enums.GlucoseUnit
     accounts?: AccountListRelationFilter
     sessions?: SessionListRelationFilter
@@ -8418,6 +8435,7 @@ export namespace Prisma {
     agreementsSigned?: SortOrder
     nightscoutUrl?: SortOrderInput | SortOrder
     nightscoutToken?: SortOrderInput | SortOrder
+    nightscoutTokenLast3?: SortOrderInput | SortOrder
     preferredUnits?: SortOrder
     rssToken?: SortOrder
     _count?: UserCountOrderByAggregateInput
@@ -8437,6 +8455,7 @@ export namespace Prisma {
     agreementsSigned?: BoolWithAggregatesFilter<"User"> | boolean
     nightscoutUrl?: StringNullableWithAggregatesFilter<"User"> | string | null
     nightscoutToken?: StringNullableWithAggregatesFilter<"User"> | string | null
+    nightscoutTokenLast3?: StringNullableWithAggregatesFilter<"User"> | string | null
     preferredUnits?: EnumGlucoseUnitWithAggregatesFilter<"User"> | $Enums.GlucoseUnit
     rssToken?: StringWithAggregatesFilter<"User"> | string
   }
@@ -8813,6 +8832,7 @@ export namespace Prisma {
     agreementsSigned?: boolean
     nightscoutUrl?: string | null
     nightscoutToken?: string | null
+    nightscoutTokenLast3?: string | null
     preferredUnits?: $Enums.GlucoseUnit
     rssToken?: string
     accounts?: AccountCreateNestedManyWithoutUserInput
@@ -8829,6 +8849,7 @@ export namespace Prisma {
     agreementsSigned?: boolean
     nightscoutUrl?: string | null
     nightscoutToken?: string | null
+    nightscoutTokenLast3?: string | null
     preferredUnits?: $Enums.GlucoseUnit
     rssToken?: string
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
@@ -8845,6 +8866,7 @@ export namespace Prisma {
     agreementsSigned?: BoolFieldUpdateOperationsInput | boolean
     nightscoutUrl?: NullableStringFieldUpdateOperationsInput | string | null
     nightscoutToken?: NullableStringFieldUpdateOperationsInput | string | null
+    nightscoutTokenLast3?: NullableStringFieldUpdateOperationsInput | string | null
     preferredUnits?: EnumGlucoseUnitFieldUpdateOperationsInput | $Enums.GlucoseUnit
     rssToken?: StringFieldUpdateOperationsInput | string
     accounts?: AccountUpdateManyWithoutUserNestedInput
@@ -8861,6 +8883,7 @@ export namespace Prisma {
     agreementsSigned?: BoolFieldUpdateOperationsInput | boolean
     nightscoutUrl?: NullableStringFieldUpdateOperationsInput | string | null
     nightscoutToken?: NullableStringFieldUpdateOperationsInput | string | null
+    nightscoutTokenLast3?: NullableStringFieldUpdateOperationsInput | string | null
     preferredUnits?: EnumGlucoseUnitFieldUpdateOperationsInput | $Enums.GlucoseUnit
     rssToken?: StringFieldUpdateOperationsInput | string
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
@@ -8877,6 +8900,7 @@ export namespace Prisma {
     agreementsSigned?: boolean
     nightscoutUrl?: string | null
     nightscoutToken?: string | null
+    nightscoutTokenLast3?: string | null
     preferredUnits?: $Enums.GlucoseUnit
     rssToken?: string
   }
@@ -8890,6 +8914,7 @@ export namespace Prisma {
     agreementsSigned?: BoolFieldUpdateOperationsInput | boolean
     nightscoutUrl?: NullableStringFieldUpdateOperationsInput | string | null
     nightscoutToken?: NullableStringFieldUpdateOperationsInput | string | null
+    nightscoutTokenLast3?: NullableStringFieldUpdateOperationsInput | string | null
     preferredUnits?: EnumGlucoseUnitFieldUpdateOperationsInput | $Enums.GlucoseUnit
     rssToken?: StringFieldUpdateOperationsInput | string
   }
@@ -8903,6 +8928,7 @@ export namespace Prisma {
     agreementsSigned?: BoolFieldUpdateOperationsInput | boolean
     nightscoutUrl?: NullableStringFieldUpdateOperationsInput | string | null
     nightscoutToken?: NullableStringFieldUpdateOperationsInput | string | null
+    nightscoutTokenLast3?: NullableStringFieldUpdateOperationsInput | string | null
     preferredUnits?: EnumGlucoseUnitFieldUpdateOperationsInput | $Enums.GlucoseUnit
     rssToken?: StringFieldUpdateOperationsInput | string
   }
@@ -9394,6 +9420,7 @@ export namespace Prisma {
     agreementsSigned?: SortOrder
     nightscoutUrl?: SortOrder
     nightscoutToken?: SortOrder
+    nightscoutTokenLast3?: SortOrder
     preferredUnits?: SortOrder
     rssToken?: SortOrder
   }
@@ -9407,6 +9434,7 @@ export namespace Prisma {
     agreementsSigned?: SortOrder
     nightscoutUrl?: SortOrder
     nightscoutToken?: SortOrder
+    nightscoutTokenLast3?: SortOrder
     preferredUnits?: SortOrder
     rssToken?: SortOrder
   }
@@ -9420,6 +9448,7 @@ export namespace Prisma {
     agreementsSigned?: SortOrder
     nightscoutUrl?: SortOrder
     nightscoutToken?: SortOrder
+    nightscoutTokenLast3?: SortOrder
     preferredUnits?: SortOrder
     rssToken?: SortOrder
   }
@@ -10590,6 +10619,7 @@ export namespace Prisma {
     agreementsSigned?: boolean
     nightscoutUrl?: string | null
     nightscoutToken?: string | null
+    nightscoutTokenLast3?: string | null
     preferredUnits?: $Enums.GlucoseUnit
     rssToken?: string
     accounts?: AccountCreateNestedManyWithoutUserInput
@@ -10605,6 +10635,7 @@ export namespace Prisma {
     agreementsSigned?: boolean
     nightscoutUrl?: string | null
     nightscoutToken?: string | null
+    nightscoutTokenLast3?: string | null
     preferredUnits?: $Enums.GlucoseUnit
     rssToken?: string
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
@@ -10663,6 +10694,7 @@ export namespace Prisma {
     agreementsSigned?: BoolFieldUpdateOperationsInput | boolean
     nightscoutUrl?: NullableStringFieldUpdateOperationsInput | string | null
     nightscoutToken?: NullableStringFieldUpdateOperationsInput | string | null
+    nightscoutTokenLast3?: NullableStringFieldUpdateOperationsInput | string | null
     preferredUnits?: EnumGlucoseUnitFieldUpdateOperationsInput | $Enums.GlucoseUnit
     rssToken?: StringFieldUpdateOperationsInput | string
     accounts?: AccountUpdateManyWithoutUserNestedInput
@@ -10678,6 +10710,7 @@ export namespace Prisma {
     agreementsSigned?: BoolFieldUpdateOperationsInput | boolean
     nightscoutUrl?: NullableStringFieldUpdateOperationsInput | string | null
     nightscoutToken?: NullableStringFieldUpdateOperationsInput | string | null
+    nightscoutTokenLast3?: NullableStringFieldUpdateOperationsInput | string | null
     preferredUnits?: EnumGlucoseUnitFieldUpdateOperationsInput | $Enums.GlucoseUnit
     rssToken?: StringFieldUpdateOperationsInput | string
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
@@ -10810,6 +10843,7 @@ export namespace Prisma {
     agreementsSigned?: boolean
     nightscoutUrl?: string | null
     nightscoutToken?: string | null
+    nightscoutTokenLast3?: string | null
     preferredUnits?: $Enums.GlucoseUnit
     rssToken?: string
     sessions?: SessionCreateNestedManyWithoutUserInput
@@ -10825,6 +10859,7 @@ export namespace Prisma {
     agreementsSigned?: boolean
     nightscoutUrl?: string | null
     nightscoutToken?: string | null
+    nightscoutTokenLast3?: string | null
     preferredUnits?: $Enums.GlucoseUnit
     rssToken?: string
     sessions?: SessionUncheckedCreateNestedManyWithoutUserInput
@@ -10856,6 +10891,7 @@ export namespace Prisma {
     agreementsSigned?: BoolFieldUpdateOperationsInput | boolean
     nightscoutUrl?: NullableStringFieldUpdateOperationsInput | string | null
     nightscoutToken?: NullableStringFieldUpdateOperationsInput | string | null
+    nightscoutTokenLast3?: NullableStringFieldUpdateOperationsInput | string | null
     preferredUnits?: EnumGlucoseUnitFieldUpdateOperationsInput | $Enums.GlucoseUnit
     rssToken?: StringFieldUpdateOperationsInput | string
     sessions?: SessionUpdateManyWithoutUserNestedInput
@@ -10871,6 +10907,7 @@ export namespace Prisma {
     agreementsSigned?: BoolFieldUpdateOperationsInput | boolean
     nightscoutUrl?: NullableStringFieldUpdateOperationsInput | string | null
     nightscoutToken?: NullableStringFieldUpdateOperationsInput | string | null
+    nightscoutTokenLast3?: NullableStringFieldUpdateOperationsInput | string | null
     preferredUnits?: EnumGlucoseUnitFieldUpdateOperationsInput | $Enums.GlucoseUnit
     rssToken?: StringFieldUpdateOperationsInput | string
     sessions?: SessionUncheckedUpdateManyWithoutUserNestedInput
@@ -10886,6 +10923,7 @@ export namespace Prisma {
     agreementsSigned?: boolean
     nightscoutUrl?: string | null
     nightscoutToken?: string | null
+    nightscoutTokenLast3?: string | null
     preferredUnits?: $Enums.GlucoseUnit
     rssToken?: string
     accounts?: AccountCreateNestedManyWithoutUserInput
@@ -10901,6 +10939,7 @@ export namespace Prisma {
     agreementsSigned?: boolean
     nightscoutUrl?: string | null
     nightscoutToken?: string | null
+    nightscoutTokenLast3?: string | null
     preferredUnits?: $Enums.GlucoseUnit
     rssToken?: string
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
@@ -10932,6 +10971,7 @@ export namespace Prisma {
     agreementsSigned?: BoolFieldUpdateOperationsInput | boolean
     nightscoutUrl?: NullableStringFieldUpdateOperationsInput | string | null
     nightscoutToken?: NullableStringFieldUpdateOperationsInput | string | null
+    nightscoutTokenLast3?: NullableStringFieldUpdateOperationsInput | string | null
     preferredUnits?: EnumGlucoseUnitFieldUpdateOperationsInput | $Enums.GlucoseUnit
     rssToken?: StringFieldUpdateOperationsInput | string
     accounts?: AccountUpdateManyWithoutUserNestedInput
@@ -10947,6 +10987,7 @@ export namespace Prisma {
     agreementsSigned?: BoolFieldUpdateOperationsInput | boolean
     nightscoutUrl?: NullableStringFieldUpdateOperationsInput | string | null
     nightscoutToken?: NullableStringFieldUpdateOperationsInput | string | null
+    nightscoutTokenLast3?: NullableStringFieldUpdateOperationsInput | string | null
     preferredUnits?: EnumGlucoseUnitFieldUpdateOperationsInput | $Enums.GlucoseUnit
     rssToken?: StringFieldUpdateOperationsInput | string
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
