@@ -1,25 +1,39 @@
 // file: frontend/src/components/ProtectedRoute.tsx
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 export function ProtectedRoute() {
-  const { user, isLoading, error } = useAuth();
+  const { user, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
-    // Optionally render a loading spinner or null
-    return null;
-  }
-
-  if (error) {
-    // Handle error state, e.g., redirect to an error page or display a message
-    // For now, we'll just redirect to login if there's an error, or handle it more gracefully later.
-    // The test doesn't explicitly cover error state for ProtectedRoute, so keeping it simple.
-    return <Navigate to="/login" replace />;
+    // Render a loading indicator while session is being fetched
+    return <div>Loading session...</div>;
   }
 
   if (!user) {
-    return <Navigate to="/api/auth/signin" replace />;
+    // User is not authenticated, redirect to the home/login page.
+    return <Navigate to="/" state={{ from: location }} replace />;
   }
 
+  // User is authenticated, now check onboarding status.
+  if (!user.agreementsSigned) {
+    // If agreements are not signed, they must go to the agreements page.
+    // We allow navigation only if they are already heading there.
+    if (location.pathname !== '/agreements') {
+      return <Navigate to="/agreements" replace />;
+    }
+  } else if (!user.nightscoutUrl) {
+    // If agreements are signed but setup is not complete, redirect to setup.
+    // We allow navigation only if they are already heading there.
+    if (location.pathname !== '/setup') {
+      return <Navigate to="/setup" replace />;
+    }
+  } else if (location.pathname === '/agreements' || location.pathname === '/setup') {
+    // If user is fully onboarded, prevent access to onboarding pages and redirect to dashboard.
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // If all onboarding checks pass, render the requested child route.
   return <Outlet />;
 }

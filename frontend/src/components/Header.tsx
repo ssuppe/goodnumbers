@@ -13,7 +13,7 @@ export default function Header() {
         <nav>
           {user ? (
             <div className="flex items-center gap-4">
-              <Link to="/settings" className="text-sm font-medium text-gray-500 hover:text-gray-900">
+              <Link to="/setup" className="text-sm font-medium text-gray-500 hover:text-gray-900">
                 Settings
               </Link>
               <a href="/api/auth/signout" rel="noopener noreferrer" className="text-sm font-medium text-gray-500 hover:text-gray-900">

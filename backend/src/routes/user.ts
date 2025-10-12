@@ -42,13 +42,17 @@ router.put(
         ...validatedSettings,
       };
 
-      // CRITICAL: Only encrypt the token if it's a non-null string.
+      // Securely handle the Nightscout token
       if (typeof validatedSettings.nightscoutToken === 'string') {
-        dataToUpdate.nightscoutToken = encrypt(
-          validatedSettings.nightscoutToken,
-        );
+        const token = validatedSettings.nightscoutToken;
+        // 1. Store the encrypted full token
+        dataToUpdate.nightscoutToken = encrypt(token);
+        // 2. Store the non-sensitive 3-char hint
+        dataToUpdate.nightscoutTokenLast3 = token.slice(-3);
       } else if (validatedSettings.nightscoutToken === null) {
-        dataToUpdate.nightscoutToken = null;
+        // If the user submitted a blank token, we do not update it.
+        // However, we should not clear the hint.
+        delete dataToUpdate.nightscoutToken;
       }
 
       await prisma.user.update({
