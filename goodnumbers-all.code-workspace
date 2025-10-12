@@ -11,9 +11,13 @@
       "path": "./packages",
       "name": "packages"
     },
-{
+    {
       "path": "./docs",
       "name": "Docs"
+    },
+    {
+      "path": "./proof_of_concept",
+      "name": "proof_of_concept"
     }
   ],
   "settings": {
