@@ -316,62 +316,207 @@ export function useApiForm<T>(
 
 ### Part 3: Implement the Agreements Page
 
-#### Step 7 (RED): Test Agreements Page
+#### Step 7 (RED): Test the V3 Agreements Page
 
-The existing test file `frontend/src/pages/AgreementsPage.test.tsx` is sufficient and does not need changes. It already covers rendering, button state, and submission behavior.
+The previous test is no longer sufficient as it does not cover the detailed requirements from the new V3 UX specification (`docs/design/agreements_spec.md`). We must write a new, comprehensive test that validates all aspects of the design, including the specific copy, the two-checkbox dependency for the button state, and the form submission states.
 
-#### Step 8 (GREEN): Implement Agreements Page with Hook
+This test will fail because the component has not been updated yet.
 
-Refactor `frontend/src/pages/AgreementsPage.tsx` to use the new `useApiForm` hook, simplifying its state management.
+```typescript
+// file: frontend/src/pages/AgreementsPage.test.tsx
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
+import AgreementsPage from './AgreementsPage';
 
-```diff
---- a/frontend/src/pages/AgreementsPage.tsx
-+++ b/frontend/src/pages/AgreementsPage.tsx
--import { useState, type FormEvent } from 'react';
-+import { useState } from 'react';
- import { useNavigate } from 'react-router-dom';
- import { api } from '../lib/api';
-+import { useApiForm } from '../hooks/useApiForm';
+// Mock the reusable form hook and the navigation hook
+const mockUseApiForm = vi.fn();
+const mockNavigate = vi.fn();
 
- export default function AgreementsPage() {
-   const [termsAgreed, setTermsAgreed] = useState(false);
-   const [privacyAgreed, setPrivacyAgreed] = useState(false);
--  const [isSubmitting, setIsSubmitting] = useState(false);
--  const [error, setError] = useState<string | null>(null);
-   const navigate = useNavigate();
+vi.mock('../hooks/useApiForm', () => ({
+  useApiForm: mockUseApiForm,
+}));
 
-   const canContinue = termsAgreed && privacyAgreed;
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
--  const handleSubmit = async (e: FormEvent) => {
--    e.preventDefault();
--    if (!canContinue) return;
--
--    setIsSubmitting(true);
--    setError(null);
--
--    try {
--      await api.put('/user/settings', { agreementsSigned: true });
--      navigate('/setup');
--    } catch (err) {
--      setError('Failed to save agreements. Please try again.');
--      setIsSubmitting(false);
--    }
--  };
-+  const [handleApiSubmit, isSubmitting, error] = useApiForm(async () => {
-+    await api.put('/user/settings', { agreementsSigned: true });
-+    navigate('/setup');
-+  });
+describe('AgreementsPage', () => {
+  beforeEach(() => {
+    // Before each test, reset mocks to a default "non-submitting" state
+    mockUseApiForm.mockReturnValue([vi.fn(), false, null]);
+    mockNavigate.mockClear();
+  });
 
-   return (
-     <div className="max-w-2xl mx-auto py-16 px-4">
-       <h1 className="text-3xl font-bold text-center">Agreements</h1>
-       <div className="mt-8 p-8 border rounded-lg bg-white shadow-sm">
--        <form onSubmit={handleSubmit}>
-+        <form onSubmit={(e) => { e.preventDefault(); if (canContinue) void handleApiSubmit({}); }}>
-           <div className="space-y-4">
-             <div className="flex items-start">
-               <input
+  it('renders all required text, checkboxes, and a disabled button', () => {
+    render(<MemoryRouter><AgreementsPage /></MemoryRouter>);
 
+    // Check for V3 spec content
+    expect(screen.getByRole('heading', { name: /Welcome to GoodNumbers/i })).toBeInTheDocument();
+    expect(screen.getByText(/Before we can create your account/i)).toBeInTheDocument();
+
+    // Check for both checkbox labels
+    const termsCheckbox = screen.getByLabelText(/i accept the terms and conditions/i);
+    const privacyCheckbox = screen.getByLabelText(/i have read and accept the privacy policy/i);
+    expect(termsCheckbox).toBeInTheDocument();
+    expect(privacyCheckbox).toBeInTheDocument();
+    expect(termsCheckbox).not.toBeChecked();
+    expect(privacyCheckbox).not.toBeChecked();
+
+    // Check for the button and its initial disabled state
+    const continueButton = screen.getByRole('button', { name: /Accept and Continue to Setup/i });
+    expect(continueButton).toBeInTheDocument();
+    expect(continueButton).toBeDisabled();
+  });
+
+  it('enables the continue button only when both checkboxes are checked', () => {
+    render(<MemoryRouter><AgreementsPage /></MemoryRouter>);
+    const termsCheckbox = screen.getByLabelText(/i accept the terms and conditions/i);
+    const privacyCheckbox = screen.getByLabelText(/i have read and accept the privacy policy/i);
+    const continueButton = screen.getByRole('button', { name: /Accept and Continue to Setup/i });
+
+    // Check one, button should still be disabled
+    fireEvent.click(termsCheckbox);
+    expect(termsCheckbox).toBeChecked();
+    expect(privacyCheckbox).not.toBeChecked();
+    expect(continueButton).toBeDisabled();
+
+    // Check the other, button should now be enabled
+    fireEvent.click(privacyCheckbox);
+    expect(termsCheckbox).toBeChecked();
+    expect(privacyCheckbox).toBeChecked();
+    expect(continueButton).toBeEnabled();
+
+    // Uncheck one, button should become disabled again
+    fireEvent.click(termsCheckbox);
+    expect(termsCheckbox).not.toBeChecked();
+    expect(continueButton).toBeDisabled();
+  });
+
+  it('calls the api submission hook with correct data when submitted', () => {
+    const mockHandleSubmit = vi.fn();
+    mockUseApiForm.mockReturnValue([mockHandleSubmit, false, null]);
+
+    render(<MemoryRouter><AgreementsPage /></MemoryRouter>);
+
+    // Enable the button
+    fireEvent.click(screen.getByLabelText(/i accept the terms and conditions/i));
+    fireEvent.click(screen.getByLabelText(/i have read and accept the privacy policy/i));
+
+    // Click the button and verify the submission handler was called
+    fireEvent.click(screen.getByRole('button', { name: /Accept and Continue to Setup/i }));
+    expect(mockHandleSubmit).toHaveBeenCalledWith({ agreementsSigned: true });
+  });
+});```
+
+#### Step 8 (GREEN): Implement V3 Agreements Page
+
+Now, create the `frontend/src/pages/AgreementsPage.tsx` file. This implementation uses Tailwind CSS to precisely match the V3 design specification and leverages our reusable `useApiForm` hook to handle the API interaction, including loading and error states.
+
+```typescript
+// file: frontend/src/pages/AgreementsPage.tsx
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { api } from '../lib/api';
+import { useApiForm } from '../hooks/useApiForm';
+
+export default function AgreementsPage() {
+  const [termsAgreed, setTermsAgreed] = useState(false);
+  const [privacyAgreed, setPrivacyAgreed] = useState(false);
+  const navigate = useNavigate();
+
+  // This boolean determines if the form is valid and the button should be enabled.
+  const canContinue = termsAgreed && privacyAgreed;
+
+  // Use our custom hook to manage the form's submission state.
+  // On success, it automatically navigates to the next step in the onboarding flow.
+  const [handleApiSubmit, isSubmitting, error] = useApiForm(async (data: { agreementsSigned: boolean }) => {
+    await api.put('/user/settings', data);
+    navigate('/setup');
+  });
+
+  // This function handles the form's onSubmit event.
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (canContinue) {
+      // We call the handler from our hook, passing the required payload.
+      void handleApiSubmit({ agreementsSigned: true });
+    }
+  };
+
+  return (
+    <div className="bg-light pt-12">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg p-8">
+          <h1 className="text-3xl font-extrabold text-gray-900 text-center">Welcome to GoodNumbers</h1>
+          <p className="mt-2 text-center text-gray-600">Before we can create your account, you must review and accept the agreements below.</p>
+
+          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+            <div className="relative flex items-start">
+              <div className="flex h-6 items-center">
+                <input
+                  id="terms"
+                  name="terms"
+                  type="checkbox"
+                  checked={termsAgreed}
+                  onChange={(e) => setTermsAgreed(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+              </div>
+              <div className="ml-3 text-sm leading-6">
+                <label htmlFor="terms" className="text-gray-700 text-base">
+                  I accept the <Link to="/terms" className="font-medium v3-primary-text hover:underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Terms and Conditions</Link>. I understand that <strong className="font-bold">GoodNumbers is an experimental project, is NOT medical advice</strong>, and may provide incorrect or misleading information. I confirm that I will <strong className="font-bold">always consult a healthcare professional</strong> before making any changes to my diabetic healthcare plan, insulin usage, or device settings. I accept all responsibility and liability for the use of this software.
+                </label>
+              </div>
+            </div>
+
+            <div className="relative flex items-start">
+              <div className="flex h-6 items-center">
+                <input
+                  id="privacy"
+                  name="privacy"
+                  type="checkbox"
+                  checked={privacyAgreed}
+                  onChange={(e) => setPrivacyAgreed(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+              </div>
+              <div className="ml-3 text-sm leading-6">
+                <label htmlFor="privacy" className="text-gray-700 text-base">
+                  I have read and accept the <Link to="/privacy" className="font-medium v3-primary-text hover:underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">Privacy Policy</Link>. I consent to the storage and processing of my pseudonymized health data (including any treatment, CGM data, Nightscout data, etc) for the purpose of journal analysis and feature development. I understand I am responsible for the data I share.
+                </label>
+              </div>
+            </div>
+
+            {error && (
+              <div className="rounded-md bg-red-50 p-4">
+                <div className="flex">
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-critical-red">{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                disabled={!canContinue || isSubmitting}
+                className="flex w-full justify-center rounded-lg px-4 py-3 text-base font-semibold text-white shadow-sm transition-colors duration-150 disabled:bg-gray-400 disabled:text-gray-700 enabled:v3-bg-primary enabled:v3-hover-bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              >
+                {isSubmitting ? 'Saving and Continuing...' : 'Accept and Continue to Setup'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
 ````
 
 ### Part 4: Implement the Account Setup Page
