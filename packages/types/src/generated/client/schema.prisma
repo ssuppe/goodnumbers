@@ -30,10 +30,11 @@ model User {
   agreementsSigned Boolean @default(false)
 
   // Application-specific settings
-  nightscoutUrl   String?
-  nightscoutToken String?
-  preferredUnits  GlucoseUnit @default(MGDL)
-  rssToken        String      @unique @default(cuid())
+  nightscoutUrl        String?
+  nightscoutToken      String?
+  nightscoutTokenLast3 String?
+  preferredUnits       GlucoseUnit @default(MGDL)
+  rssToken             String      @unique @default(cuid())
 }
 
 model Journal {

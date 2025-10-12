@@ -126,6 +126,7 @@ exports.Prisma.UserScalarFieldEnum = {
   agreementsSigned: 'agreementsSigned',
   nightscoutUrl: 'nightscoutUrl',
   nightscoutToken: 'nightscoutToken',
+  nightscoutTokenLast3: 'nightscoutTokenLast3',
   preferredUnits: 'preferredUnits',
   rssToken: 'rssToken'
 };

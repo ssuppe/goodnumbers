@@ -91,8 +91,11 @@ export const authConfig: ExpressAuthConfig = {
       if (session.user) {
         session.user.id = user.id;
         session.user.agreementsSigned = user.agreementsSigned;
-        session.user.nightscoutUrl = user.nightscoutUrl;
         session.user.preferredUnits = user.preferredUnits;
+        // NEW: Add the required fields for the setup/settings page
+        session.user.nightscoutUrl = user.nightscoutUrl;
+        // SECURE: Read the pre-calculated, non-sensitive hint directly.
+        session.user.nightscoutTokenLast3 = user.nightscoutTokenLast3;
       }
       return session;
     },
@@ -111,6 +114,7 @@ declare module '@auth/express' {
   interface User {
     agreementsSigned?: boolean;
     nightscoutUrl?: string | null;
+    nightscoutTokenLast3?: string | null;
     preferredUnits?: string;
   }
 }

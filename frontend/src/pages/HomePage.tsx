@@ -1,6 +1,26 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { useEffect } from 'react';
 
 export default function HomePage() {
+  const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // When the session has been loaded, check if the user is logged in.
+    if (!isLoading && user) {
+      // If they are, redirect them to the main dashboard. The ProtectedRoute
+      // will then handle the onboarding flow from there.
+      navigate('/dashboard', { replace: true });
+    }
+  }, [user, isLoading, navigate]);
+
+  // While loading the session or if the user is logged in (and about to be redirected),
+  // show a loading indicator to prevent flashing the homepage content.
+  if (isLoading || user) {
+    return <div>Loading...</div>; // This can be replaced with a spinner component
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-center">
       <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 leading-tight mb-6">
