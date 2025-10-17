@@ -1,6 +1,6 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { useEffect } from 'react';
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import { useEffect } from "react";
 
 export default function HomePage() {
   const { user, isLoading } = useAuth();
@@ -11,7 +11,7 @@ export default function HomePage() {
     if (!isLoading && user) {
       // If they are, redirect them to the main dashboard. The ProtectedRoute
       // will then handle the onboarding flow from there.
-      navigate('/dashboard', { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [user, isLoading, navigate]);
 
@@ -30,10 +30,10 @@ export default function HomePage() {
         <strong>GoodNumbers</strong> is an experimental weekly journal to help
         type 1 diabetics reflect and improve their blood sugar levels week to
         week. It uses a mix of good old statistical analysis to help you zero in
-        on troublesome trends and identify patterns. It then leverages AI to help
-        you reflect on strategies to address them. Use it for self-reflection, to
-        find your blind spots in your diabetes management, and to continuously
-        improve.
+        on troublesome trends and identify patterns. It then leverages AI to
+        help you reflect on strategies to address them. Use it for
+        self-reflection, to find your blind spots in your diabetes management,
+        and to continuously improve.
       </p>
       <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
         <Link
