@@ -50,3 +50,6 @@ commit_message.txt
 *patch
 *swp
 repomix*
+
+# Generated code
+/packages/types/src/generated/
