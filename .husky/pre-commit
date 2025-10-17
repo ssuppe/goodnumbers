@@ -64,7 +64,7 @@ fi
 echo "› Executing pre-commit checks from '$REPO_ROOT'..."
 
 echo "› Running linter for all workspaces..."
-npm run lint -ws --if-present
+npx lint-staged
 if [ $? -ne 0 ]; then
   echo "❌ Linting failed. Commit aborted."
   exit 1
