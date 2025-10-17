@@ -29,8 +29,13 @@
     "lint-staged": "^16.1.6"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx}": [
-      "eslint --fix --config goodnumbers/eslint.config.js",
+    "backend/**/*.{ts,tsx,js,jsx}": [
+      "eslint --fix --exit-on-fatal-error --config backend/eslint.config.js"
+    ],
+    "frontend/**/*.{ts,tsx,js,jsx}": [
+      "eslint --fix --exit-on-fatal-error --config frontend/eslint.config.js"
+    ],
+    "*.{ts,tsx,js,jsx,json,md}": [
       "prettier --write"
     ]
   }
