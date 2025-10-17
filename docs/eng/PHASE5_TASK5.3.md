@@ -1,4 +1,10 @@
-# Goodnumbers — Phase 5, Task 5.3 (Revised for Security)
+Of course. Here is the final, complete, and detailed engineering plan for `docs/eng/PHASE5_TASK5.3.md`, incorporating all the changes and improvements we have discussed.
+
+I have added a new, comprehensive test for the Account Setup Page, included a clarifying comment in the backend code, and added a final step to fix the `lint-staged` configuration. The rest of the plan remains intact to ensure a junior engineer can follow it step-by-step.
+
+---
+
+# Goodnumbers — Phase 5, Task 5.3 (Revised for Security & Completeness)
 
 ## TL;DR
 
@@ -93,12 +99,12 @@ Implement the UI and API logic for the user Agreements and Account Setup pages t
     gh issue create --title "feat(ui): P5_T5.3 Implement Onboarding Pages" --body "Build and test the Agreements and Account Setup pages to complete the user onboarding flow, including edit functionality. Closes #XX"
     ```
 2.  **Create Branch:**
-    ```bash
-    git checkout develop
-    git pull origin develop
+    ````bash
+    git checkout phase5develop
+    git pull origin phase5develop
     git checkout -b feat/phase5-task5.3-onboarding-ui
-    ```
-3.  **TDD Workflow:** Follow the Red-Green-Refactor cycle for each step below. Run `npm test -w frontend` frequently.
+    ```3.  **TDD Workflow:** Follow the Red-Green-Refactor cycle for each step below. Run `npm test -w frontend` frequently.
+    ````
 
 ---
 
@@ -126,9 +132,8 @@ Add the new `nightscoutTokenLast3` field to the `User` model. This is the founda
 
 After saving the schema, create and apply the database migration.
 
-```bash
-npx prisma migrate dev --name feat-add-token-hint
-```
+````bash
+npx prisma migrate dev --name feat-add-token-hint```
 
 #### Step 2 (GREEN): Harden the User Settings API
 
@@ -157,7 +162,7 @@ Update `backend/src/routes/user.ts` to implement rate limiting and the logic to 
    const userId = req.user?.id;
    if (!userId) {
      return res.status(401).json({ error: 'Not authenticated' });
-@@ -19,13 +30,17 @@
+@@ -19,13 +30,18 @@
        ...validatedSettings,
      };
 
@@ -171,15 +176,18 @@ Update `backend/src/routes/user.ts` to implement rate limiting and the logic to 
 +      // 2. Store the non-sensitive 3-char hint
 +      dataToUpdate.nightscoutTokenLast3 = token.slice(-3);
      } else if (validatedSettings.nightscoutToken === null) {
-       // If the user submitted a blank token, we do not update it.
-       // However, we should not clear the hint.
+-      // If the user submitted a blank token, we do not update it.
+-      // However, we should not clear the hint.
 -      dataToUpdate.nightscoutToken = null;
++      // If the user submitted a blank token field, it gets converted to null.
++      // In this case, we delete the key to prevent overwriting the existing token.
++      // This ensures a user can update their units without needing to re-enter their token.
 +      delete dataToUpdate.nightscoutToken;
      }
 
      await prisma.user.update({
 
-```
+````
 
 ### Part 1: Foundational Refactoring
 
@@ -286,9 +294,9 @@ describe("useApiForm", () => {
 
 Create `frontend/src/hooks/useApiForm.tsx` to make the tests pass.
 
-````typescript
+```typescript
 // file: frontend/src/hooks/useApiForm.tsx
-import { useState } from 'react';
+import { useState } from "react";
 
 type Submitter<T> = (data: T) => Promise<unknown>;
 type HandleSubmit<T> = (data: T) => Promise<void>;
@@ -305,22 +313,23 @@ export function useApiForm<T>(
     try {
       await submitter(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred."
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return [handleSubmit, isSubmitting, error];
-}```
+}
+```
 
 ### Part 3: Implement the Agreements Page
 
 #### Step 7 (RED): Test the V3 Agreements Page
 
-The previous test is no longer sufficient as it does not cover the detailed requirements from the new V3 UX specification (`docs/design/agreements_spec.md`). We must write a new, comprehensive test that validates all aspects of the design, including the specific copy, the two-checkbox dependency for the button state, and the form submission states.
-
-This test will fail because the component has not been updated yet.
+Create `frontend/src/pages/AgreementsPage.test.tsx` to validate all aspects of the V3 design, including copy, checkbox logic, and form submission states.
 
 ```typescript
 // file: frontend/src/pages/AgreementsPage.test.tsx
@@ -411,11 +420,12 @@ describe('AgreementsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Accept and Continue to Setup/i }));
     expect(mockHandleSubmit).toHaveBeenCalledWith({ agreementsSigned: true });
   });
-});```
+});
+```
 
 #### Step 8 (GREEN): Implement V3 Agreements Page
 
-Now, create the `frontend/src/pages/AgreementsPage.tsx` file. This implementation uses Tailwind CSS to precisely match the V3 design specification and leverages our reusable `useApiForm` hook to handle the API interaction, including loading and error states.
+Create the `frontend/src/pages/AgreementsPage.tsx` file, using Tailwind CSS to match the V3 design and leveraging the `useApiForm` hook.
 
 ```typescript
 // file: frontend/src/pages/AgreementsPage.tsx
@@ -517,17 +527,128 @@ export default function AgreementsPage() {
     </div>
   );
 }
-````
+```
 
 ### Part 4: Implement the Account Setup Page
 
 #### Step 9 (RED): Test the Setup Page
 
-The existing test file `frontend/src/pages/SetupPage.test.tsx` is sufficient and does not need changes.
+**This is a new step to address the missing test file.** Create `frontend/src/pages/SetupPage.test.tsx` with comprehensive tests covering all functional requirements.
+
+```typescript
+// file: frontend/src/pages/SetupPage.test.tsx
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
+import SetupPage from './SetupPage';
+import * as useAuthModule from '../hooks/useAuth';
+import { useApiForm, type Submitter, type HandleSubmit } from '../hooks/useApiForm';
+import { type SessionUser } from '../contexts/AuthTypes';
+
+// Mock the hooks used by the component
+vi.mock('../hooks/useAuth');
+vi.mock('../hooks/useApiForm');
+
+const mockedUseAuth = vi.mocked(useAuthModule.useAuth);
+const mockedUseApiForm = useApiForm as Mock;
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
+describe('SetupPage', () => {
+  const mockHandleSubmit = vi.fn();
+
+  beforeEach(() => {
+    mockedUseAuth.mockClear();
+    mockedUseApiForm.mockClear();
+    mockNavigate.mockClear();
+    mockHandleSubmit.mockClear();
+
+    // Default mock for useApiForm
+    mockedUseApiForm.mockReturnValue([mockHandleSubmit, false, null]);
+  });
+
+  it('renders the form correctly for a new user', () => {
+    mockedUseAuth.mockReturnValue({ user: null, isLoading: false, error: null });
+    render(<MemoryRouter><SetupPage /></MemoryRouter>);
+
+    expect(screen.getByRole('heading', { name: /Account Setup/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nightscout URL/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nightscout Token/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Preferred Units/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Token is set/i)).not.toBeInTheDocument();
+  });
+
+  it('pre-fills form data for an existing user but keeps token field blank', () => {
+    const mockUser: SessionUser = {
+      id: '1',
+      nightscoutUrl: 'https://my-test-site.com',
+      preferredUnits: 'MMOL',
+      nightscoutTokenLast3: 'xyz',
+    };
+    mockedUseAuth.mockReturnValue({ user: mockUser, isLoading: false, error: null });
+
+    render(<MemoryRouter><SetupPage /></MemoryRouter>);
+
+    expect(screen.getByLabelText(/Nightscout URL/i)).toHaveValue(mockUser.nightscoutUrl!);
+    expect(screen.getByLabelText(/Preferred Units/i)).toHaveValue(mockUser.preferredUnits!);
+    expect(screen.getByLabelText(/Nightscout Token/i)).toHaveValue(''); // Security: Token field should always be empty
+  });
+
+  it('displays the token hint when a token is already set', () => {
+    const mockUser: SessionUser = { id: '1', nightscoutTokenLast3: 'xyz' };
+    mockedUseAuth.mockReturnValue({ user: mockUser, isLoading: false, error: null });
+
+    render(<MemoryRouter><SetupPage /></MemoryRouter>);
+    expect(screen.getByText(/Token is set, ending in \.\.\.xyz/i)).toBeInTheDocument();
+  });
+
+  it('converts empty string inputs to null on submission', async () => {
+    mockedUseAuth.mockReturnValue({ user: { id: '1' } as SessionUser, isLoading: false, error: null });
+    render(<MemoryRouter><SetupPage /></MemoryRouter>);
+
+    fireEvent.change(screen.getByLabelText(/Nightscout URL/i), { target: { value: ' ' } }); // Whitespace
+    fireEvent.change(screen.getByLabelText(/Nightscout Token/i), { target: { value: '' } }); // Empty
+
+    fireEvent.click(screen.getByRole('button', { name: /Save Settings/i }));
+
+    await waitFor(() => {
+      expect(mockHandleSubmit).toHaveBeenCalledWith({
+        nightscoutUrl: null,
+        nightscoutToken: null, // Ensure empty string becomes null
+        preferredUnits: 'MGDL', // Default value
+      });
+    });
+  });
+
+  it('displays loading state and disables button during submission', () => {
+    mockedUseApiForm.mockReturnValue([mockHandleSubmit, true, null]); // isSubmitting = true
+    render(<MemoryRouter><SetupPage /></MemoryRouter>);
+
+    const button = screen.getByRole('button', { name: /Saving\.\.\./i });
+    expect(button).toBeInTheDocument();
+    expect(button).toBeDisabled();
+  });
+
+  it('displays an error message on submission failure', () => {
+    const errorMessage = 'Failed to save';
+    mockedUseApiForm.mockReturnValue([mockHandleSubmit, false, errorMessage]);
+    render(<MemoryRouter><SetupPage /></MemoryRouter>);
+
+    expect(screen.getByText(errorMessage)).toBeInTheDocument();
+  });
+});
+```
 
 #### Step 10 (GREEN): Implement the Setup Page with Hook
 
-Refactor `frontend/src/pages/SetupPage.tsx` to use the `useApiForm` hook.
+Refactor `frontend/src/pages/SetupPage.tsx` to use the `useApiForm` hook and satisfy the new tests.
 
 ```diff
 --- a/frontend/src/pages/SetupPage.tsx
@@ -623,3 +744,28 @@ Refactor `frontend/src/pages/SetupPage.tsx` to use the `useApiForm` hook.
                {user?.nightscoutTokenLast3 && (
 
 ```
+
+### Part 5: Final Configuration Fix
+
+#### Step 11 (GREEN): Fix the `lint-staged` Pre-Commit Hook
+
+Update the `lint-staged` configuration in the root `package.json` to correctly run linting across all workspaces before a commit.
+
+**File to Modify:** `package.json` (at the project root)
+
+**Change to Make:**
+
+````diff
+--- a/package.json
++++ b/package.json
+@@ -25,8 +25,8 @@
+   },
+   "lint-staged": {
+     "*.{ts,tsx,js,jsx}": [
+-      "eslint --fix --config goodnumbers/eslint.config.js",
++      "npm run lint -- --fix",
+       "prettier --write"
+     ]
+   }
+ }```
+````
