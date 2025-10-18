@@ -120,20 +120,21 @@ The existing test suites serve as the primary regression oracle for this refacto
           // 1. Read the Prisma schema file
           const schemaPath = path.resolve(
             __dirname,
-            "../../prisma/schema.prisma"
+            "../../prisma/schema.prisma",
           );
           const schemaContent = await fs.readFile(schemaPath, "utf-8");
 
           // 2. Parse the enum members from the schema using a regex
-          const prismaEnumRegex = /enum\s+GlucoseUnit\s*\{([^}]+)\}/;
+          const prismaEnumRegex = /enum\\s*GlucoseUnit\\s*\\{([\\s\\S]+?)\\}/;
           const match = schemaContent.match(prismaEnumRegex);
           expect(
             match,
-            "GlucoseUnit enum not found in schema.prisma"
+            "GlucoseUnit enum not found in schema.prisma",
           ).not.toBeNull();
 
           const prismaMembers = match![1]
-            .split("\n")
+            .replace(/\\r\\n/g, "\\n") // Normalize newlines
+            .split("\\n")
             .map((line) => line.trim())
             .filter((line) => line && !line.startsWith("//"));
 
@@ -247,7 +248,7 @@ export * from "./enums.js";
 
 **Objective:** Prevent server-side runtime code from being exported from the types package. This will make our temporary test fail.
 
-#### Step 4: Convert to a Type-Only Package
+#### Step 4: Convert to a Type-Only Package - COMPLETE
 
 Modify the `index.ts` file to use the `export type` syntax.
 
@@ -276,7 +277,7 @@ npm test -w @goodnumbers/types
 
 **Objective:** Refactor the rest of the monorepo to use the new package structure, making all application tests pass again.
 
-#### Step 5: Update Dependencies
+#### Step 5: Update Dependencies - COMPLETE
 
 ```diff
 --- a/backend/package.json
@@ -307,7 +308,7 @@ Now, install the new dependencies from the project root.
 npm install
 ```
 
-#### Step 6: Refactor Frontend Imports
+#### Step 6: Refactor Frontend Imports - COMPLETE
 
 ```diff
 --- a/frontend/src/contexts/AuthTypes.ts
@@ -331,7 +332,7 @@ npm install
    const { user } = useAuth();
 ```
 
-#### Step 7: Refactor Backend Imports
+#### Step 7: Refactor Backend Imports - COMPLETE
 
 ```diff
 --- a/backend/src/lib/auth.ts

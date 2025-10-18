@@ -1,5 +1,5 @@
 // file: frontend/src/contexts/AuthTypes.ts
-import { GlucoseUnit } from "@goodnumbers/types";
+import { type GlucoseUnit } from "@goodnumbers/common";
 
 export interface SessionUser {
   id: string;
