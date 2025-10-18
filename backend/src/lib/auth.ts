@@ -4,7 +4,8 @@ import Google from '@auth/express/providers/google';
 import { prisma } from './prisma.js';
 import type { ExpressAuthConfig } from '@auth/express';
 import * as fs from 'fs/promises';
-import type { User } from '@auth/core/types';
+import type { User as AuthUser } from '@auth/core/types';
+import { GlucoseUnit } from '@goodnumbers/common';
 
 // --- Email Allowlist Logic ---
 
@@ -19,7 +20,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
  * @param user The user object from the Auth.js callback.
  * @returns {Promise<boolean>} True if the email is allowed, false otherwise.
  */
-async function isEmailAllowed(user: Partial<User>): Promise<boolean> {
+async function isEmailAllowed(user: Partial<AuthUser>): Promise<boolean> {
   const { email, id } = user;
   if (!email) {
     return false; // Cannot allow a user without an email.
@@ -115,6 +116,6 @@ declare module '@auth/express' {
     agreementsSigned?: boolean;
     nightscoutUrl?: string | null;
     nightscoutTokenLast3?: string | null;
-    preferredUnits?: string;
+    preferredUnits?: GlucoseUnit;
   }
 }
