@@ -4,10 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 import { useApiForm } from "../hooks/useApiForm";
-import { type GlucoseUnit } from "@goodnumbers/types";
+import { GlucoseUnit } from "@goodnumbers/common";
 
 export default function SetupPage() {
-  const { user } = useAuth();
+  const { user, refetchSession } = useAuth();
   const navigate = useNavigate();
 
   // Form state remains local
@@ -29,6 +29,7 @@ export default function SetupPage() {
       preferredUnits: GlucoseUnit;
     }) => {
       await api.put("/user/settings", data);
+      await refetchSession();
       navigate("/dashboard");
     },
   );

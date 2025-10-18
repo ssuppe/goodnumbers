@@ -1,6 +1,6 @@
 // file: frontend/src/components/ProtectedRoute.tsx
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 export function ProtectedRoute() {
   const { user, isLoading } = useAuth();
@@ -20,16 +20,16 @@ export function ProtectedRoute() {
   if (!user.agreementsSigned) {
     // If agreements are not signed, they must go to the agreements page.
     // We allow navigation only if they are already heading there.
-    if (location.pathname !== '/agreements') {
+    if (location.pathname !== "/agreements") {
       return <Navigate to="/agreements" replace />;
     }
   } else if (!user.nightscoutUrl) {
     // If agreements are signed but setup is not complete, redirect to setup.
     // We allow navigation only if they are already heading there.
-    if (location.pathname !== '/setup') {
+    if (location.pathname !== "/setup") {
       return <Navigate to="/setup" replace />;
     }
-  } else if (location.pathname === '/agreements' || location.pathname === '/setup') {
+  } else if (location.pathname === "/agreements") {
     // If user is fully onboarded, prevent access to onboarding pages and redirect to dashboard.
     return <Navigate to="/dashboard" replace />;
   }
