@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getSession } from '@auth/express';
 import { authConfig } from '../lib/auth.js';
 import { prisma } from '../lib/prisma.js';
+import { GlucoseUnit } from '@goodnumbers/common';
 
 // Extend the Request type to include the user property using module augmentation
 declare module 'express-serve-static-core' {
@@ -14,7 +15,7 @@ declare module 'express-serve-static-core' {
       agreementsSigned: boolean;
       nightscoutUrl?: string | null;
       nightscoutToken?: string | null;
-      preferredUnits?: 'MGDL' | 'MMOL' | null;
+      preferredUnits?: GlucoseUnit | null;
     };
   }
 }
@@ -23,15 +24,22 @@ declare module 'express-serve-static-core' {
 // It also populates `req.user` with basic user information.
 export async function protect(req: Request, res: Response, next: NextFunction) {
   const testUserId = req.headers['x-test-user-id'] as string;
-  console.log(`[protect] Entered. Test user ID from header: ${testUserId}. NODE_ENV: ${process.env.NODE_ENV}`);
+  console.log(
+    `[protect] Entered. Test user ID from header: ${testUserId}. NODE_ENV: ${process.env.NODE_ENV}`,
+  );
 
   // For integration tests, we can bypass Auth.js by setting a special header.
   if (process.env.NODE_ENV === 'test' && testUserId) {
-    console.log(`[protect] In test mode, attempting to find user ${testUserId}`);
+    console.log(
+      `[protect] In test mode, attempting to find user ${testUserId}`,
+    );
     const testUser = await prisma.user.findUnique({
       where: { id: testUserId },
     });
-    console.log(`[protect] Prisma query result for user ${testUserId}:`, testUser ? `found user ${testUser.id}`: 'null');
+    console.log(
+      `[protect] Prisma query result for user ${testUserId}:`,
+      testUser ? `found user ${testUser.id}` : 'null',
+    );
 
     if (testUser) {
       req.user = {
@@ -40,9 +48,11 @@ export async function protect(req: Request, res: Response, next: NextFunction) {
         agreementsSigned: testUser.agreementsSigned,
         nightscoutUrl: testUser.nightscoutUrl,
         nightscoutToken: testUser.nightscoutToken,
-        preferredUnits: testUser.preferredUnits,
+        preferredUnits: testUser.preferredUnits as GlucoseUnit,
       };
-      console.log(`[protect] Test user found and attached to req.user. Calling next().`);
+      console.log(
+        `[protect] Test user found and attached to req.user. Calling next().`,
+      );
       return next();
     }
     console.log(`[protect] Test user NOT found. Falling through to real auth.`);
@@ -67,7 +77,7 @@ export async function protect(req: Request, res: Response, next: NextFunction) {
     });
 
     if (user) {
-      req.user = user; // Attach the user object to the request
+      req.user = user as typeof req.user; // Attach the user object to the request
       return next();
     }
   }
