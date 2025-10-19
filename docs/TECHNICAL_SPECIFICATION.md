@@ -1,8 +1,11 @@
+Of course. Here is the complete and updated content for `docs/TECHNICAL_SPECIFICATION.md`.
+
+````markdown
 # Technical Specification: Goodnumbers Weekly Health Journal
 
-**Version:** 1.1
-**Date:** 2025-08-13
-**Status:** Final
+**Version:** 1.2 (Updated post-Phase 3, Task 1)
+**Date:** 2025-09-23
+**Status:** Revised
 
 ## 1. Introduction
 
@@ -14,22 +17,16 @@ The goal of this specification is to provide a developer-ready document that out
 
 ### 2.1. Functional Requirements
 
-### 2.1.1. User Authentication (Auth.js)
+#### 2.1.1. User Authentication (Auth.js)
 
-- **Access Control:** ...
-- **Provider:** Google OAuth ...
-- **Configuration Note:** The `AUTH_URL` environment variable should be set to the origin only (e.g., `http://localhost:3000`), as the `/api/auth` base path is configured within the Express application.
-
-#### 2.1.2. User Authentication (Auth.js)
-
+- **Access Control:** During the beta phase, access is restricted via an **email allowlist**. Only users whose Google account email is on a server-side list can successfully sign in.
 - **Provider:** Google OAuth is the sole and primary authentication method for the MVP.
 - **UI:** Auth.js built-in pages will be used for the login/registration flow.
 - **New User Flow:**
   1. User signs in with Google.
-  2. After successful Google authentication, they are presented with an "Agreements Page".
+  2. After successful Google authentication and passing the allowlist check, they are presented with an "Agreements Page".
   3. User MUST check boxes to agree to the "Terms and Conditions" and "Privacy Policy".
-  4. The "Login" button is disabled until both boxes are checked.
-  5. Upon agreement, the user account is created, and they are redirected to the Dashboard.
+  4. Upon agreement, the `agreementsSigned` flag is set, the user account is finalized, and they are redirected to the Dashboard.
 - **Existing User Flow:**
   1. User signs in with Google.
   2. Upon successful authentication, they are redirected to the Dashboard.
@@ -38,15 +35,15 @@ The goal of this specification is to provide a developer-ready document that out
   - Secure sessions are managed by Auth.js.
   - A "Logout" button must be available in the authenticated header.
 
-#### 2.1.3. Homepage
+#### 2.1.2. Homepage
 
 - A static, public-facing page that describes the application's value proposition.
-- Contains a "See a demo" button linking to the Demo Page (Secondary CTA style).
-- Contains a "Login / Register" button linking to the Auth.js login page (Primary CTA style).
-- Includes a persistent, non-dismissible, sticky critical alert banner with the medical use disclaimer.
-- Must be fully mobile-responsive and adhere to the V3 Design System.
+- Contains a "See a demo" button linking to the Demo Page.
+- Contains a "Login / Register" button linking to the Auth.js login page.
+- Includes a persistent, non-dismissible banner with the medical use disclaimer.
+- Must be fully mobile-responsive.
 
-#### 2.1.4. Account Setup
+#### 2.1.3. Account Setup
 
 - **Trigger:** This is the first page a user sees after their initial login and agreement.
 - **Fields:**
@@ -61,7 +58,7 @@ The goal of this specification is to provide a developer-ready document that out
   4. On failure, a clear error message is displayed.
   5. Clicking "Save and Continue" persists the settings and redirects to the Dashboard.
 
-#### 2.1.5. Dashboard
+#### 2.1.4. Dashboard
 
 - **Primary Action Card ("Log this week's journal"):**
   - Styled as a prominent "hero" component.
@@ -73,7 +70,7 @@ The goal of this specification is to provide a developer-ready document that out
   - Each card has a "View" button to navigate to the full journal page.
   - This section is hidden if no past journals exist.
 
-#### 2.1.6. Journal Generation Process
+#### 2.1.5. Journal Generation Process
 
 - **Trigger:** User clicks the "Start Journal" button on the Dashboard.
 - **User Experience:**
@@ -87,7 +84,7 @@ The goal of this specification is to provide a developer-ready document that out
   4. Synthesize the podcast audio using a Text-to-Speech service.
   5. Update the journal record in the database with all generated content.
 
-#### 2.1.7. Journal Page ("This week's journal")
+#### 2.1.6. Journal Page ("This week's journal")
 
 - **State:** All user-input fields are always editable. AI-generated content is immutable.
 - **Layout:** A vertical, narrative-driven page.
@@ -102,19 +99,19 @@ The goal of this specification is to provide a developer-ready document that out
   - **Goals for Next Week:** A distinct card with a text area for the user to write their goals.
   - **Save Action Bar:** A floating bar at the bottom of the screen with an always-enabled "Save and Close" button. Provides "Saving..." feedback on click.
 
-#### 2.1.8. Historical Journals
+#### 2.1.7. Historical Journals
 
 - Viewing a historical journal uses the same page/layout as "This week's journal".
 - User can edit their subjective inputs (vibe, factors, notes, goals) and save changes.
 - A "Delete" icon is present. On click, a confirmation dialog appears before permanent deletion.
 
-#### 2.1.9. Demo Page
+#### 2.1.8. Demo Page
 
 - A read-only version of the journal page populated with static, pre-generated data.
 - All user input fields are disabled.
 - A prominent banner explains it's a demo and includes a "Sign up" call to action.
 
-#### 2.1.10. Podcast Page
+#### 2.1.9. Podcast Page
 
 - Accessible from the authenticated header.
 - Displays the user's unique, private RSS feed URL.
@@ -142,19 +139,13 @@ The goal of this specification is to provide a developer-ready document that out
 
 ## 3. Architecture
 
-The system is a monolithic application designed to run in a single Docker container, managed by `pm2` to run two concurrent processes. For development, `nodemon` is used to watch for file changes and trigger rebuilds and reloads.
+The system is a monolithic application designed to run in a single Docker container, managed by `pm2` to run two concurrent processes.
 
-- **Web Server Process (Express.js):**
-  - **Entry Point:** `dist/server.js`
-  - **Mode:** Runs in `fork` mode.
-  - **Responsibilities:** Handles all user-facing HTTP requests, serves the React frontend, manages authentication, and exposes the REST API.
-- **Background Worker Process (Node.js):**
-  - **Entry Point:** `dist/worker.js`
-  - **Mode:** Runs in `fork` mode.
-  - **Responsibilities:** Executes the long-running journal generation jobs.
-- **Job Queue (BullMQ):** A Redis-backed queue that mediates between the web server and the background worker.
-- **Database (SQLite):** A single SQLite database file provides persistent storage.
-- **Deployment:** The entire application is containerized with Docker and deployed on a single Google Compute Engine (GCE) instance.
+- **Web Server Process (Express.js):** Handles all user-facing HTTP requests, serves the React frontend, manages authentication via Auth.js, and exposes the REST API.
+- **Background Worker Process (Node.js):** Executes the long-running journal generation jobs. It is completely decoupled from the web server to ensure the UI remains responsive.
+- **Job Queue (BullMQ):** A Redis-backed queue that mediates between the web server and the background worker. When a user starts a new journal, the web server enqueues a job, which the worker then picks up for processing.
+- **Database (SQLite):** A single SQLite database file provides persistent storage. It will be configured to run in Write-Ahead Logging (WAL) mode to handle concurrent access from the web and worker processes.
+- **Deployment:** The entire application (web server, worker, Redis) is containerized with Docker and deployed on a single Google Compute Engine (GCE) instance.
 
 ### 3.1. Analysis Pipeline
 
@@ -164,15 +155,6 @@ The backend analysis pipeline processes raw Nightscout data into insights.
 2.  **Event Detection (`detect_events.ts`):** Individual glycemic events (e.g., `HYPOGLYCEMIA`) are identified.
 3.  **Event Classification (`event_classifier.ts`):** Events are given context (e.g., `HIGH_AFTER_UNCOVERED_MEAL`).
 4.  **Time-Based Clustering (`time_clustering.ts`):** Classified events are grouped by time of day into recurring patterns (`TimeCluster` objects), which are then stored.
-
-### 3.2. Environment Configuration
-
-The project uses a multi-file environment variable strategy:
-
-- **`.env`**: Read exclusively by `docker-compose`. It contains variables needed to configure the services themselves, such as `REDIS_PASSWORD`.
-- **`.env.development`**: Read by the Node.js application when `NODE_ENV=development`. Contains application secrets and connection details for the local development environment.
-- **`.env.production`**: Read by the Node.js application when `NODE_ENV=production`. Contains secrets for the live production environment.
-- `.env.test`: Read by Vitest during automated testing.
 
 ## 4. Data Handling
 
@@ -201,6 +183,9 @@ model User {
   sessions        Session[]
   journals        Journal[]
 
+  // UPDATED: Field required for the onboarding flow. Defaults to false for new users.
+  agreementsSigned Boolean   @default(false)
+
   // Application-specific settings
   nightscoutUrl   String?
   nightscoutToken String?
@@ -213,7 +198,9 @@ model Journal {
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   userId               String
-  user                 User      @relation(fields: [userId], references: [id])
+  // UPDATED: Added onDelete: Cascade for user privacy.
+  // When a User is deleted, all their Journals are automatically deleted.
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Job progress tracking
   status               String    @default("PENDING")
@@ -239,9 +226,7 @@ model Journal {
 model GlycemicEventCluster {
   id                  String    @id @default(cuid())
   journalId           String
-  // UPDATED: Added onDelete: Cascade for data integrity.
-  // When a Journal is deleted, all its GlycemicEventClusters are automatically deleted.
-  journal             Journal   @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  journal             Journal   @relation(fields: [journalId], references: [id])
 
   // Cluster summary data
   eventType           String
@@ -291,11 +276,12 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 ```
+````
 
 ### 4.2. Model Documentation
 
-- **User:** Stores user identity, Auth.js relations, and application-specific settings like encrypted Nightscout credentials and the private RSS token. The `rssToken` can be regenerated by the user via the API.
-- **Journal:** The central model for a weekly entry. It tracks the background generation job's status, stores all user inputs, and holds references to the AI-generated content (podcast URL, chart data, insights).
+- **User:** Stores user identity, Auth.js relations, and application-specific settings like encrypted Nightscout credentials and the private RSS token. `agreementsSigned` tracks onboarding completion.
+- **Journal:** The central model for a weekly entry. It tracks the background generation job's status, stores all user inputs, and holds references to the AI-generated content. The `onDelete: Cascade` ensures user privacy.
 - **GlycemicEventCluster:** Represents a specific, recurring pattern of high or low blood sugar. It stores summary data for querying and the full, detailed analysis object (`TimeCluster`) as JSON for visualization.
 - **Auth.js Models:** Standard `Account`, `Session`, and `VerificationToken` models required by Auth.js.
 
@@ -307,15 +293,14 @@ The `analysisInsights` and `clusterDataJson` fields use the `Json` type to allow
 
 All endpoints are protected by authentication middleware.
 
-- **`POST /api/barrier-login`**
-  - **Purpose:** Authenticates a user for the pre-release beta.
-  - **Request Body:** `{ "username": "...", "password": "..." }`
-  - **Logic:** Validates credentials against environment variables. On success, sets a session cookie.
+- **`GET /api/csrf-token`**
+  - **Purpose:** Provides a valid CSRF token to the client.
+  - **Logic:** This endpoint is protected by the CSRF generation middleware. It generates a token and returns it in a JSON response for the client to use in subsequent state-modifying requests.
 
 - **`POST /api/journals`**
   - **Purpose:** Initiates the generation of a new weekly journal.
   - **Logic:** Creates a `Journal` record and enqueues a job in BullMQ for the background worker.
-  - **Security:** Requires anti-CSRF token.
+  - **Security:** Requires anti-CSRF token in the request body (`_csrf`).
 
 - **`GET /api/journal-status/:id`**
   - **Purpose:** Allows the client to poll for the progress of a journal being generated.
@@ -334,25 +319,26 @@ All endpoints are protected by authentication middleware.
 - **`PUT /api/journals/:id`**
   - **Purpose:** Updates a journal with user-provided notes and subjective inputs.
   - **Request Body:** `{ "weeklyVibe": "...", "influencingFactors": [...], "goalsForNextWeek": "...", "clusterNotes": { "clusterId1": "note1", ... } }`
-  - **Security:** Enforces ownership check.
+  - **Security:** Enforces ownership check and requires an anti-CSRF token.
 
 - **`DELETE /api/journals/:id`**
   - **Purpose:** Permanently deletes a journal.
-  - **Security:** Enforces ownership check.
+  - **Security:** Enforces ownership check and requires an anti-CSRF token.
 
 - **`PUT /api/user/settings`**
-  - **Purpose:** Updates user settings (Nightscout credentials, preferred units).
-  - **Request Body:** `{ "nightscoutUrl": "...", "nightscoutToken": "...", "preferredUnits": "MGDL" }`
+  - **Purpose:** Updates user settings (Nightscout credentials, preferred units, agreements).
+  - **Request Body:** `{ "nightscoutUrl": "...", "nightscoutToken": "...", "preferredUnits": "MGDL", "agreementsSigned": true }`
+  - **Security:** Requires an anti-CSRF token.
 
 - **`POST /api/user/regenerate-rss-token`**
   - **Purpose:** Invalidates the old RSS token and generates a new one for the user.
   - **Logic:** Generates a new CUID and updates the `rssToken` field for the authenticated user. Returns the new token.
-  - **Security:** Enforces ownership check.
+  - **Security:** Enforces ownership check and requires an anti-CSRF token.
 
 ## 6. Error Handling
 
-- **Nightscout Connection Failure:** If the app cannot connect to Nightscout, a persistent, non-dismissible critical red banner (`--feedback-critical-color`) is shown on the Dashboard. The "Start Journal" button is disabled with a tooltip explaining the issue.
-- **No Usable CGM Data:** If a user starts a journal but no data is found for the last 7 days, the creation is aborted. A critical red banner (`--feedback-critical-color`) is shown on the Dashboard explaining that no data was found.
+- **Nightscout Connection Failure:** If the app cannot connect to Nightscout, a persistent, non-dismissible red banner is shown on the Dashboard. The "Start Journal" button is disabled with a tooltip explaining the issue.
+- **No Usable CGM Data:** If a user starts a journal but no data is found for the last 7 days, the creation is aborted. A red banner is shown on the Dashboard explaining that no data was found.
 - **Insufficient Data Warning:** If < 7 days of data are found, the journal is still generated, but a non-blocking warning banner is displayed at the top of the journal page.
 - **Audio File Failure:** If the podcast audio file fails to generate or load, an error message is displayed in place of the audio player.
 - **Secure Production Error Handling:** The application MUST include a global error-handling middleware in Express. In a production environment, this middleware MUST prevent leaking technical details or stack traces. It should log the full error server-side for debugging and return a generic, non-revealing error message to the client (e.g., `{"error": "An internal server error occurred."}`).
@@ -366,37 +352,27 @@ All endpoints are protected by authentication middleware.
 
 ## 8. Security Measures
 
-- **Input Validation:** All API endpoints that accept client-side input (e.g., request bodies, query parameters) MUST use a schema-based validation library (e.g., `zod`) to rigorously validate the data's shape, type, and constraints. This is a primary defense against data corruption and injection attacks.
-- **Credential Encryption:** Sensitive user credentials, specifically the `nightscoutUrl` and `nightscoutToken`, will be encrypted at rest in the database.
-  - **Method:** Symmetric encryption will be used via Node.js's built-in `crypto` module (AES-256-GCM).
-  - **Key Management:** For local development, a 256-bit secret encryption key will be supplied via an `ENCRYPTION_KEY` environment variable. For production, this key SHOULD be managed by a dedicated secrets management service (e.g., Google Secret Manager) and fetched at application startup, rather than being stored in a file on the server.
-- **Authentication:** Handled by Auth.js, providing robust session management and protection against common authentication vulnerabilities.
+- **Input Validation:** All API endpoints that accept client-side input MUST use `zod` to rigorously validate the data's shape, type, and constraints.
+- **Credential Encryption:** Sensitive user credentials (`nightscoutUrl`, `nightscoutToken`) are encrypted at rest in the database using Node.js's built-in `crypto` module (AES-256-GCM).
+- **Authentication:** Handled by Auth.js, providing robust session management.
+- **Pre-Release Access Control:** A server-side **email allowlist** is implemented in the Auth.js `signIn` callback to restrict access to the application during the beta phase.
 - **CSRF Protection:**
-  - **Strategy:** The application implements the **Synchronizer Token Pattern** to protect all state-modifying endpoints (`POST`, `PUT`, `DELETE`).
-  - **Implementation:** The `tiny-csrf` library is used. The server generates a unique, cryptographically secure token and stores its secret in a signed cookie.
-  - **Client-Side Flow:** The frontend is responsible for fetching a valid token from a dedicated `GET /api/csrf-token` endpoint. For every subsequent state-modifying request, the frontend MUST include this token in the request body as a `_csrf` field.
-  - **Server-Side Flow:** The `csrfProtection` middleware validates that the token in the request body matches the secret stored in the user's cookie. If they do not match or the token is missing, the request is rejected with a `403 Forbidden` error.
-- **Data Segregation:** All database queries enforce ownership checks, ensuring a user can only access their own data.
-- **Secure HTTP Headers:** The application MUST use middleware like `helmet` to set various security-related HTTP headers, mitigating common attacks like XSS and clickjacking.
-- **Database File Security:** In the production environment, the SQLite database file (`.db`) MUST have its file system permissions configured to be readable and writable only by the application's user account.
-- **Pre-Release Barrier:** A site-wide password prevents unauthorized access during the beta phase.
+  - **Strategy:** The application implements the **Synchronizer Token Pattern**.
+  - **Implementation:** The `tiny-csrf` middleware is used to protect all state-modifying endpoints (`POST`, `PUT`, `DELETE`).
+  - **Flow:** The client fetches a token from `GET /api/csrf-token` and includes it in the `_csrf` field of the request body for all subsequent state-modifying requests. The server validates this token against a secret stored in a signed cookie.
+- **Data Segregation:** All database queries enforce ownership checks via `userId` clauses, ensuring a user can only access their own data.
+- **Secure HTTP Headers:** The application uses `helmet` to set various security-related HTTP headers.
+- **Database File Security:** In production, the SQLite database file permissions MUST be restricted to be readable and writable only by the application's user account.
 
 ## 9. Testing Plan
 
 - **Unit Testing:**
-  - The data analysis and event detection logic (`detect_events.ts`, etc.) should have comprehensive unit tests to ensure correctness.
-  - Utility functions (e.g., encryption/decryption) must be unit-tested.
+  - The data analysis and event detection logic.
+  - Utility functions like encryption/decryption.
 - **Integration Testing:**
-  - API endpoints will be tested to verify authentication, authorization, data validation, and correct responses.
-  - The "Test Connection" feature for Nightscout setup is a key integration test case.
-  - Test the interaction between the web server, BullMQ, and the background worker to ensure jobs are enqueued and processed correctly.
+  - API endpoints will be tested using `supertest-session` to verify authentication, authorization (including CSRF), data validation, and correct responses.
 - **End-to-End (E2E) Testing:**
-  - Simulate key user flows, such as:
-    1. New user registration, including the agreement page.
-    2. Setting up a Nightscout connection.
-    3. Creating a new journal and waiting on the loading screen.
-    4. Interacting with the final journal page (playing the podcast, viewing charts, adding notes).
-    5. Editing and deleting a historical journal.
+  - Simulate key user flows like new user registration, journal creation, and editing.
 
 ## 10. Implementation Timeline
 
@@ -405,7 +381,7 @@ An implementation timeline is not available from the source documents. This shou
 ## 11. Open Questions and Future Considerations
 
 - **[TODO]** Finalize the specific implementation for the private podcast RSS feed generation and hosting.
-- **[Future] Monetization:** A freemium model is planned post-MVP, with limitations on the number of saved reports and podcast length for free users.
+- **[Future] Monetization:** A freemium model is planned post-MVP.
 - **[Future] About Us Page:** A static page to be created.
 - **[Future] CGM Provider Expansion:** The system is designed to be modular to support additional CGM providers beyond Nightscout in the future.
 
