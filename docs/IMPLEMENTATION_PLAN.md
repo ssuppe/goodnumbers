@@ -1,4 +1,8 @@
-Of course. Here is the complete, updated `Docs/IMPLEMENTATION_PLAN.md` file with the new changes integrated.
+Of course. It's excellent practice to keep the implementation plan updated as the project evolves to reflect the work that was actually done. This prevents confusion and ensures the documentation remains a reliable source of truth.
+
+Based on the completed task, I have integrated a new entry, "Task 3.5," into the `IMPLEMENTATION_PLAN.md` to document the critical refactoring of the shared packages.
+
+Here is the complete, updated document:
 
 # file: Docs/IMPLEMENTATION_PLAN.md
 
@@ -62,7 +66,7 @@ For services that interact with external dependencies like a database or a Redis
 
 For integration tests that require a running Express server with session management, the following `beforeEach`/`afterEach` pattern **must** be used with `supertest-session`.
 
-````typescript
+```typescript
 // **UPDATED: This example now uses supertest-session for robust state management.**
 import session from "supertest-session";
 import { createApp } from "../../src/index.ts";
@@ -92,7 +96,8 @@ beforeEach((done) => {
 afterEach((done) => {
   // 5. Close the server after each test to prevent hanging processes.
   server.close(done);
-});```
+});
+```
 
 - **Key Principles:**
   - **Isolation:** A fresh server instance is created and destroyed for _each_ test.
@@ -124,12 +129,14 @@ const { authConfig } = await import("../../src/lib/auth"); // Assuming authConfi
 describe("signIn callback", () => {
   it("should allow a user on the allowlist", async () => {
     // Configure the mock for this test
-    (readFile as ReturnType<typeof vi.fn>).mockResolvedValue("user@example.com\n");
+    (readFile as ReturnType<typeof vi.fn>).mockResolvedValue(
+      "user@example.com\n"
+    );
 
     // ... rest of the test
   });
 });
-````
+```
 
 This approach ensures that the mock is registered before your code imports the module, providing a reliable way to isolate dependencies in your tests.
 
@@ -493,7 +500,7 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 ---
 
-#### \*\* Task 2.5: Migrate from jest to vitest
+#### **Task 2.5: Migrate from jest to vitest**
 
 - Objective: Move from jest to vitest.
 
@@ -597,7 +604,22 @@ For each task listed in the implementation phases below, the following GitHub-in
 
 ---
 
-#### **Task 4: Initialize React Frontend Project** - **CURRENT TASK**
+#### **Task 3.5: Refactor Shared Packages to Fix Bundling Error**
+
+- **Objective:** To architecturally separate server-only types from universal runtime values by creating a new `@goodnumbers/common` package. This resolves a critical frontend bundling error (`Uncaught ReferenceError: exports is not defined`) caused by the Prisma client's runtime code being included in the `@goodnumbers/types` package.
+- **Implementation Details:**
+  - **Action:** Create a new, environment-agnostic shared package, `@goodnumbers/common`, to hold universal runtime values (like the `GlucoseUnit` enum).
+  - **Action:** Refactor the `@goodnumbers/types` package to be a "type-only" module, using `export type` to prevent its runtime code from being bundled by the frontend.
+  - **Action:** Update all import paths for `GlucoseUnit` across the `frontend` and `backend` to point to the new `@goodnumbers/common` package.
+  - **Action:** Update all type imports (e.g., `User`, `Journal`) in the `frontend` to use the `import type` syntax.
+- **Test:**
+  - **New Integration Test:** A new test (`schema-sync.test.ts`) will be added to the backend to programmatically verify that the `GlucoseUnit` enum in `schema.prisma` and `@goodnumbers/common` remain synchronized, preventing architectural drift.
+  - **Regression:** The primary verification is that the frontend application now builds and runs without the bundling error, and all existing backend and frontend tests continue to pass.
+- **Commit:** `fix(repo): P5_FIX Refactor shared packages to fix bundling error`
+
+---
+
+#### **Task 4: Initialize React Frontend Project**
 
 - **Goal:** To create the foundational project structure and development environment for our React single-page application (SPA).
 - **Implementation Details:**
