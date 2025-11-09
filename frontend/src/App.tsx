@@ -1,17 +1,18 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { Layout } from './components/Layout';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import HomePage from './pages/HomePage';
-import DashboardPage from './pages/DashboardPage';
-import AgreementsPage from './pages/AgreementsPage';
-import SetupPage from './pages/SetupPage';
-import DemoPage from './pages/DemoPage';
-import PrivacyPage from './pages/PrivacyPage';
-import TermsPage from './pages/TermsPage';
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { Layout } from "./components/Layout";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import HomePage from "./pages/HomePage";
+import DashboardPage from "./pages/DashboardPage";
+import AgreementsPage from "./pages/AgreementsPage";
+import SetupPage from "./pages/SetupPage";
+import DemoPage from "./pages/DemoPage";
+import JournalLoadingPage from "./pages/JournalLoadingPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
 
 const router = createBrowserRouter([
   {
-    path: '/',
+    path: "/",
     element: <Layout />,
     children: [
       {
@@ -19,31 +20,35 @@ const router = createBrowserRouter([
         element: <HomePage />,
       },
       {
-        path: 'demo',
+        path: "demo",
         element: <DemoPage />,
       },
       {
-        path: 'privacy',
+        path: "privacy",
         element: <PrivacyPage />,
       },
       {
-        path: 'terms',
+        path: "terms",
         element: <TermsPage />,
       },
       {
         element: <ProtectedRoute />,
         children: [
           {
-            path: 'dashboard',
+            path: "dashboard",
             element: <DashboardPage />,
           },
           {
-            path: 'agreements',
+            path: "agreements",
             element: <AgreementsPage />,
           },
           {
-            path: 'setup',
+            path: "setup",
             element: <SetupPage />,
+          },
+          {
+            path: "journal/:journalId/loading",
+            element: <JournalLoadingPage />,
           },
           // Add other protected routes here
         ],
