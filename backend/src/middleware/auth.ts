@@ -24,22 +24,12 @@ declare module 'express-serve-static-core' {
 // It also populates `req.user` with basic user information.
 export async function protect(req: Request, res: Response, next: NextFunction) {
   const testUserId = req.headers['x-test-user-id'] as string;
-  console.log(
-    `[protect] Entered. Test user ID from header: ${testUserId}. NODE_ENV: ${process.env.NODE_ENV}`,
-  );
 
   // For integration tests, we can bypass Auth.js by setting a special header.
   if (process.env.NODE_ENV === 'test' && testUserId) {
-    console.log(
-      `[protect] In test mode, attempting to find user ${testUserId}`,
-    );
     const testUser = await prisma.user.findUnique({
       where: { id: testUserId },
     });
-    console.log(
-      `[protect] Prisma query result for user ${testUserId}:`,
-      testUser ? `found user ${testUser.id}` : 'null',
-    );
 
     if (testUser) {
       req.user = {
@@ -50,15 +40,10 @@ export async function protect(req: Request, res: Response, next: NextFunction) {
         nightscoutToken: testUser.nightscoutToken,
         preferredUnits: testUser.preferredUnits as GlucoseUnit,
       };
-      console.log(
-        `[protect] Test user found and attached to req.user. Calling next().`,
-      );
       return next();
     }
-    console.log(`[protect] Test user NOT found. Falling through to real auth.`);
   }
 
-  console.log(`[protect] Running real auth logic.`);
   // Get the session from Auth.js
   const session = await getSession(req, authConfig);
 

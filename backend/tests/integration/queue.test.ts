@@ -1,11 +1,4 @@
-import {
-  describe,
-  it,
-  expect,
-  beforeEach,
-  vi,
-  afterEach,
-} from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import session from 'supertest-session';
 import * as http from 'http';
 import type { Express } from 'express';
@@ -28,8 +21,6 @@ describe('API to Mock Job Queue Integration', () => {
 
   beforeEach(async () => {
     const { createApp } = await import('@src/index.js');
-
-    await prisma.user.deleteMany({});
 
     app = createApp();
     await new Promise<void>((resolve) => (server = app.listen(0, resolve)));
