@@ -19,8 +19,24 @@ const statusLimiter = rateLimit({
   },
 });
 
-// Add a schema for userId validation
-const userIdSchema = z.string().cuid({ message: 'Invalid user ID format.' });
+router.get('/', async (req, res, next) => {
+  try {
+    const journals = await prisma.journal.findMany({
+      where: { userId: req.user!.id },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        createdAt: true,
+        podcastTitle: true,
+        podcastDescription: true,
+        weeklyVibe: true,
+      },
+    });
+    res.status(200).json(journals);
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.post('/', async (req, res, next) => {
   const userId = req.user!.id;
@@ -52,44 +68,29 @@ router.post('/', async (req, res, next) => {
 // 3. Add the new route, applying the rate limiter before the handler.
 router.get('/:id/status', statusLimiter, async (req, res, next) => {
   try {
-    // A. Validate input first. This is our primary security gate.
+    // 1. Validate input first. This is our primary security gate.
     const { id: journalId } = journalIdParamSchema.parse(req.params);
-    // Validate userId as well
-    const userId = userIdSchema.parse(req.user!.id); // Add Zod validation for userId
+    const userId = req.user!.id;
 
-    // B. Perform database query with validated data, including the ownership check.
     const journalStatus = await prisma.journal.findFirst({
-      where: {
-        id: journalId,
-        userId: userId, // CRITICAL: This ensures a user can only see their own journals.
-      },
-      select: {
-        status: true,
-        progress: true,
-        statusMessage: true,
-      },
+      where: { id: journalId, userId: userId },
+      select: { status: true, progress: true, statusMessage: true },
     });
 
-    // C. Handle the "not found" case.
     if (!journalStatus) {
-      // SECURITY LOGGING: Record the failed attempt. This helps detect
-      // potential enumeration attacks or bugs. Note that we do NOT log
-      // any sensitive data from the request body or other headers.
       console.log(
         `[INFO][SECURITY] Journal status not found. UserID='${userId}' attempted to access JournalID='${journalId}'`,
       );
-      // Return a generic 404 to prevent ID enumeration.
       return res.status(404).json({ error: 'Journal not found.' });
     }
 
-    // D. Return the data on success.
     res.status(200).json(journalStatus);
   } catch (error) {
-    // E. Handle validation errors specifically.
+    // 2. Handle validation errors specifically.
     if (error instanceof z.ZodError) {
       return res.status(400).json({ errors: error.issues });
     }
-    // F. Pass all other unexpected errors to the global handler.
+    // 3. Pass all other unexpected errors to the global handler.
     next(error);
   }
 });
