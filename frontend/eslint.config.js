@@ -1,11 +1,14 @@
+import { defineConfig } from "eslint/config";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 import pluginJs from "@eslint/js";
 import pluginReactConfig from "eslint-plugin-react/configs/recommended.js";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import vitest from "@vitest/eslint-plugin"; // Keep this for the plugin rules
+import vitestGlobals from "vitest/globals"; // Import vitest globals
 
-export default tseslint.config(
+export default defineConfig([
   {
     ignores: ["dist/"],
   },
@@ -59,8 +62,15 @@ export default tseslint.config(
   // Test-specific configuration
   {
     files: ["src/**/*.test.{ts,tsx}"],
+    languageOptions: {
+      globals: vitestGlobals, // Add vitest globals here
+    },
+    plugins: {
+      vitest: vitest, // Keep the plugin for rules
+    },
     rules: {
+      ...vitest.configs.recommended.rules, // Spread the recommended rules
       "@typescript-eslint/unbound-method": "off",
     },
-  }
-);
+  },
+]);
