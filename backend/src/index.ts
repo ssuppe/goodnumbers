@@ -86,9 +86,9 @@ export function createApp() {
   app.use(
     '/api/journals',
     protect,
+    csrfProtection,
     enforceAgreements, // First, authorize API access
     enforceAccountSetup, // Then, handle UI flow
-    csrfProtection,
     journalRoutes,
   );
 
