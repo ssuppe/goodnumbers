@@ -106,8 +106,8 @@ Implement the data-driven React UI for the main Dashboard page, including fetchi
     ```
 2.  **Create Branch:**
     ```bash
-    git checkout develop
-    git pull origin develop
+    git checkout phase5develop
+    git pull origin phase5develop
     git checkout -b feat/phase5-task6.1-dashboard-v2
     ```
 3.  **Adopt Test-Driven Development:** Follow the Red-Green-Refactor cycle detailed below.
@@ -190,6 +190,7 @@ Implement the data-driven React UI for the main Dashboard page, including fetchi
     ```
 
 5.  **Update Router:** Add the new route to `frontend/src/App.tsx` under the `ProtectedRoute`.
+
     ```diff
     --- a/frontend/src/App.tsx
     +++ b/frontend/src/App.tsx
