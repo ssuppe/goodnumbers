@@ -6,16 +6,69 @@ import { JOURNAL_QUEUE_NAME } from './lib/queue.js';
 import { prisma } from './lib/prisma.js';
 
 // --- Exported Job Logic for Testability ---
+// Helper function for async delays
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function processJournalJob(job: Job) {
   const { journalId } = job.data;
-  console.log(`[Worker] Processing job ${job.id} (Journal ID: ${journalId})`);
+  console.log(
+    `[Worker] FAKE Processing job ${job.id} (Journal ID: ${journalId})`,
+  );
 
   try {
+    // Stage 1: Fetching Data
     await prisma.journal.update({
       where: { id: journalId },
-      data: { status: 'COMPLETE' },
+      data: {
+        status: 'ANALYZING_DATA',
+        progress: 20,
+        statusMessage:
+          'Gathering your blood glucose, insulin, and meal data...',
+      },
     });
-    console.log(`[Worker] Finished job ${job.id}`);
+    await sleep(5000); // 5-second delay
+
+    // Stage 2: Statistical Analysis
+    await prisma.journal.update({
+      where: { id: journalId },
+      data: {
+        status: 'DRAFTING_INSIGHTS',
+        progress: 40,
+        statusMessage: 'Running analysis to find trends and hotspots...',
+      },
+    });
+    await sleep(5000);
+
+    // Stage 3: AI Scripting
+    await prisma.journal.update({
+      where: { id: journalId },
+      data: {
+        status: 'GENERATING_AUDIO',
+        progress: 60,
+        statusMessage:
+          'Writing the script for your personalized audio summary...',
+      },
+    });
+    await sleep(5000);
+
+    // Stage 4: Audio Generation
+    await prisma.journal.update({
+      where: { id: journalId },
+      data: { progress: 80, statusMessage: 'Recording your podcast...' },
+    });
+    await sleep(5000);
+
+    // Final Stage: Complete
+    await prisma.journal.update({
+      where: { id: journalId },
+      data: {
+        status: 'COMPLETE',
+        progress: 100,
+        statusMessage: 'Your journal is ready.',
+      },
+    });
+
+    console.log(`[Worker] FAKE Finished job ${job.id}`);
     return { status: 'done' };
   } catch (error) {
     const errorMessage =
@@ -27,7 +80,10 @@ export async function processJournalJob(job: Job) {
 
     await prisma.journal.update({
       where: { id: journalId },
-      data: { status: 'FAILED', statusMessage: errorMessage },
+      data: {
+        status: 'FAILED',
+        statusMessage: `Simulation failed: ${errorMessage}`,
+      },
     });
     throw error;
   }
