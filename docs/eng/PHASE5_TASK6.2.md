@@ -128,7 +128,7 @@ interface JournalResponse extends Journal {
     export async function processJournalJob(job: Job) {
       const { journalId } = job.data;
       console.log(
-        `[Worker] FAKE Processing job ${job.id} (Journal ID: ${journalId})`
+        `[Worker] FAKE Processing job ${job.id} (Journal ID: ${journalId})`,
       );
 
       try {
@@ -191,7 +191,7 @@ interface JournalResponse extends Journal {
           error instanceof Error ? error.message : "Unknown error";
         console.error(
           `[Worker] Job ${job.id} failed for journal ${journalId}:`,
-          errorMessage
+          errorMessage,
         );
 
         await prisma.journal.update({
@@ -449,7 +449,7 @@ interface JournalResponse extends Journal {
         const poll = async () => {
           try {
             const response = await api.get<JournalStatus>(
-              `/journals/${journalId}/status`
+              `/journals/${journalId}/status`,
             );
             setStatus(response.data);
           } catch (err) {
@@ -775,11 +775,11 @@ interface JournalResponse extends Journal {
 
 ### Part 4: Build All Presentational Components (Iterative TDD)
 
-**Objective:** To implement the functional `PodcastPlayer` and a generic `DataDisplayWidget` that will be used as a low-fidelity stand-in for all complex UI components, allowing us to validate the data flow before implementing the high-fidelity visualizations.
+**Objective:** To implement the functional `PodcastPlayer` and a generic `DataDisplayWidget` that will be used as a low-fidelity stand-in for all complex UI components. Each component will be built using a strict TDD cycle to validate the data flow before implementing high-fidelity visualizations in later tasks.
 
 #### Step 1 (RED): Test the Generic Data Display Widget
 
-Create the test file. It will fail.
+Create the test file. It will fail because the component does not exist.
 
 ```bash
 touch frontend/src/components/journal/DataDisplayWidget.test.tsx
@@ -854,9 +854,9 @@ export default function DataDisplayWidget({ title, data }: DataDisplayWidgetProp
 }
 ```
 
-#### Step 3: Implement the Functional Podcast Player
+#### Step 3: Implement the Functional Podcast Player (TDD)
 
-We will now implement the functional `PodcastPlayer` (Component 1 from the original plan), as it is the only high-fidelity component required for this simplified scope.
+We will now implement the functional `PodcastPlayer`, as it is the only high-fidelity component required for this simplified scope.
 
 1.  **(RED) Create the Test:**
 
@@ -955,106 +955,253 @@ We will now implement the functional `PodcastPlayer` (Component 1 from the origi
     }
     ```
 
-#### Step 4: Implement Low-Fidelity Wrappers (Detailed)
+#### Step 4: Implement Low-Fidelity Wrapper Components (TDD)
 
 **Objective:** Create a simple 'wrapper' component for each data section of the journal. Each wrapper will receive its specific data as a prop from the `JournalPage` container and pass it to our generic `DataDisplayWidget` for rendering. This allows us to verify that the main `JournalPage` is correctly passing data down to all its children before we build the final, high-fidelity UI for each one.
 
 ##### Wrapper 1: AGPChart
 
-Create the file `frontend/src/components/journal/AGPChart.tsx` with the following content.
+1.  **(RED) Create the Test:**
 
-```typescript
-// file: frontend/src/components/journal/AGPChart.tsx
-import DataDisplayWidget from './DataDisplayWidget';
-import { Json } from '@goodnumbers/types';
+    ```bash
+    touch frontend/src/components/journal/AGPChart.test.tsx
+    ```
 
-export default function AGPChart({ data }: { data: Json | null }) {
-  return <DataDisplayWidget title="Ambulatory Glucose Profile (AGP) Chart Data" data={data} />;
-}
-```
+    ```typescript
+    // file: frontend/src/components/journal/AGPChart.test.tsx
+    import { render, screen } from '@testing-library/react';
+    import { describe, it, expect } from 'vitest';
+    import AGPChart from './AGPChart';
 
-**Explanation:** This component receives the `agpChartData` object from the main page and passes it to our generic widget. The `title` prop is customized to clearly label the output for this specific section.
+    describe('AGPChart', () => {
+      it('renders the DataDisplayWidget with the correct title', () => {
+        const mockData = { value: 123 };
+        render(<AGPChart data={mockData} />);
+        expect(screen.getByRole('heading', { name: /Ambulatory Glucose Profile \(AGP\) Chart Data/i })).toBeInTheDocument();
+        expect(screen.getByText(/"value": 123/i)).toBeInTheDocument();
+      });
+    });
+    ```
+
+2.  **(GREEN) Implement the Component:**
+
+    ```bash
+    touch frontend/src/components/journal/AGPChart.tsx
+    ```
+
+    ```typescript
+    // file: frontend/src/components/journal/AGPChart.tsx
+    import DataDisplayWidget from './DataDisplayWidget';
+    import { Json } from '@goodnumbers/types';
+
+    export default function AGPChart({ data }: { data: Json | null }) {
+      return <DataDisplayWidget title="Ambulatory Glucose Profile (AGP) Chart Data" data={data} />;
+    }
+    ```
 
 ##### Wrapper 2: InsightsList
 
-Create the file `frontend/src/components/journal/InsightsList.tsx` with the following content.
+1.  **(RED) Create the Test:**
 
-```typescript
-// file: frontend/src/components/journal/InsightsList.tsx
-import DataDisplayWidget from './DataDisplayWidget';
-import { Json } from '@goodnumbers/types';
+    ```bash
+    touch frontend/src/components/journal/InsightsList.test.tsx
+    ```
 
-export default function InsightsList({ data }: { data: Json | null }) {
-  return <DataDisplayWidget title="Key Insights Data" data={data} />;
-}
-```
+    ```typescript
+    // file: frontend/src/components/journal/InsightsList.test.tsx
+    import { render, screen } from '@testing-library/react';
+    import { describe, it, expect } from 'vitest';
+    import InsightsList from './InsightsList';
 
-**Explanation:** This component receives the `analysisInsights` array from the main page and renders it using the generic widget.
+    describe('InsightsList', () => {
+      it('renders the DataDisplayWidget with the correct title', () => {
+        const mockData = [{ insight: 'test' }];
+        render(<InsightsList data={mockData} />);
+        expect(screen.getByRole('heading', { name: /Key Insights Data/i })).toBeInTheDocument();
+        expect(screen.getByText(/"insight": "test"/i)).toBeInTheDocument();
+      });
+    });
+    ```
+
+2.  **(GREEN) Implement the Component:**
+
+    ```bash
+    touch frontend/src/components/journal/InsightsList.tsx
+    ```
+
+    ```typescript
+    // file: frontend/src/components/journal/InsightsList.tsx
+    import DataDisplayWidget from './DataDisplayWidget';
+    import { Json } from '@goodnumbers/types';
+
+    export default function InsightsList({ data }: { data: Json | null }) {
+      return <DataDisplayWidget title="Key Insights Data" data={data} />;
+    }
+    ```
 
 ##### Wrapper 3: WeeklyVibe
 
-Create the file `frontend/src/components/journal/WeeklyVibe.tsx` with the following content.
+1.  **(RED) Create the Test:**
 
-```typescript
-// file: frontend/src/components/journal/WeeklyVibe.tsx
-import DataDisplayWidget from './DataDisplayWidget';
+    ```bash
+    touch frontend/src/components/journal/WeeklyVibe.test.tsx
+    ```
 
-export default function WeeklyVibe({ data }: { data: string | null }) {
-  return <DataDisplayWidget title="Weekly Vibe Data" data={data} />;
-}
-```
+    ```typescript
+    // file: frontend/src/components/journal/WeeklyVibe.test.tsx
+    import { render, screen } from '@testing-library/react';
+    import { describe, it, expect } from 'vitest';
+    import WeeklyVibe from './WeeklyVibe';
 
-**Explanation:** This component receives the `weeklyVibe` string from the main page.
+    describe('WeeklyVibe', () => {
+      it('renders the DataDisplayWidget with the correct title', () => {
+        const mockData = "Sprouting";
+        render(<WeeklyVibe data={mockData} />);
+        expect(screen.getByRole('heading', { name: /Weekly Vibe Data/i })).toBeInTheDocument();
+        expect(screen.getByText(/"Sprouting"/i)).toBeInTheDocument();
+      });
+    });
+    ```
+
+2.  **(GREEN) Implement the Component:**
+
+    ```bash
+    touch frontend/src/components/journal/WeeklyVibe.tsx
+    ```
+
+    ```typescript
+    // file: frontend/src/components/journal/WeeklyVibe.tsx
+    import DataDisplayWidget from './DataDisplayWidget';
+
+    export default function WeeklyVibe({ data }: { data: string | null }) {
+      return <DataDisplayWidget title="Weekly Vibe Data" data={data} />;
+    }
+    ```
 
 ##### Wrapper 4: InfluencingFactors
 
-Create the file `frontend/src/components/journal/InfluencingFactors.tsx` with the following content.
+1.  **(RED) Create the Test:**
 
-```typescript
-// file: frontend/src/components/journal/InfluencingFactors.tsx
-import DataDisplayWidget from './DataDisplayWidget';
-import { Json } from '@goodnumbers/types';
+    ```bash
+    touch frontend/src/components/journal/InfluencingFactors.test.tsx
+    ```
 
-export default function InfluencingFactors({ data }: { data: Json | null }) {
-  return <DataDisplayWidget title="Influencing Factors Data" data={data} />;
-}
-```
+    ```typescript
+    // file: frontend/src/components/journal/InfluencingFactors.test.tsx
+    import { render, screen } from '@testing-library/react';
+    import { describe, it, expect } from 'vitest';
+    import InfluencingFactors from './InfluencingFactors';
 
-**Explanation:** This component receives the `influencingFactors` array from the main page.
+    describe('InfluencingFactors', () => {
+      it('renders the DataDisplayWidget with the correct title', () => {
+        const mockData = ["Good Sleep", "Travel"];
+        render(<InfluencingFactors data={mockData} />);
+        expect(screen.getByRole('heading', { name: /Influencing Factors Data/i })).toBeInTheDocument();
+        expect(screen.getByText(/"Good Sleep"/i)).toBeInTheDocument();
+      });
+    });
+    ```
+
+2.  **(GREEN) Implement the Component:**
+
+    ```bash
+    touch frontend/src/components/journal/InfluencingFactors.tsx
+    ```
+
+    ```typescript
+    // file: frontend/src/components/journal/InfluencingFactors.tsx
+    import DataDisplayWidget from './DataDisplayWidget';
+    import { Json } from '@goodnumbers/types';
+
+    export default function InfluencingFactors({ data }: { data: Json | null }) {
+      return <DataDisplayWidget title="Influencing Factors Data" data={data} />;
+    }
+    ```
 
 ##### Wrapper 5: EventClusterCard
 
-Create the file `frontend/src/components/journal/EventClusterCard.tsx` with the following content. Note that this component's props are slightly different, as it receives the entire `cluster` object.
+1.  **(RED) Create the Test:**
 
-```typescript
-// file: frontend/src/components/journal/EventClusterCard.tsx
-import DataDisplayWidget from './DataDisplayWidget';
-import type { GlycemicEventCluster } from '@goodnumbers/types';
+    ```bash
+    touch frontend/src/components/journal/EventClusterCard.test.tsx
+    ```
 
-export default function EventClusterCard({ cluster }: { cluster: GlycemicEventCluster }) {
-  // We create a dynamic title to make the output clearer
-  const title = `Glycemic Event Cluster: ${cluster.eventType} (x${cluster.eventCount})`;
-  // We pass the entire cluster object to see all its data, including the summary fields.
-  return <DataDisplayWidget title={title} data={cluster} />;
-}
-```
+    ```typescript
+    // file: frontend/src/components/journal/EventClusterCard.test.tsx
+    import { render, screen } from '@testing-library/react';
+    import { describe, it, expect } from 'vitest';
+    import EventClusterCard from './EventClusterCard';
+    import { mockJournalForView } from '../../mocks/journal';
 
-**Explanation:** This component is used inside a loop on the main page. It receives a single `cluster` object as a prop. We create a dynamic title to identify the cluster and pass the entire object to the widget to display all its contents, including the summary data and the detailed visualization data.
+    describe('EventClusterCard', () => {
+      it('renders the DataDisplayWidget with a dynamic title', () => {
+        const mockCluster = mockJournalForView.clusters[0];
+        render(<EventClusterCard cluster={mockCluster} />);
+
+        const expectedTitle = `Glycemic Event Cluster: ${mockCluster.eventType} (x${mockCluster.eventCount})`;
+        expect(screen.getByRole('heading', { name: new RegExp(expectedTitle, 'i') })).toBeInTheDocument();
+        expect(screen.getByText(/"journalId":/i)).toBeInTheDocument();
+      });
+    });
+    ```
+
+2.  **(GREEN) Implement the Component:**
+
+    ```bash
+    touch frontend/src/components/journal/EventClusterCard.tsx
+    ```
+
+    ```typescript
+    // file: frontend/src/components/journal/EventClusterCard.tsx
+    import DataDisplayWidget from './DataDisplayWidget';
+    import type { GlycemicEventCluster } from '@goodnumbers/types';
+
+    export default function EventClusterCard({ cluster }: { cluster: GlycemicEventCluster }) {
+      // We create a dynamic title to make the output clearer
+      const title = `Glycemic Event Cluster: ${cluster.eventType} (x${cluster.eventCount})`;
+      // We pass the entire cluster object to see all its data, including the summary fields.
+      return <DataDisplayWidget title={title} data={cluster} />;
+    }
+    ```
 
 ##### Wrapper 6: Goals
 
-Create the file `frontend/src/components/journal/Goals.tsx` with the following content.
+1.  **(RED) Create the Test:**
 
-```typescript
-// file: frontend/src/components/journal/Goals.tsx
-import DataDisplayWidget from './DataDisplayWidget';
+    ```bash
+    touch frontend/src/components/journal/Goals.test.tsx
+    ```
 
-export default function Goals({ data }: { data: string | null }) {
-  return <DataDisplayWidget title="Goals for Next Week Data" data={data} />;
-}
-```
+    ```typescript
+    // file: frontend/src/components/journal/Goals.test.tsx
+    import { render, screen } from '@testing-library/react';
+    import { describe, it, expect } from 'vitest';
+    import Goals from './Goals';
 
-**Explanation:** This component receives the `goalsForNextWeek` string from the main page.
+    describe('Goals', () => {
+      it('renders the DataDisplayWidget with the correct title', () => {
+        const mockData = "My goal is to pre-bolus.";
+        render(<Goals data={mockData} />);
+        expect(screen.getByRole('heading', { name: /Goals for Next Week Data/i })).toBeInTheDocument();
+        expect(screen.getByText(/"My goal is to pre-bolus."/i)).toBeInTheDocument();
+      });
+    });
+    ```
+
+2.  **(GREEN) Implement the Component:**
+
+    ```bash
+    touch frontend/src/components/journal/Goals.tsx
+    ```
+
+    ```typescript
+    // file: frontend/src/components/journal/Goals.tsx
+    import DataDisplayWidget from './DataDisplayWidget';
+
+    export default function Goals({ data }: { data: string | null }) {
+      return <DataDisplayWidget title="Goals for Next Week Data" data={data} />;
+    }
+    ```
 
 ### Part 5: Assemble and Finalize
 
