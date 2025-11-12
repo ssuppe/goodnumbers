@@ -50,6 +50,10 @@ const router = createBrowserRouter([
             path: "journal/:journalId/loading",
             element: <JournalLoadingPage />,
           },
+          {
+            path: "journal/:id",
+            element: <JournalPage />,
+          },
           // Add other protected routes here
         ],
       },

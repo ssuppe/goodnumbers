@@ -8,3 +8,5 @@ export type {
   Session,
   VerificationToken,
 } from "./generated/client/index.js";
+
+export type { JournalStatus } from "./api-types";
