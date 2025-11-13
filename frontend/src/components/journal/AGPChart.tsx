@@ -1,5 +1,5 @@
 import DataDisplayWidget from "./DataDisplayWidget";
-import { Json } from "@goodnumbers/types";
+import type { Json } from "@goodnumbers/types";
 
 export default function AGPChart({ data }: { data: Json }) {
   return (

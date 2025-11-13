@@ -1,4 +1,4 @@
-import { Json } from "@goodnumbers/types";
+import type { Json } from "@goodnumbers/types";
 
 interface DataDisplayWidgetProps {
   title: string;
