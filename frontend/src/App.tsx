@@ -7,6 +7,7 @@ import AgreementsPage from "./pages/AgreementsPage";
 import SetupPage from "./pages/SetupPage";
 import DemoPage from "./pages/DemoPage";
 import JournalLoadingPage from "./pages/JournalLoadingPage";
+import JournalPage from "./pages/JournalPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 
@@ -49,6 +50,10 @@ const router = createBrowserRouter([
           {
             path: "journal/:journalId/loading",
             element: <JournalLoadingPage />,
+          },
+          {
+            path: "journal/:id",
+            element: <JournalPage />,
           },
           // Add other protected routes here
         ],
