@@ -1,0 +1,29 @@
+{
+  "assessmentData": {
+    "id": "mock-journal-id-123",
+    "podcastResult": {
+      "title": "Your Weekly Health Summary",
+      "description": "A personalized audio summary of your blood glucose trends and insights for the past week."
+    }
+  },
+  "timestamp": "2025-11-12T10:00:00.000Z",
+  "reportItems": [
+    {
+      "data": {
+        "agpData": "placeholder_agp_data"
+      },
+      "insights": [
+        { "type": "INFO", "message": "Good glucose control overall." }
+      ]
+    },
+    {
+      "data": [{ "clusterType": "HIGH", "time": "morning" }]
+    },
+    {
+      "data": [{ "clusterType": "VERY_HIGH", "time": "afternoon" }]
+    },
+    {
+      "data": [{ "clusterType": "SEVERE_HYPOGLYCEMIA", "time": "night" }]
+    }
+  ]
+}
