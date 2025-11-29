@@ -169,4 +169,44 @@ describe('/api/journals', () => {
       });
     });
   });
+
+  describe('GET /:id', () => {
+    it('should return 401 Unauthorized if no user is authenticated', async () => {
+      const res = await agent.get(`/api/journals/${journal1.id}`);
+      expect(res.status).toBe(401);
+    });
+
+    it('should return 400 Bad Request for a malformed journal ID', async () => {
+      const res = await agent
+        .get('/api/journals/this-is-not-a-cuid')
+        .set('x-test-user-id', user1.id);
+      expect(res.status).toBe(400);
+    });
+
+    it('should return 404 Not Found for a non-existent journal ID', async () => {
+      const nonExistentId = 'clvsf3mop000008jp3b3c1z9i';
+      const res = await agent
+        .get(`/api/journals/${nonExistentId}`)
+        .set('x-test-user-id', user1.id);
+      expect(res.status).toBe(404);
+    });
+
+    it('should return 404 Not Found when requesting a journal owned by another user', async () => {
+      const res = await agent
+        .get(`/api/journals/${journal1.id}`)
+        .set('x-test-user-id', user2.id);
+      expect(res.status).toBe(404);
+    });
+
+    it('should return 200 OK with the full journal data for an owned journal', async () => {
+      const res = await agent
+        .get(`/api/journals/${journal1.id}`)
+        .set('x-test-user-id', user1.id);
+      expect(res.status).toBe(200);
+      expect(res.body.id).toBe(journal1.id);
+      expect(res.body.status).toBe('PROCESSING');
+      // Ensure clusters are included (even if empty array for now)
+      expect(res.body.clusters).toBeDefined();
+    });
+  });
 });
