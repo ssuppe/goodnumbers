@@ -1,5 +1,4 @@
 // file: backend/vitest.setup.ts
-import 'dotenv/config';
 import { vi } from 'vitest';
 
 vi.mock('ioredis', async () => {

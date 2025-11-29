@@ -1,5 +1,6 @@
 // file: src/worker.ts
 
+import './lib/env.js';
 import { Worker, Job } from 'bullmq';
 import { Redis } from 'ioredis';
 import { JOURNAL_QUEUE_NAME } from './lib/queue.js';
