@@ -6,7 +6,9 @@
   "scripts": {
     "start": "pm2 start ecosystem.config.cjs --env production",
     "stop": "pm2 stop ecosystem.config.cjs && pm2 delete ecosystem.config.cjs",
-    "dev": "nodemon --watch src --ext ts --exec \"npm run build && node ./dist/server.js\"",
+    "dev:server": "nodemon --watch src --ext ts --exec \"npm run build && node ./dist/server.js\"",
+    "dev:worker": "nodemon --watch src --ext ts --exec \"npm run build && node ./dist/worker.js\"",
+    "dev": "npm run dev:server",
     "logs": "pm2 logs",
     "build": "npx prisma generate && tsc --build",
     "postinstall": "npm run build -w @goodnumbers/schemas && npm run build -w @goodnumbers/types",

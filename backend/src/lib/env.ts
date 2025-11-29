@@ -7,17 +7,24 @@ import fs from 'fs';
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 const NODE_ENV = process.env.NODE_ENV;
 
-// Define the path for the environment-specific .env file (e.g., .env.development)
-const specificEnvPath = path.resolve(process.cwd(), `.env.${NODE_ENV}`);
+// Define potential paths for the environment-specific .env file
+// We check the current directory (standard) and the parent directory (monorepo root)
+const localEnvPath = path.resolve(process.cwd(), `.env.${NODE_ENV}`);
+const rootEnvPath = path.resolve(process.cwd(), '..', `.env.${NODE_ENV}`);
 
-// We load the environment-specific file first and use `override` to ensure
-// its variables take precedence over any system-level variables or
-// variables from a base .env file.
-if (fs.existsSync(specificEnvPath)) {
-  console.log(`[env] Loading environment variables from ${specificEnvPath}`);
-  dotenv.config({ path: specificEnvPath, override: true });
+let envPathToLoad = null;
+
+if (fs.existsSync(localEnvPath)) {
+  envPathToLoad = localEnvPath;
+} else if (fs.existsSync(rootEnvPath)) {
+  envPathToLoad = rootEnvPath;
+}
+
+if (envPathToLoad) {
+  console.log(`[env] Loading environment variables from ${envPathToLoad}`);
+  dotenv.config({ path: envPathToLoad, override: true });
 } else {
   console.log(
-    `[env] No specific environment file found at ${specificEnvPath}. Using system variables.`,
+    `[env] No specific environment file found at ${localEnvPath} or ${rootEnvPath}. Using system variables.`,
   );
 }
