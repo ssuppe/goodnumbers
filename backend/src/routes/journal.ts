@@ -95,4 +95,28 @@ router.get('/:id/status', statusLimiter, async (req, res, next) => {
   }
 });
 
+// 4. Add the route to fetch a single journal by ID.
+router.get('/:id', async (req, res, next) => {
+  try {
+    const { id: journalId } = journalIdParamSchema.parse(req.params);
+    const userId = req.user!.id;
+
+    const journal = await prisma.journal.findFirst({
+      where: { id: journalId, userId: userId },
+      include: { clusters: true }, // Include the related clusters
+    });
+
+    if (!journal) {
+      return res.status(404).json({ error: 'Journal not found.' });
+    }
+
+    res.status(200).json(journal);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ errors: error.issues });
+    }
+    next(error);
+  }
+});
+
 export default router;
