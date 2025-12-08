@@ -1,7 +1,10 @@
 import { Router } from 'express';
-import { prisma } from '../lib/prisma.js';
+import { prisma, Prisma } from '../lib/prisma.js';
 import { getJournalQueue } from '../lib/queue.js';
-import { journalIdParamSchema } from '@goodnumbers/schemas'; // Import the new schema
+import {
+  journalIdParamSchema,
+  journalUpdateSchema,
+} from '@goodnumbers/schemas'; // Import the new schema
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit'; // 1. Import rate-limit
 
@@ -115,6 +118,60 @@ router.get('/:id', async (req, res, next) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ errors: error.issues });
     }
+    next(error);
+  }
+});
+
+router.put('/:id', async (req, res, next) => {
+  try {
+    const { id: journalId } = journalIdParamSchema.parse(req.params);
+    const userId = req.user!.id;
+    const updates = journalUpdateSchema.parse(req.body);
+
+    const { clusterNotes, ...journalUpdates } = updates;
+
+    // FIX: Map 'influencingFactors' explicitly to handle Prisma's strict JSON null types.
+    const cleanUpdates: Prisma.JournalUpdateInput = {
+      ...journalUpdates,
+      influencingFactors:
+        journalUpdates.influencingFactors === null
+          ? Prisma.DbNull
+          : ((journalUpdates.influencingFactors ?? undefined) as
+              | Prisma.InputJsonValue
+              | undefined),
+    };
+
+    // 1. Update the Journal fields
+    await prisma.journal.update({
+      where: { id: journalId, userId: userId },
+      data: cleanUpdates,
+    });
+
+    // 2. Update Cluster Notes if provided
+    if (clusterNotes) {
+      // We need to verify these clusters belong to the journal (and thus the user)
+      // A transaction would be ideal here for atomicity
+      const updatePromises = Object.entries(clusterNotes).map(
+        ([clusterId, note]) =>
+          prisma.glycemicEventCluster.updateMany({
+            where: {
+              id: clusterId,
+              journalId: journalId, // Ensure ownership via relation
+            },
+            data: { userNotes: note },
+          }),
+      );
+      await prisma.$transaction(updatePromises);
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ errors: error.issues });
+    }
+    // Handle RecordNotFound from Prisma if ownership check fails
+    // (prisma.update throws if record not found)
+    // We'll let the global handler catch it or map it to 404/403 if we want to be specific
     next(error);
   }
 });

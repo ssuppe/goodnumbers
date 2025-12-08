@@ -1,53 +1,8 @@
-<thoughts>
-I need to create a detailed engineering plan for Phase 5, Task 6.3, incorporating the security/privacy requirements previously discussed AND the specific UI design specs from the four design documents I just read.
-
-The plan needs to be:
-
-1.  **Verbose and detailed:** Suitable for a junior engineer.
-2.  **Security-conscious:** Include data persistence on error, input limits, and privacy logging.
-3.  **Design-compliant:** Use the specific Tailwind classes and interaction patterns from the design docs.
-4.  **TDD-focused:** Follow a Red-Green-Refactor cycle.
-
-**Structure of the Plan:**
-
-1.  **Header & TL;DR:** Summary of the task.
-2.  **Invariants:** Security, Privacy, Architecture rules.
-3.  **Assumptions & Scope:** What's in/out.
-4.  **Objectives:** Clear goals.
-5.  **Risks & Mitigations:** Addressing data loss, etc.
-6.  **Method Outline:** High-level steps.
-7.  **Implementation Notes:**
-    - API Payload structure.
-    - State initialization logic.
-    - Security constraints (maxLength, logging).
-8.  **Acceptance Gates:** Checklist for completion.
-9.  **Project Hygiene:** Branch names, etc.
-10. **In-depth Test Plan:** Unit and E2E strategies.
-11. **In-depth Engineering Plan (The Core):**
-    - **Step 1: API Client:** `updateJournal`, `deleteJournal`.
-    - **Step 2: WeeklyVibe Component:** Use `docs/design/weekly-vibe-v3.md`.
-    - **Step 3: InfluencingFactors Component:** Use `docs/design/influencing-factors.md`.
-    - **Step 4: ContextualNotesArea (Goals) Component:** Use `docs/design/on-reflection.md`.
-    - **Step 5: ClusterCard Refactor:** Apply similar editing logic (textarea).
-    - **Step 6: StickyActionBar Component:** Use `docs/design/sticky-action-bar.md`.
-    - **Step 7: JournalPage Integration:** Wire it all up, handle state, errors, and persistence.
-
-**Specific Details to Integrate:**
-
-- **WeeklyVibe:** Grid layout, `group-hover:rotate-6`, `ring-4` for active state.
-- **InfluencingFactors:** Multi-select logic, `CheckCircle` icon, `hover:scale-[1.05]`.
-- **ContextualNotesArea:** `useRef` for focus management, expand/collapse logic.
-- **StickyActionBar:** "Discard" and "Save" buttons, fixed positioning.
-- **Security:** `maxLength` on inputs, no `console.log(formData)`, error handling that _doesn't_ clear the form.
-
-I will write this out as a complete markdown document.
-</thoughts>
-
 # GoodNumbers — `phase5-task6.3-journal-editing.md` (Final Comprehensive Edition)
 
 ## TL;DR
 
-Implement interactive editing for the Journal page, transforming it from a read-only view into a fully functional form. This involves building four specific high-fidelity UI components (`WeeklyVibe`, `InfluencingFactors`, `ContextualNotesArea`, `StickyActionBar`), wiring them to the backend API, and implementing robust security measures to prevent data loss.
+Implement interactive editing for the Journal page, transforming it from a read-only view into a fully functional form. This involves building four specific high-fidelity UI components (`WeeklyVibe`, `InfluencingFactors`, `ContextualNotesArea`, `StickyActionBar`), wiring them to the backend API, and implementing robust security measures to prevent data loss. Finally, update the Dashboard to support resuming active drafts.
 
 ## Invariants (do not change)
 
@@ -70,6 +25,7 @@ Implement interactive editing for the Journal page, transforming it from a read-
   - Refactoring `ClusterCard` to allow editing of user notes.
   - Wiring up the "Save" and "Delete" functionality.
   - **Security Scope:** Implementing robust error handling to prevent data loss on session expiry and enforcing input length limits.
+  - **Dashboard Scope:** Updating the dashboard to show a "Continue Journal" state for active drafts.
 - **Out of Scope:** Modifications to the AGP Chart, Podcast Player, or Insight generation logic.
 
 ## Objectives
@@ -80,6 +36,7 @@ Implement interactive editing for the Journal page, transforming it from a read-
 4.  **Deletion:** Wire the "Delete" button to `DELETE /api/journals/:id` with a confirmation dialog.
 5.  **Feedback:** Provide immediate visual feedback for "Saving..." and error states.
 6.  **Data Safety:** Ensure user input is preserved in the UI if the save operation fails (e.g., due to network error or session timeout).
+7.  **Resume Capability:** Allow users to easily resume an active journal draft from the dashboard.
 
 ## Risks & Mitigations
 
@@ -99,6 +56,7 @@ Implement interactive editing for the Journal page, transforming it from a read-
 3.  **Page Logic:** Lift state from individual components to `JournalPage`. Implement the `reduce` logic to map cluster arrays to the notes object.
 4.  **Integration:** Replace the placeholders in `JournalPage` with the new components and wire up the state.
 5.  **Security Integration:** Apply input limits and robust error handling logic.
+6.  **Dashboard Update:** Implement the "Continue Journal" logic.
 
 ## Implementation Notes
 
@@ -136,7 +94,7 @@ useEffect(() => {
           ...acc,
           [cluster.id]: cluster.userNotes || "",
         }),
-        {} as Record<string, string>
+        {} as Record<string, string>,
       ),
     });
   }
@@ -160,6 +118,7 @@ useEffect(() => {
 - [ ] **Save:** Clicking "Save" triggers `PUT`. Button shows "Saving..." spinner. Success redirects to Dashboard.
 - [ ] **Error Safety:** If Save fails (e.g., network error), the form data remains visible and editable. An error message is shown.
 - [ ] **Delete:** Clicking "Delete" shows confirmation. Confirm triggers `DELETE`. Success redirects to Dashboard.
+- [ ] **Dashboard:** If a journal exists for the current week, the main card shows "Continue Journal" and links to the edit page.
 
 ## Project hygiene prep
 
@@ -309,7 +268,19 @@ useEffect(() => {
       - Render `StickyActionBar` at the bottom.
       - Add `pb-24` to the main container to prevent overlap.
 
-### Step 8: Final Verification
+### Step 8: Enhance Dashboard with "Continue Journal" State (TDD)
+
+1.  **Red (Test):** Update `frontend/src/pages/DashboardPage.test.tsx`.
+    - Test that if the most recent journal is < 3 days old, the `StartJournalCard` receives a prop (e.g., `activeDraftId`) pointing to it.
+    - Test that this active draft is **filtered out** of the `PastJournalsList`.
+2.  **Green (Impl):** Update `DashboardPage.tsx`.
+    - Implement logic to check `differenceInDays` on the first journal.
+    - If active, pass its ID to `StartJournalCard` and slice the list passed to `PastJournalsList`.
+3.  **Red (Test):** Update `frontend/src/components/dashboard/StartJournalCard.test.tsx`.
+    - Test that if `activeDraftId` is present, the card renders "Finish your reflection" and a "Continue Journal" button linking to `/journal/:id`.
+4.  **Green (Impl):** Update `StartJournalCard.tsx` to handle this new state.
+
+### Step 9: Final Verification
 
 - Run `npm test -w frontend`.
 - **Manual Check:**
@@ -319,7 +290,4 @@ useEffect(() => {
   - Verify "On reflection..." expands on click.
   - Disconnect network -> Click Save -> Verify error message and data persistence.
   - Reconnect -> Click Save -> Verify redirect.
-
-```
-
-```
+  - **Dashboard Check:** Verify that after starting a journal and navigating back, the dashboard shows "Continue Journal" and the journal is NOT in the past list.
