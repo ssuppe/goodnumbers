@@ -1,5 +1,10 @@
 // file: backend/src/lib/prisma.ts
-import { PrismaClient } from '../../../packages/types/src/generated/client/index.js';
+import {
+  PrismaClient,
+  Prisma,
+} from '../../../packages/types/src/generated/client/index.js';
+
+export { Prisma };
 
 console.log(
   `[prisma.ts] Module loaded. NODE_ENV: ${process.env.NODE_ENV}. DB_URL: ${process.env.DATABASE_URL}`,
