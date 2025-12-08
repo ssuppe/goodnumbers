@@ -16,6 +16,7 @@ type JournalResponse = Journal & { clusters: GlycemicEventCluster[] };
 
 interface JournalFormData {
   weeklyVibe: string | null;
+  influencingFactors: string[];
 }
 
 export default function JournalPage() {
@@ -35,6 +36,8 @@ export default function JournalPage() {
         setJournal(response.data);
         setFormData({
           weeklyVibe: response.data.weeklyVibe,
+          influencingFactors:
+            (response.data.influencingFactors as string[]) || [],
         });
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (err) {
@@ -100,7 +103,14 @@ export default function JournalPage() {
           }
         />
       )}
-      <InfluencingFactors data={journal.influencingFactors} />
+      {formData && (
+        <InfluencingFactors
+          selectedFactors={formData.influencingFactors}
+          onChange={(factors) =>
+            setFormData((prev) => ({ ...prev!, influencingFactors: factors }))
+          }
+        />
+      )}
       {journal.clusters.map((cluster) => (
         <EventClusterCard key={cluster.id} cluster={cluster} />
       ))}
