@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, updateJournal } from "../lib/api";
 import { type Journal, type GlycemicEventCluster } from "@goodnumbers/types";
 import { Loader2, AlertTriangle } from "lucide-react";
 
@@ -14,10 +14,16 @@ import Goals from "../components/journal/Goals";
 
 type JournalResponse = Journal & { clusters: GlycemicEventCluster[] };
 
+interface JournalFormData {
+  weeklyVibe: string | null;
+}
+
 export default function JournalPage() {
   const { id } = useParams<{ id: string }>();
   const [journal, setJournal] = useState<JournalResponse | null>(null);
+  const [formData, setFormData] = useState<JournalFormData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,6 +33,9 @@ export default function JournalPage() {
       try {
         const response = await api.get<JournalResponse>(`/journals/${id}`);
         setJournal(response.data);
+        setFormData({
+          weeklyVibe: response.data.weeklyVibe,
+        });
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (err) {
         setError(
@@ -38,6 +47,20 @@ export default function JournalPage() {
     };
     void fetchJournal();
   }, [id]);
+
+  const handleSave = async () => {
+    if (!id || !formData) return;
+    setIsSaving(true);
+    try {
+      await updateJournal(id, formData);
+      // Optionally refetch or show success toast
+    } catch (err) {
+      console.error("Failed to save journal", err);
+      alert("Failed to save changes.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -69,7 +92,14 @@ export default function JournalPage() {
         description={journal.podcastDescription}
         audioUrl={journal.podcastAudioUrl}
       />
-      <WeeklyVibe data={journal.weeklyVibe} />
+      {formData && (
+        <WeeklyVibe
+          selectedVibe={formData.weeklyVibe}
+          onChange={(vibe) =>
+            setFormData((prev) => ({ ...prev!, weeklyVibe: vibe }))
+          }
+        />
+      )}
       <InfluencingFactors data={journal.influencingFactors} />
       {journal.clusters.map((cluster) => (
         <EventClusterCard key={cluster.id} cluster={cluster} />
@@ -77,6 +107,16 @@ export default function JournalPage() {
       <AGPChart data={journal.agpChartData} />
       <InsightsList data={journal.analysisInsights} />
       <Goals data={journal.goalsForNextWeek} />
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 flex justify-end shadow-lg z-50">
+        <button
+          onClick={() => void handleSave()}
+          disabled={isSaving}
+          className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+        >
+          {isSaving ? "Saving..." : "Save Changes"}
+        </button>
+      </div>
+      <div className="h-20" /> {/* Spacer for fixed footer */}
     </div>
   );
 }

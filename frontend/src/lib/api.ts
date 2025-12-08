@@ -30,5 +30,13 @@ api.interceptors.request.use(
       return Promise.reject(error);
     }
     return Promise.reject(new Error(String(error)));
-  }
+  },
 );
+
+export const updateJournal = async (id: string, payload: unknown) => {
+  return api.put(`/journals/${id}`, payload);
+};
+
+export const deleteJournal = async (id: string) => {
+  return api.delete(`/journals/${id}`);
+};

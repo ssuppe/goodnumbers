@@ -1,9 +1,9 @@
 // file: frontend/src/pages/JournalPage.test.tsx
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import JournalPage from "./JournalPage";
-import { api } from "../lib/api";
+import { api, updateJournal } from "../lib/api";
 import { mockJournalForView } from "../mocks/journal";
 
 // Mock the API and all child components
@@ -17,8 +17,20 @@ vi.mock("../components/journal/AGPChart", () => ({
 vi.mock("../components/journal/InsightsList", () => ({
   default: () => <div data-testid="insights-list" />,
 }));
+// We mock WeeklyVibe to expose its props for testing interaction
 vi.mock("../components/journal/WeeklyVibe", () => ({
-  default: () => <div data-testid="weekly-vibe" />,
+  default: ({
+    selectedVibe,
+    onChange,
+  }: {
+    selectedVibe: string;
+    onChange: (v: string) => void;
+  }) => (
+    <div data-testid="weekly-vibe">
+      <span data-testid="current-vibe">{selectedVibe}</span>
+      <button onClick={() => onChange("Growing")}>Select Growing</button>
+    </div>
+  ),
 }));
 vi.mock("../components/journal/InfluencingFactors", () => ({
   default: () => <div data-testid="influencing-factors" />,
@@ -73,5 +85,33 @@ describe("JournalPage", () => {
 
       expect(screen.getByTestId("goals")).toBeInTheDocument();
     });
+  });
+
+  it("updates local state when vibe is changed and calls API on save", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: mockJournalForView });
+    renderComponent(mockJournalForView.id);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("weekly-vibe")).toBeInTheDocument();
+    });
+
+    // 1. Change the vibe
+    const selectButton = screen.getByText("Select Growing");
+    fireEvent.click(selectButton);
+
+    // Verify local state update via the mock's display
+    expect(screen.getByTestId("current-vibe")).toHaveTextContent("Growing");
+
+    // 2. Click Save
+    const saveButton = screen.getByText("Save Changes");
+    fireEvent.click(saveButton);
+
+    // 3. Verify API call
+    expect(updateJournal).toHaveBeenCalledWith(
+      mockJournalForView.id,
+      expect.objectContaining({
+        weeklyVibe: "Growing",
+      }),
+    );
   });
 });
