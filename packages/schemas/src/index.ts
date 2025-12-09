@@ -1,13 +1,20 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const userSettingsSchema = z.object({
   nightscoutUrl: z.string().url().optional().nullable(),
   nightscoutToken: z.string().min(1).optional().nullable(),
   nightscoutTokenLast3: z.string().optional().nullable(), // Add this line
-  preferredUnits: z.enum(['MGDL', 'MMOL']).optional(),
+  preferredUnits: z.enum(["MGDL", "MMOL"]).optional(),
   agreementsSigned: z.boolean().optional(),
 });
 
 export const journalIdParamSchema = z.object({
-  id: z.string().cuid({ message: 'Invalid journal ID format.' }),
+  id: z.string().cuid({ message: "Invalid journal ID format." }),
+});
+
+export const journalUpdateSchema = z.object({
+  weeklyVibe: z.string().optional().nullable(),
+  influencingFactors: z.array(z.string()).optional().nullable(),
+  goalsForNextWeek: z.string().optional().nullable(),
+  clusterNotes: z.record(z.string(), z.string()).optional(),
 });
