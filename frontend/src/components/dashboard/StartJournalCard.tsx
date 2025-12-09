@@ -1,12 +1,14 @@
 import { format, addDays } from "date-fns";
-import { Loader2, Sprout } from "lucide-react"; // Using Sprout for both states
+import { Loader2, Sprout } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface StartJournalCardProps {
   isEnabled: boolean;
   isSubmitting: boolean;
   error: string | null;
   onClick: () => void;
-  latestJournalDate: Date | undefined;
+  latestJournalDate?: Date;
+  activeDraftId?: string;
 }
 
 export default function StartJournalCard({
@@ -15,6 +17,7 @@ export default function StartJournalCard({
   error,
   onClick,
   latestJournalDate,
+  activeDraftId,
 }: StartJournalCardProps) {
   const unlockDate = latestJournalDate
     ? addDays(latestJournalDate, 3)
@@ -23,12 +26,36 @@ export default function StartJournalCard({
     ? format(unlockDate, "MMMM d, yyyy")
     : "";
 
+  // 1. Active Draft State (Highest Priority)
+  if (activeDraftId) {
+    return (
+      <section className="bg-white p-6 rounded-xl shadow-lg mb-8 border border-gray-200">
+        <div className="flex flex-col sm:flex-row items-center sm:justify-between">
+          <div className="flex items-center mb-4 sm:mb-0">
+            <div className="w-24 h-24 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0 mr-4">
+              <Sprout className="w-12 h-12 text-[#1976d2]" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Finish your reflection
+            </h2>
+          </div>
+          <Link
+            to={`/journal/${activeDraftId}`}
+            className="w-full sm:w-auto px-6 py-3 bg-[#1976d2] text-white font-semibold rounded-lg shadow-md hover:bg-[#1e88e5] transition-colors flex items-center justify-center"
+          >
+            Continue Journal
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  // 2. Standard "Start New" or "Locked" State
   return (
     <section className="bg-white p-6 rounded-xl shadow-lg mb-8 border border-gray-200">
       {isEnabled ? (
         <div className="flex flex-col sm:flex-row items-center sm:justify-between">
           <div className="flex items-center mb-4 sm:mb-0">
-            {/* Placeholder for image */}
             <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 mr-4">
               <Sprout className="w-12 h-12 text-gray-400" />
             </div>
