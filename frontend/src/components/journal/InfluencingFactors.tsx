@@ -141,7 +141,10 @@ export default function InfluencingFactors({
                     }}
                     className="px-2 py-1.5 rounded-lg text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200 flex items-center hover:bg-blue-200 transition-colors"
                   >
-                    <span className="mr-1.5 text-base">{option.emoji}</span>
+                    {/* Increased size to text-2xl, added leading-none for alignment */}
+                    <span className="mr-2 text-2xl leading-none">
+                      {option.emoji}
+                    </span>
                     {option.label}
                   </button>
                 );
@@ -184,10 +187,10 @@ export default function InfluencingFactors({
                       }`}
                     >
                       <span
-                        className={`overflow-hidden transition-all duration-200 ease-out flex items-center justify-center text-base ${
+                        className={`overflow-hidden transition-all duration-300 flex items-center justify-center leading-none text-2xl ${
                           isSelected
-                            ? "w-6 opacity-100 mr-1.5"
-                            : "w-0 opacity-0 mr-0"
+                            ? "w-9 opacity-100 mr-2 ease-out" // Larger width (w-9), animate in fast
+                            : "w-0 opacity-0 mr-0 ease-in" // Animate out slow
                         }`}
                       >
                         {option.emoji}
