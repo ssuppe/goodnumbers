@@ -166,4 +166,52 @@ describe("DashboardPage", () => {
       );
     });
   });
+
+  it("passes activeDraftId to StartJournalCard and filters it from list if < 3 days old", async () => {
+    const recentJournal: JournalSummary = {
+      id: "active-draft-1",
+      createdAt: new Date().toISOString(), // Today
+      podcastTitle: "Active Draft",
+      podcastDescription: "In progress",
+      weeklyVibe: null,
+    };
+    const olderJournal: JournalSummary = {
+      id: "old-journal-2",
+      createdAt: addDays(new Date(), -7).toISOString(),
+      podcastTitle: "Old Journal",
+      podcastDescription: "Done",
+      weeklyVibe: "Flourishing",
+    };
+
+    // @ts-expect-error: Mocked API call
+    (api.get as vi.Mock).mockResolvedValueOnce({
+      data: [recentJournal, olderJournal],
+    });
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      // Verify StartJournalCard receives activeDraftId
+      // @ts-expect-error: Mocked component props access
+      const startCalls = vi.mocked(StartJournalCard).mock.calls;
+      const startCardProps = startCalls[startCalls.length - 1][0];
+      // @ts-expect-error: expect is augmented by Vitest
+      expect(startCardProps.activeDraftId).toBe(recentJournal.id);
+      // @ts-expect-error: expect is augmented by Vitest
+      expect(startCardProps.isEnabled).toBe(true); // Should be enabled to allow "Continue"
+
+      // Verify PastJournalsList DOES NOT contain the active draft
+      // @ts-expect-error: Mocked component props access
+      const listCalls = vi.mocked(PastJournalsList).mock.calls;
+      const listProps = listCalls[listCalls.length - 1][0];
+      // @ts-expect-error: expect is augmented by Vitest
+      expect(listProps.journals).toHaveLength(1);
+      // @ts-expect-error: expect is augmented by Vitest
+      expect(listProps.journals[0].id).toBe(olderJournal.id);
+    });
+  });
 });
