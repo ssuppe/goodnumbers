@@ -31,18 +31,41 @@ export default function DashboardPage() {
     void fetchJournals();
   }, []);
 
-  const isJournalCreationAllowed = useMemo(() => {
-    if (journals.length === 0) return true;
-    const latestJournalDate = new Date(journals[0].createdAt);
-    if (isNaN(latestJournalDate.getTime())) {
-      console.error(
-        "Invalid date found for latest journal:",
-        journals[0].createdAt,
-      );
-      return false;
+  // Determine if the most recent journal is an active draft (< 3 days old)
+  const activeDraftId = useMemo(() => {
+    if (journals.length === 0) return null;
+    const latestJournal = journals[0];
+    const latestDate = new Date(latestJournal.createdAt);
+
+    if (isNaN(latestDate.getTime())) return null;
+
+    // If it's less than 3 days old, it's considered an active draft for this week
+    if (differenceInDays(new Date(), latestDate) < 3) {
+      return latestJournal.id;
     }
-    return differenceInDays(new Date(), latestJournalDate) >= 3;
+    return null;
   }, [journals]);
+
+  const isJournalCreationAllowed = useMemo(() => {
+    // If there's no journals, allow creation
+    if (journals.length === 0) return true;
+
+    // If there is an active draft, we technically "allow" interaction (to continue it)
+    // but the StartJournalCard will handle the UI difference.
+    if (activeDraftId) return true;
+
+    // Otherwise, check the 3-day rule for a NEW journal
+    const latestJournalDate = new Date(journals[0].createdAt);
+    return differenceInDays(new Date(), latestJournalDate) >= 3;
+  }, [journals, activeDraftId]);
+
+  // Filter out the active draft from the past list so it doesn't appear twice
+  const pastJournals = useMemo(() => {
+    if (activeDraftId) {
+      return journals.slice(1);
+    }
+    return journals;
+  }, [journals, activeDraftId]);
 
   const [handleStartJournal, isSubmitting, creationError] = useApiForm(
     async () => {
@@ -79,8 +102,9 @@ export default function DashboardPage() {
         latestJournalDate={
           journals.length > 0 ? new Date(journals[0].createdAt) : undefined
         }
+        activeDraftId={activeDraftId || undefined}
       />
-      <PastJournalsList journals={journals} />
+      <PastJournalsList journals={pastJournals} />
     </div>
   );
 }

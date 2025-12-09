@@ -8,7 +8,7 @@ import {
 import { describe, it, expect, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import JournalPage from "./JournalPage";
-import { api, updateJournal } from "../lib/api";
+import { api, updateJournal, deleteJournal } from "../lib/api";
 import { mockJournalForView } from "../mocks/journal";
 
 // Mock the API and all child components
@@ -191,5 +191,21 @@ describe("JournalPage", () => {
         screen.getByText("Failed to save. Please try again."),
       ).toBeInTheDocument();
     });
+  });
+
+  it("handles delete correctly", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: mockJournalForView });
+    // Mock window.confirm
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    renderComponent(mockJournalForView.id);
+    await waitFor(() => screen.getByTestId("sticky-action-bar"));
+
+    // Find and click delete button (assuming it's rendered)
+    const deleteBtn = screen.getByRole("button", { name: /delete/i });
+    fireEvent.click(deleteBtn);
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(deleteJournal).toHaveBeenCalledWith(mockJournalForView.id);
   });
 });

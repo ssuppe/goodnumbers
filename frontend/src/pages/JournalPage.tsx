@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { api, updateJournal } from "../lib/api";
+import { api, updateJournal, deleteJournal } from "../lib/api";
 import { type Journal, type GlycemicEventCluster } from "@goodnumbers/types";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, Trash2 } from "lucide-react";
 
 import PodcastPlayer from "../components/journal/PodcastPlayer";
 import AGPChart from "../components/journal/AGPChart";
@@ -87,6 +87,23 @@ export default function JournalPage() {
     navigate("/dashboard");
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+    if (
+      window.confirm(
+        "Are you sure you want to permanently delete this journal entry?",
+      )
+    ) {
+      try {
+        await deleteJournal(id);
+        navigate("/dashboard");
+      } catch (error) {
+        console.error("Failed to delete journal:", error);
+        setError("Failed to delete journal.");
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[80vh] p-8">
@@ -112,6 +129,17 @@ export default function JournalPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 pb-24">
+      <div className="flex justify-end">
+        <button
+          onClick={() => void handleDelete()}
+          className="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors"
+          aria-label="Delete journal"
+          title="Delete journal"
+        >
+          <Trash2 className="w-5 h-5" />
+        </button>
+      </div>
+
       <PodcastPlayer
         title={journal.podcastTitle}
         description={journal.podcastDescription}
