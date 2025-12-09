@@ -176,4 +176,22 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { id: journalId } = journalIdParamSchema.parse(req.params);
+    const userId = req.user!.id;
+
+    await prisma.journal.delete({
+      where: { id: journalId, userId: userId },
+    });
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ errors: error.issues });
+    }
+    next(error);
+  }
+});
+
 export default router;
