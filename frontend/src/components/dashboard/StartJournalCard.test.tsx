@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import StartJournalCard from "./StartJournalCard";
 import { addDays, format } from "date-fns";
 
@@ -85,5 +86,27 @@ describe("StartJournalCard", () => {
     );
 
     expect(screen.getByText(errorMessage)).toBeInTheDocument();
+  });
+
+  it("renders the 'Continue Journal' state when activeDraftId is provided", () => {
+    const activeDraftId = "draft-123";
+    render(
+      <MemoryRouter>
+        <StartJournalCard
+          isEnabled={true}
+          isSubmitting={false}
+          error={null}
+          onClick={mockOnClick}
+          activeDraftId={activeDraftId}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /Finish your reflection/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Continue Journal/i }),
+    ).toHaveAttribute("href", `/journal/${activeDraftId}`);
   });
 });
