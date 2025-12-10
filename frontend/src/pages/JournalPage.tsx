@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, updateJournal, deleteJournal } from "../lib/api";
 import { type Journal, type GlycemicEventCluster } from "@goodnumbers/types";
 import { Loader2, AlertTriangle, Trash2 } from "lucide-react";
 
 import PodcastPlayer from "../components/journal/PodcastPlayer";
-import AGPChart from "../components/journal/AGPChart";
-import InsightsList from "../components/journal/InsightsList";
+import { ChartAnalysisCard, type Insight } from "../components/journal/ChartAnalysisCard";
+import { normalizeAgpData } from "../lib/agpUtils";
+import { useAuth } from "../contexts/AuthContext";
 import WeeklyVibe from "../components/journal/WeeklyVibe";
 import InfluencingFactors from "../components/journal/InfluencingFactors";
 import EventClusterCard from "../components/journal/EventClusterCard";
@@ -24,6 +25,7 @@ interface JournalFormData {
 
 export default function JournalPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [journal, setJournal] = useState<JournalResponse | null>(null);
   const [formData, setFormData] = useState<JournalFormData | null>(null);
@@ -104,6 +106,17 @@ export default function JournalPage() {
     }
   };
 
+  const normalizedAgpData = useMemo(
+    () =>
+      journal?.agpChartData
+        ? normalizeAgpData(
+            journal.agpChartData as any[],
+            user?.preferredUnits || 'MGDL'
+          )
+        : [],
+    [journal?.agpChartData, user?.preferredUnits]
+  );
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[80vh] p-8">
@@ -166,8 +179,13 @@ export default function JournalPage() {
         />
       ))}
 
-      <AGPChart data={journal.agpChartData} />
-      <InsightsList data={journal.analysisInsights} />
+      <ChartAnalysisCard
+        title="Ambulatory Glucose Profile (AGP)"
+        subtitle="Your 7-day glucose trends"
+        data={normalizedAgpData}
+        units={user?.preferredUnits || 'MGDL'}
+        insights={(journal.analysisInsights as unknown as Insight[]) || []}
+      />
 
       <ContextualNotesArea
         notes={formData.goalsForNextWeek}
