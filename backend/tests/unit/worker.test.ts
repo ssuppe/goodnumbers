@@ -1,157 +1,130 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { PrismaClient } from '@goodnumbers/types';
 
-// Mock the Prisma client using vi.mock
+// 1. Mock Prisma
 const mockPrismaUpdate = vi.fn();
+const mockPrismaFindUnique = vi.fn();
 vi.mock('@src/lib/prisma.js', () => ({
   prisma: {
     journal: {
       update: mockPrismaUpdate,
+      findUnique: mockPrismaFindUnique,
     },
-  } as unknown as PrismaClient, // Type assertion for the mock
+  } as unknown as PrismaClient,
 }));
 
-// Dynamically import the module under test after the mock is set up
-// This will be done inside each test after vi.resetModules()
-let processJournalJob: (job: MockJob) => Promise<{ status: string }>; // Changed return type
+// 2. Mock NightscoutClient
+const mockFetchEntries = vi.fn();
+const mockFetchTreatments = vi.fn();
+const mockFetchProfile = vi.fn();
+
+// We mock the class constructor to return our mock methods
+vi.mock('@src/lib/nightscout/client.js', () => ({
+  NightscoutClient: vi.fn().mockImplementation(() => ({
+    fetchEntries: mockFetchEntries,
+    fetchTreatments: mockFetchTreatments,
+    fetchProfile: mockFetchProfile,
+  })),
+}));
+
+// 3. Mock Encryption
+vi.mock('@src/lib/encryption.js', () => ({
+  decrypt: vi.fn((val) => `decrypted-${val}`),
+}));
+
+// Dynamically import to ensure mocks are applied
+let processJournalJob: (job: MockJob) => Promise<{ status: string }>;
 
 interface MockJob {
+  id: string;
   data: { journalId: string };
 }
 
-describe('Worker Job Processing', () => {
+describe('Worker Job Processing (Real Logic)', () => {
   beforeEach(async () => {
-    vi.useFakeTimers(); // Use fake timers for each test
-    mockPrismaUpdate.mockClear();
-    vi.resetModules(); // Reset modules to ensure fresh import of worker.js
-    // Dynamically import processJournalJob here to pick up the mock
+    vi.clearAllMocks();
+    vi.resetModules();
     ({ processJournalJob } = await import('@src/worker.js'));
   });
 
-  afterEach(() => {
-    vi.useRealTimers(); // Restore real timers after each test
-  });
+  it('should decrypt credentials, fetch data, and save raw results', async () => {
+    const fakeJob: MockJob = {
+      id: 'job-123',
+      data: { journalId: 'journal-123' },
+    };
 
-  it('should update the journal status to COMPLETE on successful processing', async () => {
-    const fakeJob: MockJob = { data: { journalId: 'journal123' } };
+    // Arrange: Mock DB finding the user
+    mockPrismaFindUnique.mockResolvedValue({
+      id: 'journal-123',
+      user: {
+        nightscoutUrl: 'https://mock-ns.com',
+        nightscoutToken: 'encrypted-token-123',
+      },
+    });
 
-    // Mock all prisma.journal.update calls to resolve successfully
+    // Arrange: Mock Nightscout API returns
+    mockFetchEntries.mockResolvedValue(['entry1', 'entry2']);
+    mockFetchTreatments.mockResolvedValue(['treatment1']);
+    mockFetchProfile.mockResolvedValue([{ defaultProfile: 'Default' }]);
+
+    // Arrange: Mock Update to resolve
     mockPrismaUpdate.mockResolvedValue({});
 
-    const promise = processJournalJob(fakeJob);
+    // Act
+    const result = await processJournalJob(fakeJob);
 
-    // Advance timers for each stage
-    vi.advanceTimersByTime(5000); // Stage 1
-    await vi.runAllTimersAsync(); // Process microtasks after timer advance
+    // Assert: Success status
+    expect(result).toEqual({ status: 'done' });
 
-    vi.advanceTimersByTime(5000); // Stage 2
-    await vi.runAllTimersAsync();
-
-    vi.advanceTimersByTime(5000); // Stage 3
-    await vi.runAllTimersAsync();
-
-    vi.advanceTimersByTime(5000); // Stage 4
-    await vi.runAllTimersAsync();
-
-    // Final stage (no sleep after this, but ensure all promises resolve)
-    await promise; // Await the main job promise
-
-    expect(mockPrismaUpdate).toHaveBeenCalledTimes(5); // 4 progress updates + 1 final COMPLETE
-
-    expect(mockPrismaUpdate).toHaveBeenCalledWith({
-      where: { id: 'journal123' },
-      data: {
-        status: 'ANALYZING_DATA',
-        progress: 20,
-        statusMessage:
-          'Gathering your blood glucose, insulin, and meal data...',
-      },
+    // Assert: DB lookup
+    expect(mockPrismaFindUnique).toHaveBeenCalledWith({
+      where: { id: 'journal-123' },
+      include: expect.objectContaining({ user: expect.any(Object) }),
     });
-    expect(mockPrismaUpdate).toHaveBeenCalledWith({
-      where: { id: 'journal123' },
-      data: {
-        status: 'DRAFTING_INSIGHTS',
-        progress: 40,
-        statusMessage: 'Running analysis to find trends and hotspots...',
-      },
-    });
-    expect(mockPrismaUpdate).toHaveBeenCalledWith({
-      where: { id: 'journal123' },
-      data: {
-        status: 'GENERATING_AUDIO',
-        progress: 60,
-        statusMessage:
-          'Writing the script for your personalized audio summary...',
-      },
-    });
-    expect(mockPrismaUpdate).toHaveBeenCalledWith({
-      where: { id: 'journal123' },
-      data: {
-        progress: 80,
-        statusMessage: 'Recording your podcast...',
-      },
-    });
-    expect(mockPrismaUpdate).toHaveBeenCalledWith({
-      where: { id: 'journal123' },
-      data: {
-        status: 'COMPLETE',
-        progress: 100,
-        statusMessage: 'Your journal is ready.',
-      },
+
+    // Assert: Client interaction
+    expect(mockFetchEntries).toHaveBeenCalledWith(7);
+    expect(mockFetchTreatments).toHaveBeenCalledWith(7);
+    expect(mockFetchProfile).toHaveBeenCalled();
+
+    // Assert: Final Persistence
+    // We verify the last call to update contains the 'COMPLETE' status and our raw data payload
+    const lastCallArgs = mockPrismaUpdate.mock.lastCall?.[0];
+    expect(lastCallArgs.where).toEqual({ id: 'journal-123' });
+    expect(lastCallArgs.data.status).toBe('COMPLETE');
+    expect(lastCallArgs.data.agpChartData).toMatchObject({
+      entriesCount: 2,
+      treatmentsCount: 1,
+      profilesCount: 1,
+      profileName: 'Default',
     });
   });
 
-  it('should update the journal status to FAILED if an error occurs', async () => {
-    const fakeJob: MockJob = { data: { journalId: 'journal456' } };
-    const errorMessage = 'AI pipeline failed';
+  it('should handle missing credentials gracefully', async () => {
+    const fakeJob: MockJob = {
+      id: 'job-err',
+      data: { journalId: 'journal-err' },
+    };
 
-    // Mock the sequence of prisma calls:
-    // 1. ANALYZING_DATA (Success)
-    // 2. DRAFTING_INSIGHTS (Failure)
-    // 3. FAILED (Success, from the catch block)
-    mockPrismaUpdate
-      .mockResolvedValueOnce({}) // Call 1
-      .mockRejectedValueOnce(new Error(errorMessage)) // Call 2
-      .mockResolvedValueOnce({}); // Call 3
-
-    // Concurrently await the rejection and advance the timers to trigger it.
-    // This pattern avoids both unhandled rejection warnings and test timeouts.
-    await Promise.all([
-      expect(processJournalJob(fakeJob)).rejects.toThrow(errorMessage),
-      vi.runAllTimersAsync(),
-    ]);
-
-    // Verify the sequence of prisma update calls
-    expect(mockPrismaUpdate).toHaveBeenCalledTimes(3);
-
-    // 1. The first successful status update
-    expect(mockPrismaUpdate).toHaveBeenNthCalledWith(1, {
-      where: { id: 'journal456' },
-      data: {
-        status: 'ANALYZING_DATA',
-        progress: 20,
-        statusMessage:
-          'Gathering your blood glucose, insulin, and meal data...',
+    // Arrange: User exists but has no URL
+    mockPrismaFindUnique.mockResolvedValue({
+      id: 'journal-err',
+      user: {
+        nightscoutUrl: null, // MISSING
+        nightscoutToken: 'encrypted',
       },
     });
 
-    // 2. The update that was attempted before the failure
-    expect(mockPrismaUpdate).toHaveBeenNthCalledWith(2, {
-      where: { id: 'journal456' },
-      data: {
-        status: 'DRAFTING_INSIGHTS',
-        progress: 40,
-        statusMessage: 'Running analysis to find trends and hotspots...',
-      },
-    });
+    // Act & Assert
+    await expect(processJournalJob(fakeJob)).rejects.toThrow(
+      'User Nightscout credentials are missing',
+    );
 
-    // 3. The final 'FAILED' status update from the catch block
-    expect(mockPrismaUpdate).toHaveBeenNthCalledWith(3, {
-      where: { id: 'journal456' },
-      data: {
-        status: 'FAILED',
-        statusMessage: `Simulation failed: ${errorMessage}`,
-      },
-    });
+    // Verify we set status to FAILED
+    expect(mockPrismaUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'FAILED' }),
+      }),
+    );
   });
 });
