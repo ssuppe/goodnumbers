@@ -11,17 +11,25 @@ import JournalPage from "./JournalPage";
 import { api, updateJournal, deleteJournal } from "../lib/api";
 import { mockJournalForView } from "../mocks/journal";
 
+// Mock the AuthContext
+vi.mock("../contexts/AuthContext", () => ({
+  useAuth: () => ({
+    user: { preferredUnits: "MGDL" },
+  }),
+}));
+
 // Mock the API and all child components
 vi.mock("../lib/api");
+
+// Mock child components
 vi.mock("../components/journal/PodcastPlayer", () => ({
   default: () => <div data-testid="podcast-player" />,
 }));
-vi.mock("../components/journal/AGPChart", () => ({
-  default: () => <div data-testid="agp-chart" />,
+
+vi.mock("../components/journal/ChartAnalysisCard", () => ({
+  ChartAnalysisCard: () => <div data-testid="chart-analysis-card" />,
 }));
-vi.mock("../components/journal/InsightsList", () => ({
-  default: () => <div data-testid="insights-list" />,
-}));
+
 vi.mock("../components/journal/WeeklyVibe", () => ({
   default: ({
     selectedVibe,
@@ -36,9 +44,11 @@ vi.mock("../components/journal/WeeklyVibe", () => ({
     </div>
   ),
 }));
+
 vi.mock("../components/journal/InfluencingFactors", () => ({
   default: () => <div data-testid="influencing-factors" />,
 }));
+
 vi.mock("../components/journal/EventClusterCard", () => ({
   default: ({
     cluster,
@@ -57,6 +67,7 @@ vi.mock("../components/journal/EventClusterCard", () => ({
     </div>
   ),
 }));
+
 vi.mock("../components/journal/ContextualNotesArea", () => ({
   default: ({
     notes,
@@ -71,6 +82,7 @@ vi.mock("../components/journal/ContextualNotesArea", () => ({
     </div>
   ),
 }));
+
 vi.mock("../components/journal/StickyActionBar", () => ({
   default: ({
     onSave,
@@ -127,8 +139,8 @@ describe("JournalPage", () => {
       expect(screen.getByTestId("weekly-vibe")).toBeInTheDocument();
       expect(screen.getByTestId("influencing-factors")).toBeInTheDocument();
       expect(screen.getByTestId("cluster-card-cluster-1")).toBeInTheDocument();
-      expect(screen.getByTestId("agp-chart")).toBeInTheDocument();
-      expect(screen.getByTestId("insights-list")).toBeInTheDocument();
+      // Updated assertion for the new Unified Card
+      expect(screen.getByTestId("chart-analysis-card")).toBeInTheDocument();
       expect(screen.getByTestId("contextual-notes")).toBeInTheDocument();
       expect(screen.getByTestId("sticky-action-bar")).toBeInTheDocument();
     });
