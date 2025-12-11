@@ -7,6 +7,7 @@ import { JOURNAL_QUEUE_NAME } from './lib/queue.js';
 import { prisma, Prisma } from './lib/prisma.js';
 import { NightscoutClient } from './lib/nightscout/client.js';
 import { decrypt } from './lib/encryption.js';
+import { calculateAgp } from './lib/agp/calculateAgp.js';
 
 export async function processJournalJob(job: Job) {
   const { journalId } = job.data;
@@ -62,16 +63,28 @@ export async function processJournalJob(job: Job) {
       `[Worker] Fetched ${entries.length} entries, ${treatments.length} treatments, and ${profiles.length} profiles.`,
     );
 
-    // 4. Persist Data (Raw storage for verification)
-    // We store the raw results in agpChartData as a temporary verification step.
-    const rawDataPayload = {
-      entriesCount: entries.length,
-      treatmentsCount: treatments.length,
-      profilesCount: profiles.length,
-      // Store a subset to avoid blowing up the database size during dev
-      sampleEntries: entries.slice(0, 5),
-      sampleTreatments: treatments.slice(0, 5),
-      profileName: profiles[0]?.defaultProfile,
+    // Stage 2: AGP Chart Data Generation
+    await prisma.journal.update({
+      where: { id: journalId },
+      data: {
+        status: 'CALCULATING_AGP',
+        progress: 50,
+        statusMessage:
+          'Calculating Ambulatory Glucose Profile (AGP) percentiles...',
+      },
+    });
+
+    // Use the timezone from the fetched profile data (default to London if missing)
+    const defaultProfileName = profiles[0]?.defaultProfile;
+    const userTimezone =
+      (defaultProfileName &&
+        profiles[0]?.store?.[defaultProfileName]?.timezone) ||
+      'Europe/London';
+    const agpData = calculateAgp(entries, userTimezone);
+
+    // The worker will save the AGP data directly to the database.
+    const finalPayload = {
+      agpChartData: agpData,
     };
 
     // Final Stage: Complete
@@ -81,7 +94,9 @@ export async function processJournalJob(job: Job) {
         status: 'COMPLETE',
         progress: 100,
         statusMessage: 'Your journal is ready.',
-        agpChartData: rawDataPayload as unknown as Prisma.InputJsonValue,
+        // Save the newly calculated AGP chart data array
+        agpChartData:
+          finalPayload.agpChartData as unknown as Prisma.InputJsonValue,
       },
     });
 
