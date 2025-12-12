@@ -50,6 +50,14 @@ describe('AgpChart', () => {
     
     const medianSeries = option.series.find((s: any) => s.name === 'Median');
     expect(medianSeries).toBeDefined();
+
+    // Verify Target Range markArea exists
+    // We expect a series (typically the first one or a specialized one) to contain the markArea
+    const seriesWithMarkArea = option.series.find((s: any) => s.markArea);
+    expect(seriesWithMarkArea).toBeDefined();
+    // Check default values (70-180 mg/dL)
+    expect(seriesWithMarkArea.markArea.data[0][0].yAxis).toBe(70);
+    expect(seriesWithMarkArea.markArea.data[0][1].yAxis).toBe(180);
   });
 
   it('renders "No Data" state if data is empty', () => {
