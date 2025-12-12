@@ -76,10 +76,30 @@ export async function processJournalJob(job: Job) {
 
     // Use the timezone from the fetched profile data (default to London if missing)
     const defaultProfileName = profiles[0]?.defaultProfile;
-    const userTimezone =
-      (defaultProfileName &&
-        profiles[0]?.store?.[defaultProfileName]?.timezone) ||
-      'Europe/London';
+    let userTimezone =
+      defaultProfileName && profiles[0]?.store?.[defaultProfileName]?.timezone;
+
+    // Fallback: If profile timezone is missing, infer from the most recent entry's utcOffset
+    if (
+      !userTimezone &&
+      entries.length > 0 &&
+      entries[0].utcOffset !== undefined
+    ) {
+      const offsetMinutes = entries[0].utcOffset;
+      const offsetHours = offsetMinutes / 60;
+      // Format as 'UTC+X' or 'UTC-X'
+      const sign = offsetHours >= 0 ? '+' : '';
+      userTimezone = `UTC${sign}${offsetHours}`;
+      console.log(
+        `[Worker] Inferred timezone from data: ${userTimezone} (offset: ${offsetMinutes})`,
+      );
+    }
+
+    // Final fallback
+    if (!userTimezone) {
+      throw new Error('Incorrect timezone information, check Nightscout.');
+    }
+
     const agpData = calculateAgp(entries, userTimezone);
 
     // The worker will save the AGP data directly to the database.

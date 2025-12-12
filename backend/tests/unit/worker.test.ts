@@ -71,7 +71,9 @@ describe('Worker Job Processing (Real Logic)', () => {
     // Arrange: Mock Nightscout API returns
     mockFetchEntries.mockResolvedValue(['entry1', 'entry2']);
     mockFetchTreatments.mockResolvedValue(['treatment1']);
-    mockFetchProfile.mockResolvedValue([{ defaultProfile: 'Default' }]);
+    mockFetchProfile.mockResolvedValue([
+      { defaultProfile: 'Default', store: { Default: { timezone: 'UTC' } } },
+    ]);
 
     // Arrange: Mock Update to resolve
     mockPrismaUpdate.mockResolvedValue({});
@@ -99,7 +101,9 @@ describe('Worker Job Processing (Real Logic)', () => {
     const lastCallArgs = mockPrismaUpdate.mock.lastCall?.[0];
     expect(lastCallArgs.where).toEqual({ id: 'journal-123' });
     expect(lastCallArgs.data.status).toBe('COMPLETE');
-    expect(lastCallArgs.data.agpChartData).toEqual([{ time: '00:00', median: 100 }]);
+    expect(lastCallArgs.data.agpChartData).toEqual([
+      { time: '00:00', median: 100 },
+    ]);
   });
 
   it('should handle missing credentials gracefully', async () => {
@@ -126,6 +130,87 @@ describe('Worker Job Processing (Real Logic)', () => {
     expect(mockPrismaUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: 'FAILED' }),
+      }),
+    );
+  });
+
+  it('should fallback to entry utcOffset when profile timezone is missing', async () => {
+    const fakeJob: MockJob = {
+      id: 'job-tz',
+      data: { journalId: 'journal-tz' },
+    };
+
+    // Arrange: User exists
+    mockPrismaFindUnique.mockResolvedValue({
+      id: 'journal-tz',
+      user: {
+        nightscoutUrl: 'https://mock-ns.com',
+        nightscoutToken: 'encrypted',
+      },
+    });
+
+    // Arrange: Mock Nightscout API returns
+    // Profile has NO timezone info
+    mockFetchProfile.mockResolvedValue([
+      { defaultProfile: 'Default', store: { Default: {} } },
+    ]);
+    // Entries have utcOffset: -300 (UTC-5)
+    mockFetchEntries.mockResolvedValue([
+      { date: 1234567890, sgv: 100, utcOffset: -300 },
+    ]);
+    mockFetchTreatments.mockResolvedValue([]);
+
+    mockPrismaUpdate.mockResolvedValue({});
+
+    // Mock calculateAgp to do nothing
+    const { calculateAgp } = await import('@src/lib/agp/calculateAgp.js');
+    vi.mocked(calculateAgp).mockReturnValue([]);
+
+    // Act
+    await processJournalJob(fakeJob);
+
+    // Assert: calculateAgp should be called with the derived timezone
+    // Currently this will fail because it defaults to 'Europe/London'
+    expect(calculateAgp).toHaveBeenCalledWith(expect.anything(), 'UTC-5');
+  });
+
+  it('should fail with a clear error if timezone cannot be determined', async () => {
+    const fakeJob: MockJob = {
+      id: 'job-no-tz',
+      data: { journalId: 'journal-no-tz' },
+    };
+
+    mockPrismaFindUnique.mockResolvedValue({
+      id: 'journal-no-tz',
+      user: {
+        nightscoutUrl: 'https://mock-ns.com',
+        nightscoutToken: 'encrypted',
+      },
+    });
+
+    // Profile has no timezone, entries have no utcOffset
+    mockFetchProfile.mockResolvedValue([
+      { defaultProfile: 'Default', store: { Default: {} } },
+    ]);
+    mockFetchEntries.mockResolvedValue([{ date: 1234567890, sgv: 100 }]); // No utcOffset
+    mockFetchTreatments.mockResolvedValue([]);
+
+    mockPrismaUpdate.mockResolvedValue({});
+
+    // Act & Assert
+    await expect(processJournalJob(fakeJob)).rejects.toThrow(
+      'Incorrect timezone information, check Nightscout.',
+    );
+
+    // Verify we set status to FAILED with the message
+    expect(mockPrismaUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: 'FAILED',
+          statusMessage: expect.stringContaining(
+            'Incorrect timezone information',
+          ),
+        }),
       }),
     );
   });
