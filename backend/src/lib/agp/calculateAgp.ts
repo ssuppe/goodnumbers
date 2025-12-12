@@ -1,15 +1,18 @@
 import { DateTime } from 'luxon';
 import { quantile, mean } from 'd3-array';
 
-// The minimum number of 5-minute data points required in an hourly bin
-// 70% of 7 days * 12 points/hour = 59 points
-const MIN_POINTS_THRESHOLD = 59;
+// 30-minute bins over 7 days.
+// Expected points per bin: 12 points/hour * 0.5 hours * 7 days * 100% capture = 42 points max.
+// Let's set a reasonable threshold to ensure statistical significance.
+const MIN_POINTS_THRESHOLD = 30;
 
-// Constants for the 24 hourly time slots
-const TIME_SLOTS = Array.from(
-  { length: 24 },
-  (_, i) => `${i.toString().padStart(2, '0')}:00`,
-);
+// Constants for the 48 (30-minute) time slots
+const TIME_SLOTS = Array.from({ length: 48 }, (_, i) => {
+  const totalMinutes = i * 30;
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+});
 
 // Type definition for Nightscout entries used by the worker
 export interface NightscoutEntry {
@@ -20,7 +23,7 @@ export interface NightscoutEntry {
 
 // Type definition for the output AGP data point
 export interface AgpDataPoint {
-  time: string; // e.g., '00:00', '01:00'
+  time: string; // e.g., '00:00', '00:30'
   p5: number | null;
   p25: number | null;
   median: number | null;
@@ -35,16 +38,16 @@ export interface AgpDataPoint {
  *
  * @param entries - Array of Nightscout entries (sgv is assumed to be in mg/dL).
  * @param timezone - User's preferred timezone string (e.g., 'America/New_York').
- * @returns An array of 24 AgpDataPoint objects.
+ * @returns An array of 48 AgpDataPoint objects.
  */
 export function calculateAgp(
   entries: NightscoutEntry[],
   timezone: string,
 ): AgpDataPoint[] {
-  // 1. Initialize 24 hourly buckets
-  const hourlyBuckets = new Map<number, number[]>();
-  for (let hour = 0; hour < 24; hour++) {
-    hourlyBuckets.set(hour, []);
+  // 1. Initialize 48 half-hourly buckets
+  const bucketMap = new Map<number, number[]>();
+  for (let i = 0; i < 48; i++) {
+    bucketMap.set(i, []);
   }
 
   // 2. Localize, Filter, and Bin Data
@@ -55,23 +58,24 @@ export function calculateAgp(
     }
 
     // Parse UTC timestamp and convert to local time.
-    // Using fromJSDate for robust UTC parsing, then setting the local zone for binning.
     const date = new Date(entry.date);
     const timestamp = DateTime.fromJSDate(date, { zone: 'utc' }).setZone(
       timezone,
     );
 
     if (timestamp.isValid) {
-      const hour = timestamp.hour;
-      hourlyBuckets.get(hour)?.push(entry.sgv);
+      // Calculate 30-minute bin index (0 - 47)
+      // e.g., 00:29 -> bin 0, 00:31 -> bin 1
+      const binIndex = (timestamp.hour * 2) + Math.floor(timestamp.minute / 30);
+      bucketMap.get(binIndex)?.push(entry.sgv);
     }
   }
 
-  // 3. Calculate Statistics for each hour
+  // 3. Calculate Statistics for each bin
   const agpResult: AgpDataPoint[] = [];
 
-  for (let hour = 0; hour < 24; hour++) {
-    const values = hourlyBuckets.get(hour) ?? [];
+  for (let i = 0; i < 48; i++) {
+    const values = bucketMap.get(i) ?? [];
     const N = values.length;
 
     let p5: number | null = null;
@@ -83,34 +87,28 @@ export function calculateAgp(
 
     // Calculate Mean if any data exists
     if (N > 0) {
-      // d3-array's mean function is highly robust
       meanValue = mean(values) ?? null;
     }
 
     // Calculate Percentiles only if the minimum threshold is met
     if (N >= MIN_POINTS_THRESHOLD) {
-      // Sort data once for all percentile calculations - d3.quantile requires sorted data
       values.sort((a, b) => a - b);
 
-      // d3.quantile uses the standard R-7 method, resolving the previous bug.
       p5 = quantile(values, 0.05) ?? null;
       p25 = quantile(values, 0.25) ?? null;
       medianValue = quantile(values, 0.5) ?? null;
       p75 = quantile(values, 0.75) ?? null;
       p95 = quantile(values, 0.95) ?? null;
     } else if (N > 0) {
-      // Console log for debugging the data threshold during development
-      console.log(
-        `[AGP] Hour ${hour.toString().padStart(2, '0')}: Dropped percentiles due to low count (${N} < ${MIN_POINTS_THRESHOLD}).`,
-      );
+      // Debug log
+      // console.log(`[AGP] Bin ${i}: Dropped percentiles due to low count (${N} < ${MIN_POINTS_THRESHOLD}).`);
     }
 
     agpResult.push({
-      time: TIME_SLOTS[hour],
+      time: TIME_SLOTS[i],
       p5: p5 !== null && !isNaN(p5) ? p5 : null,
       p25: p25 !== null && !isNaN(p25) ? p25 : null,
       median: medianValue !== null && !isNaN(medianValue) ? medianValue : null,
-      // Mean needs rounding for display/storage consistency.
       mean:
         meanValue !== null && !isNaN(meanValue)
           ? parseFloat(meanValue.toFixed(2))
@@ -120,6 +118,6 @@ export function calculateAgp(
     });
   }
 
-  // 4. Return result (all values are in mg/dL)
+  // 4. Return result
   return agpResult;
 }

@@ -9,6 +9,7 @@ import {
   TitleComponent,
   LegendComponent,
   MarkLineComponent,
+  MarkAreaComponent, // Added MarkArea
 } from 'echarts/components';
 import { CHART_THEME } from '../../../lib/chartTheme';
 import { getClinicalThresholds, type GlucoseUnit } from '../../../lib/agpUtils';
@@ -24,6 +25,7 @@ echarts.use([
   TitleComponent,
   LegendComponent,
   MarkLineComponent,
+  MarkAreaComponent, // Register MarkArea
 ]);
 
 export interface AgpDataPoint {
@@ -128,6 +130,22 @@ export function AgpChart({ data, units, patientLowGoal, patientHighGoal }: AgpCh
         bottom: 0
       },
       series: [
+        // Target Range Background (Success Zone)
+        {
+          type: 'line',
+          markArea: {
+            silent: true,
+            itemStyle: {
+              color: 'rgba(76, 175, 80, 0.2)' // Hardcoded soft green for success zone
+            },
+            data: [
+              [
+                { yAxis: thresholds.low },
+                { yAxis: thresholds.high }
+              ]
+            ]
+          }
+        },
         // 5th-95th Percentile Band (Lightest)
         {
           name: '5th-95th Percentile',
@@ -143,12 +161,6 @@ export function AgpChart({ data, units, patientLowGoal, patientHighGoal }: AgpCh
             const end = api.coord([xValue, upper]);
             const size = api.size([1, 0], [xValue, lower]); // Approx width of one category
             const width = size[0];
-
-            // We draw a polygon connecting this point to the next would be better,
-            // but for 'custom' series in simplified form, typically we rely on 'area' charts
-            // However, the PoC used a specific polygon logic. Let's use a simpler area chart approach for robustness OR
-            // sticking to the PoC's polygon approach if we want exact parity.
-            // Reverting to the PoC specific logic for bands:
             
             const x = start[0];
             const y0 = start[1];

@@ -32,6 +32,12 @@ vi.mock('@src/lib/encryption.js', () => ({
   decrypt: vi.fn((val) => `decrypted-${val}`),
 }));
 
+// 4. Mock AGP Calculation
+// We mock this so we can verify the worker passes the result to the DB
+vi.mock('@src/lib/agp/calculateAgp.js', () => ({
+  calculateAgp: vi.fn(() => [{ time: '00:00', median: 100 }]),
+}));
+
 // Dynamically import to ensure mocks are applied
 let processJournalJob: (job: MockJob) => Promise<{ status: string }>;
 
@@ -88,16 +94,12 @@ describe('Worker Job Processing (Real Logic)', () => {
     expect(mockFetchProfile).toHaveBeenCalled();
 
     // Assert: Final Persistence
-    // We verify the last call to update contains the 'COMPLETE' status and our raw data payload
+    // We verify the last call to update contains the 'COMPLETE' status
+    // and the mocked AGP data.
     const lastCallArgs = mockPrismaUpdate.mock.lastCall?.[0];
     expect(lastCallArgs.where).toEqual({ id: 'journal-123' });
     expect(lastCallArgs.data.status).toBe('COMPLETE');
-    expect(lastCallArgs.data.agpChartData).toMatchObject({
-      entriesCount: 2,
-      treatmentsCount: 1,
-      profilesCount: 1,
-      profileName: 'Default',
-    });
+    expect(lastCallArgs.data.agpChartData).toEqual([{ time: '00:00', median: 100 }]);
   });
 
   it('should handle missing credentials gracefully', async () => {
