@@ -96,6 +96,28 @@ export function AgpChart({
     const formatTooltipValue = (val: number | undefined) =>
       val != null ? val.toFixed(units === "MMOL" ? 1 : 0) : "N/A";
 
+    // Calculate overall max value for Y-axis
+    let overallMax = 0;
+    data.forEach((d) => {
+      overallMax = Math.max(
+        overallMax,
+        d.p5 ?? 0,
+        d.p25 ?? 0,
+        d.median ?? 0,
+        d.mean ?? 0,
+        d.p75 ?? 0,
+        d.p95 ?? 0,
+      );
+    });
+    // Add 1% buffer and round up to the next sensible value
+    let yAxisMax = overallMax * 1.01;
+    if (units === "MGDL") {
+      yAxisMax = Math.ceil(yAxisMax / 10) * 10;
+    } else {
+      // MMOL
+      yAxisMax = Math.ceil(yAxisMax * 10) / 10;
+    }
+
     return {
       animation: true,
       tooltip: {
@@ -170,6 +192,7 @@ export function AgpChart({
         nameLocation: "middle",
         nameGap: 40,
         scale: true,
+        max: yAxisMax,
         splitLine: { lineStyle: { type: "dashed", color: "#eee" } },
       },
       legend: {
