@@ -39,6 +39,8 @@ You are converting a **generic plan of action** from your manager into a **produ
 * Use placeholders like `{{MODEL_NAME}}`, `{{DATASET}}`, `{{RANK_SCHEDULE}}` when the plan lacks specifics; **label them** in Assumptions.
 
 Here is the request from your manager:
+
+{{args}}
 """
 
 
