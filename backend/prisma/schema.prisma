@@ -60,6 +60,9 @@ model Journal {
   podcastAudioUrl      String?
   agpChartData         Json?
   analysisInsights     Json?
+  
+  // Voyager Scorecards Data
+  scoreCardData        Json?
 
   // Relation to detailed analysis
   clusters             GlycemicEventCluster[]

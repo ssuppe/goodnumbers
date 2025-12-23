@@ -9,4 +9,4 @@ export type {
   VerificationToken,
 } from "./generated/client/index.js";
 
-export type { JournalStatus, Json } from "./api-types";
+export type { JournalStatus, Json, GlucoseEntry } from "./api-types";

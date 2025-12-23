@@ -4,11 +4,14 @@ import type { PrismaClient } from '@goodnumbers/types';
 // 1. Mock Prisma
 const mockPrismaUpdate = vi.fn();
 const mockPrismaFindUnique = vi.fn();
+const mockPrismaFindFirst = vi.fn(); // Added mock for findFirst
+
 vi.mock('@src/lib/prisma.js', () => ({
   prisma: {
     journal: {
       update: mockPrismaUpdate,
       findUnique: mockPrismaFindUnique,
+      findFirst: mockPrismaFindFirst, // Added to the mock object
     },
   } as unknown as PrismaClient,
 }));
@@ -62,6 +65,8 @@ describe('Worker Job Processing (Real Logic)', () => {
     // Arrange: Mock DB finding the user
     mockPrismaFindUnique.mockResolvedValue({
       id: 'journal-123',
+      userId: 'user-123',
+      createdAt: new Date(),
       user: {
         nightscoutUrl: 'https://mock-ns.com',
         nightscoutToken: 'encrypted-token-123',
@@ -77,6 +82,9 @@ describe('Worker Job Processing (Real Logic)', () => {
 
     // Arrange: Mock Update to resolve
     mockPrismaUpdate.mockResolvedValue({});
+
+    // Arrange: Mock Previous Journal (Trend Calculation)
+    mockPrismaFindFirst.mockResolvedValue(null); // No previous journal for this test
 
     // Act
     const result = await processJournalJob(fakeJob);
@@ -143,6 +151,8 @@ describe('Worker Job Processing (Real Logic)', () => {
     // Arrange: User exists
     mockPrismaFindUnique.mockResolvedValue({
       id: 'journal-tz',
+      userId: 'user-tz',
+      createdAt: new Date(),
       user: {
         nightscoutUrl: 'https://mock-ns.com',
         nightscoutToken: 'encrypted',
@@ -161,6 +171,7 @@ describe('Worker Job Processing (Real Logic)', () => {
     mockFetchTreatments.mockResolvedValue([]);
 
     mockPrismaUpdate.mockResolvedValue({});
+    mockPrismaFindFirst.mockResolvedValue(null);
 
     // Mock calculateAgp to do nothing
     const { calculateAgp } = await import('@src/lib/agp/calculateAgp.js');

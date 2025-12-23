@@ -8,6 +8,8 @@ import { prisma, Prisma } from './lib/prisma.js';
 import { NightscoutClient } from './lib/nightscout/client.js';
 import { decrypt } from './lib/encryption.js';
 import { calculateAgp } from './lib/agp/calculateAgp.js';
+import { calculateMetrics, calculateTrends } from './lib/scorecard.js';
+import { ScoreCardDataSchema } from '@goodnumbers/schemas';
 
 export async function processJournalJob(job: Job) {
   const { journalId } = job.data;
@@ -102,9 +104,71 @@ export async function processJournalJob(job: Job) {
 
     const agpData = calculateAgp(entries, userTimezone);
 
+    // --- Voyager Scorecards Calculation ---
+
+    // 1. Calculate base metrics securely
+    let scoreCardMetrics;
+    try {
+      // Map NightscoutEntry to GlucoseEntry (ensure date is number)
+      const glucoseEntries = entries.map((e) => ({
+        sgv: e.sgv,
+        date: e.date,
+        dateString: new Date(e.date).toISOString(),
+      }));
+      scoreCardMetrics = calculateMetrics(glucoseEntries);
+    } catch (error) {
+      console.error(
+        `Failed to calculate metrics for Journal ${journalId}. Error: ${(error as Error).message}`,
+      );
+      // Fallback to zeros on error
+      scoreCardMetrics = {
+        avgGlucose: 0,
+        stability: 0,
+        timeInRange: 0,
+        timeInTightRange: 0,
+      };
+    }
+
+    // 2. Fetch Previous Journal for Trends
+    const previousJournal = await prisma.journal.findFirst({
+      where: {
+        userId: journal.userId,
+        status: 'COMPLETE',
+        createdAt: { lt: journal.createdAt },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    let trends = null;
+
+    if (previousJournal && previousJournal.scoreCardData) {
+      // 3. Validate Previous Data with Zod (Safety Check)
+      const parseResult = ScoreCardDataSchema.safeParse(
+        previousJournal.scoreCardData,
+      );
+
+      if (parseResult.success) {
+        const prevData = parseResult.data;
+        const fourteenDaysAgo = new Date(
+          journal.createdAt.getTime() - 14 * 24 * 60 * 60 * 1000,
+        );
+
+        if (previousJournal.createdAt >= fourteenDaysAgo) {
+          trends = calculateTrends(scoreCardMetrics, prevData);
+        }
+      } else {
+        console.warn(
+          `Invalid ScoreCardData in previous journal ${previousJournal.id}. Skipping trends.`,
+        );
+      }
+    }
+
+    const scoreCardData = { ...scoreCardMetrics, trends };
+
     // The worker will save the AGP data directly to the database.
     const finalPayload = {
       agpChartData: agpData,
+      scoreCardData: scoreCardData,
     };
 
     // Final Stage: Complete
@@ -117,6 +181,8 @@ export async function processJournalJob(job: Job) {
         // Save the newly calculated AGP chart data array
         agpChartData:
           finalPayload.agpChartData as unknown as Prisma.InputJsonValue,
+        scoreCardData:
+          finalPayload.scoreCardData as unknown as Prisma.InputJsonValue,
       },
     });
 

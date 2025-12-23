@@ -11,3 +11,9 @@ export interface JournalStatus {
   progress: number;
   statusMessage: string | null;
 }
+
+export interface GlucoseEntry {
+  sgv: number;
+  date: number; // Timestamp
+  dateString?: string; // Optional ISO string if available
+}

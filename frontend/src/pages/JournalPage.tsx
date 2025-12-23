@@ -2,10 +2,15 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, updateJournal, deleteJournal } from "../lib/api";
 import { type Journal, type GlycemicEventCluster } from "@goodnumbers/types";
+import { type ScoreCardData } from "@goodnumbers/schemas";
 import { Loader2, AlertTriangle, Trash2 } from "lucide-react";
 
 import PodcastPlayer from "../components/journal/PodcastPlayer";
-import { ChartAnalysisCard, type Insight } from "../components/journal/ChartAnalysisCard";
+import ScorecardRow from "../components/journal/ScorecardRow";
+import {
+  ChartAnalysisCard,
+  type Insight,
+} from "../components/journal/ChartAnalysisCard";
 import { normalizeAgpData } from "../lib/agpUtils";
 import { useAuth } from "../contexts/AuthContext";
 import WeeklyVibe from "../components/journal/WeeklyVibe";
@@ -110,11 +115,12 @@ export default function JournalPage() {
     () =>
       journal?.agpChartData
         ? normalizeAgpData(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             journal.agpChartData as any[],
-            user?.preferredUnits || 'MGDL'
+            user?.preferredUnits || "MGDL",
           )
         : [],
-    [journal?.agpChartData, user?.preferredUnits]
+    [journal?.agpChartData, user?.preferredUnits],
   );
 
   if (isLoading) {
@@ -162,6 +168,11 @@ export default function JournalPage() {
         }
       />
 
+      <ScorecardRow
+        data={journal.scoreCardData as unknown as ScoreCardData}
+        units={user?.preferredUnits || "MGDL"}
+      />
+
       {journal.clusters.map((cluster) => (
         <EventClusterCard
           key={cluster.id}
@@ -183,7 +194,7 @@ export default function JournalPage() {
         title="Ambulatory Glucose Profile (AGP)"
         subtitle="Your 7-day glucose trends"
         data={normalizedAgpData}
-        units={user?.preferredUnits || 'MGDL'}
+        units={user?.preferredUnits || "MGDL"}
         insights={(journal.analysisInsights as unknown as Insight[]) || []}
       />
 
