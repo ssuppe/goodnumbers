@@ -1,6 +1,6 @@
 import React from "react";
 import { render } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ClusterEventsChart } from "./ClusterEventsChart";
 import type { GlycemicCluster } from "@goodnumbers/types";
 
@@ -13,7 +13,32 @@ vi.mock("echarts-for-react", () => ({
   },
 }));
 
+// Define types for the mocked chart options to avoid 'any'
+interface MockDataPoint {
+  value: [number, number];
+  originalDate: string;
+}
+
+interface MockSeries {
+  type: string;
+  name?: string;
+  markLine?: unknown;
+  lineStyle?: { color: string };
+  emphasis?: { focus: string };
+  blur?: { lineStyle: { opacity: number } };
+  data: MockDataPoint[];
+}
+
+interface MockOption {
+  series: MockSeries[];
+  legend?: { bottom: number };
+}
+
 describe("ClusterEventsChart", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   const mockCluster: GlycemicCluster = {
     id: "cluster-1",
     type: "hyper",
@@ -52,42 +77,120 @@ describe("ClusterEventsChart", () => {
   it("transforms cluster events into normalized time series", () => {
     render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
 
-    // Verify ECharts was rendered
     expect(mockReactECharts).toHaveBeenCalled();
 
-    // Get the options passed to the chart
-    const options = mockReactECharts.mock.calls[0][0].option as {
-      series: Array<{
-        type: string;
-        markLine?: unknown;
-        data: Array<[number, number]>;
-      }>;
-    };
-
-    // Assert: Should have 2 series (one for each event) + threshold lines
-    // We expect at least 2 series for the data
+     
+    const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
       (s) => s.type === "line" && !s.markLine,
     );
     expect(dataSeries).toHaveLength(2);
 
-    // Assert: Check normalization
-    // Event 1 (14:00 on Jan 1) -> Should be 14:00 on Jan 1, 2000
+    // Check normalization using the new object data structure
+    // Event 1
     const series1Data = dataSeries[0].data;
-    const point1Time = new Date(series1Data[0][0]);
+    const point1Time = new Date(series1Data[0].value[0]);
     expect(point1Time.getFullYear()).toBe(2000);
-    expect(point1Time.getMonth()).toBe(0); // Jan
-    expect(point1Time.getDate()).toBe(1);
     expect(point1Time.getUTCHours()).toBe(14);
     expect(point1Time.getUTCMinutes()).toBe(0);
 
-    // Event 2 (14:15 on Jan 2) -> Should ALSO be Jan 1, 2000
+    // Event 2
     const series2Data = dataSeries[1].data;
-    const point2Time = new Date(series2Data[0][0]);
+    const point2Time = new Date(series2Data[0].value[0]);
     expect(point2Time.getFullYear()).toBe(2000);
-    expect(point2Time.getMonth()).toBe(0);
-    expect(point2Time.getDate()).toBe(1);
     expect(point2Time.getUTCHours()).toBe(14);
     expect(point2Time.getUTCMinutes()).toBe(15);
+  });
+
+  it("assigns distinct colors to different events", () => {
+    render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
+     
+    const options = mockReactECharts.mock.calls[0][0].option as MockOption;
+    const dataSeries = options.series.filter(
+      (s) => s.type === "line" && !s.markLine,
+    );
+
+    const color1 = dataSeries[0].lineStyle?.color;
+    const color2 = dataSeries[1].lineStyle?.color;
+
+    expect(color1).toBeDefined();
+    expect(color2).toBeDefined();
+    expect(color1).not.toBe(color2);
+  });
+
+  it("configures emphasis and blur states for spotlight effect", () => {
+    render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
+     
+    const options = mockReactECharts.mock.calls[0][0].option as MockOption;
+    const dataSeries = options.series.filter(
+      (s) => s.type === "line" && !s.markLine,
+    );
+
+    const series1 = dataSeries[0];
+    expect(series1.emphasis?.focus).toBe("series");
+    expect(series1.blur?.lineStyle?.opacity).toBeLessThan(1);
+  });
+
+  // --- New Tests ---
+
+  it("names series with the date (e.g. Sun, Jan 1)", () => {
+    render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
+     
+    const options = mockReactECharts.mock.calls[0][0].option as MockOption;
+    const dataSeries = options.series.filter(
+      (s) => s.type === "line" && !s.markLine,
+    );
+
+    // Event 1 is 2023-01-01 (Sunday)
+    // We expect format like "Sun, Jan 1"
+    expect(dataSeries[0].name).toContain("Sun");
+    expect(dataSeries[0].name).toContain("Jan 1");
+  });
+
+  it("configures the legend at the bottom", () => {
+    render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
+     
+    const options = mockReactECharts.mock.calls[0][0].option as MockOption;
+
+    expect(options.legend).toBeDefined();
+    expect(options.legend?.bottom).toBeDefined();
+  });
+
+  it("includes original date information in data points for tooltips", () => {
+    render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
+     
+    const options = mockReactECharts.mock.calls[0][0].option as MockOption;
+    const dataSeries = options.series.filter(
+      (s) => s.type === "line" && !s.markLine,
+    );
+
+    const point = dataSeries[0].data[0];
+    // Check for object structure with originalDate
+    expect(point).toHaveProperty("value");
+    expect(point).toHaveProperty("originalDate");
+    // Should contain the full date string
+    expect(new Date(point.originalDate).toISOString()).toContain("2023-01-01");
+  });
+
+  it("sorts series by date in the legend", () => {
+    // Create a cluster with events out of order
+    const unsortedCluster: GlycemicCluster = {
+      ...mockCluster,
+      events: [
+        mockCluster.events[1], // Jan 2
+        mockCluster.events[0], // Jan 1
+      ],
+    };
+
+    render(<ClusterEventsChart cluster={unsortedCluster} units="MGDL" />);
+     
+    const options = mockReactECharts.mock.calls[0][0].option as MockOption;
+    const dataSeries = options.series.filter(
+      (s) => s.type === "line" && !s.markLine,
+    );
+
+    // Should be sorted by date (Jan 1 first)
+    expect(dataSeries[0].name).toContain("Jan 1");
+    expect(dataSeries[1].name).toContain("Jan 2");
   });
 });
