@@ -1,5 +1,6 @@
-import DataDisplayWidget from "./DataDisplayWidget";
-import type { GlycemicEventCluster } from "@goodnumbers/types";
+import React, { useMemo } from "react";
+import type { GlycemicEventCluster, GlycemicCluster } from "@goodnumbers/types";
+import { ClusterEventsChart } from "./charts/ClusterEventsChart";
 
 interface EventClusterCardProps {
   cluster: GlycemicEventCluster;
@@ -12,13 +13,43 @@ export default function EventClusterCard({
   userNote,
   onNoteChange,
 }: EventClusterCardProps) {
+  // Safe parsing of the JSON blob
+  const clusterData = useMemo(() => {
+    try {
+      if (typeof cluster.clusterDataJson === "string") {
+        return JSON.parse(cluster.clusterDataJson) as GlycemicCluster;
+      }
+      if (
+        typeof cluster.clusterDataJson === "object" &&
+        cluster.clusterDataJson !== null
+      ) {
+        return cluster.clusterDataJson as unknown as GlycemicCluster;
+      }
+    } catch (e) {
+      console.error("Failed to parse cluster data", e);
+    }
+    return null;
+  }, [cluster.clusterDataJson]);
+
   // We create a dynamic title to make the output clearer
   const title = `Glycemic Event Cluster: ${cluster.eventType} (x${cluster.eventCount})`;
 
   return (
     <div className="space-y-4">
-      {/* We pass the entire cluster object to see all its data, including the summary fields. */}
-      <DataDisplayWidget title={title} data={cluster} />
+      <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">{title}</h2>
+
+        {/* Chart Section */}
+        <div className="w-full">
+          {clusterData ? (
+            <ClusterEventsChart cluster={clusterData} units="MGDL" />
+          ) : (
+            <div className="p-4 text-center text-gray-500 bg-gray-50 rounded-lg">
+              Unable to load visualization data.
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* User Notes Section */}
       {onNoteChange && (
