@@ -17,6 +17,7 @@ vi.mock("echarts-for-react", () => ({
 interface MockDataPoint {
   value: [number, number];
   originalDate: string;
+  originalCarbs?: number;
 }
 
 interface MockSeries {
@@ -74,6 +75,15 @@ describe("ClusterEventsChart", () => {
     ],
   };
 
+  const mockTreatments = [
+    {
+      id: "t1",
+      date: "2023-01-01T13:30:00Z",
+      carbs: 45,
+      eventType: "Meal Bolus",
+    },
+  ];
+
   it("transforms cluster events into normalized time series", () => {
     render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
 
@@ -130,8 +140,6 @@ describe("ClusterEventsChart", () => {
     expect(series1.emphasis?.focus).toBe("series");
     expect(series1.blur?.lineStyle?.opacity).toBeLessThan(1);
   });
-
-  // --- New Tests ---
 
   it("names series with the date (e.g. Sun, Jan 1)", () => {
     render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
@@ -192,5 +200,26 @@ describe("ClusterEventsChart", () => {
     // Should be sorted by date (Jan 1 first)
     expect(dataSeries[0].name).toContain("Jan 1");
     expect(dataSeries[1].name).toContain("Jan 2");
+  });
+
+  it("renders treatment (carb) bars when provided", () => {
+    render(
+      <ClusterEventsChart
+        cluster={mockCluster}
+        units="MGDL"
+        treatments={mockTreatments}
+      />,
+    );
+     
+    const options = mockReactECharts.mock.calls[0][0].option as MockOption;
+
+    // Find bar series
+    const barSeries = options.series.filter((s) => s.type === "bar");
+    expect(barSeries.length).toBeGreaterThan(0);
+
+    // Check if the carb data is present
+    const carbPoint = barSeries[0].data[0];
+    expect(carbPoint.value[1]).toBe(45); // 45g carbs
+    expect(carbPoint).toHaveProperty("originalCarbs", 45);
   });
 });
