@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useEffect } from "react";
 import ReactECharts from "echarts-for-react";
 import * as echarts from "echarts/core";
 import { CanvasRenderer, SVGRenderer } from "echarts/renderers";
-import { LineChart } from "echarts/charts";
+import { LineChart, BarChart } from "echarts/charts";
 import {
   GridComponent,
   TooltipComponent,
@@ -20,6 +20,7 @@ echarts.use([
   CanvasRenderer,
   SVGRenderer,
   LineChart,
+  BarChart,
   GridComponent,
   TooltipComponent,
   TitleComponent,
@@ -27,9 +28,19 @@ echarts.use([
   MarkLineComponent,
 ]);
 
+// Define Treatment interface locally for now as it's not in shared types
+export interface Treatment {
+  id: string;
+  date: string;
+  carbs?: number;
+  eventType?: string;
+  notes?: string;
+}
+
 interface ClusterEventsChartProps {
   cluster: GlycemicCluster;
   units: GlucoseUnit;
+  treatments?: Treatment[];
 }
 
 // --- Visual Style Constants (from PoC) ---
@@ -70,6 +81,7 @@ const normalizeTime = (isoString: string) => {
 export function ClusterEventsChart({
   cluster,
   units,
+  treatments = [],
 }: ClusterEventsChartProps) {
   const chartRef = useRef<ReactECharts>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,8 +105,11 @@ export function ClusterEventsChart({
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
     );
 
+    // Check if we have any relevant treatments to display
+    const hasCarbData = treatments.some((t) => t.carbs && t.carbs > 0);
+
     // Create a series for each event in the cluster
-    const series = sortedEvents.map((event, index) => {
+    const lineSeries = sortedEvents.map((event, index) => {
       const visuals = getEventVisuals(index);
 
       // Format start date for series name (e.g., "Sun, Jan 1")
@@ -104,6 +119,8 @@ export function ClusterEventsChart({
       return {
         name: seriesName,
         type: "line",
+        xAxisIndex: 0,
+        yAxisIndex: 0,
         showSymbol: true, // Enabled to help identify data points
         smooth: true,
         lineStyle: {
@@ -138,28 +155,167 @@ export function ClusterEventsChart({
       };
     });
 
+    // Create bar series for treatments (carbs)
+    const barSeries = hasCarbData
+      ? sortedEvents
+          .map((event, index) => {
+            const visuals = getEventVisuals(index);
+            const eventStart = new Date(event.startTime);
+            const eventEnd = new Date(event.endTime);
+
+            // Add a buffer to find relevant treatments around the event
+            const bufferMinutes = 60;
+            const searchStart = new Date(
+              eventStart.getTime() - bufferMinutes * 60000,
+            );
+            const searchEnd = new Date(
+              eventEnd.getTime() + bufferMinutes * 60000,
+            );
+
+            const eventTreatments = treatments.filter((t) => {
+              const tDate = new Date(t.date);
+              return (
+                t.carbs &&
+                t.carbs > 0 &&
+                tDate >= searchStart &&
+                tDate <= searchEnd
+              );
+            });
+
+            if (eventTreatments.length === 0) return null;
+
+            const startDate = new Date(event.startTime);
+            const seriesName = format(startDate, "EEE, MMM d") + " Carbs";
+
+            return {
+              name: seriesName,
+              type: "bar",
+              xAxisIndex: 1,
+              yAxisIndex: 1,
+              itemStyle: {
+                color: visuals.color,
+                opacity: 0.6,
+              },
+              emphasis: {
+                focus: "series",
+              },
+              data: eventTreatments.map((t) => ({
+                value: [normalizeTime(t.date), t.carbs],
+                originalDate: t.date,
+                originalCarbs: t.carbs,
+              })),
+            };
+          })
+          .filter(Boolean)
+      : [];
+
+    // Configure Grid
+    const grid = hasCarbData
+      ? [
+          {
+            left: "5%",
+            right: "5%",
+            top: "10%",
+            height: "55%",
+            containLabel: true,
+          }, // Top: Glucose
+          {
+            left: "5%",
+            right: "5%",
+            top: "70%",
+            height: "15%",
+            containLabel: true,
+          }, // Bottom: Carbs
+        ]
+      : [
+          {
+            left: "5%",
+            right: "5%",
+            bottom: "15%",
+            top: "10%",
+            containLabel: true,
+          },
+        ];
+
+    // Configure X-Axis
+    const xAxis = hasCarbData
+      ? [
+          {
+            type: "time",
+            gridIndex: 0,
+            axisLabel: { show: false }, // Hide labels for top axis
+            axisTick: { show: false },
+          },
+          {
+            type: "time",
+            gridIndex: 1,
+            axisLabel: {
+              formatter: "{HH}:{mm}",
+            },
+          },
+        ]
+      : [
+          {
+            type: "time",
+            axisLabel: {
+              formatter: "{HH}:{mm}",
+            },
+          },
+        ];
+
+    // Configure Y-Axis
+    const yAxis = hasCarbData
+      ? [
+          {
+            type: "value",
+            gridIndex: 0,
+            name: `Glucose (${units})`,
+            min: (value: { min: number }) => Math.floor(value.min * 0.9),
+            max: (value: { max: number }) => Math.ceil(value.max * 1.1),
+            splitLine: { lineStyle: { type: "dashed", color: "#eee" } },
+          },
+          {
+            type: "value",
+            gridIndex: 1,
+            name: "Carbs (g)",
+            splitLine: { show: false },
+          },
+        ]
+      : [
+          {
+            type: "value",
+            min: (value: { min: number }) => Math.floor(value.min * 0.9),
+            max: (value: { max: number }) => Math.ceil(value.max * 1.1),
+            splitLine: { lineStyle: { type: "dashed", color: "#eee" } },
+          },
+        ];
+
     return {
       tooltip: {
-        trigger: "axis",
+        trigger: "item", // Changed to item for better handling of mixed series
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         formatter: (params: any) => {
-          if (!params.length) return "";
-          // Access value from the first param's data object
-          const firstParam = params[0];
-          // Safely cast to number before passing to Date constructor
-          const timeValue = firstParam.data.value[0];
-          const time = new Date(timeValue as number);
-
-          let html = `<div>${time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })}</div>`;
-
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          params.forEach((p: any) => {
-            const color = p.color;
-            const val = p.data.value[1];
-            const dateStr = p.seriesName; // The series name is now the date
-            html += `<div><span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color:${color};"></span>${dateStr}: <strong>${val}</strong></div>`;
+          // params is a single data point since trigger is 'item'
+          const p = params;
+          const time = new Date(p.data.value[0] as number);
+          const timeStr = time.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "UTC",
           });
-          return html;
+          const color = p.color;
+          const seriesName = p.seriesName;
+
+          let content = `<div><span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color:${color};"></span>${seriesName}</div>`;
+          content += `<div>${timeStr}</div>`;
+
+          if (p.seriesType === "line") {
+            content += `<div>Glucose: <strong>${p.data.value[1]}</strong> ${units}</div>`;
+          } else if (p.seriesType === "bar") {
+            content += `<div>Carbs: <strong>${p.data.originalCarbs}g</strong></div>`;
+          }
+
+          return content;
         },
       },
       legend: {
@@ -167,28 +323,12 @@ export function ClusterEventsChart({
         bottom: 0,
         type: "scroll",
       },
-      grid: {
-        left: "3%",
-        right: "4%",
-        bottom: "15%",
-        top: "10%",
-        containLabel: true,
-      },
-      xAxis: {
-        type: "time",
-        axisLabel: {
-          formatter: "{HH}:{mm}", // Show only time
-        },
-      },
-      yAxis: {
-        type: "value",
-        min: (value: { min: number }) => Math.floor(value.min * 0.9),
-        max: (value: { max: number }) => Math.ceil(value.max * 1.1),
-        splitLine: { lineStyle: { type: "dashed", color: "#eee" } },
-      },
+      grid: grid,
+      xAxis: xAxis,
+      yAxis: yAxis,
       series: [
-        ...series,
-        // Threshold lines
+        ...lineSeries,
+        // Threshold lines (only on top grid)
         {
           type: "line",
           markLine: {
@@ -205,13 +345,16 @@ export function ClusterEventsChart({
               },
             ],
           },
+          xAxisIndex: 0,
+          yAxisIndex: 0,
         },
+        ...barSeries,
       ],
     };
-  }, [cluster, units]);
+  }, [cluster, units, treatments]);
 
   return (
-    <div ref={containerRef} className="w-full h-64">
+    <div ref={containerRef} className="w-full h-96">
       <ReactECharts
         ref={chartRef}
         option={options}
