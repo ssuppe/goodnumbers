@@ -4,15 +4,23 @@ import type { PrismaClient } from '@goodnumbers/types';
 // 1. Mock Prisma
 const mockPrismaUpdate = vi.fn();
 const mockPrismaFindUnique = vi.fn();
-const mockPrismaFindFirst = vi.fn(); // Added mock for findFirst
+const mockPrismaFindFirst = vi.fn();
+const mockPrismaTransaction = vi.fn();
+const mockPrismaDeleteMany = vi.fn();
+const mockPrismaCreateMany = vi.fn();
 
 vi.mock('@src/lib/prisma.js', () => ({
   prisma: {
     journal: {
       update: mockPrismaUpdate,
       findUnique: mockPrismaFindUnique,
-      findFirst: mockPrismaFindFirst, // Added to the mock object
+      findFirst: mockPrismaFindFirst,
     },
+    glycemicEventCluster: {
+      deleteMany: mockPrismaDeleteMany,
+      createMany: mockPrismaCreateMany,
+    },
+    $transaction: mockPrismaTransaction,
   } as unknown as PrismaClient,
 }));
 
@@ -74,7 +82,10 @@ describe('Worker Job Processing (Real Logic)', () => {
     });
 
     // Arrange: Mock Nightscout API returns
-    mockFetchEntries.mockResolvedValue(['entry1', 'entry2']);
+    mockFetchEntries.mockResolvedValue([
+      { sgv: 100, date: 1672531200000, dateString: '2023-01-01T00:00:00.000Z' },
+      { sgv: 110, date: 1672531500000, dateString: '2023-01-01T00:05:00.000Z' },
+    ]);
     mockFetchTreatments.mockResolvedValue(['treatment1']);
     mockFetchProfile.mockResolvedValue([
       { defaultProfile: 'Default', store: { Default: { timezone: 'UTC' } } },
@@ -82,6 +93,9 @@ describe('Worker Job Processing (Real Logic)', () => {
 
     // Arrange: Mock Update to resolve
     mockPrismaUpdate.mockResolvedValue({});
+
+    // Arrange: Mock Transaction
+    mockPrismaTransaction.mockResolvedValue([]);
 
     // Arrange: Mock Previous Journal (Trend Calculation)
     mockPrismaFindFirst.mockResolvedValue(null); // No previous journal for this test

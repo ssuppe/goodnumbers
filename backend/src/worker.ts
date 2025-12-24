@@ -10,6 +10,7 @@ import { decrypt } from './lib/encryption.js';
 import { calculateAgp } from './lib/agp/calculateAgp.js';
 import { calculateMetrics, calculateTrends } from './lib/scorecard.js';
 import { ScoreCardDataSchema } from '@goodnumbers/schemas';
+import { HotspotDetector } from './lib/analysis/HotspotDetector.js';
 
 export async function processJournalJob(job: Job) {
   const { journalId } = job.data;
@@ -164,6 +165,52 @@ export async function processJournalJob(job: Job) {
     }
 
     const scoreCardData = { ...scoreCardMetrics, trends };
+
+    // --- Hotspot Engine Execution ---
+    console.log(
+      `[Worker] Starting Hotspot Detection for Journal ${journalId}...`,
+    );
+
+    // 1. Initialize Detector with user's timezone
+    const detector = new HotspotDetector(userTimezone);
+
+    // 2. Map Nightscout entries to GlucoseEntry format
+    const glucoseEntries = entries.map((e) => ({
+      sgv: e.sgv,
+      date: e.date,
+      dateString: new Date(e.date).toISOString(),
+    }));
+
+    // 3. Detect Events
+    const hyperEvents = detector.detectEvents(glucoseEntries, 'hyper', 180);
+    const hypoEvents = detector.detectEvents(glucoseEntries, 'hypo', 70);
+
+    console.log(
+      `[Worker] Detected ${hyperEvents.length} hyper events and ${hypoEvents.length} hypo events.`,
+    );
+
+    // 4. Find Clusters
+    const hyperClusters = detector.findClusters(hyperEvents);
+    const hypoClusters = detector.findClusters(hypoEvents);
+    const allClusters = [...hyperClusters, ...hypoClusters];
+
+    console.log(
+      `[Worker] Identified ${allClusters.length} recurring clusters.`,
+    );
+
+    // 5. Atomic Persistence (Delete Old + Save New)
+    await prisma.$transaction([
+      prisma.glycemicEventCluster.deleteMany({ where: { journalId } }),
+      prisma.glycemicEventCluster.createMany({
+        data: allClusters.map((c) => ({
+          journalId,
+          eventType: c.type,
+          eventCount: c.eventCount,
+          meanTimeMinutes: c.avgStartMinute,
+          clusterDataJson: c as unknown as Prisma.InputJsonValue,
+        })),
+      }),
+    ]);
 
     // The worker will save the AGP data directly to the database.
     const finalPayload = {
