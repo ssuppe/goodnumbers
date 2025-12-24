@@ -1,58 +1,46 @@
 # {{VOYAGER_CLUSTER_VISUALIZATION}} — `todo.md`
 
 ## TL;DR
-Implement the frontend visualization for Glycemic Clusters on the Journal Page by adapting the `ClusterEventsChart` component to use the existing `echarts` infrastructure and connecting it to the `clusterDataJson` from the API.
+
+Implement the frontend visualization for Glycemic Clusters using a **Strict TDD** approach. We will write component tests to verify data transformation and rendering logic before implementing the ECharts wrapper and integration.
 
 ## Invariants (do not change)
 
-*   **Data Source:** The visualization must rely *solely* on the `clusterDataJson` stored in the `GlycemicEventCluster` model. No live fetching from Nightscout on the client.
-*   **Privacy:** No PHI (glucose values) should be logged to the console during rendering.
-*   **Tech Stack:** Use `echarts-for-react` with modular imports (`echarts/core`), matching `AgpChart.tsx` patterns.
-*   **Styling:** Use `CHART_THEME` from `frontend/src/lib/chartTheme` for consistency (colors, fonts).
-
-## Assumptions & Scope
-
-*   **Assumption:** The `clusterDataJson` field in the database contains a valid `GlycemicCluster` object with a populated `events` array.
-*   **Scope:**
-    *   Creating `frontend/src/components/journal/charts/ClusterEventsChart.tsx`.
-    *   Updating `frontend/src/components/journal/EventClusterCard.tsx` to render the chart.
-*   **Out of Scope:** "Insights" text generation (placeholder only).
+- **TDD First:** All components must be verified by a failing test (Red) before implementation (Green).
+- **Data Source:** Visualization relies solely on `clusterDataJson` from the API.
+- **Tech Stack:** `echarts-for-react` with modular imports (`echarts/core`).
+- **Styling:** Use `CHART_THEME` variables.
 
 ## Objectives
 
-1.  **Component Implementation:** Create `ClusterEventsChart` using modular ECharts imports and the shared theme.
-2.  **Data Transformation:** Implement logic to normalize event timestamps to a shared 24-hour axis for overlay plotting.
-3.  **Integration:** Render the chart inside `EventClusterCard`.
-4.  **Verification:** Verify multi-line plotting of cluster events.
+1.  **Test Coverage:** Unit tests verifying that `GlycemicCluster` data is correctly transformed into ECharts series.
+2.  **Component Implementation:** `ClusterEventsChart` with time normalization.
+3.  **Integration:** `EventClusterCard` rendering the chart safely.
 
-## Risks & Mitigations
+## Method Outline (TDD Cycles)
 
-*   **Risk:** **Bundle Size.** Importing full ECharts is heavy.
-    *   **Mitigation:** Use `echarts/core` and register only `LineChart`, `GridComponent`, `TooltipComponent`, etc., as done in `AgpChart.tsx`.
-*   **Risk:** **Date Parsing.** Different browsers handle date strings differently.
-    *   **Mitigation:** Use standard `Date` parsing or a lightweight utility, ensuring the backend sends ISO strings.
+### Cycle 1: Chart Data Transformation
 
-## Method Outline
+- **Goal:** Verify that the `ClusterEventsChart` component correctly normalizes time and generates one series per event.
+- **Red:** Create `frontend/src/components/journal/charts/ClusterEventsChart.test.tsx`.
+  - Mock `echarts-for-react` to capture the `option` prop.
+  - Pass a mock `GlycemicCluster` with 2 events.
+  - **Assert:** The `option.series` array has length 2.
+  - **Assert:** The X-axis data points are normalized to the same date (e.g., `2000-01-01`).
+- **Green:** Implement `ClusterEventsChart.tsx` with the normalization logic and series mapping (see Reference Implementation below).
+- **Refactor:** Ensure strict typing and extract the `normalizeTime` helper.
 
-### 1. Dependencies
-*   `npm install echarts echarts-for-react -w frontend`
+### Cycle 2: Card Integration & Parsing
 
-### 2. Component: `ClusterEventsChart`
-*   **Location:** `frontend/src/components/journal/charts/ClusterEventsChart.tsx`
-*   **Logic:**
-    *   Accept `cluster: GlycemicCluster` and `units: GlucoseUnit` as props.
-    *   **Data Prep:** Flatten `cluster.events` into a series of lines. Each event in the cluster becomes a "series" in ECharts.
-    *   **Normalization:** Map all timestamps to a generic 24-hour window (e.g., 2000-01-01) for the X-axis.
-    *   **Visuals:** Use the design system colors (Primary Blue for lines, Red/Green for thresholds).
+- **Goal:** Verify `EventClusterCard` handles the JSON parsing safely.
+- **Red:** Create `frontend/src/components/journal/EventClusterCard.test.tsx`.
+  - Pass a `GlycemicEventCluster` with a valid JSON string in `clusterDataJson`.
+  - **Assert:** The `ClusterEventsChart` is rendered.
+  - Pass invalid/null JSON.
+  - **Assert:** The chart is NOT rendered (graceful failure).
+- **Green:** Update `EventClusterCard.tsx` to parse the JSON and conditionally render the chart (see Reference Implementation below).
 
-### 3. Component: `EventClusterCard` Update
-*   **Location:** `frontend/src/components/journal/EventClusterCard.tsx`
-*   **Change:**
-    *   Parse `cluster.clusterDataJson` (if it's a string/unknown) into a `GlycemicCluster` object.
-    *   Pass this object to `<ClusterEventsChart />`.
-    *   Handle loading/empty states.
-
-## Implementation Notes & Code Specs
+## Reference Implementation (Target for Green Phase)
 
 ### 1. `frontend/src/components/journal/charts/ClusterEventsChart.tsx`
 
@@ -218,16 +206,8 @@ export default function EventClusterCard({ cluster }: EventClusterCardProps) {
 }
 ```
 
-## Acceptance Gates
-
-1.  **Visual:** A cluster with 3 events shows 3 distinct lines on the chart.
-2.  **Data:** Hovering a point shows the correct glucose value and time.
-3.  **Resilience:** If `clusterDataJson` is empty/invalid, show a graceful "No chart data" message instead of crashing.
-
 ## "Make-sure-you" Checklist
 
-- [ ] Did you install `echarts` in the frontend workspace?
-- [ ] Did you use modular imports for ECharts?
-- [ ] Did you use `CHART_THEME` variables?
-- [ ] Did you implement the time normalization logic?
-- [ ] Did you handle the `units` prop correctly for axis scaling?
+- [ ] Did you write the test _before_ the component?
+- [ ] Did you mock `echarts-for-react` to verify the options object?
+- [ ] Did you verify that time normalization handles midnight wrapping correctly (visually or via data inspection)?
