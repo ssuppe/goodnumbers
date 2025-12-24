@@ -41,3 +41,32 @@ export const ScoreCardDataSchema = z.object({
 });
 
 export type ScoreCardData = z.infer<typeof ScoreCardDataSchema>;
+
+// --- Hotspot Engine Schemas ---
+
+export const GlucoseReadingSchema = z.object({
+  timestamp: z.string().datetime(),
+  value: z.number(),
+});
+
+export const GlycemicEventSchema = z.object({
+  id: z.string(),
+  type: z.enum(["hyper", "hypo"]),
+  startTime: z.string().datetime(),
+  endTime: z.string().datetime(),
+  startMinuteOfDay: z.number().min(0).max(1439),
+  durationMinutes: z.number().positive(),
+  readings: z.array(GlucoseReadingSchema),
+});
+
+export const GlycemicClusterSchema = z
+  .object({
+    id: z.string(),
+    type: z.enum(["hyper", "hypo"]),
+    avgStartMinute: z.number().min(0).max(1439),
+    avgDurationMinutes: z.number().positive(),
+    eventCount: z.number().int().positive(),
+    activeDays: z.array(z.number().min(1).max(7)), // 1=Mon, 7=Sun
+    events: z.array(GlycemicEventSchema),
+  })
+  .strict();

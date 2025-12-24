@@ -10,3 +10,13 @@ export type {
 } from "./generated/client/index.js";
 
 export type { JournalStatus, Json, GlucoseEntry } from "./api-types";
+
+// --- Hotspot Engine Types ---
+import { z } from "zod";
+import {
+  GlycemicEventSchema,
+  GlycemicClusterSchema,
+} from "@goodnumbers/schemas";
+
+export type GlycemicEvent = z.infer<typeof GlycemicEventSchema>;
+export type GlycemicCluster = z.infer<typeof GlycemicClusterSchema>;
