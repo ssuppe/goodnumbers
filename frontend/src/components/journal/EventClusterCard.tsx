@@ -85,42 +85,8 @@ export default function EventClusterCard({
   return (
     <div className="space-y-4">
       <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-        {/* Structured Header */}
-        <div className="mb-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-3">{title}</h3>
-
-          <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-            <div className="flex flex-wrap gap-6 mb-3">
-              <div className="flex items-center text-gray-700">
-                <span className="text-xl mr-2" role="img" aria-label="Time">
-                  🕒
-                </span>
-                <div>
-                  <span className="text-xs text-gray-500 block uppercase tracking-wide font-semibold">
-                    Time of Day
-                  </span>
-                  <span className="font-medium">{meanTimeStr}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center text-gray-700">
-                <span className="text-xl mr-2" role="img" aria-label="Count">
-                  🔁
-                </span>
-                <div>
-                  <span className="text-xs text-gray-500 block uppercase tracking-wide font-semibold">
-                    Event Count
-                  </span>
-                  <span className="font-medium">
-                    {cluster.eventCount} events
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <p className="text-sm text-gray-600 leading-relaxed"></p>
-          </div>
-        </div>
+        {/* Title Only */}
+        <h3 className="text-lg font-bold text-gray-900 mb-4">{title}</h3>
 
         {/* Chart Section */}
         <div className="w-full">
