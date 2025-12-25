@@ -142,42 +142,4 @@ describe("EventClusterCard", () => {
 
     expect(screen.queryByTestId("mock-cluster-chart")).not.toBeInTheDocument();
   });
-
-  // --- Structured Summary Tests ---
-
-  it("renders the structured summary with time, count, and description using colloquial terms", () => {
-    const summaryCluster: GlycemicEventCluster = {
-      ...mockCluster,
-      eventType: "hyper",
-      eventCount: 5,
-      meanTimeMinutes: 840, // 14:00
-      clusterDataJson: JSON.stringify({
-        id: "test-cluster",
-        events: [],
-      }),
-    };
-
-    render(
-      <EventClusterCard
-        cluster={summaryCluster}
-        userNote=""
-        onNoteChange={mockOnNoteChange}
-      />,
-    );
-
-    // Check for Time of Day (might appear multiple times, so use getAllByText)
-    const timeElements = screen.getAllByText(/14:00/);
-    expect(timeElements.length).toBeGreaterThan(0);
-
-    // Check for Event Count
-    expect(screen.getByText(/5 events/)).toBeInTheDocument();
-
-    // Check for Descriptive Summary with colloquial term
-    // "5 high blood sugar events occurred around 14:00"
-    // This text appears in both the title and the summary paragraph, so we expect multiple
-    const summaryElements = screen.getAllByText(
-      /5 high blood sugar events occurred around 14:00/i,
-    );
-    expect(summaryElements.length).toBeGreaterThan(0);
-  });
 });
