@@ -8,6 +8,7 @@ import {
 
 const MIN_DURATION_MINUTES = 20;
 const MAX_ENTRIES = 5000;
+export const BUFFER_MINUTES = 60;
 
 export class HotspotDetector {
   private timezone: string;
@@ -29,7 +30,7 @@ export class HotspotDetector {
     threshold: number,
   ): GlycemicEvent[] {
     const events: GlycemicEvent[] = [];
-    let currentSequence: GlucoseEntry[] = [];
+    let startIndex = -1;
 
     // 0. Security: Limit input size to prevent DoS
     const limitedEntries = entries.slice(0, MAX_ENTRIES);
@@ -37,32 +38,40 @@ export class HotspotDetector {
     // 1. Sort chronologically by timestamp
     const sorted = [...limitedEntries].sort((a, b) => a.date - b.date);
 
-    for (const entry of sorted) {
+    for (let i = 0; i < sorted.length; i++) {
+      const entry = sorted[i];
       const isTrigger =
         type === 'hyper' ? entry.sgv >= threshold : entry.sgv <= threshold;
 
       if (isTrigger) {
-        currentSequence.push(entry);
+        if (startIndex === -1) {
+          startIndex = i;
+        }
       } else {
-        if (currentSequence.length > 0) {
-          this.processSequence(currentSequence, events, type);
-          currentSequence = [];
+        if (startIndex !== -1) {
+          // Sequence ended at i - 1
+          this.processSequence(sorted, startIndex, i, events, type);
+          startIndex = -1;
         }
       }
     }
     // Check tail
-    if (currentSequence.length > 0) {
-      this.processSequence(currentSequence, events, type);
+    if (startIndex !== -1) {
+      this.processSequence(sorted, startIndex, sorted.length, events, type);
     }
 
     return events;
   }
 
   private processSequence(
-    seq: GlucoseEntry[],
+    allEntries: GlucoseEntry[],
+    startIndex: number,
+    endIndex: number,
     events: GlycemicEvent[],
     type: 'hyper' | 'hypo',
   ) {
+    // Core event entries (exclusive of endIndex)
+    const seq = allEntries.slice(startIndex, endIndex);
     if (seq.length === 0) return;
 
     const first = seq[0];
@@ -79,6 +88,40 @@ export class HotspotDetector {
     const duration = endTime.diff(startTime, 'minutes').minutes;
 
     if (duration >= MIN_DURATION_MINUTES) {
+      // --- Calculate Buffer Indices ---
+      const bufferStartTime = startTime.minus({ minutes: BUFFER_MINUTES });
+      const bufferEndTime = endTime.plus({ minutes: BUFFER_MINUTES });
+
+      // Scan backwards for start buffer
+      let bufferStartIndex = startIndex;
+      while (bufferStartIndex > 0) {
+        const prevEntry = allEntries[bufferStartIndex - 1];
+        const prevTime = DateTime.fromMillis(prevEntry.date).setZone(
+          this.timezone,
+        );
+        if (prevTime < bufferStartTime) break;
+        bufferStartIndex--;
+      }
+
+      // Scan forwards for end buffer
+      let bufferEndIndex = endIndex;
+      while (bufferEndIndex < allEntries.length) {
+        const nextEntry = allEntries[bufferEndIndex];
+        const nextTime = DateTime.fromMillis(nextEntry.date).setZone(
+          this.timezone,
+        );
+        if (nextTime > bufferEndTime) break;
+        bufferEndIndex++;
+      }
+
+      // Extract extended readings
+      const extendedReadings = allEntries
+        .slice(bufferStartIndex, bufferEndIndex)
+        .map((e) => ({
+          timestamp: e.dateString || new Date(e.date).toISOString(),
+          value: e.sgv,
+        }));
+
       events.push({
         id: uuidv4(),
         type,
@@ -86,10 +129,7 @@ export class HotspotDetector {
         endTime: endTime.toISO()!,
         startMinuteOfDay: startTime.hour * 60 + startTime.minute,
         durationMinutes: duration,
-        readings: seq.map((e) => ({
-          timestamp: e.dateString || new Date(e.date).toISOString(),
-          value: e.sgv,
-        })),
+        readings: extendedReadings,
       });
     }
   }
