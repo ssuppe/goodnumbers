@@ -13,7 +13,7 @@ describe("EventClusterCard", () => {
   const mockCluster = mockJournalForView.clusters[0];
   const mockOnNoteChange = vi.fn();
 
-  it("renders the DataDisplayWidget with a dynamic title", () => {
+  it("renders the structured header with dynamic title using colloquial terms", () => {
     render(
       <EventClusterCard
         cluster={mockCluster}
@@ -22,9 +22,18 @@ describe("EventClusterCard", () => {
       />,
     );
 
-    const expectedTitle = `Glycemic Event Cluster: ${mockCluster.eventType} (x${mockCluster.eventCount})`;
+    // The title is now the full summary sentence using colloquial terms
+    // Handle various high blood sugar types correctly for the test expectation
+    const isHigh = ["HIGH", "HYPER", "VERY_HIGH"].includes(
+      mockCluster.eventType.toUpperCase(),
+    );
+    const expectedTerm = isHigh ? "high blood sugar" : "low blood sugar";
+
+    // We check that the heading contains the key parts: count and colloquial term
     const heading = screen.getByRole("heading", {
-      name: (name) => name.includes(expectedTitle),
+      name: (name) =>
+        name.toLowerCase().includes(expectedTerm) &&
+        name.includes(`${mockCluster.eventCount}`),
     });
     expect(heading).toBeInTheDocument();
   });
@@ -132,5 +141,43 @@ describe("EventClusterCard", () => {
     );
 
     expect(screen.queryByTestId("mock-cluster-chart")).not.toBeInTheDocument();
+  });
+
+  // --- Structured Summary Tests ---
+
+  it("renders the structured summary with time, count, and description using colloquial terms", () => {
+    const summaryCluster: GlycemicEventCluster = {
+      ...mockCluster,
+      eventType: "hyper",
+      eventCount: 5,
+      meanTimeMinutes: 840, // 14:00
+      clusterDataJson: JSON.stringify({
+        id: "test-cluster",
+        events: [],
+      }),
+    };
+
+    render(
+      <EventClusterCard
+        cluster={summaryCluster}
+        userNote=""
+        onNoteChange={mockOnNoteChange}
+      />,
+    );
+
+    // Check for Time of Day (might appear multiple times, so use getAllByText)
+    const timeElements = screen.getAllByText(/14:00/);
+    expect(timeElements.length).toBeGreaterThan(0);
+
+    // Check for Event Count
+    expect(screen.getByText(/5 events/)).toBeInTheDocument();
+
+    // Check for Descriptive Summary with colloquial term
+    // "5 high blood sugar events occurred around 14:00"
+    // This text appears in both the title and the summary paragraph, so we expect multiple
+    const summaryElements = screen.getAllByText(
+      /5 high blood sugar events occurred around 14:00/i,
+    );
+    expect(summaryElements.length).toBeGreaterThan(0);
   });
 });
