@@ -15,6 +15,7 @@ import {
   getClinicalThresholds,
   convertGlucose,
   type GlucoseUnit,
+  type Treatment,
 } from "../../../lib/agpUtils";
 import type { GlycemicCluster } from "@goodnumbers/types";
 import { format } from "date-fns";
@@ -31,15 +32,6 @@ echarts.use([
   LegendComponent,
   MarkLineComponent,
 ]);
-
-// Define Treatment interface locally for now as it's not in shared types
-export interface Treatment {
-  id: string;
-  date: string;
-  carbs?: number;
-  eventType?: string;
-  notes?: string;
-}
 
 interface ClusterEventsChartProps {
   cluster: GlycemicCluster;

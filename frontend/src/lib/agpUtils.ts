@@ -49,6 +49,14 @@ export function convertGlucose(
  * 2. STRIPS extraneous fields (PII) for security.
  * 3. Handles nulls safely.
  */
+export interface Treatment {
+  id: string;
+  date: string;
+  carbs?: number;
+  eventType?: string;
+  notes?: string;
+}
+
 export interface RawAgpDataPoint {
   time: string;
   p5: number | null;

@@ -4,6 +4,7 @@ import EventClusterCard from "./EventClusterCard";
 import { ClusterEventsChart } from "./charts/ClusterEventsChart";
 import { mockJournalForView } from "../../mocks/journal";
 import type { GlycemicEventCluster } from "@goodnumbers/types";
+import type { Treatment } from "../../lib/agpUtils";
 
 // Mock the chart component to verify it renders with correct props
 vi.mock("./charts/ClusterEventsChart", () => ({
@@ -165,6 +166,27 @@ describe("EventClusterCard", () => {
 
     expect(ClusterEventsChart).toHaveBeenCalledWith(
       expect.objectContaining({ units: "MMOL" }),
+      expect.anything(),
+    );
+  });
+
+  it("passes treatments to ClusterEventsChart when provided", () => {
+    const mockTreatments: Treatment[] = [
+      { id: "t1", date: "2023-01-01T12:00:00Z", carbs: 15 },
+    ];
+
+    render(
+      <EventClusterCard
+        cluster={mockCluster}
+        userNote=""
+        onNoteChange={mockOnNoteChange}
+        // @ts-expect-error - Testing new prop before implementation
+        treatments={mockTreatments}
+      />,
+    );
+
+    expect(ClusterEventsChart).toHaveBeenCalledWith(
+      expect.objectContaining({ treatments: mockTreatments }),
       expect.anything(),
     );
   });
