@@ -1,4 +1,4 @@
-export type GlucoseUnit = 'MGDL' | 'MMOL';
+export type GlucoseUnit = "MGDL" | "MMOL";
 
 const MG_DL_PER_MMOL_L = 18.0182;
 
@@ -11,7 +11,7 @@ const MAX_VALID_GLUCOSE = 1000;
  * Returns the clinical low/high thresholds based on the requested unit.
  */
 export function getClinicalThresholds(units: GlucoseUnit) {
-  if (units === 'MMOL') {
+  if (units === "MMOL") {
     return { low: 3.9, high: 10.0 };
   }
   return { low: 70, high: 180 };
@@ -21,7 +21,10 @@ export function getClinicalThresholds(units: GlucoseUnit) {
  * Converts a glucose value from mg/dL to the target unit.
  * Includes a SAFETY GUARD to reject biologically impossible values.
  */
-function convertGlucose(value: number | null, toUnits: GlucoseUnit): number | null {
+export function convertGlucose(
+  value: number | null,
+  toUnits: GlucoseUnit,
+): number | null {
   if (value === null || value === undefined) return null;
 
   // Safety Guard: Reject impossible values before conversion
@@ -31,7 +34,7 @@ function convertGlucose(value: number | null, toUnits: GlucoseUnit): number | nu
     return null;
   }
 
-  if (toUnits === 'MMOL') {
+  if (toUnits === "MMOL") {
     // Round to 1 decimal place for mmol/L
     return Math.round((value / MG_DL_PER_MMOL_L) * 10) / 10;
   }
@@ -46,7 +49,20 @@ function convertGlucose(value: number | null, toUnits: GlucoseUnit): number | nu
  * 2. STRIPS extraneous fields (PII) for security.
  * 3. Handles nulls safely.
  */
-export function normalizeAgpData(rawData: any[], units: GlucoseUnit) {
+export interface RawAgpDataPoint {
+  time: string;
+  p5: number | null;
+  p25: number | null;
+  median: number | null;
+  mean: number | null;
+  p75: number | null;
+  p95: number | null;
+}
+
+export function normalizeAgpData(
+  rawData: RawAgpDataPoint[],
+  units: GlucoseUnit,
+) {
   if (!Array.isArray(rawData)) return [];
 
   return rawData.map((item) => ({
