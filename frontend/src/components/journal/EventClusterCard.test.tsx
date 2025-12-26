@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import EventClusterCard from "./EventClusterCard";
+import { ClusterEventsChart } from "./charts/ClusterEventsChart";
 import { mockJournalForView } from "../../mocks/journal";
 import type { GlycemicEventCluster } from "@goodnumbers/types";
 
@@ -141,5 +142,30 @@ describe("EventClusterCard", () => {
     );
 
     expect(screen.queryByTestId("mock-cluster-chart")).not.toBeInTheDocument();
+  });
+
+  it("passes the correct units prop to ClusterEventsChart", () => {
+    const validJsonCluster: GlycemicEventCluster = {
+      ...mockCluster,
+      clusterDataJson: JSON.stringify({
+        id: "test-cluster",
+        events: [],
+      }),
+    };
+
+    render(
+      <EventClusterCard
+        cluster={validJsonCluster}
+        userNote=""
+        onNoteChange={mockOnNoteChange}
+        // @ts-expect-error - Testing new prop before implementation
+        units="MMOL"
+      />,
+    );
+
+    expect(ClusterEventsChart).toHaveBeenCalledWith(
+      expect.objectContaining({ units: "MMOL" }),
+      expect.anything(),
+    );
   });
 });
