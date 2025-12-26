@@ -11,7 +11,11 @@ import {
   MarkLineComponent,
 } from "echarts/components";
 import { CHART_THEME } from "../../../lib/chartTheme";
-import { getClinicalThresholds, type GlucoseUnit } from "../../../lib/agpUtils";
+import {
+  getClinicalThresholds,
+  convertGlucose,
+  type GlucoseUnit,
+} from "../../../lib/agpUtils";
 import type { GlycemicCluster } from "@goodnumbers/types";
 import { format } from "date-fns";
 
@@ -97,7 +101,19 @@ export function ClusterEventsChart({
 
   const options = useMemo(() => {
     if (!cluster.events.length) return null;
-    const thresholds = getClinicalThresholds(units);
+    // Normalize units to handle case insensitivity (e.g. "mmol" vs "MMOL")
+    const isMmol = (units as string).toUpperCase() === "MMOL";
+    const normalizedUnits = (isMmol ? "MMOL" : "MGDL") as GlucoseUnit;
+
+    console.log("[ClusterEventsChart] Debug:", {
+      rawUnits: units,
+      isMmol,
+      normalizedUnits,
+      clusterId: cluster.id || "unknown",
+      eventsCount: cluster.events.length,
+    });
+
+    const thresholds = getClinicalThresholds(normalizedUnits);
 
     // Sort events by startTime to ensure legend is chronological
     const sortedEvents = [...cluster.events].sort(
@@ -149,7 +165,11 @@ export function ClusterEventsChart({
         },
         // Use object structure for data points to include metadata
         data: event.readings.map((r) => ({
-          value: [normalizeTime(r.timestamp), r.value],
+          // Convert glucose value to preferred units
+          value: [
+            normalizeTime(r.timestamp),
+            convertGlucose(r.value, normalizedUnits),
+          ],
           originalDate: r.timestamp,
         })),
       };
@@ -269,7 +289,10 @@ export function ClusterEventsChart({
           {
             type: "value",
             gridIndex: 0,
-            name: `Glucose (${units})`,
+            name: `Glucose (${isMmol ? "mmol/L" : "mg/dL"})`,
+            nameLocation: "middle",
+            nameRotate: 90,
+            nameGap: 50,
             min: (value: { min: number }) => Math.floor(value.min * 0.9),
             max: (value: { max: number }) => Math.ceil(value.max * 1.1),
             splitLine: { lineStyle: { type: "dashed", color: "#eee" } },
@@ -284,6 +307,12 @@ export function ClusterEventsChart({
       : [
           {
             type: "value",
+            gridIndex: 0,
+            name: `Glucose (${isMmol ? "mmol/L" : "mg/dL"})`,
+            nameLocation: "middle",
+            nameRotate: 90,
+            nameGap: 50,
+            scale: true,
             min: (value: { min: number }) => Math.floor(value.min * 0.9),
             max: (value: { max: number }) => Math.ceil(value.max * 1.1),
             splitLine: { lineStyle: { type: "dashed", color: "#eee" } },
@@ -310,7 +339,8 @@ export function ClusterEventsChart({
           content += `<div>${timeStr}</div>`;
 
           if (p.seriesType === "line") {
-            content += `<div>Glucose: <strong>${p.data.value[1]}</strong> ${units}</div>`;
+            const unitLabel = isMmol ? "mmol/L" : "mg/dL";
+            content += `<div>Glucose: <strong>${p.data.value[1]}</strong> ${unitLabel}</div>`;
           } else if (p.seriesType === "bar") {
             content += `<div>Carbs: <strong>${p.data.originalCarbs}g</strong></div>`;
           }
@@ -360,6 +390,7 @@ export function ClusterEventsChart({
         option={options}
         style={{ height: "100%", width: "100%" }}
         opts={{ renderer: "svg" }}
+        notMerge={true}
       />
     </div>
   );

@@ -2,11 +2,13 @@ import React, { useMemo } from "react";
 import type { GlycemicEventCluster, GlycemicCluster } from "@goodnumbers/types";
 import { ClusterEventsChart } from "./charts/ClusterEventsChart";
 import { format } from "date-fns";
+import { type GlucoseUnit } from "../../lib/agpUtils";
 
 interface EventClusterCardProps {
   cluster: GlycemicEventCluster;
   userNote?: string;
   onNoteChange?: (note: string) => void;
+  units?: string;
 }
 
 // Helper to format minutes into HH:MM using date-fns for consistency
@@ -36,6 +38,7 @@ export default function EventClusterCard({
   cluster,
   userNote,
   onNoteChange,
+  units = "MGDL",
 }: EventClusterCardProps) {
   // Safe parsing of the JSON blob
   const clusterData = useMemo(() => {
@@ -91,7 +94,10 @@ export default function EventClusterCard({
         {/* Chart Section */}
         <div className="w-full">
           {clusterData ? (
-            <ClusterEventsChart cluster={clusterData} units="MGDL" />
+            <ClusterEventsChart
+              cluster={clusterData}
+              units={units as GlucoseUnit}
+            />
           ) : (
             <div className="p-4 text-center text-gray-500 bg-gray-50 rounded-lg">
               Unable to load visualization data.

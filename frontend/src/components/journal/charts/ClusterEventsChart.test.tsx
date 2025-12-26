@@ -30,9 +30,14 @@ interface MockSeries {
   data: MockDataPoint[];
 }
 
+interface MockYAxis {
+  name?: string;
+}
+
 interface MockOption {
   series: MockSeries[];
   legend?: { bottom: number };
+  yAxis?: MockYAxis[];
 }
 
 describe("ClusterEventsChart", () => {
@@ -89,7 +94,6 @@ describe("ClusterEventsChart", () => {
 
     expect(mockReactECharts).toHaveBeenCalled();
 
-     
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
       (s) => s.type === "line" && !s.markLine,
@@ -114,7 +118,7 @@ describe("ClusterEventsChart", () => {
 
   it("assigns distinct colors to different events", () => {
     render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
-     
+
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
       (s) => s.type === "line" && !s.markLine,
@@ -130,7 +134,7 @@ describe("ClusterEventsChart", () => {
 
   it("configures emphasis and blur states for spotlight effect", () => {
     render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
-     
+
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
       (s) => s.type === "line" && !s.markLine,
@@ -143,7 +147,7 @@ describe("ClusterEventsChart", () => {
 
   it("names series with the date (e.g. Sun, Jan 1)", () => {
     render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
-     
+
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
       (s) => s.type === "line" && !s.markLine,
@@ -157,7 +161,7 @@ describe("ClusterEventsChart", () => {
 
   it("configures the legend at the bottom", () => {
     render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
-     
+
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
 
     expect(options.legend).toBeDefined();
@@ -166,7 +170,7 @@ describe("ClusterEventsChart", () => {
 
   it("includes original date information in data points for tooltips", () => {
     render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
-     
+
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
       (s) => s.type === "line" && !s.markLine,
@@ -191,7 +195,7 @@ describe("ClusterEventsChart", () => {
     };
 
     render(<ClusterEventsChart cluster={unsortedCluster} units="MGDL" />);
-     
+
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
       (s) => s.type === "line" && !s.markLine,
@@ -210,7 +214,7 @@ describe("ClusterEventsChart", () => {
         treatments={mockTreatments}
       />,
     );
-     
+
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
 
     // Find bar series
@@ -221,5 +225,30 @@ describe("ClusterEventsChart", () => {
     const carbPoint = barSeries[0].data[0];
     expect(carbPoint.value[1]).toBe(45); // 45g carbs
     expect(carbPoint).toHaveProperty("originalCarbs", 45);
+  });
+
+  it("displays the correct units on the Y-axis when no treatments are present", () => {
+    render(<ClusterEventsChart cluster={mockCluster} units="MMOL" />);
+
+    const options = mockReactECharts.mock.calls[0][0].option as MockOption;
+
+    // Check yAxis configuration
+    expect(options.yAxis).toBeDefined();
+    const yAxis = options.yAxis![0];
+    expect(yAxis.name).toBe("Glucose (mmol/L)");
+  });
+
+  it("converts glucose values to mmol/L when requested", () => {
+    // 180 mg/dL is approx 10.0 mmol/L
+    render(<ClusterEventsChart cluster={mockCluster} units="MMOL" />);
+
+    const options = mockReactECharts.mock.calls[0][0].option as MockOption;
+    const dataSeries = options.series.filter(
+      (s) => s.type === "line" && !s.markLine,
+    );
+
+    const point = dataSeries[0].data[0];
+    // The mock data has 180 mg/dL. In mmol/L it should be ~10.0
+    expect(point.value[1]).toBeCloseTo(10.0, 1);
   });
 });

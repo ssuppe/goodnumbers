@@ -11,7 +11,7 @@ import {
   ChartAnalysisCard,
   type Insight,
 } from "../components/journal/ChartAnalysisCard";
-import { normalizeAgpData } from "../lib/agpUtils";
+import { normalizeAgpData, type RawAgpDataPoint } from "../lib/agpUtils";
 import { useAuth } from "../contexts/AuthContext";
 import WeeklyVibe from "../components/journal/WeeklyVibe";
 import InfluencingFactors from "../components/journal/InfluencingFactors";
@@ -115,8 +115,7 @@ export default function JournalPage() {
     () =>
       journal?.agpChartData
         ? normalizeAgpData(
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            journal.agpChartData as any[],
+            journal.agpChartData as unknown as RawAgpDataPoint[],
             user?.preferredUnits || "MGDL",
           )
         : [],
@@ -187,6 +186,7 @@ export default function JournalPage() {
               },
             }))
           }
+          units={user?.preferredUnits || "MGDL"}
         />
       ))}
 
