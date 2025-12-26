@@ -11,7 +11,11 @@ import {
   ChartAnalysisCard,
   type Insight,
 } from "../components/journal/ChartAnalysisCard";
-import { normalizeAgpData, type RawAgpDataPoint } from "../lib/agpUtils";
+import {
+  normalizeAgpData,
+  type RawAgpDataPoint,
+  type Treatment,
+} from "../lib/agpUtils";
 import { useAuth } from "../contexts/AuthContext";
 import WeeklyVibe from "../components/journal/WeeklyVibe";
 import InfluencingFactors from "../components/journal/InfluencingFactors";
@@ -19,7 +23,10 @@ import EventClusterCard from "../components/journal/EventClusterCard";
 import ContextualNotesArea from "../components/journal/ContextualNotesArea";
 import StickyActionBar from "../components/journal/StickyActionBar";
 
-type JournalResponse = Journal & { clusters: GlycemicEventCluster[] };
+type JournalResponse = Journal & {
+  clusters: GlycemicEventCluster[];
+  treatments?: Treatment[];
+};
 
 interface JournalFormData {
   weeklyVibe: string | null;
@@ -45,7 +52,37 @@ export default function JournalPage() {
       setIsLoading(true);
       try {
         const response = await api.get<JournalResponse>(`/journals/${id}`);
-        setJournal(response.data);
+
+        // TODO: Remove this mock when backend provides treatments
+        const mockTreatments: Treatment[] = [
+          // Aligned with the mock data dates (Dec 20-26, 2025) seen in the chart, around 15:00
+          {
+            id: "m1",
+            date: "2025-12-20T14:30:00",
+            carbs: 45,
+            eventType: "Meal Bolus",
+          },
+          {
+            id: "m2",
+            date: "2025-12-21T14:45:00",
+            carbs: 60,
+            eventType: "Meal Bolus",
+          },
+          {
+            id: "m3",
+            date: "2025-12-22T15:00:00",
+            carbs: 55,
+            eventType: "Meal Bolus",
+          },
+          {
+            id: "m4",
+            date: "2025-12-23T15:15:00",
+            carbs: 30,
+            eventType: "Snack",
+          },
+        ];
+
+        setJournal({ ...response.data, treatments: mockTreatments });
 
         // Initialize form data
         setFormData({
@@ -187,6 +224,7 @@ export default function JournalPage() {
             }))
           }
           units={user?.preferredUnits || "MGDL"}
+          treatments={journal.treatments}
         />
       ))}
 

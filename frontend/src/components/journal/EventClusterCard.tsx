@@ -2,13 +2,14 @@ import React, { useMemo } from "react";
 import type { GlycemicEventCluster, GlycemicCluster } from "@goodnumbers/types";
 import { ClusterEventsChart } from "./charts/ClusterEventsChart";
 import { format } from "date-fns";
-import { type GlucoseUnit } from "../../lib/agpUtils";
+import { type GlucoseUnit, type Treatment } from "../../lib/agpUtils";
 
 interface EventClusterCardProps {
   cluster: GlycemicEventCluster;
   userNote?: string;
   onNoteChange?: (note: string) => void;
   units?: string;
+  treatments?: Treatment[];
 }
 
 // Helper to format minutes into HH:MM using date-fns for consistency
@@ -39,6 +40,7 @@ export default function EventClusterCard({
   userNote,
   onNoteChange,
   units = "MGDL",
+  treatments,
 }: EventClusterCardProps) {
   // Safe parsing of the JSON blob
   const clusterData = useMemo(() => {
@@ -97,6 +99,7 @@ export default function EventClusterCard({
             <ClusterEventsChart
               cluster={clusterData}
               units={units as GlucoseUnit}
+              treatments={treatments}
             />
           ) : (
             <div className="p-4 text-center text-gray-500 bg-gray-50 rounded-lg">
