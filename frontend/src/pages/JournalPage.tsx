@@ -96,12 +96,12 @@ export default function JournalPage() {
               ...acc,
               [cluster.id]: cluster.userNotes || "",
             }),
-            {} as Record<string, string>,
+            {} as Record<string, string>
           ),
         });
       } catch {
         setError(
-          "Failed to load journal. It might not exist or you may not have permission to view it.",
+          "Failed to load journal. It might not exist or you may not have permission to view it."
         );
       } finally {
         setIsLoading(false);
@@ -135,7 +135,7 @@ export default function JournalPage() {
     if (!id) return;
     if (
       window.confirm(
-        "Are you sure you want to permanently delete this journal entry?",
+        "Are you sure you want to permanently delete this journal entry?"
       )
     ) {
       try {
@@ -153,10 +153,10 @@ export default function JournalPage() {
       journal?.agpChartData
         ? normalizeAgpData(
             journal.agpChartData as unknown as RawAgpDataPoint[],
-            user?.preferredUnits || "MGDL",
+            user?.preferredUnits || "MGDL"
           )
         : [],
-    [journal?.agpChartData, user?.preferredUnits],
+    [journal?.agpChartData, user?.preferredUnits]
   );
 
   if (isLoading) {
@@ -190,6 +190,19 @@ export default function JournalPage() {
         audioUrl={journal.podcastAudioUrl}
       />
 
+      <ScorecardRow
+        data={journal.scoreCardData as unknown as ScoreCardData}
+        units={user?.preferredUnits || "MGDL"}
+      />
+
+      <ChartAnalysisCard
+        title="Ambulatory Glucose Profile (AGP)"
+        subtitle="Your 7-day glucose trends"
+        data={normalizedAgpData}
+        units={user?.preferredUnits || "MGDL"}
+        insights={(journal.analysisInsights as unknown as Insight[]) || []}
+      />
+
       <WeeklyVibe
         selectedVibe={formData.weeklyVibe}
         onChange={(vibe) =>
@@ -202,11 +215,6 @@ export default function JournalPage() {
         onChange={(factors) =>
           setFormData((prev) => ({ ...prev!, influencingFactors: factors }))
         }
-      />
-
-      <ScorecardRow
-        data={journal.scoreCardData as unknown as ScoreCardData}
-        units={user?.preferredUnits || "MGDL"}
       />
 
       {journal.clusters.map((cluster) => (
@@ -227,14 +235,6 @@ export default function JournalPage() {
           treatments={journal.treatments}
         />
       ))}
-
-      <ChartAnalysisCard
-        title="Ambulatory Glucose Profile (AGP)"
-        subtitle="Your 7-day glucose trends"
-        data={normalizedAgpData}
-        units={user?.preferredUnits || "MGDL"}
-        insights={(journal.analysisInsights as unknown as Insight[]) || []}
-      />
 
       <ContextualNotesArea
         notes={formData.goalsForNextWeek}
