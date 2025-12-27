@@ -84,16 +84,13 @@ export default function EventClusterCard({
     : `${cluster.eventCount} ${colloquialType} events occurred around ${meanTimeStr}`;
 
   // Generate dynamic title using the full summary structure as requested
-  // "4 high blood sugar events occurred around 20:48 (between 19:23 and 21:59)"
   const title = summaryText;
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-        {/* Title Only */}
+    <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+      {/* Top Section: Title and Chart */}
+      <div className="p-6 pb-2">
         <h3 className="text-lg font-bold text-gray-900 mb-4">{title}</h3>
-
-        {/* Chart Section */}
         <div className="w-full">
           {clusterData ? (
             <ClusterEventsChart
@@ -109,26 +106,28 @@ export default function EventClusterCard({
         </div>
       </div>
 
-      {/* User Notes Section */}
+      {/* Bottom Section: Integrated User Notes */}
       {onNoteChange && (
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-          <label
-            htmlFor={`cluster-note-${cluster.id}`}
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Your Notes
-          </label>
-          <textarea
-            id={`cluster-note-${cluster.id}`}
-            value={userNote || ""}
-            onChange={(e) => onNoteChange(e.target.value)}
-            placeholder="Why do you think this happened? Leave some notes on what you think the issue is, or how you can improve next week. If you don’t know, that's ok! Leave it blank."
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-            rows={3}
-            maxLength={1000}
-          />
-          <div className="mt-1 text-right text-xs text-gray-500">
-            {(userNote || "").length}/1000 characters
+        <div className="px-6 pb-6 pt-2">
+          <div className="mt-2 pt-4 border-t border-gray-100">
+            <label
+              htmlFor={`cluster-note-${cluster.id}`}
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Your Notes
+            </label>
+            <textarea
+              id={`cluster-note-${cluster.id}`}
+              value={userNote || ""}
+              onChange={(e) => onNoteChange(e.target.value)}
+              placeholder="Why do you think this happened? Leave some notes on what you think the issue is, or how you can improve next week. If you don’t know, that's ok! Leave it blank."
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
+              rows={3}
+              maxLength={1000}
+            />
+            <div className="mt-1 text-right text-xs text-gray-400">
+              {(userNote || "").length}/1000 characters
+            </div>
           </div>
         </div>
       )}
