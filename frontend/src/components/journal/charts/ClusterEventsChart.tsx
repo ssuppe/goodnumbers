@@ -19,7 +19,7 @@ import {
 } from "../../../lib/agpUtils";
 import type { GlycemicCluster } from "@goodnumbers/types";
 import { format } from "date-fns";
-import { getBoundaryHour, normalizeTime } from "./chartUtils";
+import { getBoundaryHour, normalizeTime, formatAxisLabel } from "./chartUtils";
 
 // Register components
 echarts.use([
@@ -264,10 +264,17 @@ export function ClusterEventsChart({
           {
             type: "time",
             gridIndex: 1,
-            axisLabel: { formatter: "{HH}:{mm}" },
+            axisLabel: { formatter: formatAxisLabel },
+            interval: 1800 * 1000,
           },
         ]
-      : [{ type: "time", axisLabel: { formatter: "{HH}:{mm}" } }];
+      : [
+          {
+            type: "time",
+            axisLabel: { formatter: formatAxisLabel },
+            interval: 3600 * 1000,
+          },
+        ];
 
     const yAxis = hasCarbData
       ? [

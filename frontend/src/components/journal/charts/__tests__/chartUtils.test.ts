@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getBoundaryHour, normalizeTime } from "../chartUtils";
+import { getBoundaryHour, normalizeTime, formatAxisLabel } from "../chartUtils";
 import type { GlycemicCluster } from "@goodnumbers/types";
 
 // Mock helper to create a minimal cluster with events at specific times
@@ -88,6 +88,38 @@ describe("Chart Utils", () => {
       const d = new Date(normalized);
       expect(d.getUTCDate()).toBe(1);
       expect(d.getUTCHours()).toBe(23);
+    });
+  });
+
+  describe("formatAxisLabel", () => {
+    it("formats morning hours correctly (UTC)", () => {
+      // 06:00 UTC
+      const time = new Date("2000-01-01T06:00:00Z").getTime();
+      expect(formatAxisLabel(time)).toBe("6am");
+    });
+
+    it("formats noon correctly (UTC)", () => {
+      // 12:00 UTC
+      const time = new Date("2000-01-01T12:00:00Z").getTime();
+      expect(formatAxisLabel(time)).toBe("12pm");
+    });
+
+    it("formats half-hour correctly (UTC)", () => {
+      // 06:30 UTC
+      const time = new Date("2000-01-01T06:30:00Z").getTime();
+      expect(formatAxisLabel(time)).toBe("6:30am");
+    });
+
+    it("formats evening hours correctly (UTC)", () => {
+      // 18:00 UTC
+      const time = new Date("2000-01-01T18:00:00Z").getTime();
+      expect(formatAxisLabel(time)).toBe("6pm");
+    });
+
+    it("formats midnight correctly (UTC)", () => {
+      // 00:00 UTC
+      const time = new Date("2000-01-01T00:00:00Z").getTime();
+      expect(formatAxisLabel(time)).toBe("12am");
     });
   });
 });
