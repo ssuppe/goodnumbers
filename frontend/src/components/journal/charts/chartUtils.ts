@@ -78,3 +78,20 @@ export const normalizeTime = (isoString: string, boundaryHour: number) => {
   }
   return d.getTime();
 };
+
+/**
+ * Formats a timestamp into a short 12-hour format (e.g., "6am", "12pm").
+ * Uses UTC methods to match the normalized time data.
+ *
+ * @param value Timestamp in milliseconds
+ */
+export const formatAxisLabel = (value: number) => {
+  const d = new Date(value);
+  const h = d.getUTCHours();
+  const m = d.getUTCMinutes();
+  const ampm = h >= 12 ? "pm" : "am";
+  const h12 = h % 12 || 12;
+  // Append minutes only if non-zero
+  const minuteStr = m > 0 ? `:${m.toString().padStart(2, "0")}` : "";
+  return `${h12}${minuteStr}${ampm}`;
+};
