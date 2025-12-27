@@ -19,6 +19,7 @@ import {
 } from "../../../lib/agpUtils";
 import type { GlycemicCluster } from "@goodnumbers/types";
 import { format } from "date-fns";
+import { getBoundaryHour, normalizeTime } from "./chartUtils";
 
 // Register components
 echarts.use([
@@ -39,6 +40,12 @@ interface ClusterEventsChartProps {
   treatments?: Treatment[];
 }
 
+// Minimal interface for ECharts event params to satisfy linter
+interface EChartsEventParams {
+  seriesName: string;
+  // Add other properties if needed in future
+}
+
 // --- Visual Style Constants (from PoC) ---
 const eventColors = [
   "#1f77b4",
@@ -52,7 +59,6 @@ const eventColors = [
 ];
 const lineStyleTypes = ["solid", "dashed", "dotted"];
 
-// Function to get visual properties based on event index, ensuring color consistency
 function getEventVisuals(index: number) {
   return {
     color: eventColors[index % eventColors.length],
@@ -63,17 +69,6 @@ function getEventVisuals(index: number) {
   };
 }
 
-// Helper: Normalize any date string to Jan 1, 2000, preserving time
-// We use UTC methods to avoid timezone issues during normalization if the input is UTC
-const normalizeTime = (isoString: string) => {
-  const d = new Date(isoString);
-  // Set to a fixed date (Jan 1, 2000)
-  d.setUTCFullYear(2000);
-  d.setUTCMonth(0);
-  d.setUTCDate(1);
-  return d.getTime();
-};
-
 export function ClusterEventsChart({
   cluster,
   units,
@@ -82,7 +77,9 @@ export function ClusterEventsChart({
   const chartRef = useRef<ReactECharts>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Resize observer logic
+  // Calculate the best start hour for this specific cluster to handle midnight wraparound
+  const boundaryHour = useMemo(() => getBoundaryHour(cluster), [cluster]);
+
   useEffect(() => {
     if (!containerRef.current || !chartRef.current) return;
     const chartInstance = chartRef.current.getEchartsInstance();
@@ -91,36 +88,49 @@ export function ClusterEventsChart({
     return () => resizeObserver.disconnect();
   }, []);
 
+  // --- Manual Interaction Handlers ---
+  // These ensure that hovering a line highlights the corresponding bar, and vice versa.
+  const onEvents = useMemo(
+    () => ({
+      mouseover: (params: EChartsEventParams) => {
+        const chartInstance = chartRef.current?.getEchartsInstance();
+        if (!chartInstance) return;
+
+        // Dispatch highlight for ALL series with this name (Line + Bar)
+        // This overrides the default 'focus: series' behavior which would blur the other one.
+        chartInstance.dispatchAction({
+          type: "highlight",
+          seriesName: params.seriesName,
+        });
+      },
+      mouseout: (params: EChartsEventParams) => {
+        const chartInstance = chartRef.current?.getEchartsInstance();
+        if (!chartInstance) return;
+
+        chartInstance.dispatchAction({
+          type: "downplay",
+          seriesName: params.seriesName,
+        });
+      },
+    }),
+    [],
+  );
+
   const options = useMemo(() => {
     if (!cluster.events.length) return null;
-    // Normalize units to handle case insensitivity (e.g. "mmol" vs "MMOL")
     const isMmol = (units as string).toUpperCase() === "MMOL";
     const normalizedUnits = (isMmol ? "MMOL" : "MGDL") as GlucoseUnit;
-
-    console.log("[ClusterEventsChart] Debug:", {
-      rawUnits: units,
-      isMmol,
-      normalizedUnits,
-      clusterId: cluster.id || "unknown",
-      eventsCount: cluster.events.length,
-    });
-
     const thresholds = getClinicalThresholds(normalizedUnits);
 
-    // Sort events by startTime to ensure legend is chronological
     const sortedEvents = [...cluster.events].sort(
       (a, b) =>
         new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
     );
 
-    // Check if we have any relevant treatments to display
     const hasCarbData = treatments.some((t) => t.carbs && t.carbs > 0);
 
-    // Create a series for each event in the cluster
     const lineSeries = sortedEvents.map((event, index) => {
       const visuals = getEventVisuals(index);
-
-      // Format start date for series name (e.g., "Sun, Jan 1")
       const startDate = new Date(event.startTime);
       const seriesName = format(startDate, "EEE, MMM d");
 
@@ -129,7 +139,7 @@ export function ClusterEventsChart({
         type: "line",
         xAxisIndex: 0,
         yAxisIndex: 0,
-        showSymbol: true, // Enabled to help identify data points
+        showSymbol: true,
         smooth: true,
         lineStyle: {
           width: 2,
@@ -140,26 +150,21 @@ export function ClusterEventsChart({
         itemStyle: {
           color: visuals.color,
         },
-        // Spotlight Effect Configuration
+        // We keep focus: 'series' to blur *other* days.
+        // Our manual event handler will ensure the sibling bar chart stays lit.
         emphasis: {
-          focus: "series", // Blurs other series when this one is hovered
+          focus: "series",
           lineStyle: {
-            width: 4, // Make line thicker on hover
+            width: 4,
           },
         },
         blur: {
-          lineStyle: {
-            opacity: 0.1, // Fade out other lines significantly
-          },
-          itemStyle: {
-            opacity: 0.1,
-          },
+          lineStyle: { opacity: 0.1 },
+          itemStyle: { opacity: 0.1 },
         },
-        // Use object structure for data points to include metadata
         data: event.readings.map((r) => ({
-          // Convert glucose value to preferred units
           value: [
-            normalizeTime(r.timestamp),
+            normalizeTime(r.timestamp, boundaryHour),
             convertGlucose(r.value, normalizedUnits),
           ],
           originalDate: r.timestamp,
@@ -167,15 +172,12 @@ export function ClusterEventsChart({
       };
     });
 
-    // Create bar series for treatments (carbs)
     const barSeries = hasCarbData
       ? sortedEvents
           .map((event, index) => {
             const visuals = getEventVisuals(index);
             const eventStart = new Date(event.startTime);
             const eventEnd = new Date(event.endTime);
-
-            // Add a buffer to find relevant treatments around the event
             const bufferMinutes = 60;
             const searchStart = new Date(
               eventStart.getTime() - bufferMinutes * 60000,
@@ -197,7 +199,7 @@ export function ClusterEventsChart({
             if (eventTreatments.length === 0) return null;
 
             const startDate = new Date(event.startTime);
-            const seriesName = format(startDate, "EEE, MMM d") + " Carbs";
+            const seriesName = format(startDate, "EEE, MMM d");
 
             return {
               name: seriesName,
@@ -211,8 +213,11 @@ export function ClusterEventsChart({
               emphasis: {
                 focus: "series",
               },
+              blur: {
+                itemStyle: { opacity: 0.1 },
+              },
               data: eventTreatments.map((t) => ({
-                value: [normalizeTime(t.date), t.carbs],
+                value: [normalizeTime(t.date, boundaryHour), t.carbs],
                 originalDate: t.date,
                 originalCarbs: t.carbs,
               })),
@@ -221,7 +226,6 @@ export function ClusterEventsChart({
           .filter(Boolean)
       : [];
 
-    // Configure Grid
     const grid = hasCarbData
       ? [
           {
@@ -230,14 +234,14 @@ export function ClusterEventsChart({
             top: "10%",
             height: "55%",
             containLabel: true,
-          }, // Top: Glucose
+          },
           {
             left: "5%",
             right: "5%",
             top: "70%",
             height: "15%",
             containLabel: true,
-          }, // Bottom: Carbs
+          },
         ]
       : [
           {
@@ -249,33 +253,22 @@ export function ClusterEventsChart({
           },
         ];
 
-    // Configure X-Axis
     const xAxis = hasCarbData
       ? [
           {
             type: "time",
             gridIndex: 0,
-            axisLabel: { show: false }, // Hide labels for top axis
+            axisLabel: { show: false },
             axisTick: { show: false },
           },
           {
             type: "time",
             gridIndex: 1,
-            axisLabel: {
-              formatter: "{HH}:{mm}",
-            },
+            axisLabel: { formatter: "{HH}:{mm}" },
           },
         ]
-      : [
-          {
-            type: "time",
-            axisLabel: {
-              formatter: "{HH}:{mm}",
-            },
-          },
-        ];
+      : [{ type: "time", axisLabel: { formatter: "{HH}:{mm}" } }];
 
-    // Configure Y-Axis
     const yAxis = hasCarbData
       ? [
           {
@@ -293,6 +286,9 @@ export function ClusterEventsChart({
             type: "value",
             gridIndex: 1,
             name: "Carbs (g)",
+            nameLocation: "middle", // Center the label
+            nameRotate: 90, // Rotate 90 degrees counter-clockwise
+            nameGap: 50, // Match the spacing of the glucose axis
             splitLine: { show: false },
           },
         ]
@@ -313,12 +309,17 @@ export function ClusterEventsChart({
 
     return {
       tooltip: {
-        trigger: "item", // Changed to item for better handling of mixed series
+        trigger: "item",
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         formatter: (params: any) => {
-          // params is a single data point since trigger is 'item'
           const p = params;
-          const time = new Date(p.data.value[0] as number);
+          // Use originalDate for the truth.
+          // params.value[0] is the NORMALIZED time (year 2000).
+          const dateSource = (p.data.originalDate || p.data.value[0]) as
+            | string
+            | number;
+          const time = new Date(dateSource);
+
           const timeStr = time.toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
@@ -336,21 +337,15 @@ export function ClusterEventsChart({
           } else if (p.seriesType === "bar") {
             content += `<div>Carbs: <strong>${p.data.originalCarbs}g</strong></div>`;
           }
-
           return content;
         },
       },
-      legend: {
-        show: true,
-        bottom: 0,
-        type: "scroll",
-      },
+      legend: { show: true, bottom: 0, type: "scroll" },
       grid: grid,
       xAxis: xAxis,
       yAxis: yAxis,
       series: [
         ...lineSeries,
-        // Threshold lines (only on top grid)
         {
           type: "line",
           markLine: {
@@ -373,7 +368,7 @@ export function ClusterEventsChart({
         ...barSeries,
       ],
     };
-  }, [cluster, units, treatments]);
+  }, [cluster, units, treatments, boundaryHour]);
 
   return (
     <div ref={containerRef} className="w-full h-96">
@@ -383,6 +378,7 @@ export function ClusterEventsChart({
         style={{ height: "100%", width: "100%" }}
         opts={{ renderer: "svg" }}
         notMerge={true}
+        onEvents={onEvents}
       />
     </div>
   );
