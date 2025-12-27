@@ -86,7 +86,7 @@ export function ChartAnalysisCard({
   );
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 mb-8">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200">
       <div className="p-6">
         <div className="flex items-center">
           <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
