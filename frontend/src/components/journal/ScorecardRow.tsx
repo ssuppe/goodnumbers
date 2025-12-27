@@ -28,7 +28,7 @@ export default function ScorecardRow({ data, units }: ScorecardRowProps) {
   };
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:pb-0 hide-scrollbar">
+    <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:pb-0 hide-scrollbar">
       <MetricScorecard
         label="Avg Glucose"
         value={formatGlucose(data.avgGlucose)}

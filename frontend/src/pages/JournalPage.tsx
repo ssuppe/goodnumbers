@@ -96,12 +96,12 @@ export default function JournalPage() {
               ...acc,
               [cluster.id]: cluster.userNotes || "",
             }),
-            {} as Record<string, string>
+            {} as Record<string, string>,
           ),
         });
       } catch {
         setError(
-          "Failed to load journal. It might not exist or you may not have permission to view it."
+          "Failed to load journal. It might not exist or you may not have permission to view it.",
         );
       } finally {
         setIsLoading(false);
@@ -135,7 +135,7 @@ export default function JournalPage() {
     if (!id) return;
     if (
       window.confirm(
-        "Are you sure you want to permanently delete this journal entry?"
+        "Are you sure you want to permanently delete this journal entry?",
       )
     ) {
       try {
@@ -153,10 +153,10 @@ export default function JournalPage() {
       journal?.agpChartData
         ? normalizeAgpData(
             journal.agpChartData as unknown as RawAgpDataPoint[],
-            user?.preferredUnits || "MGDL"
+            user?.preferredUnits || "MGDL",
           )
         : [],
-    [journal?.agpChartData, user?.preferredUnits]
+    [journal?.agpChartData, user?.preferredUnits],
   );
 
   if (isLoading) {
@@ -183,7 +183,7 @@ export default function JournalPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 pb-24">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-4 pb-24">
       <PodcastPlayer
         title={journal.podcastTitle}
         description={journal.podcastDescription}

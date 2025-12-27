@@ -47,27 +47,47 @@ export default function MetricScorecard({
 
   const renderIcon = () => {
     if (typeof icon === "string") {
-      return <span className="text-xl leading-none">{icon}</span>;
+      return <span className="text-lg leading-none">{icon}</span>;
     }
     const IconComponent = icon;
     return (
       <IconComponent
-        className={`w-5 h-5 ${colorClass.replace("bg-", "text-")}`}
+        className={`w-4 h-4 ${colorClass.replace("bg-", "text-")}`}
       />
     );
   };
 
   return (
-    <div className="relative flex flex-col p-4 rounded-xl border border-gray-100 bg-white min-w-[160px] flex-1 shadow-sm hover:border-gray-200 transition-colors group">
-      <div className="flex justify-between items-start mb-2">
-        <div
-          className={`p-2 rounded-lg flex items-center justify-center w-9 h-9`}
-        >
-          {renderIcon()}
+    <div className="relative flex flex-col p-3 rounded-xl border border-gray-100 bg-white min-w-[150px] flex-1 shadow-sm hover:border-gray-200 transition-colors group">
+      {/* Header Row: Icon + Label + Tooltip + Trend */}
+      <div className="flex justify-between items-center mb-1">
+        <div className="flex items-center gap-1.5">
+          {/* Icon Container - Compact */}
+          <div className="flex items-center justify-center w-6 h-6 rounded-md bg-gray-50">
+            {renderIcon()}
+          </div>
+
+          {/* Label */}
+          <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+            {label}
+          </span>
+
+          {/* Tooltip */}
+          {tooltip && (
+            <InfoTooltip
+              content={tooltip}
+              trigger={
+                <HelpCircle className="w-3 h-3 text-gray-300 hover:text-gray-400" />
+              }
+              className=""
+            />
+          )}
         </div>
+
+        {/* Trend Indicator */}
         {trend !== undefined && trend !== null && (
           <div
-            className={`text-xs font-bold flex items-center gap-0.5 ${trend === 0 ? "text-gray-400" : trendColor}`}
+            className={`text-xs font-bold flex items-center gap-0.5 ${trend === 0 ? "text-gray-300" : trendColor}`}
           >
             {trend === 0 ? (
               <Minus className="w-3 h-3" />
@@ -78,24 +98,16 @@ export default function MetricScorecard({
           </div>
         )}
       </div>
-      <div className="flex items-center gap-1 mb-1">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-          {label}
-        </span>
-        {tooltip && (
-          <InfoTooltip
-            content={tooltip}
-            trigger={<HelpCircle className="w-3 h-3 text-gray-300" />}
-            className="ml-1"
-          />
-        )}
-      </div>
-      <div className="flex items-baseline gap-1">
-        <span className="text-2xl font-bold text-gray-800">{value}</span>
+
+      {/* Value Row */}
+      <div className="flex items-baseline gap-1 pl-0.5">
+        <span className="text-2xl font-bold text-gray-900">{value}</span>
         {unit && (
-          <span className="text-sm text-gray-500 font-medium">{unit}</span>
+          <span className="text-xs text-gray-500 font-medium">{unit}</span>
         )}
       </div>
+
+      {/* Progress Bar */}
       {percentage !== undefined && (
         <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gray-100 rounded-b-xl overflow-hidden">
           <div
