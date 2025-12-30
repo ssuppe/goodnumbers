@@ -19,7 +19,12 @@ import {
 } from "../../../lib/agpUtils";
 import type { GlycemicCluster } from "@goodnumbers/types";
 import { format } from "date-fns";
-import { getBoundaryHour, normalizeTime, formatAxisLabel } from "./chartUtils";
+import {
+  getBoundaryHour,
+  normalizeTime,
+  formatAxisLabel,
+  calculateCommonDomain,
+} from "./chartUtils";
 
 // Register components
 echarts.use([
@@ -39,6 +44,10 @@ interface ClusterEventsChartProps {
   units: GlucoseUnit;
   treatments?: Treatment[];
 }
+
+// Buffer in minutes to search for treatments around an event
+// Increased to 180 (3 hours) to catch treatments that occur well before the glucose response
+const TREATMENT_BUFFER_MINUTES = 180;
 
 // Minimal interface for ECharts event params to satisfy linter
 interface EChartsEventParams {
@@ -76,9 +85,35 @@ export function ClusterEventsChart({
 }: ClusterEventsChartProps) {
   const chartRef = useRef<ReactECharts>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
+  console.log("Treatments in ClusterEventsChart:", treatments);
   // Calculate the best start hour for this specific cluster to handle midnight wraparound
-  const boundaryHour = useMemo(() => getBoundaryHour(cluster), [cluster]);
+  // We MUST include relevant treatments in this calculation so they don't get split from their events.
+  const boundaryHour = useMemo(() => {
+    const relevantTreatmentTimestamps: number[] = [];
+
+    // Find all treatments that are "relevant" (within buffer of any event)
+    if (treatments.length > 0) {
+      cluster.events.forEach((event) => {
+        const eventStart = new Date(event.startTime).getTime();
+        const eventEnd = new Date(event.endTime).getTime();
+        const searchStart = eventStart - TREATMENT_BUFFER_MINUTES * 60000;
+        const searchEnd = eventEnd + TREATMENT_BUFFER_MINUTES * 60000;
+
+        treatments.forEach((t) => {
+          const tTime = new Date(t.date).getTime();
+          if (
+            t.carbs &&
+            t.carbs > 0 &&
+            tTime >= searchStart &&
+            tTime <= searchEnd
+          ) {
+            relevantTreatmentTimestamps.push(tTime);
+          }
+        });
+      });
+    }
+    return getBoundaryHour(cluster, relevantTreatmentTimestamps);
+  }, [cluster, treatments]);
 
   useEffect(() => {
     if (!containerRef.current || !chartRef.current) return;
@@ -113,7 +148,7 @@ export function ClusterEventsChart({
         });
       },
     }),
-    [],
+    []
   );
 
   const options = useMemo(() => {
@@ -124,8 +159,25 @@ export function ClusterEventsChart({
 
     const sortedEvents = [...cluster.events].sort(
       (a, b) =>
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
     );
+
+    // Calculate global normalized bounds for the entire cluster
+    // This ensures that if one day starts early (e.g. 1pm) and another late (e.g. 3pm),
+    // we search for carbs starting from the earliest time (1pm - buffer) for ALL days.
+    let globalMinNormalized = Infinity;
+    let globalMaxNormalized = -Infinity;
+
+    sortedEvents.forEach((event) => {
+      const nStart = normalizeTime(event.startTime, boundaryHour);
+      const nEnd = normalizeTime(event.endTime, boundaryHour);
+      if (nStart < globalMinNormalized) globalMinNormalized = nStart;
+      if (nEnd > globalMaxNormalized) globalMaxNormalized = nEnd;
+    });
+
+    // Apply buffer to the global normalized window
+    const globalSearchStart = globalMinNormalized - TREATMENT_BUFFER_MINUTES * 60000;
+    const globalSearchEnd = globalMaxNormalized + TREATMENT_BUFFER_MINUTES * 60000;
 
     const hasCarbData = treatments.some((t) => t.carbs && t.carbs > 0);
 
@@ -176,24 +228,21 @@ export function ClusterEventsChart({
       ? sortedEvents
           .map((event, index) => {
             const visuals = getEventVisuals(index);
-            const eventStart = new Date(event.startTime);
-            const eventEnd = new Date(event.endTime);
-            const bufferMinutes = 60;
-            const searchStart = new Date(
-              eventStart.getTime() - bufferMinutes * 60000,
-            );
-            const searchEnd = new Date(
-              eventEnd.getTime() + bufferMinutes * 60000,
-            );
+
+            // Calculate the time shift for this specific day
+            // Shift = RealTime - NormalizedTime
+            // This allows us to project the Global Normalized Window onto this specific specific calendar day
+            const realStart = new Date(event.startTime).getTime();
+            const normalizedStart = normalizeTime(event.startTime, boundaryHour);
+            const timeShift = realStart - normalizedStart;
+
+            const localSearchStart = globalSearchStart + timeShift;
+            const localSearchEnd = globalSearchEnd + timeShift;
 
             const eventTreatments = treatments.filter((t) => {
-              const tDate = new Date(t.date);
-              return (
-                t.carbs &&
-                t.carbs > 0 &&
-                tDate >= searchStart &&
-                tDate <= searchEnd
-              );
+              if (!t.carbs || t.carbs <= 0) return false;
+              const tTime = new Date(t.date).getTime();
+              return tTime >= localSearchStart && tTime <= localSearchEnd;
             });
 
             if (eventTreatments.length === 0) return null;
@@ -206,6 +255,7 @@ export function ClusterEventsChart({
               type: "bar",
               xAxisIndex: 1,
               yAxisIndex: 1,
+              barMaxWidth: 12,
               itemStyle: {
                 color: visuals.color,
                 opacity: 0.6,
@@ -229,29 +279,39 @@ export function ClusterEventsChart({
     const grid = hasCarbData
       ? [
           {
-            left: "5%",
-            right: "5%",
+            left: 60,
+            right: 20,
             top: "10%",
             height: "55%",
-            containLabel: true,
+            containLabel: false,
           },
           {
-            left: "5%",
-            right: "5%",
+            left: 60,
+            right: 20,
             top: "70%",
             height: "15%",
-            containLabel: true,
+            containLabel: false,
           },
         ]
       : [
           {
-            left: "5%",
-            right: "5%",
+            left: 60,
+            right: 20,
             bottom: "15%",
             top: "10%",
-            containLabel: true,
+            containLabel: false,
           },
         ];
+
+    // Calculate common domain for synchronized axes
+    const allSeries = [...lineSeries, ...barSeries];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const domain = calculateCommonDomain(allSeries as any);
+
+    const xAxisCommon = {
+      min: domain ? domain.min : undefined,
+      max: domain ? domain.max : undefined,
+    };
 
     const xAxis = hasCarbData
       ? [
@@ -260,12 +320,14 @@ export function ClusterEventsChart({
             gridIndex: 0,
             axisLabel: { show: false },
             axisTick: { show: false },
+            ...xAxisCommon,
           },
           {
             type: "time",
             gridIndex: 1,
             axisLabel: { formatter: formatAxisLabel },
             interval: 1800 * 1000,
+            ...xAxisCommon,
           },
         ]
       : [
@@ -273,6 +335,7 @@ export function ClusterEventsChart({
             type: "time",
             axisLabel: { formatter: formatAxisLabel },
             interval: 3600 * 1000,
+            ...xAxisCommon,
           },
         ];
 
@@ -346,6 +409,10 @@ export function ClusterEventsChart({
           }
           return content;
         },
+      },
+      axisPointer: {
+        link: { xAxisIndex: "all" },
+        label: { backgroundColor: "#777" },
       },
       legend: { show: true, bottom: 0, type: "scroll" },
       grid: grid,
