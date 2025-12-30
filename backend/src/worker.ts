@@ -11,6 +11,43 @@ import { calculateAgp } from './lib/agp/calculateAgp.js';
 import { calculateMetrics, calculateTrends } from './lib/scorecard.js';
 import { ScoreCardDataSchema } from '@goodnumbers/schemas';
 import { HotspotDetector } from './lib/analysis/HotspotDetector.js';
+import { z } from 'zod';
+import { NightscoutTreatment } from './lib/nightscout/types.js';
+
+// --- Sanitization Logic ---
+const StoredTreatmentSchema = z.object({
+  id: z.string(),
+  date: z.number(),
+  carbs: z.number().nullable(),
+  insulin: z.number().nullable(),
+  eventType: z.string().max(50).transform((val) => val || 'Unknown'),
+});
+
+function normalizeTreatment(t: NightscoutTreatment) {
+  const parseValue = (val: any): number | null => {
+    if (val === null || val === undefined || val === '') return null;
+    const num = parseFloat(val);
+    return isNaN(num) ? null : num;
+  };
+
+  const carbs = parseValue(t.carbs);
+  const insulin = parseValue(t.insulin);
+
+  // Data Minimization: Drop empty records
+  if (!carbs && !insulin) return null;
+
+  const rawObj = {
+    id: t._id,
+    date: t.date || new Date(t.created_at).getTime(),
+    carbs: carbs || 0,
+    insulin: insulin || 0,
+    eventType: t.eventType,
+  };
+
+  // Validate against Zod
+  const result = StoredTreatmentSchema.safeParse(rawObj);
+  return result.success ? result.data : null;
+}
 
 export async function processJournalJob(job: Job) {
   const { journalId } = job.data;
@@ -55,15 +92,34 @@ export async function processJournalJob(job: Job) {
       },
     });
 
+    // Calculate windows
+    const now = new Date();
+    const FETCH_DAYS = 7;
+    const TREATMENT_BUFFER_HOURS = 3;
+
+    // Fetch start: 7 days ago - 3 hours
+    const fetchStart = new Date(now);
+    fetchStart.setDate(fetchStart.getDate() - FETCH_DAYS);
+    fetchStart.setHours(fetchStart.getHours() - TREATMENT_BUFFER_HOURS);
+
+    // Fetch end: now + 3 hours
+    const fetchEnd = new Date(now);
+    fetchEnd.setHours(fetchEnd.getHours() + TREATMENT_BUFFER_HOURS);
+
     // Fetch all data in parallel for efficiency
-    const [entries, treatments, profiles] = await Promise.all([
-      client.fetchEntries(7),
-      client.fetchTreatments(7),
+    const [entries, rawTreatments, profiles] = await Promise.all([
+      client.fetchEntries(FETCH_DAYS),
+      client.fetchTreatments(fetchStart, fetchEnd),
       client.fetchProfile(),
     ]);
 
+    // Sanitize Treatments
+    const treatments = rawTreatments
+      .map(normalizeTreatment)
+      .filter((t): t is z.infer<typeof StoredTreatmentSchema> => t !== null);
+
     console.log(
-      `[Worker] Fetched ${entries.length} entries, ${treatments.length} treatments, and ${profiles.length} profiles.`,
+      `[Worker] Fetched ${entries.length} entries, ${rawTreatments.length} raw treatments (${treatments.length} valid), and ${profiles.length} profiles.`,
     );
 
     // Stage 2: AGP Chart Data Generation
@@ -230,6 +286,7 @@ export async function processJournalJob(job: Job) {
           finalPayload.agpChartData as unknown as Prisma.InputJsonValue,
         scoreCardData:
           finalPayload.scoreCardData as unknown as Prisma.InputJsonValue,
+        treatments: treatments as unknown as Prisma.InputJsonValue,
       },
     });
 

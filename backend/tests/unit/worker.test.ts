@@ -114,7 +114,8 @@ describe('Worker Job Processing (Real Logic)', () => {
 
     // Assert: Client interaction
     expect(mockFetchEntries).toHaveBeenCalledWith(7);
-    expect(mockFetchTreatments).toHaveBeenCalledWith(7);
+    // We expect date objects now
+    expect(mockFetchTreatments).toHaveBeenCalledWith(expect.any(Date), expect.any(Date));
     expect(mockFetchProfile).toHaveBeenCalled();
 
     // Assert: Final Persistence

@@ -57,14 +57,14 @@ interface EChartsEventParams {
 
 // --- Visual Style Constants (from PoC) ---
 const eventColors = [
-  "#1f77b4",
-  "#ff7f0e",
-  "#2ca02c",
-  "#d62728",
-  "#9467bd",
-  "#8c564b",
-  "#e377c2",
-  "#7f7f7f",
+  "#1976d2", // Brand Blue (Anchor)
+  "#264653", // Charcoal Green
+  "#e76f51", // Burnt Sienna (Clay)
+  "#2a9d8f", // Jungle Teal
+  "#6d597a", // Dusty Purple
+  "#bc6c25", // Bronze/Earth
+  "#457b9d", // Steel Blue
+  "#5d4037", // Coffee Brown
 ];
 const lineStyleTypes = ["solid", "dashed", "dotted"];
 
@@ -176,8 +176,10 @@ export function ClusterEventsChart({
     });
 
     // Apply buffer to the global normalized window
-    const globalSearchStart = globalMinNormalized - TREATMENT_BUFFER_MINUTES * 60000;
-    const globalSearchEnd = globalMaxNormalized + TREATMENT_BUFFER_MINUTES * 60000;
+    const globalSearchStart =
+      globalMinNormalized - TREATMENT_BUFFER_MINUTES * 60000;
+    const globalSearchEnd =
+      globalMaxNormalized + TREATMENT_BUFFER_MINUTES * 60000;
 
     const hasCarbData = treatments.some((t) => t.carbs && t.carbs > 0);
 
@@ -194,7 +196,7 @@ export function ClusterEventsChart({
         showSymbol: true,
         smooth: true,
         lineStyle: {
-          width: 2,
+          width: 4,
           opacity: 0.8,
           color: visuals.color,
           type: visuals.lineType,
@@ -207,7 +209,7 @@ export function ClusterEventsChart({
         emphasis: {
           focus: "series",
           lineStyle: {
-            width: 4,
+            width: 6,
           },
         },
         blur: {
@@ -233,7 +235,10 @@ export function ClusterEventsChart({
             // Shift = RealTime - NormalizedTime
             // This allows us to project the Global Normalized Window onto this specific specific calendar day
             const realStart = new Date(event.startTime).getTime();
-            const normalizedStart = normalizeTime(event.startTime, boundaryHour);
+            const normalizedStart = normalizeTime(
+              event.startTime,
+              boundaryHour
+            );
             const timeShift = realStart - normalizedStart;
 
             const localSearchStart = globalSearchStart + timeShift;
@@ -255,10 +260,10 @@ export function ClusterEventsChart({
               type: "bar",
               xAxisIndex: 1,
               yAxisIndex: 1,
-              barMaxWidth: 12,
+              barWidth: 10,
               itemStyle: {
                 color: visuals.color,
-                opacity: 0.6,
+                opacity: 1,
               },
               emphasis: {
                 focus: "series",
@@ -279,6 +284,9 @@ export function ClusterEventsChart({
     const grid = hasCarbData
       ? [
           {
+            show: true,
+            backgroundColor: "#f8f9fa",
+            borderWidth: 0,
             left: 60,
             right: 20,
             top: "10%",
@@ -295,6 +303,9 @@ export function ClusterEventsChart({
         ]
       : [
           {
+            show: true,
+            backgroundColor: "#f8f9fa",
+            borderWidth: 0,
             left: 60,
             right: 20,
             bottom: "15%",

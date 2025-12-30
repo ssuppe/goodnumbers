@@ -96,15 +96,14 @@ export class NightscoutClient {
   }
 
   public async fetchTreatments(
-    days: number = 7,
+    from: Date,
+    to: Date,
   ): Promise<NightscoutTreatment[]> {
-    const now = Date.now();
-    const daysAgoTimestamp = now - days * 24 * 60 * 60 * 1000;
-
     let treatments = await this.fetch<NightscoutTreatment[]>(
       '/api/v1/treatments.json',
       {
-        'find[created_at][$gte]': daysAgoTimestamp,
+        'find[created_at][$gte]': from.toISOString(),
+        'find[created_at][$lte]': to.toISOString(),
         count: 10000,
       },
     );
@@ -112,12 +111,14 @@ export class NightscoutClient {
 
     // Client-side filtering
     // Note: Treatments use 'created_at' in the query but the object might have 'date' or 'created_at'
-    // The PoC filters on 'date' cast to Number.
+    const fromTime = from.getTime();
+    const toTime = to.getTime();
+
     treatments = treatments.filter((treatment) => {
       // Some nightscout versions use created_at string, some use date number.
       // We'll try to be robust.
       const date = treatment.date || new Date(treatment.created_at).getTime();
-      return date >= daysAgoTimestamp;
+      return date >= fromTime && date <= toTime;
     });
     console.log(
       `After filtering, ${treatments.length} treatments remain within the time window`,

@@ -38,7 +38,9 @@ runLiveTests('NightscoutClient Live Integration', { timeout: 30000 }, () => {
     'should fetch real treatments from the server',
     { timeout: 30000 },
     async () => {
-      const treatments = await client.fetchTreatments(1);
+      const now = new Date();
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const treatments = await client.fetchTreatments(yesterday, now);
       console.log(`[Live Test] Fetched ${treatments.length} treatments.`);
 
       expect(treatments).toBeDefined();

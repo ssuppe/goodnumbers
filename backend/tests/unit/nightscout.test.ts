@@ -129,9 +129,11 @@ describe('NightscoutClient', () => {
       expect(timestamp).toBeLessThan(Date.now());
     });
 
-    it('fetchTreatments should call correct endpoint with numeric timestamp query params', async () => {
+    it('fetchTreatments should call correct endpoint with ISO string query params', async () => {
       vi.mocked(axios.get).mockResolvedValue({ data: [] });
-      await client.fetchTreatments(7);
+      const from = new Date('2025-01-01T00:00:00.000Z');
+      const to = new Date('2025-01-08T00:00:00.000Z');
+      await client.fetchTreatments(from, to);
 
       const expectedUrl = `${validUrl}/api/v1/treatments.json`;
       expect(axios.get).toHaveBeenCalledWith(
