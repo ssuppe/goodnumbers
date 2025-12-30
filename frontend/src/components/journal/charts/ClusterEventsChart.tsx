@@ -148,7 +148,7 @@ export function ClusterEventsChart({
         });
       },
     }),
-    []
+    [],
   );
 
   const options = useMemo(() => {
@@ -159,7 +159,7 @@ export function ClusterEventsChart({
 
     const sortedEvents = [...cluster.events].sort(
       (a, b) =>
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+        new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
     );
 
     // Calculate global normalized bounds for the entire cluster
@@ -183,10 +183,19 @@ export function ClusterEventsChart({
 
     const hasCarbData = treatments.some((t) => t.carbs && t.carbs > 0);
 
-    const lineSeries = sortedEvents.map((event, index) => {
-      const visuals = getEventVisuals(index);
+    // Create a map of unique days to assign consistent colors
+    const uniqueDays = Array.from(
+      new Set(
+        sortedEvents.map((e) => format(new Date(e.startTime), "EEE, MMM d")),
+      ),
+    );
+
+    const lineSeries = sortedEvents.map((event) => {
       const startDate = new Date(event.startTime);
       const seriesName = format(startDate, "EEE, MMM d");
+      // Assign color based on the unique day index
+      const dayIndex = uniqueDays.indexOf(seriesName);
+      const visuals = getEventVisuals(dayIndex);
 
       return {
         name: seriesName,
@@ -228,8 +237,11 @@ export function ClusterEventsChart({
 
     const barSeries = hasCarbData
       ? sortedEvents
-          .map((event, index) => {
-            const visuals = getEventVisuals(index);
+          .map((event) => {
+            const eventStartDate = new Date(event.startTime);
+            const seriesName = format(eventStartDate, "EEE, MMM d");
+            const dayIndex = uniqueDays.indexOf(seriesName);
+            const visuals = getEventVisuals(dayIndex);
 
             // Calculate the time shift for this specific day
             // Shift = RealTime - NormalizedTime
@@ -237,7 +249,7 @@ export function ClusterEventsChart({
             const realStart = new Date(event.startTime).getTime();
             const normalizedStart = normalizeTime(
               event.startTime,
-              boundaryHour
+              boundaryHour,
             );
             const timeShift = realStart - normalizedStart;
 
@@ -251,9 +263,6 @@ export function ClusterEventsChart({
             });
 
             if (eventTreatments.length === 0) return null;
-
-            const startDate = new Date(event.startTime);
-            const seriesName = format(startDate, "EEE, MMM d");
 
             return {
               name: seriesName,
@@ -316,7 +325,7 @@ export function ClusterEventsChart({
 
     // Calculate common domain for synchronized axes
     const allSeries = [...lineSeries, ...barSeries];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
     const domain = calculateCommonDomain(allSeries as any);
 
     const xAxisCommon = {
