@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { differenceInDays } from "date-fns";
 import { api } from "../lib/api";
 import { useApiForm } from "../hooks/useApiForm";
 import StartJournalCard from "../components/dashboard/StartJournalCard";
@@ -31,41 +30,17 @@ export default function DashboardPage() {
     void fetchJournals();
   }, []);
 
-  // Determine if the most recent journal is an active draft (< 3 days old)
-  const activeDraftId = useMemo(() => {
-    if (journals.length === 0) return null;
-    const latestJournal = journals[0];
-    const latestDate = new Date(latestJournal.createdAt);
+  // Identify if any journal is currently processing (PENDING status)
+  const pendingJournal = useMemo(() => 
+    journals.find((j) => j.status === "PENDING"), 
+    [journals]
+  );
 
-    if (isNaN(latestDate.getTime())) return null;
-
-    // If it's less than 3 days old, it's considered an active draft for this week
-    if (differenceInDays(new Date(), latestDate) < 3) {
-      return latestJournal.id;
-    }
-    return null;
-  }, [journals]);
-
-  const isJournalCreationAllowed = useMemo(() => {
-    // If there's no journals, allow creation
-    if (journals.length === 0) return true;
-
-    // If there is an active draft, we technically "allow" interaction (to continue it)
-    // but the StartJournalCard will handle the UI difference.
-    if (activeDraftId) return true;
-
-    // Otherwise, check the 3-day rule for a NEW journal
-    const latestJournalDate = new Date(journals[0].createdAt);
-    return differenceInDays(new Date(), latestJournalDate) >= 3;
-  }, [journals, activeDraftId]);
-
-  // Filter out the active draft from the past list so it doesn't appear twice
-  const pastJournals = useMemo(() => {
-    if (activeDraftId) {
-      return journals.slice(1);
-    }
-    return journals;
-  }, [journals, activeDraftId]);
+  // Filter out pending journals from the history list to keep the UI clean
+  const historyJournals = useMemo(() => 
+    journals.filter((j) => j.status !== "PENDING"), 
+    [journals]
+  );
 
   const [handleStartJournal, isSubmitting, creationError] = useApiForm(
     async () => {
@@ -95,16 +70,12 @@ export default function DashboardPage() {
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
       <StartJournalCard
-        isEnabled={isJournalCreationAllowed}
+        isProcessing={!!pendingJournal}
         isSubmitting={isSubmitting}
         error={creationError}
-        onClick={() => void handleStartJournal({})}
-        latestJournalDate={
-          journals.length > 0 ? new Date(journals[0].createdAt) : undefined
-        }
-        activeDraftId={activeDraftId || undefined}
+        onClick={() => void handleStartJournal({}) as any}
       />
-      <PastJournalsList journals={pastJournals} />
+      <PastJournalsList journals={historyJournals} />
     </div>
   );
 }

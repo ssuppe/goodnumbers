@@ -1,24 +1,23 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import { MemoryRouter } from "react-router-dom";
 import StartJournalCard from "./StartJournalCard";
-import { addDays, format } from "date-fns";
 
 // Mock lucide-react to replace icons with simple divs for the JSDOM environment
 vi.mock("lucide-react", () => ({
   // The 'Sprout' icon in the enabled and disabled states
-  Sprout: (props) => <div data-testid="sprout-icon" {...props} />,
+  Sprout: (props: any) => <div data-testid="sprout-icon" {...props} />,
   // The 'Loader2' icon in the submitting state
-  Loader2: (props) => <div data-testid="loader-icon" {...props} />,
+  Loader2: (props: any) => <div data-testid="loader-icon" {...props} />,
 }));
 
 describe("StartJournalCard", () => {
   const mockOnClick = vi.fn();
 
-  it("renders the enabled state correctly", () => {
+  it("renders the enabled state correctly (default)", () => {
+    // @ts-expect-error: 'isProcessing' prop missing in current implementation
     render(
       <StartJournalCard
-        isEnabled={true}
+        isProcessing={false}
         isSubmitting={false}
         error={null}
         onClick={mockOnClick}
@@ -34,35 +33,36 @@ describe("StartJournalCard", () => {
     ).toBeEnabled();
   });
 
-  it("renders the disabled state correctly", () => {
-    const today = new Date();
-    const unlockDate = addDays(today, 3);
+  it("renders the processing state correctly", () => {
+    // @ts-expect-error: 'isProcessing' prop missing in current implementation
     render(
       <StartJournalCard
-        isEnabled={false}
+        isProcessing={true}
         isSubmitting={false}
         error={null}
         onClick={mockOnClick}
-        latestJournalDate={today}
       />,
     );
 
     expect(
-      screen.getByText(/Your next journal unlocks on/i),
+      screen.getByRole("heading", { name: /Journal Processing.../i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(format(unlockDate, "MMMM d, yyyy")),
+      screen.getByText(/Your journal entry is being created/i),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("sprout-icon")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Start Journal/i }),
-    ).toBeDisabled();
+    // Loader should be visible (reusing Loader2 icon usually, or checking text if simpler)
+    // The plan says "large Spinner", let's assume it uses Loader2
+    expect(screen.getByTestId("loader-icon")).toBeInTheDocument();
+    
+    // Button should NOT be present
+    expect(screen.queryByRole("button", { name: /Start Journal/i })).not.toBeInTheDocument();
   });
 
   it("renders the submitting state correctly", () => {
+    // @ts-expect-error: 'isProcessing' prop missing in current implementation
     render(
       <StartJournalCard
-        isEnabled={true}
+        isProcessing={false}
         isSubmitting={true}
         error={null}
         onClick={mockOnClick}
@@ -76,9 +76,10 @@ describe("StartJournalCard", () => {
 
   it("renders an error message when an error is provided", () => {
     const errorMessage = "API connection failed.";
+    // @ts-expect-error: 'isProcessing' prop missing in current implementation
     render(
       <StartJournalCard
-        isEnabled={true}
+        isProcessing={false}
         isSubmitting={false}
         error={errorMessage}
         onClick={mockOnClick}
@@ -86,27 +87,5 @@ describe("StartJournalCard", () => {
     );
 
     expect(screen.getByText(errorMessage)).toBeInTheDocument();
-  });
-
-  it("renders the 'Continue Journal' state when activeDraftId is provided", () => {
-    const activeDraftId = "draft-123";
-    render(
-      <MemoryRouter>
-        <StartJournalCard
-          isEnabled={true}
-          isSubmitting={false}
-          error={null}
-          onClick={mockOnClick}
-          activeDraftId={activeDraftId}
-        />
-      </MemoryRouter>,
-    );
-
-    expect(
-      screen.getByRole("heading", { name: /Finish your reflection/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /Continue Journal/i }),
-    ).toHaveAttribute("href", `/journal/${activeDraftId}`);
   });
 });

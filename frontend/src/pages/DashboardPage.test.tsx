@@ -19,15 +19,19 @@ vi.mock("../components/dashboard/StartJournalCard", () => ({
   default: vi.fn((props) => (
     <div data-testid="start-journal-card" {...props}>
       StartJournalCard Mock
-      <button
-        onClick={props.onClick}
-        disabled={!props.isEnabled || props.isSubmitting}
-      >
-        {props.isSubmitting ? "Starting..." : "Start Journal"}
-      </button>
+      {/* Conditionally render button based on isProcessing */}
+      {!props.isProcessing && (
+        <button
+          onClick={props.onClick}
+          disabled={props.isSubmitting}
+        >
+          {props.isSubmitting ? "Starting..." : "Start Journal"}
+        </button>
+      )}
       {props.error && (
         <div data-testid="start-journal-error">{props.error}</div>
       )}
+      {props.isProcessing && <div>Processing...</div>}
     </div>
   )),
 }));
@@ -36,6 +40,9 @@ vi.mock("../components/dashboard/PastJournalsList", () => ({
   default: vi.fn((props) => (
     <div data-testid="past-journals-list" {...props}>
       PastJournalsList Mock
+      {/* @ts-expect-error: Mocked component props */}
+      <div>Length: {props.journals.length}</div>
+      {/* @ts-expect-error: Mocked component props */}
       {props.journals.map((journal: JournalSummary) => (
         <div key={journal.id}>{journal.podcastTitle}</div>
       ))}
@@ -92,6 +99,7 @@ describe("DashboardPage", () => {
   });
 
   it("renders StartJournalCard and PastJournalsList with correct props when data is fetched successfully", async () => {
+    // @ts-expect-error: Type needs 'status' but mock doesn't have it yet, we add it
     const mockJournals: JournalSummary[] = [
       {
         id: "1",
@@ -99,7 +107,8 @@ describe("DashboardPage", () => {
         podcastTitle: "Week 1",
         podcastDescription: "Desc 1",
         weeklyVibe: "Sprouting",
-      }, // Changed to 4 days ago
+        status: "COMPLETE", // ADDED
+      },
     ];
     // @ts-expect-error: Mocked API call
     (api.get as vi.Mock).mockResolvedValueOnce({ data: mockJournals });
@@ -114,21 +123,16 @@ describe("DashboardPage", () => {
       expect(screen.getByTestId("start-journal-card")).toBeInTheDocument();
       // @ts-expect-error: expect is augmented by Vitest
       expect(screen.getByTestId("past-journals-list")).toBeInTheDocument();
+      
       // Verify props passed to StartJournalCard
       // @ts-expect-error: Mocked component props access
-      const startJournalCardProps =
-        vi.mocked(StartJournalCard).mock.calls[0][0];
+      const startJournalCardProps = vi.mocked(StartJournalCard).mock.calls[0][0];
       // @ts-expect-error: expect is augmented by Vitest
-      expect(startJournalCardProps.isEnabled).toBe(true); // Assuming 3 days passed or no journals
-      // @ts-expect-error: expect is augmented by Vitest
-      expect(startJournalCardProps.latestJournalDate).toEqual(
-        new Date(mockJournals[0].createdAt),
-      );
+      expect(startJournalCardProps.isProcessing).toBe(false);
 
       // Verify props passed to PastJournalsList
       // @ts-expect-error: Mocked component props access
-      const pastJournalsListProps =
-        vi.mocked(PastJournalsList).mock.calls[0][0];
+      const pastJournalsListProps = vi.mocked(PastJournalsList).mock.calls[0][0];
       // @ts-expect-error: expect is augmented by Vitest
       expect(pastJournalsListProps.journals).toEqual(mockJournals);
     });
@@ -167,26 +171,28 @@ describe("DashboardPage", () => {
     });
   });
 
-  it("passes activeDraftId to StartJournalCard and filters it from list if < 3 days old", async () => {
-    const recentJournal: JournalSummary = {
-      id: "active-draft-1",
-      createdAt: new Date().toISOString(), // Today
-      podcastTitle: "Active Draft",
-      podcastDescription: "In progress",
-      weeklyVibe: null,
+  it("passes processing state to card and filters pending from list", async () => {
+    // @ts-expect-error: Type needs 'status'
+    const pending: JournalSummary = {
+      id: '1', 
+      status: 'PENDING', 
+      createdAt: new Date().toISOString(),
+      podcastTitle: null,
+      podcastDescription: null,
+      weeklyVibe: null
     };
-    const olderJournal: JournalSummary = {
-      id: "old-journal-2",
+    // @ts-expect-error: Type needs 'status'
+    const complete: JournalSummary = {
+      id: '2', 
+      status: 'COMPLETE', 
       createdAt: addDays(new Date(), -7).toISOString(),
-      podcastTitle: "Old Journal",
-      podcastDescription: "Done",
-      weeklyVibe: "Flourishing",
+      podcastTitle: "Done",
+      podcastDescription: "Desc",
+      weeklyVibe: "Flourishing"
     };
 
     // @ts-expect-error: Mocked API call
-    (api.get as vi.Mock).mockResolvedValueOnce({
-      data: [recentJournal, olderJournal],
-    });
+    (api.get as vi.Mock).mockResolvedValueOnce({ data: [pending, complete] });
 
     render(
       <MemoryRouter>
@@ -195,23 +201,21 @@ describe("DashboardPage", () => {
     );
 
     await waitFor(() => {
-      // Verify StartJournalCard receives activeDraftId
+      // Verify StartJournalCard receives isProcessing=true
       // @ts-expect-error: Mocked component props access
       const startCalls = vi.mocked(StartJournalCard).mock.calls;
       const startCardProps = startCalls[startCalls.length - 1][0];
       // @ts-expect-error: expect is augmented by Vitest
-      expect(startCardProps.activeDraftId).toBe(recentJournal.id);
-      // @ts-expect-error: expect is augmented by Vitest
-      expect(startCardProps.isEnabled).toBe(true); // Should be enabled to allow "Continue"
+      expect(startCardProps.isProcessing).toBe(true);
 
-      // Verify PastJournalsList DOES NOT contain the active draft
+      // Verify PastJournalsList receives ONLY the complete journal (length 1)
       // @ts-expect-error: Mocked component props access
       const listCalls = vi.mocked(PastJournalsList).mock.calls;
       const listProps = listCalls[listCalls.length - 1][0];
       // @ts-expect-error: expect is augmented by Vitest
       expect(listProps.journals).toHaveLength(1);
       // @ts-expect-error: expect is augmented by Vitest
-      expect(listProps.journals[0].id).toBe(olderJournal.id);
+      expect(listProps.journals[0].id).toBe(complete.id);
     });
   });
 });
