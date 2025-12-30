@@ -13,12 +13,13 @@ const StickyActionBar: React.FC<StickyActionBarProps> = ({
   isLoading,
   error,
 }) => {
-  const primaryColor = "#1976d2";
+  // UPDATED: Mesa Primary (Terracotta)
+  const primaryColor = "#D9775B";
   const buttonBaseClasses =
     "py-2 px-4 rounded-lg font-semibold text-base transition-all duration-200 w-full sm:w-auto";
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white shadow-xl border-t-2 border-gray-200">
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white shadow-xl border-t-2 border-mesa-border">
       <div className="max-w-4xl mx-auto p-3">
         {error && (
           <div className="mb-2 text-center text-red-600 font-medium">
@@ -29,7 +30,7 @@ const StickyActionBar: React.FC<StickyActionBarProps> = ({
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className={`${buttonBaseClasses} text-gray-700 border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed`}
+            className={`${buttonBaseClasses} text-mesa-text border border-mesa-border hover:bg-mesa-bg disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             Discard
           </button>
@@ -38,7 +39,7 @@ const StickyActionBar: React.FC<StickyActionBarProps> = ({
             onClick={onSave}
             disabled={isLoading}
             style={{ backgroundColor: isLoading ? undefined : primaryColor }}
-            className={`${buttonBaseClasses} text-white shadow-md hover:shadow-lg disabled:bg-blue-400 disabled:cursor-not-allowed`}
+            className={`${buttonBaseClasses} text-white shadow-md hover:shadow-lg disabled:bg-mesa-muted disabled:cursor-not-allowed hover:brightness-95`}
           >
             {isLoading ? (
               <span className="flex items-center justify-center">

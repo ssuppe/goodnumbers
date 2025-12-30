@@ -24,8 +24,8 @@ export default function WeeklyVibe({
             onClick={() => onChange(vibe.label)}
             className={`group flex flex-col items-center justify-center p-4 rounded-lg border transition-all duration-200 transform hover:scale-[1.03] hover:shadow-lg ${
               selectedVibe === vibe.label
-                ? "border-blue-600 bg-blue-100 ring-4 ring-offset-2 ring-opacity-50 ring-blue-500"
-                : "border-gray-200 hover:bg-gray-50"
+                ? "border-mesa-primary bg-mesa-bg ring-4 ring-offset-2 ring-opacity-50 ring-mesa-primary"
+                : "border-gray-200 hover:bg-mesa-bg"
             }`}
           >
             <span className="text-4xl mb-2 transition-transform duration-300 group-hover:rotate-6">

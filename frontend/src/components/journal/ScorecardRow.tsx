@@ -34,7 +34,7 @@ export default function ScorecardRow({ data, units }: ScorecardRowProps) {
         value={formatGlucose(data.avgGlucose)}
         unit={units === "MGDL" ? "mg/dL" : "mmol/L"}
         icon="🧭"
-        colorClass="bg-blue-600"
+        colorClass="bg-mesa-primary"
         tooltip="Your average blood sugar over the last 7 days."
         trend={formatTrend(data.trends?.avgGlucose)}
         inverseTrend={true} // Lower is better
@@ -43,7 +43,7 @@ export default function ScorecardRow({ data, units }: ScorecardRowProps) {
         label="Stability"
         value={`${Math.round(data.stability)}%`}
         icon="🌊"
-        colorClass="bg-indigo-600"
+        colorClass="bg-mesa-secondary"
         percentage={data.stability}
         tooltip="Percentage of time your glucose was changing slowly (< 1.5 mg/dL/min)."
         trend={data.trends?.stability}

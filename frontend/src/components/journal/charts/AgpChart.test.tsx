@@ -155,7 +155,7 @@ describe("AgpChart", () => {
     expect(tooltipHtml).toContain("80 - 140"); // 90% range (p5-p95)
 
     // Check for visual elements (colored dots)
-    // Median Blue
-    expect(tooltipHtml).toContain("#1976d2");
+    // Median Color (Mesa Primary)
+    expect(tooltipHtml).toContain("#D9775B");
   });
 });

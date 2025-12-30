@@ -72,7 +72,7 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[80vh] p-8">
-        <Loader2 className="animate-spin w-8 h-8 text-[#1976d2]" />
+        <Loader2 className="animate-spin w-8 h-8 text-mesa-primary" />
         <span className="ml-3 text-lg text-gray-700">Loading dashboard...</span>
       </div>
     );

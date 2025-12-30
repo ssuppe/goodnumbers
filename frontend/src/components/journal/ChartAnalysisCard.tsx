@@ -35,7 +35,7 @@ export function ChartAnalysisCard({
       case "SERIOUS":
         return <AlertTriangle className="w-5 h-5 text-amber-500" />;
       case "IMPORTANT":
-        return <Info className="w-5 h-5 text-blue-500" />;
+        return <Info className="w-5 h-5 text-mesa-secondary" />;
       case "ALWAYS_INCLUDE":
       default:
         return <Lightbulb className="w-5 h-5 text-gray-500" />;
@@ -59,8 +59,8 @@ export function ChartAnalysisCard({
         Understanding the Chart
       </p>
       <div>
-        <span className="font-semibold text-blue-400">Median:</span> The middle
-        of your readings. Aim for this to be flat and in the green zone.
+        <span className="font-semibold text-mesa-primary">Median:</span> The
+        middle of your readings. Aim for this to be flat and in the green zone.
       </div>
       <div>
         <span className="font-semibold text-slate-300">50% of Readings</span>{" "}

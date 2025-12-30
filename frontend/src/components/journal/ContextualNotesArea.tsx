@@ -38,7 +38,7 @@ const ContextualNotesArea: React.FC<ContextualNotesAreaProps> = ({
   const commonClasses =
     "w-full p-3 border rounded-lg transition duration-150 text-gray-800";
   const focusClasses =
-    "focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none";
+    "focus:ring-2 focus:ring-mesa-primary focus:border-mesa-primary outline-none";
   const inputStyle = `border-gray-300 ${focusClasses} bg-white shadow-sm`;
   const textareaStyle = `border-gray-300 resize-y ${focusClasses}`;
 
@@ -46,10 +46,7 @@ const ContextualNotesArea: React.FC<ContextualNotesAreaProps> = ({
     <div className="space-y-4">
       {/* Title */}
       <h3 className="text-xl font-bold text-gray-800 flex items-center">
-        <PencilLine
-          className="inline-block w-5 h-5 mr-2"
-          style={{ color: "#1976d2" }}
-        />
+        <PencilLine className="inline-block w-5 h-5 mr-2 text-mesa-primary" />
         On reflection...
       </h3>
 

@@ -54,7 +54,10 @@ export default function JournalPage() {
         const response = await api.get<JournalResponse>(`/journals/${id}`);
 
         // Treatments are now included in the response.data
-        setJournal({ ...response.data, treatments: response.data.treatments || [] });
+        setJournal({
+          ...response.data,
+          treatments: response.data.treatments || [],
+        });
 
         // Initialize form data
         setFormData({
@@ -134,8 +137,9 @@ export default function JournalPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[80vh] p-8">
-        <Loader2 className="animate-spin w-8 h-8 text-[#1976d2]" />
-        <span className="ml-3 text-lg text-gray-700">
+        {/* Updated: Using Mesa Primary (Terracotta) for the Loader */}
+        <Loader2 className="animate-spin w-8 h-8 text-mesa-primary" />
+        <span className="ml-3 text-lg text-mesa-text">
           Loading your journal...
         </span>
       </div>
