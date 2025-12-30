@@ -165,7 +165,7 @@ export class HotspotDetector {
         ),
       );
 
-      if (distinctDays.size >= 3) {
+      if (distinctDays.size >= 2) {
         clusters.push(
           this.buildClusterObject(component, Array.from(distinctDays)),
         );

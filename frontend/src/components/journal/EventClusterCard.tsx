@@ -13,16 +13,18 @@ interface EventClusterCardProps {
 }
 
 // Helper to format minutes into HH:MM using date-fns for consistency
-function minutesToTimeString(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
+export function minutesToTimeString(minutes: number): string {
+  // Round to nearest 15 minutes
+  const roundedMinutes = Math.round(minutes / 15) * 15;
+  const h = Math.floor(roundedMinutes / 60);
+  const m = roundedMinutes % 60;
   const date = new Date();
   date.setHours(h, m, 0, 0);
   return format(date, "HH:mm");
 }
 
 // Helper to get colloquial event name
-function getColloquialEventName(type: string): string {
+export function getColloquialEventName(type: string): string {
   const upperType = type.toUpperCase();
   if (["HYPER", "HIGH", "VERY_HIGH"].includes(upperType)) {
     return "high blood sugar";
@@ -69,9 +71,19 @@ export default function EventClusterCard({
     const min = Math.min(...startTimes);
     const max = Math.max(...startTimes);
 
+    // Check for wraparound (e.g. 23:00 and 01:00)
+    // If the spread is > 12 hours (720 mins), we assume it wraps around midnight
+    const isWraparound = max - min > 720;
+
+    const earliestStr = minutesToTimeString(isWraparound ? max : min);
+    const latestStr = minutesToTimeString(isWraparound ? min : max);
+
+    // If the rounded times are identical, don't show a range
+    if (earliestStr === latestStr) return null;
+
     return {
-      earliest: minutesToTimeString(min),
-      latest: minutesToTimeString(max),
+      earliest: earliestStr,
+      latest: latestStr,
     };
   }, [clusterData]);
 
