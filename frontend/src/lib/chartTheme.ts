@@ -2,13 +2,13 @@
 // Colors match CSS variables defined in index.css
 
 export const CHART_THEME = {
-  medianLine: '#1976d2', // Matches var(--primary-color)
-  meanLine: 'rgba(70, 90, 130, 0.8)',
-  clinicalLow: '#d32f2f', // Matches var(--feedback-critical-color)
-  clinicalHigh: '#d32f2f',
-  patientGoal: '#52c41a',
+  medianLine: "#D9775B", // Mesa Primary (Terracotta)
+  meanLine: "#2C4C5B", // Mesa Secondary (Petrol Blue)
+  clinicalLow: "#d32f2f", // Keep Critical Red
+  clinicalHigh: "#d32f2f",
+  patientGoal: "#52c41a",
   bands: {
-    outer: 'rgba(120, 140, 180, 0.25)', // 5th-95th
-    inner: 'rgba(90, 110, 150, 0.35)',  // 25th-75th
-  }
+    outer: "rgba(44, 76, 91, 0.1)", // Mesa Secondary at 10%
+    inner: "rgba(44, 76, 91, 0.2)", // Mesa Secondary at 20%
+  },
 };

@@ -38,7 +38,7 @@ export default function HomePage() {
       <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
         <Link
           to="/demo"
-          className="inline-block px-8 py-3 rounded-lg text-base font-medium bg-white v3-primary-text border-2 v3-border-primary hover:bg-blue-50 transition-colors"
+          className="inline-block px-8 py-3 rounded-lg text-base font-medium bg-white v3-primary-text border-2 v3-border-primary hover:bg-mesa-bg transition-colors"
         >
           See a demo
         </Link>

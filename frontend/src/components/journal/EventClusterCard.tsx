@@ -133,7 +133,7 @@ export default function EventClusterCard({
               value={userNote || ""}
               onChange={(e) => onNoteChange(e.target.value)}
               placeholder="Why do you think this happened? Leave some notes on what you think the issue is, or how you can improve next week. If you don’t know, that's ok! Leave it blank."
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow text-sm"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mesa-primary focus:border-mesa-primary outline-none transition-shadow text-sm"
               rows={3}
               maxLength={1000}
             />

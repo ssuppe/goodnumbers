@@ -22,7 +22,7 @@ export default function JournalLoadingPage() {
       {isFailed ? (
         <AlertTriangle className="w-16 h-16 text-red-500 mb-6" />
       ) : (
-        <Loader2 className="animate-spin w-16 h-16 text-[#1976d2] mb-6" />
+        <Loader2 className="animate-spin w-16 h-16 text-mesa-primary mb-6" />
       )}
       <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
         {isFailed ? "Generation Failed" : "Generating Your Journal..."}
@@ -43,7 +43,7 @@ export default function JournalLoadingPage() {
             className="w-full bg-gray-200 rounded-full h-2.5"
           >
             <div
-              className="bg-[#1976d2] h-2.5 rounded-full transition-all duration-500"
+              className="bg-mesa-primary h-2.5 rounded-full transition-all duration-500"
               style={{ width: `${progress}%` }}
             ></div>
           </div>

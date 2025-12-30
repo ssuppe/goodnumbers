@@ -139,7 +139,7 @@ export default function InfluencingFactors({
                       e.stopPropagation();
                       handleToggle(option.value);
                     }}
-                    className="px-2 py-1.5 rounded-lg text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200 flex items-center hover:bg-blue-200 transition-colors"
+                    className="px-2 py-1.5 rounded-lg text-sm font-medium bg-mesa-bg text-mesa-primary border border-mesa-primary flex items-center hover:bg-mesa-accent transition-colors"
                   >
                     {/* Increased size to text-2xl, added leading-none for alignment */}
                     <span className="mr-2 text-2xl leading-none">
@@ -151,14 +151,14 @@ export default function InfluencingFactors({
               })}
               <button
                 onClick={() => setIsOpen(true)}
-                className="px-3 py-1.5 text-sm text-gray-500 hover:text-blue-600 hover:underline"
+                className="px-3 py-1.5 text-sm text-gray-500 hover:text-primary-hover hover:underline"
               >
                 + Add more
               </button>
             </div>
           ) : (
             <p
-              className="text-gray-500 italic cursor-pointer hover:text-blue-600"
+              className="text-gray-500 italic cursor-pointer hover:text-primary-hover"
               onClick={() => setIsOpen(true)}
             >
               You haven't added any influencing factors. Expand to add.
@@ -182,7 +182,7 @@ export default function InfluencingFactors({
                       onClick={() => handleToggle(option.value)}
                       className={`px-2 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 flex items-center justify-center text-center border h-full ${
                         isSelected
-                          ? "bg-blue-100 text-blue-800 border-blue-200"
+                          ? "bg-mesa-bg text-mesa-primary border-mesa-primary"
                           : "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200 hover:scale-[1.05] transform"
                       }`}
                     >

@@ -53,7 +53,7 @@ export default function AgreementsPage() {
                   type="checkbox"
                   checked={termsAgreed}
                   onChange={(e) => setTermsAgreed(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-gray-300 text-mesa-primary focus:ring-mesa-primary"
                 />
               </div>
               <div className="ml-3 text-sm leading-6">
@@ -61,7 +61,7 @@ export default function AgreementsPage() {
                   I accept the{" "}
                   <Link
                     to="/terms"
-                    className="font-medium v3-primary-text hover:underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    className="font-medium v3-primary-text hover:underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-mesa-primary"
                   >
                     Terms and Conditions
                   </Link>
@@ -127,9 +127,9 @@ export default function AgreementsPage() {
               <button
                 type="submit"
                 disabled={!canContinue || isSubmitting}
-                className={`flex w-full justify-center rounded-lg px-4 py-3 text-base font-semibold text-white shadow-sm transition-colors duration-150 disabled:bg-gray-400 disabled:text-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+                className={`flex w-full justify-center rounded-lg px-4 py-3 text-base font-semibold text-white shadow-sm transition-colors duration-150 disabled:bg-gray-400 disabled:text-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mesa-primary ${
                   canContinue && !isSubmitting
-                    ? "bg-blue-600 hover:bg-blue-700"
+                    ? "bg-mesa-primary hover:bg-primary-hover"
                     : ""
                 }`}
               >
