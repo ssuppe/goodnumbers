@@ -5,17 +5,24 @@ import type { GlycemicCluster } from "@goodnumbers/types";
  * It finds the largest gap in the data and uses its midpoint as the start of the day.
  *
  * @param cluster The glycemic cluster containing events
+ * @param additionalTimestamps Optional array of other relevant timestamps (e.g. treatments) to consider
  * @returns An hour (0-23) representing the start of the chart's 24h window
  */
-export function getBoundaryHour(cluster: GlycemicCluster): number {
+export function getBoundaryHour(cluster: GlycemicCluster, additionalTimestamps: number[] = []): number {
   const minutesSet = new Set<number>();
 
-  // Collect all unique timestamps converted to minutes-from-midnight (UTC)
+  // 1. Collect minutes from Cluster Events
   cluster.events.forEach((e) => {
     e.readings.forEach((r) => {
       const d = new Date(r.timestamp);
       minutesSet.add(d.getUTCHours() * 60 + d.getUTCMinutes());
     });
+  });
+
+  // 2. Collect minutes from Additional Timestamps (Treatments)
+  additionalTimestamps.forEach((ts) => {
+    const d = new Date(ts);
+    minutesSet.add(d.getUTCHours() * 60 + d.getUTCMinutes());
   });
 
   if (minutesSet.size === 0) return 0;
@@ -24,7 +31,7 @@ export function getBoundaryHour(cluster: GlycemicCluster): number {
   let maxGap = 0;
   let gapStart = 0;
 
-  // 1. Check gaps between consecutive sorted points
+  // 3. Check gaps between consecutive sorted points
   for (let i = 0; i < sortedMinutes.length - 1; i++) {
     const gap = sortedMinutes[i + 1] - sortedMinutes[i];
     if (gap > maxGap) {
@@ -33,23 +40,15 @@ export function getBoundaryHour(cluster: GlycemicCluster): number {
     }
   }
 
-  // 2. Check the "wraparound" gap (end of day to start of day)
-  // Example: Last point 23:00 (1380), First point 01:00 (60)
-  // Gap = (1440 - 1380) + 60 = 60 + 60 = 120 minutes
+  // 4. Check the "wraparound" gap (end of day to start of day)
   const lastPoint = sortedMinutes[sortedMinutes.length - 1];
   const firstPoint = sortedMinutes[0];
   const wrapGap = 1440 - lastPoint + firstPoint;
 
-  // If the wraparound gap is the largest (or equal), it means the standard midnight split
-  // is the best (data is bunched in the middle of the day). Return 0.
   if (wrapGap >= maxGap) {
     return 0;
   }
 
-  // Otherwise, the best split is in the middle of the largest internal gap.
-  // Example: Data at 23:00 (1380) and 01:00 (60).
-  // Internal Gap is 1380 - 60 = 1320 minutes (22 hours).
-  // Midpoint is 60 + (1320 / 2) = 60 + 660 = 720 minutes (12:00).
   const midpointMinute = gapStart + maxGap / 2;
   return Math.floor(midpointMinute / 60);
 }
@@ -73,7 +72,8 @@ export const normalizeTime = (isoString: string, boundaryHour: number) => {
   // relative to the start of our window.
   if (h < boundaryHour) {
     d.setUTCDate(2);
-  } else {
+  }
+  else {
     d.setUTCDate(1);
   }
   return d.getTime();
@@ -95,3 +95,41 @@ export const formatAxisLabel = (value: number) => {
   const minuteStr = m > 0 ? `:${m.toString().padStart(2, "0")}` : "";
   return `${h12}${minuteStr}${ampm}`;
 };
+
+/**
+ * Calculates a common time domain for multiple series to ensure synchronized x-axes.
+ * 
+ * @param seriesList List of ECharts series objects containing data
+ * @param paddingMinutes Number of minutes to add as buffer to start and end
+ * @returns Object with min/max timestamps, or null if no data
+ */
+export function calculateCommonDomain(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  seriesList: { data: { value: (number | string)[] }[] }[],
+  paddingMinutes: number = 30
+): { min: number; max: number } | null {
+  let min = Infinity;
+  let max = -Infinity;
+  let hasData = false;
+
+  for (const series of seriesList) {
+    if (!series.data) continue;
+    for (const item of series.data) {
+      // Normalized timestamp is at index 0
+      const time = item.value[0];
+      if (typeof time === 'number') {
+        if (time < min) min = time;
+        if (time > max) max = time;
+        hasData = true;
+      }
+    }
+  }
+
+  if (!hasData) return null;
+
+  const padding = paddingMinutes * 60 * 1000;
+  return {
+    min: min - padding,
+    max: max + padding
+  };
+}

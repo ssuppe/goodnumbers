@@ -8,7 +8,7 @@ import {
 
 const MIN_DURATION_MINUTES = 20;
 const MAX_ENTRIES = 5000;
-export const BUFFER_MINUTES = 60;
+export const BUFFER_MINUTES = 180;
 
 export class HotspotDetector {
   private timezone: string;
