@@ -31,15 +31,15 @@ export default function DashboardPage() {
   }, []);
 
   // Identify if any journal is currently processing (PENDING status)
-  const pendingJournal = useMemo(() => 
-    journals.find((j) => j.status === "PENDING"), 
-    [journals]
+  const pendingJournal = useMemo(
+    () => journals.find((j) => j.status === "PENDING"),
+    [journals],
   );
 
   // Filter out pending journals from the history list to keep the UI clean
-  const historyJournals = useMemo(() => 
-    journals.filter((j) => j.status !== "PENDING"), 
-    [journals]
+  const historyJournals = useMemo(
+    () => journals.filter((j) => j.status !== "PENDING"),
+    [journals],
   );
 
   const [handleStartJournal, isSubmitting, creationError] = useApiForm(
@@ -49,6 +49,25 @@ export default function DashboardPage() {
       navigate(`/journal/${newJournalId}/loading`);
     },
   );
+
+  const handleDeleteJournal = async (id: string) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this journal? This action cannot be undone.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await api.delete(`/journals/${id}`);
+      // Optimistically update the list
+      setJournals((prev) => prev.filter((j) => j.id !== id));
+    } catch (err) {
+      console.error("Failed to delete journal:", err);
+      alert("Failed to delete journal. Please try again.");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -73,9 +92,16 @@ export default function DashboardPage() {
         isProcessing={!!pendingJournal}
         isSubmitting={isSubmitting}
         error={creationError}
-        onClick={() => void handleStartJournal({}) as any}
+        onClick={() => {
+          void handleStartJournal({});
+        }}
       />
-      <PastJournalsList journals={historyJournals} />
+      <PastJournalsList
+        journals={historyJournals}
+        onDelete={(id) => {
+          void handleDeleteJournal(id);
+        }}
+      />
     </div>
   );
 }
