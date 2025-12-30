@@ -60,6 +60,7 @@ model Journal {
   podcastAudioUrl      String?
   agpChartData         Json?
   analysisInsights     Json?
+  treatments           Json?
   
   // Voyager Scorecards Data
   scoreCardData        Json?
