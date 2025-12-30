@@ -33,6 +33,7 @@ router.get('/', async (req, res, next) => {
         podcastTitle: true,
         podcastDescription: true,
         weeklyVibe: true,
+        status: true,
       },
     });
     res.status(200).json(journals);
