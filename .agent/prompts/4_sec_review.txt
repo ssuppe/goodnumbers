@@ -1,0 +1,2 @@
+Act as a Security Engineer Expert. Review the spec above for security flaws , privacy leaks, and vulnerabilities. Because this is for a junior engineer, any documents you write should be verbose and extremely detailed.
+List your concerns and recommendations clearly.

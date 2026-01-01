@@ -1,0 +1,5 @@
+Based on the security review, the user has provided these instructions:
+"{user_notes}"
+
+Rewrite the final TDD Specification to incorporate these changes.  Include actual code that a junior engineer could follow.
+Output ONLY the final Markdown content.

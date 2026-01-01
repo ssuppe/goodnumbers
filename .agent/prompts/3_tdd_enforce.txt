@@ -1,0 +1,5 @@
+Make sure this document is written following my RED GREEN REFACTOR process.
+1. Always write tests first.
+2. Include explicit instructions to run 'npm test' (or equivalent) at every step.
+3. List the specific test file names and test cases.
+Rewrite the document to strictly follow TDD. Include actual code that a junior engineer could follow.

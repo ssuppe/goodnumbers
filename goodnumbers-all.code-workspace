@@ -18,7 +18,12 @@
     {
       "path": "./proof_of_concept",
       "name": "proof_of_concept"
+    },
+    {
+      "path": "./.agent",
+      "name": "agent"
     }
+	
   ],
   "settings": {
     // Workspace-specific settings go here
