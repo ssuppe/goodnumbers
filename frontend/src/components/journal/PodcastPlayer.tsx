@@ -16,18 +16,18 @@ export default function PodcastPlayer({
 
   if (!audioUrl) {
     return (
-      <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200 text-center text-gray-500">
+      <div className="bg-white p-4 rounded-xl shadow-md border border-gray-200 text-center text-gray-500">
         No podcast audio available for this journal.
       </div>
     );
   }
 
   return (
-    <section className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+    <section className="bg-white p-4 rounded-xl shadow-md border border-gray-200">
       <h2 className="text-3xl font-bold text-gray-900 mb-2">
         {title || "Weekly Summary"}
       </h2>
-      <p className="text-gray-600 mb-6">
+      <p className="text-gray-600 mb-4">
         {description || "Listen to your personalized summary."}
       </p>
 

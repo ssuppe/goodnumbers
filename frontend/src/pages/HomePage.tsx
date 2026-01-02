@@ -22,8 +22,8 @@ export default function HomePage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 text-center">
-      <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 leading-tight mb-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-4 lg:px-8 py-16 sm:py-24 text-center">
+      <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 leading-tight mb-4">
         A smart weekly journal for type 1 diabetics
       </h1>
       <p className="mt-4 text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
@@ -35,7 +35,7 @@ export default function HomePage() {
         self-reflection, to find your blind spots in your diabetes management,
         and to continuously improve.
       </p>
-      <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
+      <div className="mt-10 flex flex-col sm:flex-row justify-center gap-2">
         <Link
           to="/demo"
           className="inline-block px-8 py-3 rounded-lg text-base font-medium bg-white v3-primary-text border-2 v3-border-primary hover:bg-mesa-bg transition-colors"

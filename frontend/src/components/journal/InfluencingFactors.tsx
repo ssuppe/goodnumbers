@@ -109,7 +109,7 @@ export default function InfluencingFactors({
   };
 
   return (
-    <section className="bg-white p-6 rounded-xl shadow-md border border-gray-200 transition-all duration-300">
+    <section className="bg-white p-4 rounded-xl shadow-md border border-gray-200 transition-all duration-300">
       <div
         className="flex justify-between items-center cursor-pointer mb-4"
         onClick={() => setIsOpen(!isOpen)}
@@ -167,7 +167,7 @@ export default function InfluencingFactors({
         </div>
       ) : (
         // FULL VIEW (Open)
-        <div className="space-y-6 animate-in slide-in-from-top-2 duration-200">
+        <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
           {FACTOR_GROUPS.map((group) => (
             <div key={group.title}>
               <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wider mb-3">
