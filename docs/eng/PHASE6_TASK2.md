@@ -1,4 +1,4 @@
-Yes, absolutely. The plan explicitly enforces this separation to keep the UI clean and the data logical:
+The plan explicitly enforces this separation to keep the UI clean and the data logical:
 
 1.  **Aggregate Insights** (Weekly stats, GMI, TIR) $\rightarrow$ Saved to `Journal.analysisInsights` $\rightarrow$ Rendered **ONLY** in the **AGP Chart Card** (`ChartAnalysisCard`).
 2.  **Cluster Insights** (Rebound, Meals, Timing) $\rightarrow$ Saved to `GlycemicEventCluster.insights` $\rightarrow$ Rendered **ONLY** in the specific **Event Cluster Cards** (`EventClusterCard`).
@@ -7,7 +7,7 @@ Here is the final, frozen design document ready for implementation.
 
 ---
 
-# Context File: final_spec.md
+# Context File: PHASE6_TASK2.md
 
 # NON_AI_CLINICAL_INSIGHTS_SPEC
 
