@@ -63,11 +63,14 @@ def main():
     # 3. Load Context & System Persona
     static_context = build_full_context(project_root)
     sys_persona = load_prompt("0_system_base.txt")
+    tool_instructions = (
+        "\n\nYou have access to tools to read the file system. "
+        "If the user asks about a file you haven't seen, DO NOT hallucinate. "
+        "Use 'list_files' or 'read_file' to check the real content first."
+    )
     
-    # 4. Initialize History
-    # We combine the "PhD Persona" with the file context, exactly like main.py
-    full_system_msg = f"{sys_persona}\n\n{static_context}"
-    
+    full_system_msg = f"{sys_persona}{tool_instructions}\n\n{static_context}"
+        
     conversation_history = [
         {"role": "system", "content": full_system_msg},
         {"role": "user", "content": user_input}
