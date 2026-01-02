@@ -20,8 +20,9 @@ import { useAuth } from "../contexts/AuthContext";
 import WeeklyVibe from "../components/journal/WeeklyVibe";
 import InfluencingFactors from "../components/journal/InfluencingFactors";
 import EventClusterCard from "../components/journal/EventClusterCard";
-import ContextualNotesArea from "../components/journal/ContextualNotesArea";
+import CollapsingNoteArea from "../components/journal/CollapsingNoteArea";
 import StickyActionBar from "../components/journal/StickyActionBar";
+import { PencilLine } from "lucide-react";
 
 type JournalResponse = Journal & {
   clusters: GlycemicEventCluster[];
@@ -159,7 +160,7 @@ export default function JournalPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8 space-y-4 pb-24">
+    <div className="max-w-4xl mx-auto p-4 sm:p-4 lg:p-8 space-y-3 pb-20">
       <PodcastPlayer
         title={journal.podcastTitle}
         description={journal.podcastDescription}
@@ -212,12 +213,23 @@ export default function JournalPage() {
         />
       ))}
 
-      <ContextualNotesArea
-        notes={formData.goalsForNextWeek}
-        setNotes={(notes) =>
-          setFormData((prev) => ({ ...prev!, goalsForNextWeek: notes }))
-        }
-      />
+      <section className="space-y-3">
+        <h3 className="text-xl font-bold text-gray-800 flex items-center">
+          <PencilLine className="inline-block w-5 h-5 mr-2 text-mesa-primary" />
+          On reflection...
+        </h3>
+        <div className="bg-white p-2 rounded-xl shadow-md border border-gray-100">
+          <CollapsingNoteArea
+            value={formData.goalsForNextWeek}
+            onChange={(notes) =>
+              setFormData((prev) => ({ ...prev!, goalsForNextWeek: notes }))
+            }
+            placeholder="Add anything else about how you feel or what you were up to this week"
+            maxLength={2000}
+            rows={5}
+          />
+        </div>
+      </section>
 
       <div className="flex justify-center pt-8">
         <button

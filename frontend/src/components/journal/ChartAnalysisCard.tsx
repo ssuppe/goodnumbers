@@ -87,14 +87,14 @@ export function ChartAnalysisCard({
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-      <div className="p-6">
+      <div className="p-4">
         <div className="flex items-center">
           <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
           {title.includes("AGP") && <InfoTooltip content={tooltipContent} />}
         </div>
         {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
 
-        <div className="mt-6">
+        <div className="mt-4">
           <AgpChart
             data={data}
             units={units}
@@ -103,7 +103,7 @@ export function ChartAnalysisCard({
           />
         </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-4 space-y-3">
           <h4 className="text-sm font-medium text-slate-700 uppercase tracking-wider">
             Analysis & Insights
           </h4>

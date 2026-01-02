@@ -20,9 +20,9 @@ export default function JournalLoadingPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] bg-white p-8 rounded-xl shadow-lg m-4">
       {isFailed ? (
-        <AlertTriangle className="w-16 h-16 text-red-500 mb-6" />
+        <AlertTriangle className="w-16 h-16 text-red-500 mb-4" />
       ) : (
-        <Loader2 className="animate-spin w-16 h-16 text-mesa-primary mb-6" />
+        <Loader2 className="animate-spin w-16 h-16 text-mesa-primary mb-4" />
       )}
       <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
         {isFailed ? "Generation Failed" : "Generating Your Journal..."}
@@ -34,7 +34,7 @@ export default function JournalLoadingPage() {
       </p>
 
       {!isFailed && (
-        <div className="w-full max-w-md mt-6">
+        <div className="w-full max-w-md mt-4">
           <div
             role="progressbar"
             aria-valuenow={progress}

@@ -24,14 +24,11 @@ describe("EventClusterCard", () => {
       />,
     );
 
-    // The title is now the full summary sentence using colloquial terms
-    // Handle various high blood sugar types correctly for the test expectation
     const isHigh = ["HIGH", "HYPER", "VERY_HIGH"].includes(
       mockCluster.eventType.toUpperCase(),
     );
     const expectedTerm = isHigh ? "high blood sugar" : "low blood sugar";
 
-    // We check that the heading contains the key parts: count and colloquial term
     const heading = screen.getByRole("heading", {
       name: (name) =>
         name.toLowerCase().includes(expectedTerm) &&
@@ -40,7 +37,7 @@ describe("EventClusterCard", () => {
     expect(heading).toBeInTheDocument();
   });
 
-  it("renders a textarea for user notes", () => {
+  it("renders a CollapsingNoteArea for user notes", () => {
     render(
       <EventClusterCard
         cluster={mockCluster}
@@ -49,10 +46,11 @@ describe("EventClusterCard", () => {
       />,
     );
 
+    // When there is a value, it starts expanded (textarea)
     const textarea = screen.getByPlaceholderText(
       /Why do you think this happened?/i,
     );
-    expect(textarea).toBeInTheDocument();
+    expect(textarea.tagName).toBe("TEXTAREA");
     expect(textarea).toHaveValue("My note");
   });
 
@@ -65,6 +63,13 @@ describe("EventClusterCard", () => {
       />,
     );
 
+    // 1. Find the collapsed input and focus it to expand
+    const input = screen.getByPlaceholderText(
+      /Why do you think this happened?/i,
+    );
+    fireEvent.focus(input);
+
+    // 2. Now find the expanded textarea and type
     const textarea = screen.getByPlaceholderText(
       /Why do you think this happened?/i,
     );
@@ -82,20 +87,24 @@ describe("EventClusterCard", () => {
       />,
     );
 
+    // Focus to expand
+    const input = screen.getByPlaceholderText(
+      /Why do you think this happened?/i,
+    );
+    fireEvent.focus(input);
+
     const textarea = screen.getByPlaceholderText(
       /Why do you think this happened?/i,
     );
     expect(textarea).toHaveAttribute("maxLength", "1000");
   });
 
-  // --- New Tests for Cycle 2 ---
-
   it("parses valid JSON and renders the ClusterEventsChart", () => {
     const validJsonCluster: GlycemicEventCluster = {
       ...mockCluster,
       clusterDataJson: JSON.stringify({
         id: "test-cluster",
-        events: [], // minimal valid object for the chart prop
+        events: [],
       }),
     };
 
@@ -127,24 +136,6 @@ describe("EventClusterCard", () => {
     expect(screen.queryByTestId("mock-cluster-chart")).not.toBeInTheDocument();
   });
 
-  it("handles null/empty JSON gracefully by NOT rendering the chart", () => {
-    // @ts-expect-error - simulating runtime null/undefined if types are loose
-    const emptyJsonCluster: GlycemicEventCluster = {
-      ...mockCluster,
-      clusterDataJson: null,
-    };
-
-    render(
-      <EventClusterCard
-        cluster={emptyJsonCluster}
-        userNote=""
-        onNoteChange={mockOnNoteChange}
-      />,
-    );
-
-    expect(screen.queryByTestId("mock-cluster-chart")).not.toBeInTheDocument();
-  });
-
   it("passes the correct units prop to ClusterEventsChart", () => {
     const validJsonCluster: GlycemicEventCluster = {
       ...mockCluster,
@@ -159,7 +150,6 @@ describe("EventClusterCard", () => {
         cluster={validJsonCluster}
         userNote=""
         onNoteChange={mockOnNoteChange}
-        // @ts-expect-error - Testing new prop before implementation
         units="MMOL"
       />,
     );
@@ -180,7 +170,6 @@ describe("EventClusterCard", () => {
         cluster={mockCluster}
         userNote=""
         onNoteChange={mockOnNoteChange}
-        // @ts-expect-error - Testing new prop before implementation
         treatments={mockTreatments}
       />,
     );

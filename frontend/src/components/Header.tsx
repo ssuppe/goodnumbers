@@ -6,7 +6,7 @@ export default function Header() {
 
   return (
     <header className="bg-white shadow-sm border-b border-mesa-border">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-4 lg:px-8 py-3 flex justify-between items-center">
         {/* Updated: Using Mesa Secondary (Petrol Blue) for the Brand Name via utility class */}
         <Link
           to="/"
@@ -16,7 +16,7 @@ export default function Header() {
         </Link>
         <nav>
           {user ? (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <Link
                 to="/setup"
                 className="text-sm font-medium text-mesa-muted hover:text-mesa-text transition-colors"

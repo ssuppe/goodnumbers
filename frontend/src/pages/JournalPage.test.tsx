@@ -18,7 +18,7 @@ vi.mock("../contexts/AuthContext", () => ({
   }),
 }));
 
-// Mock the API and all child components
+// Mock the API
 vi.mock("../lib/api");
 
 // Mock child components
@@ -68,17 +68,18 @@ vi.mock("../components/journal/EventClusterCard", () => ({
   ),
 }));
 
-vi.mock("../components/journal/ContextualNotesArea", () => ({
+vi.mock("../components/journal/CollapsingNoteArea", () => ({
+  __esModule: true,
   default: ({
-    notes,
-    setNotes,
+    value,
+    onChange,
   }: {
-    notes: string;
-    setNotes: (n: string) => void;
+    value: string;
+    onChange: (v: string) => void;
   }) => (
-    <div data-testid="contextual-notes">
-      <span data-testid="current-goals">{notes}</span>
-      <button onClick={() => setNotes("Updated Goals")}>Update Goals</button>
+    <div data-testid="collapsing-note-area">
+      <span data-testid="current-note">{value}</span>
+      <button onClick={() => onChange("Updated Goals")}>Update Goals</button>
     </div>
   ),
 }));
@@ -134,14 +135,12 @@ describe("JournalPage", () => {
       expect(api.get).toHaveBeenCalledWith(
         `/journals/${mockJournalForView.id}`,
       );
-      // Verify all components are rendered
       expect(screen.getByTestId("podcast-player")).toBeInTheDocument();
       expect(screen.getByTestId("weekly-vibe")).toBeInTheDocument();
       expect(screen.getByTestId("influencing-factors")).toBeInTheDocument();
       expect(screen.getByTestId("cluster-card-cluster-1")).toBeInTheDocument();
-      // Updated assertion for the new Unified Card
       expect(screen.getByTestId("chart-analysis-card")).toBeInTheDocument();
-      expect(screen.getByTestId("contextual-notes")).toBeInTheDocument();
+      expect(screen.getByTestId("collapsing-note-area")).toBeInTheDocument();
       expect(screen.getByTestId("sticky-action-bar")).toBeInTheDocument();
     });
   });
@@ -154,17 +153,14 @@ describe("JournalPage", () => {
       expect(screen.getByTestId("weekly-vibe")).toBeInTheDocument();
     });
 
-    // 1. Change the vibe
     fireEvent.click(screen.getByText("Select Growing"));
     expect(screen.getByTestId("current-vibe")).toHaveTextContent("Growing");
 
-    // 2. Change Goals (ContextualNotesArea)
     fireEvent.click(screen.getByText("Update Goals"));
-    expect(screen.getByTestId("current-goals")).toHaveTextContent(
+    expect(screen.getByTestId("current-note")).toHaveTextContent(
       "Updated Goals",
     );
 
-    // 3. Change Cluster Note
     const clusterCard = screen.getByTestId("cluster-card-cluster-1");
     const updateNoteBtn = within(clusterCard).getByText("Update Note");
     fireEvent.click(updateNoteBtn);
@@ -173,10 +169,8 @@ describe("JournalPage", () => {
       "Updated Cluster Note",
     );
 
-    // 4. Click Save
     fireEvent.click(screen.getByText("Save Changes"));
 
-    // 5. Verify API call payload
     expect(updateJournal).toHaveBeenCalledWith(
       mockJournalForView.id,
       expect.objectContaining({
@@ -207,13 +201,11 @@ describe("JournalPage", () => {
 
   it("handles delete correctly", async () => {
     vi.mocked(api.get).mockResolvedValue({ data: mockJournalForView });
-    // Mock window.confirm
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
 
     renderComponent(mockJournalForView.id);
     await waitFor(() => screen.getByTestId("sticky-action-bar"));
 
-    // Find and click delete button (assuming it's rendered)
     const deleteBtn = screen.getByRole("button", { name: /delete/i });
     fireEvent.click(deleteBtn);
 

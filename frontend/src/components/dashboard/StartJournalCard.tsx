@@ -16,7 +16,7 @@ export default function StartJournalCard({
   // 1. Processing State
   if (isProcessing) {
     return (
-      <section className="bg-white p-6 rounded-xl shadow-lg mb-8 border border-gray-200">
+      <section className="bg-white p-4 rounded-xl shadow-lg mb-8 border border-gray-200">
         <div className="flex flex-col sm:flex-row items-center sm:justify-start">
           <div className="w-24 h-24 bg-mesa-bg rounded-lg flex items-center justify-center flex-shrink-0 mr-4 mb-4 sm:mb-0">
             <Loader2
@@ -44,7 +44,7 @@ export default function StartJournalCard({
 
   // 2. Default "Start New" State (Always Enabled)
   return (
-    <section className="bg-white p-6 rounded-xl shadow-lg mb-8 border border-gray-200">
+    <section className="bg-white p-4 rounded-xl shadow-lg mb-8 border border-gray-200">
       <div className="flex flex-col sm:flex-row items-center sm:justify-between">
         <div className="flex items-center mb-4 sm:mb-0">
           <div className="w-24 h-24 bg-mesa-bg rounded-lg flex items-center justify-center flex-shrink-0 mr-4">
@@ -57,7 +57,7 @@ export default function StartJournalCard({
         <button
           onClick={onClick}
           disabled={isSubmitting}
-          className="w-full sm:w-auto px-6 py-3 bg-mesa-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          className="w-full sm:w-auto px-4 py-3 bg-mesa-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
         >
           {isSubmitting && (
             <Loader2

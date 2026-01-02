@@ -14,7 +14,7 @@ describe("WeeklyVibe", () => {
   it("highlights the selected vibe", () => {
     render(<WeeklyVibe selectedVibe="Sprouting" onChange={vi.fn()} />);
     const selectedButton = screen.getByText("Sprouting").closest("button");
-    expect(selectedButton).toHaveClass("ring-4");
+    expect(selectedButton).toHaveClass("ring-2");
   });
 
   it("calls onChange with the correct vibe when clicked", () => {

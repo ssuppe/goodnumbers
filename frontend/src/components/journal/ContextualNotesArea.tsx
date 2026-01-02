@@ -43,7 +43,7 @@ const ContextualNotesArea: React.FC<ContextualNotesAreaProps> = ({
   const textareaStyle = `border-gray-300 resize-y ${focusClasses}`;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Title */}
       <h3 className="text-xl font-bold text-gray-800 flex items-center">
         <PencilLine className="inline-block w-5 h-5 mr-2 text-mesa-primary" />

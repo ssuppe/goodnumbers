@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import type { GlycemicEventCluster, GlycemicCluster } from "@goodnumbers/types";
 import { ClusterEventsChart } from "./charts/ClusterEventsChart";
+import CollapsingNoteArea from "./CollapsingNoteArea";
 import { format } from "date-fns";
 import { type GlucoseUnit, type Treatment } from "../../lib/agpUtils";
 
@@ -101,7 +102,7 @@ export default function EventClusterCard({
   return (
     <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
       {/* Top Section: Title and Chart */}
-      <div className="p-6 pb-2">
+      <div className="p-4 pb-2">
         <h3 className="text-lg font-bold text-gray-900 mb-4">{title}</h3>
         <div className="w-full">
           {clusterData ? (
@@ -120,7 +121,7 @@ export default function EventClusterCard({
 
       {/* Bottom Section: Integrated User Notes */}
       {onNoteChange && (
-        <div className="px-6 pb-6 pt-2">
+        <div className="px-4 pb-6 pt-2">
           <div className="mt-2 pt-4 border-t border-gray-100">
             <label
               htmlFor={`cluster-note-${cluster.id}`}
@@ -128,18 +129,13 @@ export default function EventClusterCard({
             >
               Your Notes
             </label>
-            <textarea
-              id={`cluster-note-${cluster.id}`}
+            <CollapsingNoteArea
               value={userNote || ""}
-              onChange={(e) => onNoteChange(e.target.value)}
+              onChange={onNoteChange}
               placeholder="Why do you think this happened? Leave some notes on what you think the issue is, or how you can improve next week. If you don’t know, that's ok! Leave it blank."
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mesa-primary focus:border-mesa-primary outline-none transition-shadow text-sm"
-              rows={3}
               maxLength={1000}
+              rows={3}
             />
-            <div className="mt-1 text-right text-xs text-gray-400">
-              {(userNote || "").length}/1000 characters
-            </div>
           </div>
         </div>
       )}

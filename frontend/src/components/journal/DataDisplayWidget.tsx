@@ -11,7 +11,7 @@ export default function DataDisplayWidget({
 }: DataDisplayWidgetProps) {
   if (!data) {
     return (
-      <section className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+      <section className="bg-white p-4 rounded-xl shadow-md border border-gray-200">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">{title}</h2>
         <p className="text-gray-500">No data available for {title}.</p>
       </section>
@@ -22,7 +22,7 @@ export default function DataDisplayWidget({
   const prettyPrintedData = JSON.stringify(data, null, 2);
 
   return (
-    <section className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+    <section className="bg-white p-4 rounded-xl shadow-md border border-gray-200">
       <h2 className="text-2xl font-bold text-gray-900 mb-4">
         {title} (Low-Fidelity Data View)
       </h2>

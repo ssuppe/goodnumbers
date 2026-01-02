@@ -20,7 +20,7 @@ const StickyActionBar: React.FC<StickyActionBarProps> = ({
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-white shadow-xl border-t-2 border-mesa-border">
-      <div className="max-w-4xl mx-auto p-3">
+      <div className="max-w-4xl mx-auto p-2">
         {error && (
           <div className="mb-2 text-center text-red-600 font-medium">
             {error}

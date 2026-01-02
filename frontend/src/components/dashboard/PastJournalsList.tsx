@@ -24,7 +24,7 @@ export default function PastJournalsList({
   return (
     <section>
       <h2 className="text-xl font-bold mb-4 text-gray-800">Past weeks</h2>
-      <div className="space-y-4">
+      <div className="space-y-3">
         {journals.map((journal) => (
           <div
             key={journal.id}

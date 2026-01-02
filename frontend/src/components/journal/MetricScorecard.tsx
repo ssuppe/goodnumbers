@@ -58,7 +58,7 @@ export default function MetricScorecard({
   };
 
   return (
-    <div className="relative flex flex-col p-3 rounded-xl border border-gray-100 bg-white min-w-[150px] flex-1 shadow-sm hover:border-gray-200 transition-colors group">
+    <div className="relative flex flex-col p-2 rounded-xl border border-gray-100 bg-white min-w-[150px] flex-1 shadow-sm hover:border-gray-200 transition-colors group">
       {/* Header Row: Icon + Label + Tooltip + Trend */}
       <div className="flex justify-between items-center mb-1">
         <div className="flex items-center gap-1.5">
