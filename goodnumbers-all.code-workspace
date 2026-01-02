@@ -22,6 +22,10 @@
     {
       "path": "./.agent",
       "name": "agent"
+    },
+    {
+      "path": "./specs",
+      "name": "specs"
     }
 	
   ],
