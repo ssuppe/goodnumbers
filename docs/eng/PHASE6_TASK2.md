@@ -1,415 +1,504 @@
-The plan explicitly enforces this separation to keep the UI clean and the data logical:
+# ENGINEERING DESIGN: STATISTICAL INSIGHTS ENGINE (SECURE TDD)
 
-1.  **Aggregate Insights** (Weekly stats, GMI, TIR) $\rightarrow$ Saved to `Journal.analysisInsights` $\rightarrow$ Rendered **ONLY** in the **AGP Chart Card** (`ChartAnalysisCard`).
-2.  **Cluster Insights** (Rebound, Meals, Timing) $\rightarrow$ Saved to `GlycemicEventCluster.insights` $\rightarrow$ Rendered **ONLY** in the specific **Event Cluster Cards** (`EventClusterCard`).
+## TL;DR
 
-Here is the final, frozen design document ready for implementation.
+Implement deterministic, security-hardened statistical analysis engines to populate `Journal.analysisInsights` and `GlycemicEventCluster.insights` using a strict Test-Driven Development (TDD) workflow with mandatory Zod validation.
+
+## Invariants (do not change)
+
+1.  **No AI Dependencies**: Insights must be generated via deterministic algorithms (TypeScript).
+2.  **Data Privacy**: Insight generation occurs strictly server-side. **NO PHI** (glucose values, insulin amounts) in logs. Log IDs only.
+3.  **Input Sanitization**: All text outputs must be validated via Zod to prevent Stored XSS.
+4.  **Timezone Safety**: All temporal comparisons must use UTC Epoch Milliseconds.
+5.  **TDD Mandate**: No production code is written without a failing test first.
+
+## Assumptions & Scope
+
+- **Assumption**: `NightscoutTreatment` objects contain `date` (epoch ms) or `created_at` (ISO). We normalize to epoch ms immediately.
+- **Scope**: Shared Types/Schemas, Backend generators, Prisma schema, Worker integration, Frontend display.
+- **Out of Scope**: LLM integration, new data fetching.
+
+## Objectives
+
+1.  **Schema**: Persist cluster-level insights in SQLite with strict JSON validation.
+2.  **Aggregate Analysis**: Port GMI/TIR logic to backend.
+3.  **Cluster Analysis**: Implement meal-correlation logic with DoS protection (complexity limits).
+4.  **Visualization**: Render insights on `AGPChart` and `EventClusterCard` safely.
+
+## Risks & Mitigations
+
+- **Risk**: Stored XSS via malicious strings in Nightscout data.
+  - _Mitigation_: Zod `refine` check to reject HTML characters; React default escaping.
+- **Risk**: DoS via `O(N*M)` complexity in cluster analysis.
+  - _Mitigation_: Enforce hard limit on treatments (10k) and pre-sort by date.
+- **Risk**: JSON "Blindness" (Schema drift).
+  - _Mitigation_: Validate all JSON writes and reads against `InsightArraySchema`.
+
+## Method Outline
+
+1.  **Shared Types & Schemas**: Define `Insight` in `@goodnumbers/types` and Zod validators in `@goodnumbers/schemas`.
+2.  **Schema**: Add `insights` JSON to `GlycemicEventCluster`.
+3.  **Logic**: Implement `aggregate.ts` and `cluster.ts` via TDD.
+4.  **Integration**: Wire into Worker with validation guards via TDD.
+5.  **UI**: Update components via TDD.
+
+## Implementation Notes
+
+- **Precision**: Use `Math.round` for display values.
+- **Performance**: Sort treatments by date _once_ before iterating clusters.
+- **Security**: Use `safeParse` for all JSON operations.
+
+## Acceptance Gates
+
+1.  `npm run test:backend` passes with 100% coverage for `src/lib/insights`.
+2.  Security tests (XSS rejection, Malformed JSON) pass.
+3.  Worker successfully persists insights to DB.
+4.  Frontend renders insights without using `dangerouslySetInnerHTML`.
+
+## "Make-sure-you" Checklist
+
+- [ ] Run `npm run db:migrate` immediately after schema change.
+- [ ] Ensure `InsightPriority` strings match frontend expectations exactly.
+- [ ] **Verify no `console.log` prints glucose/insulin values.**
+- [ ] Commit after every GREEN step.
+
+## Project Hygiene Prep
+
+1.  **Branch**: `git checkout -b feat/statistical-insights`
+2.  **Issue**: Create GitHub issue "Implement Statistical Insights".
 
 ---
 
-# Context File: PHASE6_TASK2.md
+## In-depth Test Plan & Engineering Plan (Combined TDD Flow)
 
-# NON_AI_CLINICAL_INSIGHTS_SPEC
+### Phase 1: Foundation (Types, Schemas, DB)
 
-**Version:** 2.0 (FINAL)
-**Goal:** Implement a deterministic, clinically-informed heuristic engine to generate educational discussion topics, strictly separating **Weekly Aggregate Insights** (for the AGP Chart) from **Specific Cluster Insights** (for Event Cards).
+**Step 1.1: Define Types & Zod Schemas (RED)**
+
+- **Goal**: Establish the contract and security validators.
+- **Action**: Create `packages/types/src/insights.ts` and `packages/schemas/src/insights.ts`.
+- **Code (Types)**:
+  ```typescript
+  export enum InsightPriority {
+    CRITICAL = "CRITICAL",
+    SERIOUS = "SERIOUS",
+    IMPORTANT = "IMPORTANT",
+    INFO = "ALWAYS_INCLUDE",
+  }
+  export interface Insight {
+    priority: InsightPriority;
+    note: string;
+  }
+  ```
+- **Code (Schemas)**:
+
+  ```typescript
+  import { z } from "zod";
+  import { InsightPriority } from "@goodnumbers/types";
+
+  export const InsightSchema = z.object({
+    priority: z.nativeEnum(InsightPriority),
+    // SECURITY: Prevent HTML injection at the validation layer
+    note: z
+      .string()
+      .max(500)
+      .refine((val) => !/[<>]/.test(val), {
+        message: "Insight notes cannot contain HTML characters",
+      }),
+  });
+  export const InsightArraySchema = z.array(InsightSchema);
+  ```
+
+- **Action**: Export from respective `index.ts` files. Run `npm run build` in packages.
+
+**Step 1.2: Update Database Schema (RED)**
+
+- **Action**: Update `backend/prisma/schema.prisma`.
+  ```prisma
+  model GlycemicEventCluster {
+    // ... existing fields
+    insights Json? // Validated via Zod in app layer
+  }
+  ```
+- **Action**: Run `npx prisma migrate dev --name add_cluster_insights`.
+- **Test**: Run `npm run test:backend` to ensure no regressions.
 
 ---
 
-## 1. Core Philosophy & Invariants
+### Phase 2: Aggregate Insights (TDD)
 
-1.  **Template-Based Safety**: All user-facing text **must** come from a static registry (`templates.ts`). No dynamic string construction of medical advice.
-2.  **"Soft" Clinical Tone**: Use observational language ("We noticed," "Consider discussing") rather than imperative commands ("Inject," "Change ratio").
-3.  **Determinism**: Identical data must always yield identical insights.
-4.  **Performance**: Heuristics must be $O(N)$ relative to the cluster size, avoiding nested loops over the entire treatment history.
+**Step 2.1: Create Test File (RED)**
 
----
+- **File**: `backend/tests/unit/insights/aggregate.test.ts`
+- **Code**:
 
-## 2. Data Structures & Separation
+  ```typescript
+  import { describe, it, expect } from "vitest";
+  import { generateAggregateInsights } from "@src/lib/insights/aggregate";
+  import { InsightPriority } from "@goodnumbers/types";
 
-### 2.1. Shared Schemas (`packages/schemas`)
-
-We define two distinct schemas to enforce the separation of concerns.
-
-**A. `AggregateInsight` (For AGP Chart/Weekly View)**
-
-- **Target Field:** `Journal.analysisInsights`
-- **Purpose:** High-level context on GMI, TIR, and Hypo risk.
-- **UI Location:** `ChartAnalysisCard` (The big chart at the top).
-
-**B. `ClusterInsight` (For Event Cards)**
-
-- **Target Field:** `GlycemicEventCluster.insights`
-- **Purpose:** Specific context on Rebounds, Meal timing, Sensor issues.
-- **UI Location:** `EventClusterCard` (The individual pattern cards below).
-
-**C. Allowed Icons (Strict Enum)**
-
-- `Activity` (Rebound)
-- `Sun` (Dawn/Morning)
-- `BedDouble` (Sleep/Compression)
-- `Utensils` (Meal/Food)
-- `Clock` (Timing)
-- `TrendingUp` (Highs)
-- `TrendingDown` (Lows)
-- `AlertTriangle` (Risk)
-- `CheckCircle` (Good News)
-- `Info` (General)
-
----
-
-## 3. Implementation Plan (TDD Workflow)
-
-Follow the **Red-Green-Refactor** cycles strictly. Stop if a test fails.
-
-### Phase 1: Shared Schemas & Types
-
-**Goal:** Define the contract.
-
-#### Cycle 1.1: Define Schemas
-
-1.  **RED (Test)**: Create `packages/schemas/src/insights.test.ts`.
-    - Assert that an insight with an invalid icon (e.g., "HackerIcon") throws a Zod error.
-    - Assert `AggregateInsightSchema` requires `priority`.
-2.  **GREEN (Implement)**: Update `packages/schemas/src/index.ts`.
-
-    ```typescript
-    import { z } from "zod";
-
-    export const InsightIconEnum = z.enum([
-      "Activity",
-      "Sun",
-      "BedDouble",
-      "Utensils",
-      "Clock",
-      "TrendingUp",
-      "TrendingDown",
-      "AlertTriangle",
-      "CheckCircle",
-      "Info",
-    ]);
-
-    export const InsightPriorityEnum = z.enum([
-      "CRITICAL",
-      "SERIOUS",
-      "IMPORTANT",
-      "INFO",
-    ]);
-
-    // For Journal.analysisInsights
-    export const AggregateInsightSchema = z.object({
-      type: z.literal("aggregate"),
-      title: z.string(),
-      text: z.string(),
-      priority: InsightPriorityEnum,
-      icon: InsightIconEnum,
+  describe("Aggregate Insights", () => {
+    it("generates CRITICAL warning for low average glucose (<70)", () => {
+      const entries = Array(10).fill({ sgv: 50, date: Date.now() });
+      const insights = generateAggregateInsights(entries);
+      expect(insights).toContainEqual(
+        expect.objectContaining({
+          priority: InsightPriority.CRITICAL,
+          note: expect.stringContaining("hypoglycemia"),
+        })
+      );
     });
 
-    // For GlycemicEventCluster.insights
-    export const ClusterInsightSchema = z.object({
-      type: z.literal("cluster"),
-      id: z.string().uuid(),
-      title: z.string(),
-      text: z.string(),
-      icon: InsightIconEnum,
+    it("calculates GMI correctly (Mean 150 -> ~6.9%)", () => {
+      const entries = Array(10).fill({ sgv: 150, date: Date.now() });
+      const insights = generateAggregateInsights(entries);
+      expect(insights).toContainEqual(
+        expect.objectContaining({
+          priority: InsightPriority.INFO,
+          note: expect.stringContaining("6.9%"),
+        })
+      );
+    });
+  });
+  ```
+
+- **Command**: `npm run test:backend` -> **FAIL** (Module not found).
+
+**Step 2.2: Implement Logic (GREEN)**
+
+- **File**: `backend/src/lib/insights/aggregate.ts`
+- **Code**:
+
+  ```typescript
+  import { Insight, InsightPriority, GlucoseEntry } from "@goodnumbers/types";
+
+  export function generateAggregateInsights(
+    entries: GlucoseEntry[]
+  ): Insight[] {
+    if (!entries.length) return [];
+    const insights: Insight[] = [];
+    const sum = entries.reduce((acc, e) => acc + e.sgv, 0);
+    const avg = sum / entries.length;
+
+    // GMI Logic: 3.31 + (0.02392 * mean)
+    const gmi = 3.31 + 0.02392 * avg;
+    insights.push({
+      priority: InsightPriority.INFO,
+      note: `Estimated GMI: ${gmi.toFixed(1)}%`,
     });
 
-    export type AggregateInsight = z.infer<typeof AggregateInsightSchema>;
-    export type ClusterInsight = z.infer<typeof ClusterInsightSchema>;
-    ```
+    // Low Glucose Logic
+    if (avg < 70) {
+      insights.push({
+        priority: InsightPriority.CRITICAL,
+        note: "Average glucose indicates frequent hypoglycemia.",
+      });
+    }
+    return insights;
+  }
+  ```
 
-3.  **REFACTOR**: Run `npm run build` in packages.
-
----
-
-### Phase 2: Template Registry (Backend)
-
-**Goal:** Create the "Safety Layer" with distinct sections for Aggregates and Clusters.
-
-#### Cycle 2.1: Template Safety
-
-1.  **RED (Test)**: Create `backend/tests/unit/insights.safety.test.ts`.
-    - Import the (not yet created) `INSIGHT_TEMPLATES`.
-    - Iterate through every template.
-    - Assert `text` does **not** contain: "inject", "dose", "stop", "change", "increase", "decrease".
-2.  **GREEN (Implement)**: Create `backend/src/lib/analysis/insights/templates.ts`.
-
-    ```typescript
-    export const AGGREGATE_TEMPLATES = {
-      LOW_GLUCOSE_CRITICAL: {
-        title: "High Hypoglycemia Risk",
-        text: "You are spending significantly more time in hypoglycemia (>4%) than recommended. This is a safety priority. Discuss strategies to reduce lows with your doctor immediately.",
-        priority: "CRITICAL",
-        icon: "AlertTriangle",
-      },
-      GMI_HIGH: {
-        title: "Elevated GMI",
-        text: "Your estimated GMI is above target. Discuss with your provider if adjustments to your management plan are needed.",
-        priority: "SERIOUS",
-        icon: "TrendingUp",
-      },
-      TIR_LOW: {
-        title: "Time in Range",
-        text: "Time in Range is below 70%. Focusing on reducing highs or lows could help improve this.",
-        priority: "IMPORTANT",
-        icon: "Activity",
-      },
-    } as const;
-
-    export const CLUSTER_TEMPLATES = {
-      REBOUND: {
-        title: "Possible Rebound",
-        text: "We detected low glucose shortly before these highs. Discuss if this might be a body's reaction to a low (Somogyi effect).",
-        icon: "Activity",
-      },
-      UNCOVERED_MEAL: {
-        title: "Uncovered Meal",
-        text: "Meals were recorded before these highs without a corresponding insulin dose. Discuss if missed boluses are a factor.",
-        icon: "Utensils",
-      },
-      LATE_BOLUS: {
-        title: "Bolus Timing",
-        text: "Insulin was recorded at or after the start of the meal. Discuss if pre-bolusing (taking insulin earlier) could help.",
-        icon: "Clock",
-      },
-      NON_MEAL_HIGH: {
-        title: "Non-Meal High",
-        text: "These highs occurred without recorded meals nearby. Consider factors like basal rates, stress, or dawn phenomenon.",
-        icon: "Info",
-      },
-    } as const;
-    ```
+- **Command**: `npm run test:backend` -> **PASS**.
 
 ---
 
-### Phase 3: Aggregate Logic (Journal Level)
+### Phase 3: Cluster Insights (TDD)
 
-**Goal:** Generate insights strictly for the AGP Chart based on weekly stats.
+**Step 3.1: Create Test File (RED)**
 
-#### Cycle 3.1: Metric Analysis
+- **File**: `backend/tests/unit/insights/cluster.test.ts`
+- **Code**:
 
-1.  **RED (Test)**: Create `backend/tests/unit/insights.aggregate.test.ts`.
-    - Mock `ScoreCardData` with `timeInTightRange: 2%` and `lowPercentage: 15%`.
-    - Assert `generateAggregateInsights` returns the `LOW_GLUCOSE_CRITICAL` template.
-2.  **GREEN (Implement)**: Create `backend/src/lib/analysis/insights/aggregateGenerator.ts`.
+  ```typescript
+  import { describe, it, expect } from "vitest";
+  import { generateClusterInsights } from "@src/lib/insights/cluster";
+  import { InsightPriority } from "@goodnumbers/types";
 
-    ```typescript
-    import { AGGREGATE_TEMPLATES } from "./templates";
-    import { AggregateInsight } from "@goodnumbers/schemas";
-    // Define a type that includes the extra fields calculated in worker but maybe not in strict schema yet
-    type ExtendedScoreCard = {
-      lowPercentage?: number;
-      timeInRange: number;
-      // ... other fields
+  describe("Cluster Insights", () => {
+    const mockCluster = {
+      avgStartMinute: 720, // 12:00 PM
+      events: [{ startTime: "2023-01-01T12:00:00Z" }],
     };
 
-    export function generateAggregateInsights(
-      metrics: ExtendedScoreCard,
-    ): AggregateInsight[] {
-      const insights: AggregateInsight[] = [];
-
-      // 1. Safety Check (Lows)
-      if (metrics.lowPercentage && metrics.lowPercentage > 4) {
-        insights.push({
-          type: "aggregate",
-          ...AGGREGATE_TEMPLATES.LOW_GLUCOSE_CRITICAL,
-        });
-      }
-
-      // 2. TIR Check
-      if (metrics.timeInRange < 70) {
-        insights.push({
-          type: "aggregate",
-          ...AGGREGATE_TEMPLATES.TIR_LOW,
-        });
-      }
-
-      return insights;
-    }
-    ```
-
----
-
-### Phase 4: Cluster Logic (Event Level)
-
-**Goal:** Generate insights strictly for specific cards (Rebound, Meals).
-
-#### Cycle 4.1: Meal Analysis Logic
-
-1.  **RED (Test)**: Create `backend/tests/unit/insights.cluster.test.ts`.
-    - **Case: Uncovered Meal.** Create a mock Hyper Event at 12:00. Create a Carb entry at 11:45. Create **NO** insulin entry. Assert `UNCOVERED_MEAL` insight.
-    - **Case: Late Bolus.** Create Hyper at 12:00. Carb at 11:30. Insulin at 11:40 (10 mins after carbs). Assert `LATE_BOLUS` insight.
-2.  **GREEN (Implement)**: Create `backend/src/lib/analysis/insights/clusterGenerator.ts`.
-
-    ```typescript
-    import { CLUSTER_TEMPLATES } from "./templates";
-    import { GlycemicCluster } from "@goodnumbers/types";
-    import { ClusterInsight } from "@goodnumbers/schemas";
-    import { v4 as uuidv4 } from "uuid";
-
-    // Helper to optimize lookups
-    function getTreatmentsInWindow(
-      treatments: any[],
-      start: number,
-      end: number,
-    ) {
-      return treatments.filter((t) => t.date >= start && t.date <= end);
-    }
-
-    export function generateClusterInsights(
-      cluster: GlycemicCluster,
-      context: { treatments: any[]; hypos: any[] },
-    ): ClusterInsight[] {
-      const insights: ClusterInsight[] = [];
-      const { treatments, hypos } = context;
-
-      if (cluster.type === "hyper") {
-        let uncoveredCount = 0;
-        let lateBolusCount = 0;
-
-        cluster.events.forEach((event) => {
-          const eventTime = new Date(event.startTime).getTime();
-          const lookbackStart = eventTime - 180 * 60 * 1000; // 3 hours
-
-          const windowTreatments = getTreatmentsInWindow(
-            treatments,
-            lookbackStart,
-            eventTime,
-          );
-          const carbs = windowTreatments.filter((t) => t.carbs > 0);
-          const insulin = windowTreatments.filter((t) => t.insulin > 0);
-
-          const hasCarbs = carbs.length > 0;
-          const hasInsulin = insulin.length > 0;
-
-          if (hasCarbs && !hasInsulin) {
-            uncoveredCount++;
-          } else if (hasCarbs && hasInsulin) {
-            // Check timing: Insulin AFTER carbs?
-            // Simplistic check: If first insulin time >= first carb time
-            const firstCarbTime = Math.min(...carbs.map((t) => t.date));
-            const firstInsulinTime = Math.min(...insulin.map((t) => t.date));
-
-            // Tolerance of 5 minutes
-            if (firstInsulinTime > firstCarbTime - 5 * 60 * 1000) {
-              lateBolusCount++;
-            }
-          }
-        });
-
-        const total = cluster.events.length;
-        if (uncoveredCount / total > 0.5) {
-          insights.push({
-            type: "cluster",
-            id: uuidv4(),
-            ...CLUSTER_TEMPLATES.UNCOVERED_MEAL,
-          });
-        } else if (lateBolusCount / total > 0.5) {
-          insights.push({
-            type: "cluster",
-            id: uuidv4(),
-            ...CLUSTER_TEMPLATES.LATE_BOLUS,
-          });
-        }
-      }
-
-      return insights;
-    }
-    ```
-
-#### Cycle 4.2: Physiological Logic (Rebound)
-
-1.  **RED (Test)**: Add test case for Rebound. Mock Hyper cluster at 08:00. Mock Hypo event at 05:00. Assert `REBOUND` insight.
-2.  **GREEN (Implement)**: Add Rebound logic to `clusterGenerator.ts` (filtering hypos relative to cluster start time).
-
----
-
-### Phase 5: Worker Integration
-
-**Goal:** Connect the logic to the background job and save to the correct DB fields.
-
-#### Cycle 5.1: Integrate
-
-1.  **RED (Test)**: Update `backend/tests/integration/worker/journalProcessor.test.ts`.
-    - Mock `generateAggregateInsights` and `generateClusterInsights`.
-    - Assert that `prisma.journal.update` is called with `analysisInsights` (Aggregate).
-    - Assert that `prisma.glycemicEventCluster.createMany` includes `insights` (Cluster).
-2.  **GREEN (Implement)**: Update `backend/src/worker.ts`.
-
-    ```typescript
-    // ... imports
-    import { generateAggregateInsights } from "./lib/analysis/insights/aggregateGenerator";
-    import { generateClusterInsights } from "./lib/analysis/insights/clusterGenerator";
-
-    // Inside processJournalJob...
-
-    // 1. Calculate Aggregates (For AGP Chart)
-    // Note: Ensure scoreCardData has lowPercentage. If not, calculate it from entries.
-    const aggInsights = generateAggregateInsights(scoreCardData);
-
-    // 2. Calculate Clusters (For Event Cards)
-    const allClusters = [
-      ...hyperClusters.map((c) => ({
-        ...c,
-        insights: generateClusterInsights(c, { treatments, hypos: hypoEvents }),
-      })),
-      // ... same for hypoClusters
-    ];
-
-    // 3. Save
-    await prisma.journal.update({
-      data: {
-        analysisInsights: aggInsights, // <--- GOES TO JOURNAL
-        // ...
-      },
+    it("detects uncovered meal (Carbs > 0, Insulin = 0)", () => {
+      const treatments = [
+        {
+          date: new Date("2023-01-01T11:30:00Z").getTime(), // 30 mins before
+          carbs: 50,
+          insulin: 0,
+        },
+      ];
+      const insights = generateClusterInsights(
+        mockCluster as any,
+        treatments as any
+      );
+      expect(insights).toContainEqual(
+        expect.objectContaining({
+          priority: InsightPriority.IMPORTANT,
+          note: expect.stringContaining("uncovered"),
+        })
+      );
     });
 
+    it("ignores meals outside 3h lookback window", () => {
+      const treatments = [
+        {
+          date: new Date("2023-01-01T08:00:00Z").getTime(), // 4 hours before
+          carbs: 50,
+        },
+      ];
+      const insights = generateClusterInsights(
+        mockCluster as any,
+        treatments as any
+      );
+      expect(insights).toHaveLength(0);
+    });
+
+    // SECURITY TEST
+    it("sanitizes or ignores malicious input in treatment notes", () => {
+      // We don't use treatment notes in the output string, but let's ensure we don't crash
+      const treatments = [
+        {
+          date: new Date("2023-01-01T11:30:00Z").getTime(),
+          carbs: 50,
+          insulin: 0,
+          notes: "<script>alert(1)</script>",
+        },
+      ];
+      const insights = generateClusterInsights(
+        mockCluster as any,
+        treatments as any
+      );
+      // Ensure the note generated is standard static text, not dynamic
+      expect(insights[0].note).not.toContain("<script>");
+    });
+  });
+  ```
+
+- **Command**: `npm run test:backend` -> **FAIL**.
+
+**Step 3.2: Implement Logic (GREEN)**
+
+- **File**: `backend/src/lib/insights/cluster.ts`
+- **Code**:
+
+  ```typescript
+  import {
+    Insight,
+    InsightPriority,
+    GlycemicCluster,
+  } from "@goodnumbers/types";
+
+  interface Treatment {
+    date: number;
+    carbs?: number;
+    insulin?: number;
+  }
+
+  export function generateClusterInsights(
+    cluster: GlycemicCluster,
+    treatments: Treatment[]
+  ): Insight[] {
+    const insights: Insight[] = [];
+    let uncoveredCount = 0;
+
+    // Optimization: Treatments should be pre-sorted by caller, but we filter linearly here
+    // assuming N is small after pre-filtering in worker.
+
+    cluster.events.forEach((event) => {
+      const eventTime = new Date(event.startTime).getTime();
+      const lookback = eventTime - 180 * 60 * 1000; // 3 hours
+
+      // SECURITY: Use Epoch MS for comparison
+      const relevant = treatments.filter(
+        (t) => t.date >= lookback && t.date <= eventTime
+      );
+
+      const hasCarbs = relevant.some((t) => (t.carbs || 0) > 0);
+      const hasInsulin = relevant.some((t) => (t.insulin || 0) > 0);
+
+      if (hasCarbs && !hasInsulin) uncoveredCount++;
+    });
+
+    if (uncoveredCount > 0) {
+      // SECURITY: Use static string templates, do not inject raw treatment data
+      insights.push({
+        priority: InsightPriority.IMPORTANT,
+        note: `Potential uncovered meals detected in ${uncoveredCount} events.`,
+      });
+    }
+    return insights;
+  }
+  ```
+
+- **Command**: `npm run test:backend` -> **PASS**.
+
+---
+
+### Phase 4: Worker Integration (TDD)
+
+**Step 4.1: Update Integration Test (RED)**
+
+- **File**: `backend/tests/integration/worker/journalProcessor.test.ts`
+- **Action**: Update existing test to expect `insights` in DB calls.
+- **Code Update**:
+
+  ```typescript
+  // ... inside test ...
+  // Verify Cluster Creation includes insights
+  const createCall = mockPrismaCreateMany.mock.calls[0][0];
+  expect(createCall.data[0]).toHaveProperty("insights");
+
+  // Verify Journal Update includes analysisInsights
+  const updateCall = mockPrismaUpdate.mock.calls.find(
+    (c: any) => c[0].data.status === "COMPLETE"
+  );
+  expect(updateCall[0].data).toHaveProperty("analysisInsights");
+  ```
+
+- **Command**: `npm run test:backend` -> **FAIL**.
+
+**Step 4.2: Update Worker (GREEN)**
+
+- **File**: `backend/src/worker.ts`
+- **Action**: Import generators, schemas, and integrate.
+- **Code**:
+
+  ```typescript
+  import { generateAggregateInsights } from "./lib/insights/aggregate.js";
+  import { generateClusterInsights } from "./lib/insights/cluster.js";
+  import { InsightArraySchema } from "@goodnumbers/schemas";
+
+  // ... inside processJournalJob ...
+
+  // 1. Aggregate Insights
+  const rawAnalysisInsights = generateAggregateInsights(glucoseEntries);
+  // SECURITY: Validate
+  const analysisInsights = InsightArraySchema.parse(rawAnalysisInsights);
+
+  // 2. Cluster Insights (inside loop)
+  // Optimization: Sort treatments once
+  treatments.sort((a, b) => a.date - b.date);
+
+  const allClusters = [...hyperClusters, ...hypoClusters];
+  const clusterData = allClusters.map((c) => {
+    const rawInsights = generateClusterInsights(c, treatments);
+
+    // SECURITY: Validate before DB write
+    const safeInsights = InsightArraySchema.safeParse(rawInsights);
+    if (!safeInsights.success) {
+      console.error(`[Worker] Insight validation failed for cluster ${c.id}`);
+      return {
+        // ... other fields
+        insights: [] as unknown as Prisma.InputJsonValue,
+      };
+    }
+
+    return {
+      journalId,
+      eventType: c.type,
+      eventCount: c.eventCount,
+      meanTimeMinutes: c.avgStartMinute,
+      clusterDataJson: c as unknown as Prisma.InputJsonValue,
+      insights: safeInsights.data as unknown as Prisma.InputJsonValue,
+    };
+  });
+
+  // 3. Save
+  await prisma.glycemicEventCluster.createMany({ data: clusterData });
+
+  await prisma.journal.update({
     // ...
-    prisma.glycemicEventCluster.createMany({
-      data: allClusters.map((c) => ({
-        // ...
-        insights: c.insights, // <--- GOES TO CLUSTER
-      })),
-    });
-    ```
+    data: {
+      // ...
+      analysisInsights: analysisInsights as unknown as Prisma.InputJsonValue,
+    },
+  });
+  ```
+
+- **Command**: `npm run test:backend` -> **PASS**.
 
 ---
 
-### Phase 6: Frontend Rendering
+### Phase 5: Frontend Display (TDD)
 
-**Goal:** Display the new data in the correct locations.
+**Step 5.1: Update Component Test (RED)**
 
-#### Cycle 6.1: Chart Analysis Card (Aggregates)
+- **File**: `frontend/src/components/journal/EventClusterCard.test.tsx`
+- **Code**:
 
-1.  **RED (Test)**: Update `frontend/src/components/journal/ChartAnalysisCard.test.tsx`. Pass in `insights` with `icon: 'AlertTriangle'`. Assert the icon renders.
-2.  **GREEN (Implement)**: Update `ChartAnalysisCard.tsx` to map the string icon name to the actual Lucide component.
+  ```typescript
+  import { InsightPriority } from '@goodnumbers/types';
 
-#### Cycle 6.2: Event Cluster Card (Clusters)
+  it('renders insights when provided', () => {
+    const insights = [{ priority: InsightPriority.IMPORTANT, note: 'Uncovered meal' }];
+    render(
+      <EventClusterCard
+        cluster={mockCluster}
+        insights={insights}
+        // ... other props
+      />
+    );
+    expect(screen.getByText('Uncovered meal')).toBeInTheDocument();
+    expect(screen.getByText('Analysis')).toBeInTheDocument();
+  });
+  ```
 
-1.  **RED (Test)**: Update `frontend/src/components/journal/EventClusterCard.test.tsx`. Assert "Discussion Topics" section appears when insights exist.
-2.  **GREEN (Implement)**: Update `EventClusterCard.tsx` to render the insights list at the bottom of the card.
+- **Command**: `npm run test:frontend` -> **FAIL**.
 
----
+**Step 5.2: Update Component (GREEN)**
 
-## 4. Database Schema Updates
+- **File**: `frontend/src/components/journal/EventClusterCard.tsx`
+- **Code**:
 
-Run this migration in Phase 1.
+  ```typescript
+  import { Insight, InsightPriority } from '@goodnumbers/types';
 
-```prisma
-// backend/prisma/schema.prisma
+  interface EventClusterCardProps {
+    // ... existing
+    insights?: Insight[];
+  }
 
-model GlycemicEventCluster {
-  // ... existing fields
-  insights Json? // Array of ClusterInsight objects
-}
+  // Helper for styling (match ChartAnalysisCard)
+  const getBgColor = (priority: InsightPriority) => {
+    switch (priority) {
+      case InsightPriority.CRITICAL: return "bg-red-50 border-red-100 text-red-900";
+      case InsightPriority.SERIOUS: return "bg-amber-50 border-amber-100 text-amber-900";
+      case InsightPriority.IMPORTANT: return "bg-blue-50 border-blue-100 text-blue-900";
+      default: return "bg-gray-50 border-gray-100 text-gray-700";
+    }
+  };
 
-// Journal model already has analysisInsights Json?
-```
+  export default function EventClusterCard({ insights, ...props }: EventClusterCardProps) {
+    // ... existing render logic
 
-## 5. Summary of New Files
+    return (
+      <div className="...">
+        {/* ... Chart ... */}
 
-1.  `packages/schemas/src/insights.ts` (Validation)
-2.  `backend/src/lib/analysis/insights/templates.ts` (Static Text)
-3.  `backend/src/lib/analysis/insights/aggregateGenerator.ts` (Logic)
-4.  `backend/src/lib/analysis/insights/clusterGenerator.ts` (Logic)
-5.  `backend/tests/unit/insights.*.test.ts` (Tests)
+        {/* New Insight Section */}
+        {insights && insights.length > 0 && (
+          <div className="px-4 pb-4 space-y-2 border-t border-gray-100 pt-4">
+             <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Analysis</h4>
+             {insights.map((i, idx) => (
+               <div key={idx} className={`p-3 rounded-lg text-sm border ${getBgColor(i.priority)}`}>
+                 {/* SECURITY: React escapes children by default. Do NOT use dangerouslySetInnerHTML */}
+                 {i.note}
+               </div>
+             ))}
+          </div>
+        )}
+
+        {/* ... User Notes ... */}
+      </div>
+    );
+  }
+  ```
+
+- **Command**: `npm run test:frontend` -> **PASS**.
+
+**Step 5.3: Update Page Integration (RED/GREEN)**
+
+- **File**: `frontend/src/pages/JournalPage.tsx`
+- **Action**: Pass `cluster.insights` (casted as `Insight[]`) to the card.
+- **Test**: Manual verification or update `JournalPage.test.tsx` to mock response with insights.
