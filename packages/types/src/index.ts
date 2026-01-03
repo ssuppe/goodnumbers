@@ -20,3 +20,6 @@ import {
 
 export type GlycemicEvent = z.infer<typeof GlycemicEventSchema>;
 export type GlycemicCluster = z.infer<typeof GlycemicClusterSchema>;
+
+// --- Insights Types ---
+export * from "./insights";
