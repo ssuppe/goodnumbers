@@ -13,6 +13,10 @@ You can read may of the proof of concept insights in the following files:
 
 You don't need to implement these verbatim, rather use them as inspiration. This original proof-of-concept was a bit confusing because it created user-visible insights (for the web page) and also text insights that could be passed to AI to create the podcast.
 
-Also, I think these insights may have been a little too close to medical advice, which would qualify this as a medical device. Let's give insights that give them a list of things to discuss with their doctor, rather than diagnosing directly or telling them an exact input or number to change in their pump settings. Other suggestions could be general like diet, exercise, taking a walk before/after meals, etc. Note that these text insights are hard coded and given based on basic heuristics, they are not AI.
+But I'd like you to:
+a) Separate out the 'aggregate statistics' insights and use those on the AGP chart
+b) Use the others on the EventClusterCards.
+
+Always show all the relevant insights.
 
 Be sure to include plans for both the backend prisma changes, middleware, and frontend. Be thorough.
