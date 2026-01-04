@@ -137,6 +137,7 @@ exit $EXIT_CODE
     npm install -D madge typescript
     ```
 2.  **Run The Oracle**:
+
     ```bash
     chmod +x scripts/check-cycles.sh
     ./scripts/check-cycles.sh

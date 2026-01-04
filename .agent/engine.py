@@ -1,8 +1,15 @@
 import os
 import sys
 import json
+import datetime
 from openai import OpenAI
 from tools import TOOL_SCHEMAS, AVAILABLE_FUNCTIONS
+
+# --- SIMPLE FILE LOGGER ---
+def log_debug(msg):
+    timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+    with open("engine_debug.log", "a", encoding="utf-8") as f:
+        f.write(f"[{timestamp}] {msg}\n")
 
 class AgentEngine:
     def __init__(self):
@@ -10,77 +17,81 @@ class AgentEngine:
         self.api_key = os.environ.get("OPENAI_API_KEY", "dummy-key")
         self.model = os.environ.get("AGENT_MODEL", "gemini-3-pro-preview")
         
+        log_debug(f"🔌 INIT: {self.model} @ {self.base_url}")
+        
         try:
             self.client = OpenAI(base_url=self.base_url, api_key=self.api_key)
         except Exception as e:
-            print(f"❌ Failed to init OpenAI client: {e}")
+            log_debug(f"❌ Failed to init OpenAI client: {e}")
             sys.exit(1)
 
     def chat(self, messages, temperature=0.2):
-        """
-        Sends messages to the LLM. Handles Tool Calling automatically.
-        """
-        # Make a copy so we don't mutate the global history during the tool loop
         current_messages = list(messages)
-        
-        while True:
+        MAX_TOOL_LOOPS = 5
+        loop_count = 0
+
+        while loop_count < MAX_TOOL_LOOPS:
+            loop_count += 1
             try:
-                # 1. Send Request
+                log_debug(f"📤 Sending Request (Turn {loop_count})...")
+                
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=current_messages,
                     temperature=temperature,
-                    tools=TOOL_SCHEMAS, # <--- Pass our tools here
-                    tool_choice="auto"
+                    tools=TOOL_SCHEMAS,
+                    tool_choice="auto" 
                 )
                 
-                response_message = response.choices[0].message
+                msg = response.choices[0].message
+                content_len = len(msg.content) if msg.content else 0
+                tool_calls_len = len(msg.tool_calls) if msg.tool_calls else 0
                 
-                # 2. Check if the AI wants to use a tool
-                tool_calls = response_message.tool_calls
-                
-                if tool_calls:
-                    # AI wants to act. We must append its "thought" to history first.
-                    current_messages.append(response_message)
+                log_debug(f"📥 RECEIVED: Text={content_len} chars | Tools={tool_calls_len}")
+
+                # 2. Handle Tool Calls
+                if msg.tool_calls:
+                    log_debug(f"⚙️  AI wants to use {len(msg.tool_calls)} tool(s)")
                     
-                    print(f"   ⚙️  AI is using tools...")
+                    current_messages.append(msg)
 
-                    # 3. Execute the requested tools
-                    for tool_call in tool_calls:
-                        function_name = tool_call.function.name
-                        function_args = json.loads(tool_call.function.arguments)
+                    for tool_call in msg.tool_calls:
+                        fn_name = tool_call.function.name
+                        fn_args = tool_call.function.arguments
                         
-                        if function_name in AVAILABLE_FUNCTIONS:
-                            function_to_call = AVAILABLE_FUNCTIONS[function_name]
-                            
-                            print(f"      Running: {function_name}({function_args})")
-                            
-                            function_response = function_to_call(**function_args)
-                            
-                            # 4. Feed result back to AI
-                            current_messages.append(
-                                {
-                                    "tool_call_id": tool_call.id,
-                                    "role": "tool",
-                                    "name": function_name,
-                                    "content": str(function_response),
-                                }
-                            )
+                        log_debug(f"   👉 Executing: {fn_name}({fn_args})")
+                        
+                        if fn_name in AVAILABLE_FUNCTIONS:
+                            try:
+                                args_dict = json.loads(fn_args)
+                                result = AVAILABLE_FUNCTIONS[fn_name](**args_dict)
+                            except Exception as e:
+                                result = f"Error executing tool: {e}"
                         else:
-                            # Handle weird hallucinations
-                            current_messages.append(
-                                {
-                                    "tool_call_id": tool_call.id,
-                                    "role": "tool",
-                                    "name": function_name,
-                                    "content": f"Error: Function {function_name} not found.",
-                                }
-                            )
-                    # Loop back to top! The AI will now see the tool output and generate a text response.
-                    continue 
+                            result = f"Error: Tool '{fn_name}' not found."
 
-                # 5. No tools used? Return the text response.
-                return response_message.content
+                        log_debug(f"   ✅ Result: {str(result)[:100]}...")
+                        
+                        current_messages.append({
+                            "tool_call_id": tool_call.id,
+                            "role": "tool",
+                            "name": fn_name,
+                            "content": str(result)
+                        })
+                    
+                    continue # Loop back
+
+                # 3. Handle Final Response
+                content = msg.content
+                if not content:
+                    log_debug("❌ CRITICAL: AI returned NO content and NO tools.")
+                    log_debug(f"Full Dump: {msg}")
+                    return "⚠️ Error: AI returned empty response. See engine_debug.log."
+                
+                return content
 
             except Exception as e:
-                return f"❌ Error in AgentEngine: {str(e)}"
+                log_debug(f"❌ EXCEPTION: {e}")
+                return f"❌ Error: {str(e)}"
+        
+        return "⚠️ Error: Max tool loops exceeded."
