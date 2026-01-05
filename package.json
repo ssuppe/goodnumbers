@@ -10,10 +10,13 @@
   "scripts": {
     "dev:backend": "npm run dev -w backend",
     "dev:frontend": "npm run dev -w frontend",
-    "build:backend": "npm run build -w @goodnumbers/schemas && npm run build -w @goodnumbers/types && npm run build -w backend",
-    "build:frontend": "npm run build -w frontend",
+    "build:shared": "npm run build -w @goodnumbers/types && npm run build -w @goodnumbers/schemas && npm run build -w @goodnumbers/common",
+    "build:backend": "npm run build:shared && npm run build -w backend",
+    "build:frontend": "npm run build:shared && npm run build -w frontend",
     "test:backend": "npm test -w backend",
     "test:frontend": "npm test -w frontend",
+    "check:cycles": "./scripts/check-cycles.sh",
+    "check:security": "./scripts/security-check.sh",
     "lint": "npm run lint -ws --if-present",
     "prepare": "husky"
   },
@@ -26,7 +29,9 @@
     "eslint-plugin-prettier": "^5.5.4",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.6",
-    "typescript": "^5.9.2"
+    "madge": "^8.0.0",
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.8"
   },
   "lint-staged": {
     "backend/**/*.{ts,tsx,js,jsx}": [
@@ -40,6 +45,7 @@
     ]
   },
   "dependencies": {
-    "prettier": "^3.7.4"
+    "prettier": "^3.7.4",
+    "zod": "4.3.5"
   }
 }

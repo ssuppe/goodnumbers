@@ -4,10 +4,15 @@
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@goodnumbers/types": "file:../types",
+    "@goodnumbers/schemas": "file:../schemas",
+    "zod": "4.3.5"
+  },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc -b"
   },
   "devDependencies": {
-    "typescript": "^5.9.2"
+    "typescript": "^5.0.0"
   }
 }

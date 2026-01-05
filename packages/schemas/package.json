@@ -18,7 +18,8 @@
     "build": "tsc"
   },
   "dependencies": {
-    "zod": "^4.1.8"
+    "zod": "4.3.5",
+    "@goodnumbers/types": "file:../types"
   },
   "devDependencies": {
     "typescript": "^5.9.2"

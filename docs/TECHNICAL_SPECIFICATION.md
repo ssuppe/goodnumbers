@@ -39,6 +39,10 @@ This document provides a comprehensive technical specification for the Goodnumbe
 - **Background Worker:** Node.js process managed by BullMQ.
 - **Queue:** Redis.
 - **Database:** SQLite with Prisma ORM.
+- **Shared Packages:** Strictly layered unidirectional flow:
+  - `@goodnumbers/types`: Pure TS interfaces/enums (Zero dependencies).
+  - `@goodnumbers/schemas`: Zod validation definitions (Depends on `types`).
+  - `@goodnumbers/common`: Shared logic and utilities (Depends on `schemas` and `types`).
 
 ## 4. Data Handling
 
@@ -134,7 +138,8 @@ All endpoints require authentication (`protect`) and CSRF protection.
 - **Encryption:** `nightscoutToken` is encrypted at rest using AES-256-GCM (`backend/src/lib/encryption.ts`).
 - **CSRF:** Implemented via `tiny-csrf` with a token endpoint.
 - **Rate Limiting:** Applied to all API routes, with stricter limits on `POST /journals` and `PUT /settings`.
-- **Input Validation:** Zod schemas used for all API inputs (shared via `@goodnumbers/schemas`).
+- **Input Validation:** Zod 4.3.5 schemas used for all API inputs (shared via `@goodnumbers/schemas`). Version is pinned monorepo-wide to ensure type safety.
+- **Package Security:** All shared packages are marked `private: true` to prevent dependency confusion attacks.
 - **Data Segregation:** All DB queries filter by `userId`.
 
 ## 7. Future Work / Known Limitations

@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getSession } from '@auth/express';
 import { authConfig } from '../lib/auth.js';
 import { prisma } from '../lib/prisma.js';
-import { GlucoseUnit } from '@goodnumbers/common';
+import { GlucoseUnit } from '@goodnumbers/types';
 
 // Extend the Request type to include the user property using module augmentation
 declare module 'express-serve-static-core' {

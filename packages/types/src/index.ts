@@ -11,15 +11,36 @@ export type {
 
 export type { JournalStatus, Json, GlucoseEntry } from "./api-types";
 
-// --- Hotspot Engine Types ---
-import { z } from "zod";
-import {
-  GlycemicEventSchema,
-  GlycemicClusterSchema,
-} from "@goodnumbers/schemas";
+// --- Enums ---
+export * from "./enums";
 
-export type GlycemicEvent = z.infer<typeof GlycemicEventSchema>;
-export type GlycemicCluster = z.infer<typeof GlycemicClusterSchema>;
+// --- Hotspot Engine Types ---
+// Defined manually to avoid dependency on Zod/Schemas
+
+export interface GlucoseReading {
+  timestamp: string;
+  value: number;
+}
+
+export interface GlycemicEvent {
+  id: string;
+  type: "hyper" | "hypo";
+  startTime: string;
+  endTime: string;
+  startMinuteOfDay: number;
+  durationMinutes: number;
+  readings: GlucoseReading[];
+}
+
+export interface GlycemicCluster {
+  id: string;
+  type: "hyper" | "hypo";
+  avgStartMinute: number;
+  avgDurationMinutes: number;
+  eventCount: number;
+  activeDays: number[]; // 1=Mon, 7=Sun
+  events: GlycemicEvent[];
+}
 
 // --- Insights Types ---
 export * from "./insights";
