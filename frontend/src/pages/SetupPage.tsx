@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 import { useApiForm } from "../hooks/useApiForm";
-import { GlucoseUnit } from "@goodnumbers/common";
+import { GlucoseUnit } from "@goodnumbers/types";
 
 export default function SetupPage() {
   const { user, refetchSession } = useAuth();

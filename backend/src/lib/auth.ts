@@ -5,7 +5,7 @@ import { prisma } from './prisma.js';
 import type { ExpressAuthConfig } from '@auth/express';
 import * as fs from 'fs/promises';
 import type { User as AuthUser } from '@auth/core/types';
-import { GlucoseUnit } from '@goodnumbers/common';
+import { GlucoseUnit } from '@goodnumbers/types';
 
 // --- Email Allowlist Logic ---
 

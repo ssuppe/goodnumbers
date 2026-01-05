@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { GlucoseUnit } from "@goodnumbers/types";
 
 export const userSettingsSchema = z.object({
   nightscoutUrl: z.string().url().optional().nullable(),
   nightscoutToken: z.string().min(1).optional().nullable(),
   nightscoutTokenLast3: z.string().optional().nullable(),
-  preferredUnits: z.enum(["MGDL", "MMOL"]).optional(),
+  preferredUnits: z.nativeEnum(GlucoseUnit).optional(),
   agreementsSigned: z.boolean().optional(),
 });
 
