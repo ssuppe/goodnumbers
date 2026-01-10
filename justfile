@@ -53,3 +53,35 @@ test-ci-backend:
     @just services-up
     @npm test -w backend
     @just services-down
+
+# Setup the full development environment in Tmux
+tmux:
+    #!/usr/bin/env zsh
+    tmux has-session -t GN 2>/dev/null || tmux new-session -s GN -d
+    
+    # Window 0: Proxy
+    tmux rename-window -t GN:0 'Proxy'
+    tmux send-keys -t GN:0 'cd ~/dev/goodnumbers-workspace && npx @srbhptl39/mcp-superassistant-proxy@latest --config ./mcp.json --host 0.0.0.0' C-m
+
+    # Window 1: Workspace
+    tmux has-session -t GN:1 2>/dev/null || tmux new-window -t GN:1 -n 'Workspace'
+    
+    # --- THE FIX IS HERE ---
+    sleep 0.2 
+    # -----------------------
+
+    PANE_COUNT=$(tmux list-panes -t GN:1 | wc -l)
+    if [ "$PANE_COUNT" -eq 1 ]; then
+        # Force the splits to happen on Window 1 specifically
+        tmux split-window -h -t GN:1 -l 20
+        sleep 0.1
+        #tmux split-window -v -t GN:1.1
+        
+        tmux send-keys -t GN:1.1 'export FORCE_COLOR=3; just dev' 
+        #tmux send-keys -t GN:1.2 'npx prisma studio'
+    fi
+
+    tmux select-window -t GN:1
+    tmux select-pane -t GN:1.0
+    
+    [ -z "$TMUX" ] && tmux attach-session -t GN || tmux switch-client -t GN
