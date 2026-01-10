@@ -32,6 +32,10 @@ export default defineConfig({
         __dirname,
         '../packages/types/src/index.ts',
       ),
+      '@goodnumbers/common': path.resolve(
+        __dirname,
+        '../packages/common/src/index.ts',
+      ),
     },
   },
 });

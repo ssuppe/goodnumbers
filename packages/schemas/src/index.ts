@@ -73,4 +73,4 @@ export const GlycemicClusterSchema = z
   .strict();
 
 // --- Insights Schemas ---
-export * from "./insights";
+export * from "./insights.js";

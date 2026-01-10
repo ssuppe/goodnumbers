@@ -9,10 +9,10 @@ export type {
   VerificationToken,
 } from "./generated/client/index.js";
 
-export type { JournalStatus, Json, GlucoseEntry } from "./api-types";
+export type { JournalStatus, Json, GlucoseEntry } from "./api-types.js";
 
 // --- Enums ---
-export * from "./enums";
+export * from "./enums.js";
 
 // --- Hotspot Engine Types ---
 // Defined manually to avoid dependency on Zod/Schemas
@@ -43,4 +43,4 @@ export interface GlycemicCluster {
 }
 
 // --- Insights Types ---
-export * from "./insights";
+export * from "./insights.js";
