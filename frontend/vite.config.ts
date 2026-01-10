@@ -11,8 +11,18 @@ export default defineConfig({
   resolve: {
     // Add resolve configuration
     alias: {
-      "@goodnumbers/types": path.resolve(__dirname, "../packages/types/src"), // Alias for @goodnumbers/types
-      "@goodnumbers/common": path.resolve(__dirname, "../packages/common/src"), // Alias for @goodnumbers/common
+      "@goodnumbers/types": path.resolve(
+        __dirname,
+        "../packages/types/src/index.ts",
+      ),
+      "@goodnumbers/schemas": path.resolve(
+        __dirname,
+        "../packages/schemas/src/index.ts",
+      ),
+      "@goodnumbers/common": path.resolve(
+        __dirname,
+        "../packages/common/src/index.ts",
+      ),
     },
   },
   server: {
