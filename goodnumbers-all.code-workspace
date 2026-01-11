@@ -26,6 +26,10 @@
     {
       "path": "./specs",
       "name": "specs"
+    },
+    {
+      "path": "./.gemini",
+      "name": "gemini"
     }
 	
   ],
