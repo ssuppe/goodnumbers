@@ -6,7 +6,6 @@ import { type ScoreCardData } from "@goodnumbers/schemas";
 import { Loader2, AlertTriangle, Trash2 } from "lucide-react";
 
 import PodcastPlayer from "../components/journal/PodcastPlayer";
-import ScorecardRow from "../components/journal/ScorecardRow";
 import {
   ChartAnalysisCard,
   type Insight,
@@ -167,17 +166,13 @@ export default function JournalPage() {
         audioUrl={journal.podcastAudioUrl}
       />
 
-      <ScorecardRow
-        data={journal.scoreCardData as unknown as ScoreCardData}
-        units={user?.preferredUnits || "MGDL"}
-      />
-
       <ChartAnalysisCard
         title="Ambulatory Glucose Profile (AGP)"
         subtitle="Your 7-day glucose trends"
         data={normalizedAgpData}
         units={user?.preferredUnits || "MGDL"}
         insights={(journal.analysisInsights as unknown as Insight[]) || []}
+        scoreCardData={journal.scoreCardData as unknown as ScoreCardData}
       />
 
       <WeeklyVibe
