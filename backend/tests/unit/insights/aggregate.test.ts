@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateAggregateInsights } from '@src/lib/insights/aggregate';
-import { InsightPriority, GlucoseEntry } from '@goodnumbers/types';
+import { InsightPriority, GlucoseEntry, GlucoseUnit } from '@goodnumbers/types';
 
 // Helper to create mock entries
 const createEntries = (values: number[], count: number = 1): GlucoseEntry[] => {
@@ -30,7 +30,7 @@ describe('Aggregate Insights (GMI Logic)', () => {
   it('Branch 1: Low GMI (less than 6.5) with High TBR (greater than 4%) -> SERIOUS', () => {
     const entries = [...createEntries([50], 10), ...createEntries([105], 90)];
 
-    const insights = generateAggregateInsights(entries);
+    const insights = generateAggregateInsights(entries, GlucoseUnit.MGDL);
 
     expect(insights).toContainEqual(
       expect.objectContaining({
@@ -51,7 +51,7 @@ describe('Aggregate Insights (GMI Logic)', () => {
   it('Branch 1: Low GMI (less than 6.5) with Low TBR (<= 4%) -> IMPORTANT', () => {
     const entries = createEntries([100], 100);
 
-    const insights = generateAggregateInsights(entries);
+    const insights = generateAggregateInsights(entries, GlucoseUnit.MGDL);
 
     expect(insights).toContainEqual(
       expect.objectContaining({
@@ -64,7 +64,7 @@ describe('Aggregate Insights (GMI Logic)', () => {
   it('Branch 2: Target GMI (6.5-6.9) with High TBR -> IMPORTANT', () => {
     const entries = [...createEntries([50], 10), ...createEntries([150], 90)];
 
-    const insights = generateAggregateInsights(entries);
+    const insights = generateAggregateInsights(entries, GlucoseUnit.MGDL);
 
     expect(insights).toContainEqual(
       expect.objectContaining({
@@ -77,7 +77,7 @@ describe('Aggregate Insights (GMI Logic)', () => {
   it('Branch 2: Target GMI (6.5-6.9) with Low TBR and Low TIR (less than 70%) -> IMPORTANT', () => {
     const entries = [...createEntries([200], 50), ...createEntries([80], 50)];
 
-    const insights = generateAggregateInsights(entries);
+    const insights = generateAggregateInsights(entries, GlucoseUnit.MGDL);
 
     expect(insights).toContainEqual(
       expect.objectContaining({
@@ -92,7 +92,7 @@ describe('Aggregate Insights (GMI Logic)', () => {
   it('Branch 2: Target GMI (6.5-6.9) with Low TBR and High TIR -> IMPORTANT (Gold Standard)', () => {
     const entries = createEntries([140], 100);
 
-    const insights = generateAggregateInsights(entries);
+    const insights = generateAggregateInsights(entries, GlucoseUnit.MGDL);
 
     expect(insights).toContainEqual(
       expect.objectContaining({
@@ -105,7 +105,7 @@ describe('Aggregate Insights (GMI Logic)', () => {
   it('Branch 3: Slightly Elevated GMI (7.0-7.9) with High TBR -> IMPORTANT', () => {
     const entries = [...createEntries([50], 10), ...createEntries([172], 90)];
 
-    const insights = generateAggregateInsights(entries);
+    const insights = generateAggregateInsights(entries, GlucoseUnit.MGDL);
 
     expect(insights).toContainEqual(
       expect.objectContaining({
@@ -118,7 +118,7 @@ describe('Aggregate Insights (GMI Logic)', () => {
   it('Branch 3: Slightly Elevated GMI (7.0-7.9) with Low TBR and High TITR (greater than 40%) -> INFO', () => {
     const entries = [...createEntries([130], 45), ...createEntries([185], 55)];
 
-    const insights = generateAggregateInsights(entries);
+    const insights = generateAggregateInsights(entries, GlucoseUnit.MGDL);
 
     expect(insights).toContainEqual(
       expect.objectContaining({
@@ -131,7 +131,7 @@ describe('Aggregate Insights (GMI Logic)', () => {
   it('Branch 4: Elevated GMI (greater than or equal to 8.0) with High TBR -> SERIOUS', () => {
     const entries = [...createEntries([50], 10), ...createEntries([217], 90)];
 
-    const insights = generateAggregateInsights(entries);
+    const insights = generateAggregateInsights(entries, GlucoseUnit.MGDL);
 
     expect(insights).toContainEqual(
       expect.objectContaining({
@@ -144,7 +144,7 @@ describe('Aggregate Insights (GMI Logic)', () => {
   it('Branch 4: Elevated GMI (greater than or equal to 8.0) with Low TBR -> SERIOUS', () => {
     const entries = createEntries([200], 100);
 
-    const insights = generateAggregateInsights(entries);
+    const insights = generateAggregateInsights(entries, GlucoseUnit.MGDL);
 
     expect(insights).toContainEqual(
       expect.objectContaining({
@@ -155,7 +155,7 @@ describe('Aggregate Insights (GMI Logic)', () => {
   });
 
   it('Returns empty array if no entries', () => {
-    const insights = generateAggregateInsights([]);
+    const insights = generateAggregateInsights([], GlucoseUnit.MGDL);
     expect(insights).toEqual([]);
   });
 });
