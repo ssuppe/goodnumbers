@@ -5,6 +5,8 @@ import {
   GlucoseUnit,
 } from '@goodnumbers/types';
 import { createAvgGlucoseInsight } from './average-glucose.js';
+import { createHypoglycemiaInsight } from './hypoglycemia.js';
+import { createTimeInRangeInsight } from './time-in-range.js';
 import { AnalysisResult } from './interfaces.js';
 
 export function generateAggregateInsights(
@@ -109,6 +111,14 @@ export function generateAggregateInsights(
 
   const avgInsight = createAvgGlucoseInsight(analysis, units).generate();
   insights.push(avgInsight);
+
+  // --- New Hypoglycemia Insight ---
+  const hypoInsight = createHypoglycemiaInsight(tbr * 100).generate();
+  insights.push(hypoInsight);
+
+  // --- New Time In Range Insight ---
+  const tirInsight = createTimeInRangeInsight(tir * 100).generate();
+  insights.push(tirInsight);
 
   return insights;
 }
