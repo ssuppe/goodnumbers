@@ -71,7 +71,7 @@ export function getRefinedUserInsight(
   gmi: number,
   tbr: number,
   tir: number,
-  titr: number
+  titr: number,
 ): AssessmentInsight {
   const TBR_LIMIT = 0.04; // 4%
   const TIR_TARGET = 0.7; // 70%

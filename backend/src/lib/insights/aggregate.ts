@@ -1,6 +1,16 @@
-import { Insight, InsightPriority, GlucoseEntry } from '@goodnumbers/types';
+import {
+  Insight,
+  InsightPriority,
+  GlucoseEntry,
+  GlucoseUnit,
+} from '@goodnumbers/types';
+import { createAvgGlucoseInsight } from './average-glucose.js';
+import { AnalysisResult } from './interfaces.js';
 
-export function generateAggregateInsights(entries: GlucoseEntry[]): Insight[] {
+export function generateAggregateInsights(
+  entries: GlucoseEntry[],
+  units: GlucoseUnit,
+): Insight[] {
   if (!entries.length) return [];
   const insights: Insight[] = [];
 
@@ -88,6 +98,17 @@ export function generateAggregateInsights(entries: GlucoseEntry[]): Insight[] {
   }
 
   insights.push({ note, priority });
+
+  // --- New Average Glucose Insight ---
+  const analysis: AnalysisResult = {
+    avgGlucose: avg,
+    lowPercentage: tbr * 100, // Convert 0-1 to 0-100%
+    highPercentage: (1 - tir - tbr) * 100, // Approximate high
+    timeInRange: tir * 100,
+  };
+
+  const avgInsight = createAvgGlucoseInsight(analysis, units).generate();
+  insights.push(avgInsight);
 
   return insights;
 }
