@@ -4,6 +4,7 @@ import EventClusterCard from "./EventClusterCard";
 import { ClusterEventsChart } from "./charts/ClusterEventsChart";
 import { mockJournalForView } from "../../mocks/journal";
 import type { GlycemicEventCluster } from "@goodnumbers/types";
+import { InsightPriority } from "@goodnumbers/types";
 import type { Treatment } from "../../lib/agpUtils";
 
 // Mock the chart component to verify it renders with correct props
@@ -178,5 +179,21 @@ describe("EventClusterCard", () => {
       expect.objectContaining({ treatments: mockTreatments }),
       expect.anything(),
     );
+  });
+
+  it("renders insights when provided", () => {
+    const insights = [
+      { priority: InsightPriority.IMPORTANT, note: "Uncovered meal" },
+    ];
+    const clusterWithInsights = { ...mockCluster, insights };
+    render(
+      <EventClusterCard
+        cluster={clusterWithInsights}
+        userNote=""
+        onNoteChange={mockOnNoteChange}
+      />,
+    );
+    expect(screen.getByText("Uncovered meal")).toBeInTheDocument();
+    expect(screen.getByText("Analysis")).toBeInTheDocument();
   });
 });
