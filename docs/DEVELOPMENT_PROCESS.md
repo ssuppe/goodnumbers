@@ -92,13 +92,20 @@ The Pull Request is the central mechanism for quality control. All code must be 
 
 ### 4.3. Automated Quality Gates
 
-The repository is configured with a CI/CD pipeline. You must run these checks locally before pushing:
+The repository is configured with a CI/CD pipeline. You must run these checks locally before pushing.
 
-1.  **Linting:** `npm run lint` (runs across all workspaces).
-2.  **Type Checking:** `npm run build:backend` and `npm run build:frontend` (verifies types).
-3.  **Automated Tests:**
-    - Backend: `npm run test:backend`
-    - Frontend: `npm run test:frontend`
+> **Note to Agent:** When running tests, **ALWAYS** use the `:ai` suffix commands listed below. These scripts are optimized for LLM contexts: they use low verbosity (dot reporter), strip color codes, and terminate immediately on the first failure (`--bail 1`) to prevent token waste.
+
+1.  **Linting:**
+    - `npm run lint` (runs across all workspaces).
+
+2.  **Type Checking:**
+    - `npm run build:backend` and `npm run build:frontend` (verifies types).
+
+3.  **Automated Tests (Token Optimized):**
+    - **Run All:** `npm run test:ai` (Recommended: runs all suites, stops at first error).
+    - **Backend Only:** `npm run test:backend:ai`
+    - **Frontend Only:** `npm run test:frontend:ai`
 
 **A PR must be blocked from merging if any of these checks fail.**
 
