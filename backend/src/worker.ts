@@ -13,20 +13,26 @@ import { ScoreCardDataSchema } from '@goodnumbers/schemas';
 import { HotspotDetector } from './lib/analysis/HotspotDetector.js';
 import { z } from 'zod';
 import { NightscoutTreatment } from './lib/nightscout/types.js';
+import { generateAggregateInsights } from './lib/insights/aggregate.js';
+import { generateClusterInsights } from './lib/insights/cluster.js';
+import { InsightArraySchema } from '@goodnumbers/schemas';
 
 // --- Sanitization Logic ---
 const StoredTreatmentSchema = z.object({
   id: z.string(),
   date: z.number(),
-  carbs: z.number().nullable(),
-  insulin: z.number().nullable(),
-  eventType: z.string().max(50).transform((val) => val || 'Unknown'),
+  carbs: z.number(), // Strict number (no null)
+  insulin: z.number(), // Strict number (no null)
+  eventType: z
+    .string()
+    .max(50)
+    .transform((val) => val || 'Unknown'),
 });
 
 function normalizeTreatment(t: NightscoutTreatment) {
-  const parseValue = (val: any): number | null => {
+  const parseValue = (val: unknown): number | null => {
     if (val === null || val === undefined || val === '') return null;
-    const num = parseFloat(val);
+    const num = typeof val === 'number' ? val : parseFloat(String(val));
     return isNaN(num) ? null : num;
   };
 
@@ -254,17 +260,44 @@ export async function processJournalJob(job: Job) {
       `[Worker] Identified ${allClusters.length} recurring clusters.`,
     );
 
+    // --- Insights Generation ---
+
+    // 1. Aggregate Insights
+    const rawAnalysisInsights = generateAggregateInsights(glucoseEntries);
+    // SECURITY: Validate
+    const analysisInsights = InsightArraySchema.parse(rawAnalysisInsights);
+
+    // 2. Cluster Insights
+    // Optimization: Sort treatments once
+    treatments.sort((a, b) => a.date - b.date);
+
+    const clusterData = allClusters.map((c) => {
+      // treatments has carbs/insulin as numbers (0 for null), so it satisfies the interface
+      const rawInsights = generateClusterInsights(c, treatments);
+
+      // SECURITY: Validate before DB write
+      const safeInsights = InsightArraySchema.safeParse(rawInsights);
+      if (!safeInsights.success) {
+        console.error(`[Worker] Insight validation failed for cluster ${c.id}`);
+      }
+
+      return {
+        journalId,
+        eventType: c.type,
+        eventCount: c.eventCount,
+        meanTimeMinutes: c.avgStartMinute,
+        clusterDataJson: c as unknown as Prisma.InputJsonValue,
+        insights: safeInsights.success
+          ? (safeInsights.data as unknown as Prisma.InputJsonValue)
+          : [],
+      };
+    });
+
     // 5. Atomic Persistence (Delete Old + Save New)
     await prisma.$transaction([
       prisma.glycemicEventCluster.deleteMany({ where: { journalId } }),
       prisma.glycemicEventCluster.createMany({
-        data: allClusters.map((c) => ({
-          journalId,
-          eventType: c.type,
-          eventCount: c.eventCount,
-          meanTimeMinutes: c.avgStartMinute,
-          clusterDataJson: c as unknown as Prisma.InputJsonValue,
-        })),
+        data: clusterData,
       }),
     ]);
 
@@ -287,6 +320,7 @@ export async function processJournalJob(job: Job) {
         scoreCardData:
           finalPayload.scoreCardData as unknown as Prisma.InputJsonValue,
         treatments: treatments as unknown as Prisma.InputJsonValue,
+        analysisInsights: analysisInsights as unknown as Prisma.InputJsonValue,
       },
     });
 

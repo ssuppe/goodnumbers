@@ -82,6 +82,9 @@ model GlycemicEventCluster {
   // Detailed data and user notes
   clusterDataJson     Json
   userNotes           String?
+
+  // Validated via Zod in app layer
+  insights            Json?
 }
 
 
