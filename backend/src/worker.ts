@@ -16,6 +16,7 @@ import { NightscoutTreatment } from './lib/nightscout/types.js';
 import { generateAggregateInsights } from './lib/insights/aggregate.js';
 import { generateClusterInsights } from './lib/insights/cluster.js';
 import { InsightArraySchema } from '@goodnumbers/schemas';
+import { GlucoseUnit } from '@goodnumbers/types';
 
 // --- Sanitization Logic ---
 const StoredTreatmentSchema = z.object({
@@ -68,6 +69,7 @@ export async function processJournalJob(job: Job) {
           select: {
             nightscoutUrl: true,
             nightscoutToken: true,
+            preferredUnits: true,
           },
         },
       },
@@ -263,7 +265,10 @@ export async function processJournalJob(job: Job) {
     // --- Insights Generation ---
 
     // 1. Aggregate Insights
-    const rawAnalysisInsights = generateAggregateInsights(glucoseEntries);
+    const rawAnalysisInsights = generateAggregateInsights(
+      glucoseEntries,
+      journal.user.preferredUnits as GlucoseUnit,
+    );
     // SECURITY: Validate
     const analysisInsights = InsightArraySchema.parse(rawAnalysisInsights);
 
