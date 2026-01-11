@@ -10,6 +10,8 @@ export function generateClusterInsights(
   cluster: GlycemicCluster,
   treatments: Treatment[],
 ): Insight[] {
+  if (!cluster.events || !cluster.events.length) return [];
+
   const insights: Insight[] = [];
   let uncoveredCount = 0;
 
@@ -33,6 +35,7 @@ export function generateClusterInsights(
 
   if (uncoveredCount > 0) {
     // SECURITY: Use static string templates, do not inject raw treatment data
+    // Also avoid < and > characters
     insights.push({
       priority: InsightPriority.IMPORTANT,
       note: `Potential uncovered meals detected in ${uncoveredCount} events.`,

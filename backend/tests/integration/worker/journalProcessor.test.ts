@@ -230,13 +230,8 @@ describe('Journal Processor Worker', () => {
     expect(savedData).toHaveProperty('analysisInsights');
     const analysisInsights = savedData.analysisInsights as Insight[];
     // With 1 entry of 100, we expect GMI info
-    expect(analysisInsights).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          note: expect.stringContaining('Estimated GMI'),
-        }),
-      ]),
-    );
+    expect(analysisInsights.length).toBeGreaterThan(0);
+    expect(analysisInsights[0].note).toContain('estimated GMI');
 
     // Verification 4: Cluster Insights
     const createManyCall = mockPrismaCreateMany.mock.calls[0] as [
