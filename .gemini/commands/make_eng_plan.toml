@@ -17,7 +17,7 @@ You are converting a **generic plan of action** from your manager into a **produ
 
 ### Required document structure (exact section order)
 
-1. **Title** — `# {{PROJECT_NAME}} — \`todo.md\`\`
+1. **Title** — # {{PROJECT_NAME}} — \todo.md\\
 2. **TL;DR** — one line.
 3. **Invariants (do not change)** — non-negotiable constraints.
 4. **Assumptions & Scope** — what you’re assuming (label uncertain items).
@@ -36,11 +36,5 @@ You are converting a **generic plan of action** from your manager into a **produ
 * Crisp, technical, neutral tone.
 * No self-references (“As an AI…”).
 * Use code fences for XML and pseudocode.
-* Use placeholders like `{{MODEL_NAME}}`, `{{DATASET}}`, `{{RANK_SCHEDULE}}` when the plan lacks specifics; **label them** in Assumptions.
-
-Here is the request from your manager:
-
-{{args}}
+* Use placeholders like {{MODEL_NAME}}, {{DATASET}}, {{RANK_SCHEDULE}} when the plan lacks specifics; **label them** in Assumptions.
 """
-
-
