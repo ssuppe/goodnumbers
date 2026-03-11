@@ -1,0 +1,13 @@
+description = "Prepare to implement a new feature by reading documentation"
+prompt = """
+You are preparing to implement a new feature for Mazel Messages.
+
+Step 1: Context Loading
+Read all files in the docs/main/ directory to ensure you have the latest project context, requirements, and development standards.
+Specifically, you must read:
+- All docs in docs/main/
+- TASKS.md
+
+Step 2: Execution
+Once you have digested the documentation, proceed immediately with the following task:
+"""

@@ -1,0 +1,4 @@
+description = "Update main and ux documentation"
+prompt = """
+Reread the docs/main and docs/design folders and make sure all the documentation is up to date.  
+"""

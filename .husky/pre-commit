@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Unset variables for compatibility with git worktrees
+unset GIT_DIR
+unset GIT_WORK_TREE
+
 # --- Robustly find the project directory ---
 # 1. Find the absolute path to the root of the git repository.
 REPO_ROOT=$(git rev-parse --show-toplevel)
