@@ -28,6 +28,30 @@ GoodNumbers is a weekly journal that combines traditional statistical analysis w
 
 ---
 
+## ✨ Key Features
+
+GoodNumbers provides a multi-layered analysis of your 7-day diabetes data:
+
+### 📊 Statistical Analysis (No AI)
+The core of the report is built on robust statistical methods to provide an objective view of your week:
+-   **Ambulatory Glucose Profile (AGP)**: A standardized chart showing your glucose patterns and percentiles (5th, 25th, 50th, 75th, 95th) over a 24-hour period.
+-   **Voyager Scorecards**: Key performance metrics including Average Glucose, Stability (Rate of Change), and Time in Range (Standard and Tight).
+-   **Trend Tracking**: Automatic comparison with your previous week's data to see if you are improving.
+-   **Glycemic Hotspot Detection**: A custom engine that identifies recurring "clusters" of highs or lows at specific times of day, helping you find patterns that might otherwise be missed.
+
+### 📝 The Weekly Report
+Each journal entry generates a comprehensive summary:
+-   **Subjective Reflection**: Capture your "Weekly Vibe," influencing factors (like stress or illness), and goals for the coming week.
+-   **Automated Insights**: Rule-based insights derived from your statistical data.
+-   **Hotspot Analysis**: Detailed breakdown of recurring events with the ability to add your own notes to each cluster.
+
+### 🎙️ AI-Driven Personalization (Experimental)
+Leveraging the power of Large Language Models (Gemini):
+-   **Clinical Assessment**: An AI-generated qualitative review of your data, identifying blind spots and suggesting areas for reflection.
+-   **Personalized Podcast**: GoodNumbers can generate a short audio summary (scripted by AI) that talks you through your week, making the reflection process feel more like a conversation than a chore.
+
+---
+
 ## 🔌 Required Integrations
 
 To run your own instance of GoodNumbers, you will need account access to the following services:
