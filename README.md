@@ -123,6 +123,15 @@ This project is a demonstration of how AI can assist in building complex health-
 
 ---
 
+## 📅 TODO / Next Steps
+
+GoodNumbers is actively evolving. Our current focus is on **Simplification**:
+
+- **Client-Side Migration**: We are working to move the core logic to be entirely client-side. This will remove the need for a complex backend and database setup for individual users.
+- **Vastly Simpler Deployment**: Our goal is to make GoodNumbers a "Static Site" that can be run directly in the browser or hosted easily on services like GitHub Pages, making it much simpler for the community to run their own instances.
+
+---
+
 ## ⚖️ License & Disclaimer
 
 - **License**: Distributed under the [AGPL-3.0 License](LICENSE).
