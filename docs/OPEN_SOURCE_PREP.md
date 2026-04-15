@@ -1,0 +1,41 @@
+# Open Source Readiness Checklist: GoodNumbers 🩸
+
+**Goal**: Prepare the `goodnumbers` repository for public release on GitHub under the AGPL-3.0 license.
+
+## Status Summary
+- **Phase**: Legal & Governance
+- **Completion**: 25%
+- **Target License**: AGPL-3.0
+
+---
+
+## 🏁 Stage 1: Infrastructure & Security Audit
+- [x] **1.1 Secret Scanning**: Deep audit performed using Gitleaks and Grep.
+- [x] **1.2 History Cleaning**: Cleaned two `CONTEXT7_API_KEY` instances from entire history via `git-filter-repo` in a clean clone.
+- [x] **1.3 Environment Templates**: `backend/.env.example` verified and safe.
+- [x] **1.4 Dependency Audit**: All `package.json` files updated to `AGPL-3.0` and verified.
+
+## 🟩 Stage 2: Legal & Governance
+- [ ] **2.1 Add LICENSE File**: Populate with the full text of the AGPL-3.0.
+- [ ] **2.2 Create DISCLAIMER.md**: Standardized medical disclaimer for user safety.
+- [ ] **2.3 Create CONTRIBUTING.md**: Guidelines for TDD, branch naming, and PRs.
+- [ ] **2.4 Create CODE_OF_CONDUCT.md**: Establish community standards (Contributor Covenant).
+- [ ] **2.5 Create SECURITY.md**: Instructions for reporting vulnerabilities.
+
+## 🟩 Stage 3: The "Front Door" (README.md)
+- [ ] **3.1 Brand & Value Prop**: Clear explanation of what the app does.
+- [ ] **3.2 Visuals**: Add placeholders for screenshots or diagrams.
+- [ ] **3.3 Installation Guide**: Step-by-step for a fresh clone.
+- [ ] **3.4 Development Guide**: How to run tests and linters.
+
+## 🟩 Stage 4: GitHub Metadata
+- [ ] **4.1 Issue Templates**: Bug reports and feature requests.
+- [ ] **4.2 PR Template**: Ensure every PR includes test verification.
+- [ ] **4.3 Repository Settings**: Draft the "About" section, tags (`#diabetes`, `#nightscout`, `#health-tech`), and social preview.
+
+---
+
+## Validation Gate
+- [ ] Follow README from a fresh clone in `/tmp`.
+- [ ] Verify `npm test` passes in all workspaces.
+- [ ] Ensure no personal emails or non-public data exist in the repo.
