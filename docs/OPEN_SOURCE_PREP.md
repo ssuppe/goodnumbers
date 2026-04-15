@@ -16,11 +16,11 @@
 - [x] **1.4 Dependency Audit**: All `package.json` files updated to `AGPL-3.0` and verified.
 
 ## 🟩 Stage 2: Legal & Governance
-- [ ] **2.1 Add LICENSE File**: Populate with the full text of the AGPL-3.0.
-- [ ] **2.2 Create DISCLAIMER.md**: Standardized medical disclaimer for user safety.
-- [ ] **2.3 Create CONTRIBUTING.md**: Guidelines for TDD, branch naming, and PRs.
-- [ ] **2.4 Create CODE_OF_CONDUCT.md**: Establish community standards (Contributor Covenant).
-- [ ] **2.5 Create SECURITY.md**: Instructions for reporting vulnerabilities.
+- [x] **2.1 Add LICENSE File**: Populate with the full text of the AGPL-3.0.
+- [x] **2.2 Create DISCLAIMER.md**: Standardized medical disclaimer for user safety.
+- [x] **2.3 Create CONTRIBUTING.md**: Guidelines for TDD, branch naming, and PRs.
+- [x] **2.4 Create CODE_OF_CONDUCT.md**: Establish community standards (Contributor Covenant).
+- [x] **2.5 Create SECURITY.md**: Instructions for reporting vulnerabilities.
 
 ## 🟩 Stage 3: The "Front Door" (README.md)
 - [ ] **3.1 Brand & Value Prop**: Clear explanation of what the app does.
