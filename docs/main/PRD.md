@@ -1,17 +1,18 @@
 # Goodnumbers Weekly Health Journal PRD
 
-**Revision:** v1.0 (Static Single-User)
+**Revision:** v2.0 (Static/Unhosted)
 
-GoodNumbers is a simple, static, single-user weekly health journal for Type 1 Diabetics. It combines a diary/bullet journal with statistical CGM analysis, storing all data locally on the user's disk in portable, human-readable formats.
+GoodNumbers is a simple, static, single-user weekly health journal for Type 1 Diabetics. It combines a diary/bullet journal with statistical CGM analysis, storing all data in the browser's IndexedDB and synchronizing it to a private GitHub repository.
 
 **Problem:** Type 1 Diabetics often lack a simple, private way to identify weekly trends without relying on complex SaaS platforms or centralized databases.
 
 **Solution:** GoodNumbers provides a purely client-side practice of self-reflection. It leverages:
 
 - **Data Analysis:** Runs entirely in the browser to find "hotspots" and trends in blood glucose numbers.
-- **Local Storage:** Uses the Web File System Access API to store journals as Markdown files with YAML frontmatter on the user's computer.
-- **Zero Knowledge:** Credentials (Nightscout, API keys) are stored locally in the chosen workspace and never leave the user's browser.
-- **Portability:** Journals are human-readable Markdown, making them easy to share with doctors or archive independently of the application.
+- **Local-First Storage:** All data is stored in the browser's **IndexedDB** for instant load times and full offline capability.
+- **GitHub Sync:** Data is synchronized to a user-owned, private GitHub repository using a Personal Access Token (PAT). This ensures cross-platform (Desktop/Mobile) support and data ownership.
+- **Zero Knowledge:** Credentials (Nightscout, GitHub PAT) are stored locally in the browser and never leave the user's environment.
+- **Portability:** Journals are human-readable Markdown/YAML on GitHub, making them easy to share or archive independently of the application.
 
 The goal of GoodNumbers is to give Type 1 Diabetics a weekly practice of self-reflection, including:
 
@@ -34,21 +35,23 @@ The design is clean, professional, calm, and supportive ("Mesa" theme: Terracott
 - **Critical:** Red (`#D32F2F`)
 - **Background:** Off-white (`#F4F1EA`)
 
-## User Journey: The Workspace Flow
+## User Journey: The Unhosted Flow
 
-### 1. Workspace Selection (Onboarding)
-Instead of a login, the user selects a folder on their computer to act as their "Journal Workspace."
-- The app requests read/write permission to this folder.
-- A `.goodnumbers.config.json` is created/loaded to store Nightscout credentials and preferences.
+### 1. Setup (Onboarding)
+User provides their Nightscout URL/Secret and GitHub details (Username, Repo, PAT). 
+- Validates credentials via direct browser-to-API requests.
+- Fetches existing journals from GitHub if the repo is already populated.
 
 ### 2. Dashboard
-Displays a list of past journals by scanning the workspace for `.md` files.
+Displays a list of past journals from IndexedDB.
 - **Primary Action:** "Log this week's journal".
+- **Status:** Shows "Syncing..." or "Synced" indicators.
 
 ### 3. Journal Generation
 - Fetches 7 days of data directly from Nightscout (Client-side).
 - Analyzes data (Web Worker).
-- Saves as a new Markdown file in the workspace.
+- Saves as a new entry in IndexedDB (marked as `pending_push`).
+- Sync Engine pushes the new Markdown file to GitHub in the background.
 
 ### 4. Journal View
-Displays AGP charts, scorecard metrics, and glycemic event clusters parsed from the file's YAML frontmatter. Allows editing subjective notes saved back to the Markdown body.
+Displays AGP charts, scorecard metrics, and glycemic event clusters. Allows editing subjective notes.
