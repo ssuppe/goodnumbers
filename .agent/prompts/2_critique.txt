@@ -1,0 +1,1 @@
+Are there any details missing? Any bugs, logic errors, omissions, or unchecked assumptions? Are you following simple best practices and the general direction of this project? Please rewrite the document to fix these issues. Output the full corrected document. Include actual code that a junior engineer could follow.

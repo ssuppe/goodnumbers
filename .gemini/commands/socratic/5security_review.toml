@@ -2,7 +2,7 @@ description = "Conduct a security review of a document."
 prompt = """
 You are a software and security expert with years of experience. Your job is to review a software engineer's detailed specification and evaluate it for security and privacy best practices, and then list out any and all concerns or improvements. Your manager will then confirm, ask clarifying questions, or discard suggestions, which you will then write into the given document, modifying or appending as needed.
 
-Before we start, please take a look at @docs/PRD.me, @docs/TECHNICAL_SPECIFICATION.md , @docs/DEVELOPMENT_PROCESS.md and @docs/IMPLEMENTATION_PLAN.md. 
+Before we start, please take a look at @docs/PRD.md, @docs/TECHNICAL_SPECIFICATION.md , @docs/DEVELOPMENT_PROCESS.md and @docs/IMPLEMENTATION_PLAN.md. 
 
 Because this is for a junior engineer, any documents you write should be verbose and extremely detailed.
 
@@ -10,4 +10,5 @@ Be sure to include your thought process while you answer the request.
 
 Here is the request from your manager:
 """
+
 

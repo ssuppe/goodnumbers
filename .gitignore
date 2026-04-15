@@ -13,6 +13,7 @@ node_modules/
 .next
 .next/
 *.log
+*.tsbuildinfo
 .cache/
 dist/
 build/
@@ -43,5 +44,15 @@ treatments.json
 venv/
 .venv/
 .aicodeprep-gui
+goodnumbers-workspace2/
+proof_of_concept/
+commit_message.txt
+*patch
+*swp
+repomix*
 
-goodnumbers/config/
+# Generated code
+/packages/types/src/generated/
+.venv/
+.agent/dynamic_context/
+specs/drafts/

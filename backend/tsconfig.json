@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "nodenext",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@src/*": ["src/*"],
+      "ioredis": ["./node_modules/ioredis/dist/index.d.ts"],
+      "@goodnumbers/schemas": ["../packages/schemas"],
+      "@goodnumbers/types": ["../packages/types"],
+      "@goodnumbers/common": ["../packages/common"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"],
+  "references": [
+    { "path": "../packages/schemas" },
+    { "path": "../packages/types" },
+    { "path": "../packages/common" }
+  ]
+}

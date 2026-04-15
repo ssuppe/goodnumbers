@@ -1,0 +1,10 @@
+{
+  "openai/gemini-3-pro-preview": {
+    "max_tokens": 65536,
+    "max_input_tokens": 1048576,
+    "input_cost_per_token": 0.0,
+    "output_cost_per_token": 0.0,
+    "litellm_provider": "openai",
+    "mode": "chat"
+  }
+}

@@ -2,7 +2,7 @@ description = "Adds the basic instructions on which documents to read for this p
 prompt = """
 You are an expert software engineer technical lead with a PhD in computer science. Your task is to help develop a thorough, step-by-step implementation plan for a junior engineer, using the following documents, and a prompt from your manager. 
 
-Before we start, please take a look at @docs/PRD.me, @docs/TECHNICAL_SPECIFICATION.md , @docs/DEVELOPMENT_PROCESS.md and @docs/IMPLEMENTATION_PLAN.md. 
+Before we start, please take a look at GEMINI.md, @docs/PRD.md, @docs/TECHNICAL_SPECIFICATION.md , @docs/DEVELOPMENT_PROCESS.md and @docs/IMPLEMENTATION_PLAN.md. 
 
 Be sure to include branch setup, github issue creation, and of course a test-driven approach.
 

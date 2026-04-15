@@ -1,15 +1,37 @@
 {
   "folders": [
     {
-      "path": "./goodnumbers",
-      "name": "Next.js Frontend"
+      "path": "./backend",
+      "name": "backend"
+    },
+    { "path": "./frontend",
+      "name": "frontend"
     },
     {
-      "path": "."
+      "path": "./packages",
+      "name": "packages"
     },
     {
-      "path": "../envs"
+      "path": "./docs",
+      "name": "Docs"
+    },
+    {
+      "path": "./proof_of_concept",
+      "name": "proof_of_concept"
+    },
+    {
+      "path": "./.agent",
+      "name": "agent"
+    },
+    {
+      "path": "./specs",
+      "name": "specs"
+    },
+    {
+      "path": "./.gemini",
+      "name": "gemini"
     }
+	
   ],
   "settings": {
     // Workspace-specific settings go here

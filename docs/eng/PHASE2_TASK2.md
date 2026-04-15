@@ -1,422 +1,364 @@
-# Implementation Plan: Phase 2, Task 2 - Integrate User Authentication
+You've raised an excellent point. My apologies. Adhering to TDD principles is crucial, and you are correct to challenge a plan that relies solely on manual verification.
 
-**Author:** Gemini, Technical Lead
-**Date:** 2025-08-17
-**Version:** 1.1
+While the placeholder UI itself is a temporary testing tool that will be discarded, the new `GET /api/session` endpoint is a piece of production backend code. As such, it **must** be accompanied by its own automated integration test.
 
-## 1. Overview
+Relying on a manual UI test to validate a permanent API endpoint is a violation of TDD. The endpoint's contract must be verified independently.
 
-This document provides a detailed, step-by-step plan for a junior engineer to implement user authentication into the Goodnumbers application. This task corresponds to **Phase 2, Task 2** of the master implementation plan.
+I have updated the plan to include a new integration test for the `/api/session` endpoint. This ensures that even after the placeholder UI is removed, we have an automated guarantee that the session endpoint functions correctly.
 
-The primary goal is to integrate **Auth.js** into our existing Express.js server, using **Google as the sole authentication provider**. This will handle all user login, registration, and session management.
+---
 
-This plan strictly follows the project's established `DEVELOPMENT_PROCESS.md`. All work should be done on a new feature branch created from `develop`.
+# Goodnumbers — `todo.md` (Phase 2, Task 2 - TDD Compliant)
 
-## 2. Prerequisites
+## TL;DR
 
-Before you begin, ensure you have completed the following:
+Implement a minimal HTML/JS UI served by Express to manually test the complete Google OAuth login/logout flow, and add a dedicated integration test to automatically verify the new `/api/session` endpoint contract.
 
-1.  **GitHub Issue:** This task is tracked by GitHub Issue #27.
+## Invariants (do not change)
 
-2.  **Pull Latest Changes:** Make sure your local `develop` branch is up-to-date with the remote repository.
+- All authentication logic must be handled by `@auth/express` v5.
+- The UI must be a single, static HTML file with vanilla JavaScript.
+- All new API endpoints must be accompanied by automated integration tests.
 
+## Assumptions & Scope
+
+- **Assumption: Project State:** This task begins from the state of the project at the completion of Phase 2, Task 1.
+- **Assumption: Core Auth.js Integration:** The core Auth.js v5 components, configuration, and middleware are already integrated into the Express application.
+- **Scope:** This task includes creating a static HTML page, enabling an Express static file server, and adding a `GET /api/session` endpoint with its corresponding integration test.
+- **Out of Scope:** Advanced UI styling, integration with a frontend framework, automated End-to-End (E2E) testing for the HTML page itself.
+
+## Objectives
+
+1.  **Validate Session Endpoint Contract (TDD):** Create a failing integration test for the `/api/session` endpoint, then implement the endpoint to make the test pass.
+2.  **Enable Static Asset Serving:** Successfully configure the Express server to serve static files from a `public` directory.
+3.  **Implement Session Endpoint:** Create a `GET /api/session` endpoint that uses `getSession` from Auth.js to return the current user's session object.
+4.  **Develop Placeholder UI:** Create a single `index.html` file that consumes the `/api/session` endpoint.
+5.  **Verify End-to-End Flow:** Manually verify the complete user authentication lifecycle using the placeholder UI.
+
+## Risks & Mitigations
+
+- **Risk:** The `/api/session` endpoint inadvertently exposes sensitive data not required by the UI.
+  - **Mitigation:** The endpoint will only return the default session object provided by the `getSession` utility. The new integration test will assert the shape of the returned object, acting as a contract test.
+- **Risk:** The CSRF protection mechanism in Auth.js v5 complicates the simple HTML form POST for sign-out.
+  - **Mitigation:** The manual test plan serves as the primary verification gate for the UI's interaction with the backend. If sign-out fails, the test will catch it.
+
+## Method Outline (idea → mechanism → trade-offs → go/no-go)
+
+- **Idea:** Provide a simple, fast, and isolated method to test the entire backend authentication flow while ensuring the new API endpoint is covered by automated tests.
+- **Mechanism:**
+  1.  **Test-Driven Development (TDD):**
+      - **RED:** Write a new integration test for `GET /api/session`. The test will initially fail with a 404.
+      - **GREEN:** Implement the `/api/session` route in `src/index.ts` to make the test pass.
+  2.  **UI Implementation:**
+      - Integrate the `express.static` middleware into `src/index.ts`.
+      - Create the `public/index.html` file with JavaScript to consume the now-tested endpoint.
+- **Trade-offs:** This approach slightly increases the task's scope by adding a new test file, but it significantly improves long-term quality by ensuring the API endpoint is robust and maintainable. This is a positive trade-off.
+- **Go/No-Go:** Go. The updated plan is more robust and aligns with the project's TDD philosophy.
+
+## Implementation Notes
+
+- **API Endpoint:** `GET /api/session`. Implementation must use `getSession` from `@auth/express`.
+- **Testing:** The new integration test must cover both authenticated and unauthenticated states by mocking the `getSession` function.
+- **Static Serving:** Use `app.use(express.static('public'))` in `src/index.ts`.
+- **Sign-Out Form:** The sign-out button must be of `type="submit"` inside a `<form>` with `method="POST"` and `action="/api/auth/signout"`.
+
+## Acceptance Gates
+
+1.  **Automated tests for `/api/session` pass successfully.**
+2.  Navigating a browser to `http://localhost:3000/` serves the `public/index.html` file.
+3.  The rendered page correctly displays the "Logged out" status initially.
+4.  The full manual sign-in/sign-out flow works as expected.
+
+## “Make-sure-you” Checklist
+
+- [ ] Have you created the new integration test for `/api/session` **before** implementing the endpoint?
+- [ ] Does your new test cover both authenticated and unauthenticated scenarios?
+- [ ] Have you created the `public` directory at the root of the `goodnumbers` project?
+- [ ] Have you correctly registered the `express.static` middleware in `src/index.ts`?
+- [ ] Is your `index.html` file using only vanilla JavaScript?
+- [ ] Have you performed the full manual test flow and confirmed it works after all automated tests pass?
+
+## Project hygiene prep
+
+1.  **Create a GitHub Issue:**
+    ```bash
+    gh issue create --title "feat(auth): P2_T2 Add Placeholder UI and Session Endpoint" --body "Creates a minimal HTML/JS UI to manually test the auth flow and adds a TDD-compliant /api/session endpoint with integration tests. Closes P2_T2."
+    ```
+2.  **Create a Feature Branch:**
     ```bash
     git checkout develop
-    git pull
+    git pull origin develop
+    git checkout -b feat/P2_T2-auth-test-ui
     ```
 
-3.  **Create a Feature Branch:** Create a new branch for this task, following our naming conventions. Include the issue number in the branch name for easy tracking.
+## In-depth test plan
 
-    ```bash
-    git checkout -b feat/27-authjs-integration
-    ```
+### Automated Integration Test (New)
 
-4.  **Verify Environment:** Ensure your `.env` file in the `goodnumbers/` directory is correctly configured with the variables from `.env.example`, including `DATABASE_URL`, `COOKIE_SECRET`, etc.
+A new test file will be created to verify the `/api/session` endpoint. We will mock the `getSession` function to simulate different authentication states.
 
-## 3. Implementation Stages
+```typescript
+// file: goodnumbers/tests/integration/session.test.ts
+import request from "supertest";
+import { app } from "../../src/index.js";
+import * as http from "http";
+import { jest } from "@jest/globals";
 
-We will implement this feature in four distinct stages. Please complete them in order, verifying your work at each step.
+// Mock the getSession function from @auth/express
+jest.unstable_mockModule("@auth/express", () => ({
+  getSession: jest.fn(),
+}));
 
-### Stage 1: Install Dependencies and Configure Environment
+// We need to dynamically import getSession after the mock is set up
+const { getSession } = await import("@auth/express");
+const mockedGetSession = getSession as jest.Mock;
 
-**Goal:** Add the necessary Auth.js libraries to the project and configure the required environment variables for Google OAuth.
+let server: http.Server;
 
-1.  **Install Auth.js Packages:** Navigate to the `goodnumbers` directory and install the core Auth.js library and the Prisma adapter.
+beforeAll((done) => {
+  server = app.listen(0, done);
+});
 
-    ```bash
-    cd goodnumbers
-    npm install @auth/core @auth/prisma-adapter
-    ```
+afterAll((done) => {
+  server.close(done);
+});
 
-2.  **Detailed Guide: Configure Google OAuth Credentials**
+beforeEach(() => {
+  // Reset the mock before each test
+  mockedGetSession.mockClear();
+});
 
-    This is the most detailed part of the setup. Follow these steps carefully to get the `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` needed for the application.
+describe("GET /api/session", () => {
+  it("should return null when the user is not authenticated", async () => {
+    // Arrange: Simulate no session
+    mockedGetSession.mockResolvedValue(null);
 
-    **Step 1: Navigate to Google Cloud Console**
-    *   Open your web browser and go to the [Google Cloud Console](https://console.cloud.google.com/).
-    *   Log in with your Google account.
+    // Act
+    const response = await request(server).get("/api/session");
 
-    **Step 2: Create or Select a Project**
-    *   At the top of the page, next to the "Google Cloud" logo, you'll see a project dropdown.
-    *   If you have an existing project for this work, select it. Otherwise, click the dropdown and select **"New Project"**.
-    *   Give your project a descriptive name, like `Goodnumbers-Dev`, and click **"Create"**.
+    // Assert
+    expect(response.status).toBe(200);
+    expect(response.body).toBeNull();
+  });
 
-    **Step 3: Enable the Necessary API**
-    *   In the search bar at the top, type **"Google People API"** and press Enter.
-    *   Click on the "Google People API" result from the marketplace.
-    *   Click the blue **"Enable"** button. This is a crucial step that allows our application to request basic profile information (like name and email) after a user signs in.
-
-    **Step 4: Configure the OAuth Consent Screen**
-    *   This screen is what your users will see when they are asked to grant permission to your application.
-    *   In the navigation menu on the left (you may need to click the "hamburger" icon ☰), go to **"APIs & Services"** > **"OAuth consent screen"**.
-    *   You will be asked to choose a "User Type". Select **"External"** and click **"Create"**.
-    *   On the next page, fill out the required information:
-        *   **App name:** `Goodnumbers`
-        *   **User support email:** Select your email address from the dropdown.
-        *   **Developer contact information:** Enter your email address again.
-    *   Click **"Save and Continue"**. You can skip the "Scopes" and "Test users" sections for now by clicking **"Save and Continue"** on each page.
-    *   Finally, on the "Summary" page, click **"Back to Dashboard"**.
-
-    **Step 5: Create the OAuth 2.0 Credentials**
-    *   In the navigation menu on the left, go to **"APIs & Services"** > **"Credentials"**.
-    *   At the top of the page, click **"+ Create Credentials"** and select **"OAuth client ID"**.
-    *   On the next page, configure the following:
-        *   **Application type:** Select **"Web application"** from the dropdown.
-        *   **Name:** You can leave the default or name it `Goodnumbers Web Client`.
-        *   Under **"Authorized redirect URIs"**, click **"+ Add URI"**. This is a critical security step that tells Google where it's allowed to send users back to after they sign in. For our local development, enter the following exact URI:
-            ```
-            http://localhost:3000/api/auth/callback/google
-            ```
-    *   Click the blue **"Create"** button.
-
-    **Step 6: Get Your Client ID and Secret**
-    *   A pop-up window will appear titled "OAuth client created".
-    *   This window contains your **`Client ID`** and **`Client Secret`**. You will now copy these into your project's `.env` file.
-
-    **Alternative: Using the `gcloud` CLI**
-
-    If you have the `gcloud` CLI installed and authenticated, you can perform steps 4, 5, and 6 with a single command. Ensure you have the correct project selected (`gcloud config set project YOUR_PROJECT_ID`).
-
-The command requires a unique identifier for the `OAUTH_CLIENT`. We will use `goodnumbers-web-client` but you can choose your own.
-
-Run the following command:
-
-    ```bash
-    gcloud iam oauth-clients create goodnumbers-web-client \
-        --location=global \
-        --client-type=web \
-        --display-name="Goodnumbers Web Client" \
-        --allowed-grant-types=authorization_code \
-        --allowed-scopes=openid,email,profile \
-        --allowed-redirect-uris="http://localhost:3000/api/auth/callback/google"
-    ```
-
-    **Command Breakdown:**
-    *   **`goodnumbers-web-client`**: This is the positional `OAUTH_CLIENT` argument, a unique ID for the client.
-    *   **`--location`**: `global` is used for non-regional resources.
-    *   **`--client-type`**: `web` specifies a web application.
-    *   **`--allowed-grant-types`**: `authorization_code` is the standard flow for web apps to get an access token.
-    *   **`--allowed-scopes`**: `openid,email,profile` are standard scopes to request basic user information.
-    *   **`--allowed-redirect-uris`**: The URI that Google is allowed to redirect to after authentication.
-
-The command will output the `clientId` and `clientSecret`. Use these to update your `.env` file in the next step.
-
-3.  **Update Environment File:** Add the credentials you just received to your `goodnumbers/.env` file. Also, add a new secret for Auth.js itself. Your `.env` file should now include these lines:
-
-    ```dotenv
-    # ... existing variables
-    
-    # Auth.js
-    AUTH_SECRET="YOUR_AUTH_SECRET_HERE" # Generate a strong random string, e.g., openssl rand -hex 32
-    GOOGLE_CLIENT_ID="PASTE_YOUR_GOOGLE_CLIENT_ID_HERE"
-    GOOGLE_CLIENT_SECRET="PASTE_YOUR_GOOGLE_CLIENT_SECRET_HERE"
-    ```
-
-4.  **IMPORTANT: Security Best Practices for Secrets**
-    *   **DO NOT COMMIT THE `.env` FILE:** The `.env` file contains sensitive credentials. You must ensure it is listed in the `goodnumbers/.gitignore` file. Committing this file to version control will expose your application's secrets and create a severe security vulnerability.
-    *   **PRODUCTION SECRET MANAGEMENT:** For a production environment, secrets must **not** be stored in a `.env` file on the server. As stated in the `TECHNICAL_SPECIFICATION.md`, they should be injected securely using a dedicated secret manager, such as Google Secret Manager. This setup is for local development only.
-
-**Verification:**
-*   Run `npm install` again to ensure all packages are correctly installed.
-*   Confirm that the new dependencies (`@auth/core`, `@auth/prisma-adapter`) are listed in your `goodnumbers/package.json` file.
-
-### Stage 2: Create the Auth.js Configuration
-
-**Goal:** Create a dedicated configuration file for Auth.js that defines our providers, adapter, and session strategy.
-
-1.  **Create a New File:** In the `goodnumbers/src/lib/` directory, create a new file named `auth.ts`.
-
-2.  **Populate the Configuration:** Add the following code to `goodnumbers/src/lib/auth.ts`. This code sets up Auth.js to use the Prisma adapter and the Google provider.
-
-    ```typescript
-    // src/lib/auth.ts
-    import { PrismaAdapter } from "@auth/prisma-adapter";
-    import { PrismaClient } from "@prisma/client";
-    import type { AuthOptions } from "@auth/core";
-    import GoogleProvider from "@auth/core/providers/google";
-
-    const prisma = new PrismaClient();
-
-    export const authOptions: AuthOptions = {
-      basePath: "/api/auth",
-      adapter: PrismaAdapter(prisma),
-      providers: [
-        GoogleProvider({
-          clientId: process.env.GOOGLE_CLIENT_ID as string,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-        }),
-      ],
-      session: {
-        strategy: "jwt", // Using JWT for session management
+  it("should return the session object when the user is authenticated", async () => {
+    // Arrange: Simulate an active session
+    const mockSession = {
+      user: {
+        id: "test-user-id",
+        email: "test@example.com",
+        name: "Test User",
       },
-      // Set secure cookies in production
-      cookies: {
-        sessionToken: {
-          name: `__Secure-authjs.session-token`,
-          options: {
-            httpOnly: true, // Prevents client-side JS from accessing the cookie
-            sameSite: 'lax', // Mitigates CSRF attacks
-            path: '/',
-            secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-          },
-        },
-      },
-      callbacks: {
-        // This callback enriches the JWT with data required for authorization.
-        async jwt({ token, user }) {
-          if (user) {
-            // On initial sign-in, fetch the user from the DB to get the agreements flag.
-            const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-            // Return a minimal token, practicing data minimization.
-            return {
-              id: user.id,
-              email: user.email,
-              agreementsSigned: dbUser?.agreementsSigned ?? false,
-            };
-          }
-          // On subsequent requests, the token is already populated.
-          return token;
-        },
-        // This callback makes the custom token data available to the client-side session object.
-        async session({ session, token }) {
-          if (session.user && token) {
-            session.user.id = token.id as string;
-            session.user.email = token.email as string;
-            (session.user as any).agreementsSigned = token.agreementsSigned;
-            // Remove default fields we don't want exposed in the session object.
-            delete session.user.name;
-            delete session.user.image;
-          }
-          return session;
-        },
-      },
+      expires: new Date(Date.now() + 3600 * 1000).toISOString(),
     };
-    ```
+    mockedGetSession.mockResolvedValue(mockSession);
 
-**Verification:**
-*   Run a TypeScript check to ensure there are no compilation errors.
-    ```bash
-    cd goodnumbers
-    npx tsc --noEmit
-    ```
+    // Act
+    const response = await request(server).get("/api/session");
 
-### Stage 2.5: Update Session Type Definitions
+    // Assert
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(mockSession);
+  });
+});
+```
 
-**Goal:** Update the TypeScript types to reflect the new, minimal session object we defined in the Auth.js callbacks.
+### Manual Test Plan
 
-1.  **Open the Type Definition File:** Navigate to and open `goodnumbers/src/types/express-session.d.ts`.
+The manual test plan remains the same, but it is now a secondary verification of the complete E2E flow after the API's contract has been guaranteed by automated tests.
 
-2.  **Update the Session Interface:** Modify the file to include the new fields (`id`, `email`, `agreementsSigned`) that we are adding to the session. The `name` and `image` properties should be removed from the `User` type if they exist, and the `is_authorized` property for the barrier session should be preserved.
+1.  **Unauthenticated Journey:** Navigate to `/`. Verify "Logged out" status.
+2.  **Authentication Flow:** Click sign-in, complete Google flow, return to `/`. Verify "Logged in" status with user email.
+3.  **Logout Flow:** Click "Sign Out". Verify return to "Logged out" status.
 
-    ```typescript
-    // src/types/express-session.d.ts
-    import 'cookie-session';
-    import type { DefaultSession } from '@auth/core/types';
+## In-depth engineering plan
 
-    // For the pre-release barrier session
-    declare module 'cookie-session' {
-      interface SessionData {
-        is_authorized?: boolean;
+### Action 1: Write Failing Test for `/api/session`
+
+Create the new test file `goodnumbers/tests/integration/session.test.ts` with the code from the test plan above. Run the test suite.
+
+```bash
+cd goodnumbers
+npm test
+```
+
+This will fail because the `/api/session` route does not exist, resulting in a 404 error. This is our **RED** state.
+
+### Action 2: Implement Endpoint and Static Serving to Pass Test
+
+Update the main server file `goodnumbers/src/index.ts` to add the `express.static` middleware and the `/api/session` route.
+
+```typescript
+// file: goodnumbers/src/index.ts
+import "./lib/env.ts";
+import express from "express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import { ExpressAuth } from "@auth/express";
+import { authConfig } from "./lib/auth.ts";
+import { getSession } from "@auth/express";
+
+// This function encapsulates the app creation and validation logic.
+export function createApp() {
+  // --- Fatal Error Checks for Environment Variables ---
+  if (!process.env.AUTH_SECRET) {
+    throw new Error("FATAL: Environment variable AUTH_SECRET is not set.");
+  }
+  if (!process.env.AUTH_GOOGLE_ID) {
+    throw new Error("FATAL: Environment variable AUTH_GOOGLE_ID is not set.");
+  }
+  if (!process.env.AUTH_GOOGLE_SECRET) {
+    throw new Error(
+      "FATAL: Environment variable AUTH_GOOGLE_SECRET is not set."
+    );
+  }
+
+  const app = express();
+
+  // --- Security Middlewares ---
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+          "img-src": ["'self'", "data:", "https://authjs.dev"], // Allow images from authjs.dev
+        },
+      },
+    })
+  );
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use(limiter);
+
+  // --- Core Middlewares ---
+  app.use(express.json());
+  app.use(express.static("public")); // Serve static files from 'public' directory
+
+  // If your app is served through a proxy, trust the proxy to allow us to read the `X-Forwarded-*` headers
+  app.set("trust proxy", true);
+
+  // --- Auth Routes ---
+  app.use("/api/auth", ExpressAuth(authConfig));
+
+  // --- API Routes ---
+  app.get("/health", (req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
+
+  app.get("/api/session", async (req, res) => {
+    const session = await getSession(req, authConfig);
+    res.json(session);
+  });
+
+  return app;
+}
+
+// Create the app instance using the factory function.
+export const app = createApp();
+
+// This function handles the server startup.
+function startServer() {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+}
+
+// Only start the server if the file is run directly.
+if (
+  import.meta.url.startsWith("file://") &&
+  process.argv[1] === new URL(import.meta.url).pathname
+) {
+  startServer();
+}
+```
+
+Run the test suite again. The new integration test should now pass. This is our **GREEN** state.
+
+### Action 3: Create the Placeholder UI File
+
+Create a new directory `goodnumbers/public/` and add the `index.html` file within it.
+
+````html
+// file: goodnumbers/public/index.html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Goodnumbers Auth Test</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 2em;
+        line-height: 1.5;
       }
-    }
-
-    // For the main application user session (Auth.js)
-    declare module '@auth/core/types' {
-      interface Session {
-        user?: {
-          id: string;
-          email: string;
-          agreementsSigned: boolean;
-        } & DefaultSession['user'];
+      #auth-container {
+        border: 1px solid #ccc;
+        padding: 1em;
+        border-radius: 8px;
+        max-width: 400px;
       }
-    }
-    ```
+      button,
+      a {
+        font-size: 1em;
+        padding: 0.5em 1em;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Goodnumbers Auth Test Page</h1>
+    <div id="auth-container">
+      <p>Loading session status...</p>
+    </div>
 
-**Verification:**
-*   Run a TypeScript check again (`npx tsc --noEmit`) to ensure the new types are correct and there are no conflicts.
+    <script>
+      const authContainer = document.getElementById("auth-container");
 
-### Stage 4: Write Integration Tests (The "Red" Step)
-
-**Goal:** Before implementing the feature, write failing integration tests that define what success looks like. This follows our Test-Driven Development (TDD) process.
-
-1.  **Create a New Test File:** Create a new file at `goodnumbers/tests/integration/auth.test.ts`.
-
-2.  **Add Test Cases:** Add the following tests to the new file. These tests will fail initially because the routes don't exist yet.
-
-    ```typescript
-    // tests/integration/auth.test.ts
-    import request from 'supertest';
-    import { app } from '../../src/index'; // Assuming your Express app is exported from index.ts
-
-    describe('Auth Routes', () => {
-      it('should return the default sign-in page', async () => {
-        const res = await request(app).get('/api/auth/signin');
-        expect(res.statusCode).toEqual(200);
-        expect(res.text).toContain('Sign in with Google');
-      });
-
-      it('should return an empty session for an unauthenticated user', async () => {
-        const res = await request(app).get('/api/auth/session');
-        expect(res.statusCode).toEqual(200);
-        expect(res.body).toEqual({});
-      });
-    });
-    ```
-
-3.  **Run and Confirm Failure:** Run the test suite from the `goodnumbers` directory. The new tests should fail with `404 Not Found` errors. This is the expected outcome of the "Red" step.
-
-    ```bash
-    cd goodnumbers
-    npm test
-    ```
-
-### Stage 5: Implement to Pass Tests (The "Green" Step)
-
-**Goal:** Write the minimum amount of code required to make the failing tests pass.
-
-1.  **Integrate Auth.js into the Express Server:** This is the work originally planned for Stage 3. Create the `goodnumbers/src/routes/auth.ts` file and mount the `authRouter` in `goodnumbers/src/index.ts` as detailed below.
-
-    *   **Create the Auth Route Handler (`src/routes/auth.ts`):**
-        ```typescript
-        // src/routes/auth.ts
-        import { Router } from "express";
-        import { Auth } from "@auth/core";
-        import { authOptions } from "../lib/auth";
-
-        const authRouter = Router();
-
-        // We add a try-catch block to prevent server crashes from unhandled errors in the Auth.js library.
-        authRouter.all("/*", async (req, res) => {
-          try {
-            const request = new Request(req.protocol + "://" + req.get("host") + req.originalUrl, {
-              method: req.method,
-              headers: req.headers as HeadersInit,
-              body: req.method !== "GET" ? req.body : undefined,
-            });
-
-            const response = await Auth(request, authOptions);
-            
-            response.headers.forEach((value, key) => {
-              res.setHeader(key, value);
-            });
-
-            res.status(response.status).send(await response.text());
-          } catch (error) {
-            console.error("[AUTH_ERROR]", error);
-            res.status(500).send("An internal authentication error occurred.");
+      async function updateUI() {
+        try {
+          const res = await fetch("/api/session");
+          if (!res.ok) {
+            throw new Error(`Server responded with status: ${res.status}`);
           }
-        });
+          const session = await res.json();
 
-        export default authRouter;
-        ```
+          if (session && session.user) {
+            // User is logged in
+            authContainer.innerHTML = `
+              <p><strong>Status:</strong> Logged in</p>
+              <p><strong>Email:</strong> ${session.user.email}</p>
+              <form action="/api/auth/signout" method="POST">
+                  <button type="submit">Sign Out</button>
+              </form>
+            `;
+          } else {
+            // User is logged out
+            authContainer.innerHTML = `
+              <p><strong>Status:</strong> Logged out</p>
+              <a href="/api/auth/signin/google">Sign in with Google</a>
+            `;
+          }
+        } catch (error) {
+          console.error("Error fetching session:", error);
+          authContainer.innerHTML = `<p style="color: red;">Error fetching session. See console for details.</p>`;
+        }
+      }
 
-    *   **Mount the Auth Router in Express (`src/index.ts`):**
-        ```typescript
-        // src/index.ts
-        // ... other imports
-        import authRouter from './routes/auth'; // Add this import
-
-        // ... app setup (app.use(helmet()), etc.)
-
-        // IMPORTANT: This middleware is required for Auth.js to correctly parse POST requests.
-        // It must be placed BEFORE the authRouter.
-        app.use(express.json());
-
-        // --- ROUTES ---
-        app.use("/api/auth", authRouter);
-
-        // ... existing routes (barrier, etc.)
-
-        // ... error handling and server start
-        ```
-
-2.  **Run and Confirm Success:** Run the test suite again. With the routes now implemented, the tests you wrote in the previous stage should pass.
-
-    ```bash
-    cd goodnumbers
-    npm test
-    ```
-
-### Stage 6: Manual End-to-End Verification
-
-**Goal:** With the automated tests passing, manually test the entire authentication flow to ensure it meets the requirements defined in the PRD and Technical Specification.
-
-Follow these steps carefully.
-
-1.  **Test New User Registration:**
-    *   **Action:** Open a private/incognito browser window. Navigate to `http://localhost:3000/api/auth/signin`.
-    *   **Action:** Click the "Sign in with Google" button and log in with a Google account that has **never** been used with this application before.
-    *   **Expected Result:** After authenticating with Google, you should be redirected back to the application.
-    *   **Database Check:** Use a database tool (or `npx prisma studio`) to inspect your `dev.db` file.
-        *   Verify that a new record has been created in the `User` table for the new user.
-        - Verify that a corresponding record has been created in the `Account` table, linking the User to the Google provider.
-
-2.  **Test Existing User Login:**
-    *   **Action:** Log out by navigating to `http://localhost:3000/api/auth/signout`.
-    *   **Action:** Close the browser window and open a new private/incognito window.
-    *   **Action:** Navigate to `http://localhost:3000/api/auth/signin` again.
-    *   **Action:** Log in with the **same** Google account you used before.
-    *   **Expected Result:** You should be logged in successfully.
-    *   **Database Check:** Verify that **no new User record** was created. The system should have found and used the existing record.
-
-3.  **Test Session Management:**
-    *   **Action:** After logging in, try to navigate to `http://localhost:3000/api/auth/session`.
-    *   **Expected Result:** You should see a JSON object containing your minimal session information (`id`, `email`, `agreementsSigned`).
-    *   **Action:** Log out again. Navigate back to `http://localhost:3000/api/auth/session`.
-    *   **Expected Result:** You should see an empty JSON object `{}`.
-
-**Note on the "Agreements Page":** This task provides the foundational authentication mechanism. The specific server-side logic to enforce the agreement gate (i.e., checking the `agreementsSigned` flag and redirecting the user) will be implemented in the next task, **Phase 2, Task 3**. The user-facing UI for the agreements page will be built in **Phase 4**.
-
-## 3.5. STATUS UPDATE
-
-As of **2025-08-17**, the implementation has not yet started. The following stages are pending:
-
-*   **Stage 1: Install Dependencies and Configure Environment** - **Not Started**.
-*   **Stage 2: Create the Auth.js Configuration** - **Not Started**.
-*   **Stage 2.5: Update Session Type Definitions** - **Not Started**.
-*   **Stage 4: Write Integration Tests (The "Red" Step)** - **Not Started**.
-*   **Stage 5: Implement to Pass Tests (The "Green" Step)** - **Not Started**.
-*   **Stage 6: Manual End-to-End Verification** - **Not Started**.
-
-**Important Note on Google Cloud Configuration:**
-
-The original plan's "Configure Google OAuth Credentials" section (Stage 1, Step 2) provided high-level instructions but **did not include detailed steps for setting up the Google Cloud Platform project, enabling the Google People API, or configuring the OAuth consent screen**. These are the crucial prerequisites that this updated document now provides, ensuring a junior engineer can successfully obtain the `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
-
-## 4. Final Steps
-
-1.  **Review Your Code:** Read through all the changes you have made. Ensure the code is clean, commented where necessary, and follows project conventions.
-2.  **Commit Your Changes:** Stage and commit your work with a clear, conventional commit message.
-
-    ```bash
-    git add .
-    git commit -m "docs(auth): P2_T2 update plan with existing issue #27"
-    ```
-
-3.  **Create a Pull Request:** Push your branch and open a Pull Request against the `develop` branch.
-
-    ```bash
-    git push --set-upstream origin feat/ISSUE_NUMBER-authjs-integration
-    gh pr create --base develop --title "docs(auth): P2_T2 update plan with existing issue #27" --body "This PR updates the implementation plan for Phase 2, Task 2 to reflect that GitHub Issue #27 already exists for this task. Closes #27"
-    ```
-
-You have now completed the documentation update for this task. The junior engineer now has a clear and comprehensive guide to follow.
+      // Update the UI when the page loads
+      document.addEventListener("DOMContentLoaded", updateUI);
+    </script>
+  </body>
+</html>
+``` ### Action 4: Commit and Push After running the manual tests successfully,
+commit all changes. ```bash cd goodnumbers git add . git commit -m "feat(auth):
+P2_T2 add placeholder ui and session endpoint" git push origin
+feat/P2_T2-auth-test-ui
+````

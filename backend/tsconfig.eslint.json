@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/**/*",
+    "tests/**/*",
+    "vitest.config.ts",
+    "vitest.setup.ts",
+    "vitest.global-setup.ts",
+    "eslint.config.js"
+  ],
+  "exclude": ["frontend/**/*"] // Explicitly exclude the frontend directory
+}
