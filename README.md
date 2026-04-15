@@ -49,14 +49,32 @@ GoodNumbers is a weekly journal that combines traditional statistical analysis w
     npm install
     ```
 
-3.  **Environment Setup**:
-    Copy the example environment files and update them with your credentials:
-    ```bash
-    cp .env.example .env
-    cp backend/.env.example backend/.env
-    ```
+### Environment Setup
 
-4.  **Start Services**:
+GoodNumbers requires several environment variables to function correctly. Copy the example files and update them with your specific configuration:
+
+```bash
+cp .env.example .env
+cp backend/.env.example backend/.env
+```
+
+#### Required Variables
+
+| Variable | Description | Location |
+| :--- | :--- | :--- |
+| `ENCRYPTION_KEY` | 32-byte hex string for data encryption | Root `.env` |
+| `DATABASE_URL` | PostgreSQL connection string | `backend/.env` |
+| `REDIS_HOST` | Redis server hostname | Root `.env` |
+| `REDIS_PORT` | Redis server port (default: 6379) | Root `.env` |
+| `REDIS_PASSWORD` | Redis server password | Root `.env` |
+| `AUTH_SECRET` | Secret key for session signing | `backend/.env` |
+| `AUTH_GOOGLE_ID` | Google OAuth Client ID | `backend/.env` |
+| `AUTH_GOOGLE_SECRET`| Google OAuth Client Secret | `backend/.env` |
+| `CSRF_SECRET` | 32+ character string for CSRF protection | `backend/.env` |
+| `COOKIE_SECRET` | Secret key for cookie parsing | `backend/.env` |
+| `GEMINI_API_KEY` | API key for AI reflection features | `backend/.env` |
+
+#### Start Services
     Launch the database and cache using Docker Compose:
     ```bash
     docker-compose up -d
