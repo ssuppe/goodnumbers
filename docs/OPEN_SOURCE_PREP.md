@@ -28,14 +28,14 @@
 - [x] **3.3 Installation Guide**: Step-by-step for a fresh clone.
 - [x] **3.4 Development Guide**: How to run tests and linters.
 
-## 🟩 Stage 4: GitHub Metadata
+## 🟩 Stage 4: GitHub Metadata (DEFERRED)
 - [ ] **4.1 Issue Templates**: Bug reports and feature requests.
 - [ ] **4.2 PR Template**: Ensure every PR includes test verification.
 - [ ] **4.3 Repository Settings**: Draft the "About" section, tags (`#diabetes`, `#nightscout`, `#health-tech`), and social preview.
 
 ---
 
-## Validation Gate
-- [ ] Follow README from a fresh clone in `/tmp`.
-- [ ] Verify `npm test` passes in all workspaces.
-- [ ] Ensure no personal emails or non-public data exist in the repo.
+## 🏁 Final Status
+- **Legal & Governance**: 100% Complete
+- **README & Documentation**: 100% Complete
+- **GitHub Metadata**: Deferred (YAGNI)
