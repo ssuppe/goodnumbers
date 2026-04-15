@@ -1,12 +1,54 @@
 {
-  "name": "goodnumbers-workspace",
+  "name": "goodnumbers-monorepo",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "packages/*"
+  ],
   "scripts": {
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "build:shared": "npm run build -w @goodnumbers/types && npm run build -w @goodnumbers/schemas && npm run build -w @goodnumbers/common",
+    "build:backend": "npm run build:shared && npm run build -w backend",
+    "build:frontend": "npm run build:shared && npm run build -w frontend",
+    "test:backend": "npm test -w backend",
+    "test:backend:ai": "npm run test:ai -w backend",
+    "test:frontend": "npm test -w frontend",
+    "test:frontend:ai": "npm run test:ai -w frontend",
+    "test:ai": "npm run test:ai --workspaces --if-present",
+    "check:cycles": "./scripts/check-cycles.sh",
+    "check:security": "./scripts/security-check.sh",
+    "lint": "npm run lint -ws --if-present",
     "prepare": "husky"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.35.0",
+    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "eslint": "^9.35.0",
+    "eslint-plugin-prettier": "^5.5.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.6",
+    "madge": "^8.0.0",
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.8"
+  },
+  "lint-staged": {
+    "backend/**/*.{ts,tsx,js,jsx}": [
+      "eslint --fix --exit-on-fatal-error --config backend/eslint.config.js"
+    ],
+    "frontend/**/*.{ts,tsx,js,jsx}": [
+      "eslint --fix --exit-on-fatal-error --config frontend/eslint.config.js"
+    ],
+    "*.{ts,tsx,js,jsx,json,md}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "prettier": "^3.7.4",
+    "zod": "4.3.5"
+  }
 }

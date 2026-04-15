@@ -1,7 +1,7 @@
 # Goodnumbers Development Process
 
-**Version:** 1.0
-**Date:** 2025-08-13
+**Version:** 2.0 (Monorepo Update)
+**Date:** 2025-10-23
 
 ## 1. Overview
 
@@ -37,8 +37,6 @@ All new work, including features, bug fixes, and chores, must be done on a dedic
     - `chore/update-dependencies`
     - `refactor/auth-middleware`
 
-The `<subject>` of the commit message should always start with "Phase #, Task #:". This helps in tracing changes back to specific tasks in the implementation plan.
-
 ## 3. Commit Strategy: Conventional Commits
 
 We will adhere to the **Conventional Commits** specification for all commit messages. This creates a readable history and allows for potential automation of versioning and changelogs.
@@ -54,7 +52,6 @@ We will adhere to the **Conventional Commits** specification for all commit mess
 ```
 
 - **`<type>`:** Describes the kind of change.
-
   - `feat`: A new feature.
   - `fix`: A bug fix.
   - `test`: Adding or correcting tests.
@@ -82,7 +79,7 @@ The Pull Request is the central mechanism for quality control. All code must be 
 1.  **Branch:** Create your feature branch from the latest `develop`.
 2.  **Work & Commit:** Complete a single, discrete task from the implementation plan. Tests always come first. Make small, logical commits on your branch using the Conventional Commit format. If after 3 attempts, use Google Search or the context7 MCP tool to find more information.
 3.  **Push:** Push your completed feature branch to the remote repository.
-4.  **Open a Pull Request:** Open a PR to merge your feature branch into the **`develop`** branch. When using a command-line tool like `gh`, always specify the target branch explicitly (e.g., `gh pr create --base develop`).
+4.  **Open a Pull Request:** Open a PR to merge your feature branch into the **`develop`** branch.
 
 ### 4.2. PR Quality Standards
 
@@ -95,11 +92,20 @@ The Pull Request is the central mechanism for quality control. All code must be 
 
 ### 4.3. Automated Quality Gates
 
-The repository must be configured with a CI/CD pipeline to run the following checks on every PR targeting `develop`:
+The repository is configured with a CI/CD pipeline. You must run these checks locally before pushing.
 
-1.  **Linting & Formatting:** Ensure code style is consistent.
-2.  **Type Checking:** Ensure the code is type-safe (`tsc --noEmit`).
-3.  **Automated Tests:** Run the entire test suite (`npm test`).
+> **Note to Agent:** When running tests, **ALWAYS** use the `:ai` suffix commands listed below. These scripts are optimized for LLM contexts: they use low verbosity (dot reporter), strip color codes, and terminate immediately on the first failure (`--bail 1`) to prevent token waste.
+
+1.  **Linting:**
+    - `npm run lint` (runs across all workspaces).
+
+2.  **Type Checking:**
+    - `npm run build:backend` and `npm run build:frontend` (verifies types).
+
+3.  **Automated Tests (Token Optimized):**
+    - **Run All:** `npm run test:ai` (Recommended: runs all suites, stops at first error).
+    - **Backend Only:** `npm run test:backend:ai`
+    - **Frontend Only:** `npm run test:frontend:ai`
 
 **A PR must be blocked from merging if any of these checks fail.
 
@@ -107,13 +113,13 @@ The repository must be configured with a CI/CD pipeline to run the following che
 
 ### 4.4. Review and Merge Process
 
-1.  **Review:** A teammate must review and approve the PR. For solo work, the author should perform a self-review after opening the PR.
+1.  **Review:** A teammate must review and approve the PR.
 2.  **Merge:** Once the PR is approved and all automated checks have passed, it can be merged into `develop`.
-3.  **Merge Strategy:** Use **"Squash and Merge"**. This condenses the PR's commit history into a single, clean commit on the `develop` branch, keeping the main branch history tidy and meaningful.
+3.  **Merge Strategy:** Use **"Squash and Merge"**.
 4.  **Clean Up:** After merging, the feature branch should be deleted from the remote repository.
 
 ### 4.5. Security Checks
 
 Before a PR is merged, the author must perform the following security check:
 
-1.  **Dependency Audit:** Run `npm audit` from the `goodnumbers/` directory to check for known vulnerabilities in third-party packages. Any **high** or **critical** severity vulnerabilities must be addressed (either by updating the package or through a documented mitigation) before the PR can be merged.
+1.  **Dependency Audit:** Run `npm audit` from the project root. Any **high** or **critical** severity vulnerabilities must be addressed.

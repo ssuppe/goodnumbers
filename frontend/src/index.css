@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+  /* Typography System */
+  --font-sans: "Nunito", sans-serif;
+  --font-serif: "Lora", serif;
+
+  /* Mesa Color Palette */
+  --color-mesa-bg: #F4F1EA;
+  --color-mesa-surface: #FFFFFF;
+  --color-mesa-primary: #D9775B;
+  --color-mesa-secondary: #2C4C5B;
+  --color-mesa-accent: #F2CC8F;
+  --color-mesa-text: #1F2937;
+  --color-mesa-muted: #9CA3AF;
+  --color-mesa-border: #E5E7EB;
+
+  /* Semantic Aliases */
+  --color-primary: var(--color-mesa-primary);
+  --color-primary-hover: #C5654A;
+  --color-text-main: var(--color-mesa-text);
+  --color-text-secondary: var(--color-mesa-muted);
+  --color-bg-page: var(--color-mesa-bg);
+}
+
+:root {
+  /* Mesa CSS Variables */
+  --color-mesa-bg: #F4F1EA;
+  --color-mesa-surface: #FFFFFF;
+  --color-mesa-primary: #D9775B;
+  --color-mesa-secondary: #2C4C5B;
+  --color-mesa-accent: #F2CC8F;
+  --color-mesa-text: #1F2937;
+  --color-mesa-muted: #9CA3AF;
+  --color-mesa-border: #E5E7EB;
+
+  /* Legacy mappings */
+  --primary-color: var(--color-mesa-primary);
+  --primary-color-hover: #C5654A;
+  --feedback-critical-color: #d32f2f;
+  --feedback-critical-background: #ffebee;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg-page);
+  color: var(--color-text-main);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Restoring Utility Classes mapped to Mesa */
+
+/* Banner: Enforcing Bright Red as requested */
+.v3-banner-title-bg {
+  background-color: var(--feedback-critical-color);
+  color: white;
+}
+
+/* Primary Text: Mapping to Mesa Secondary (Petrol Blue) for strong brand headers */
+.v3-primary-text {
+  color: var(--color-mesa-secondary);
+}
+
+.font-data {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+.font-narrative {
+  font-family: var(--font-serif);
+}
+
+.text-brand {
+  color: var(--color-primary);
+}
