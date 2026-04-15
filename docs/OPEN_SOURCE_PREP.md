@@ -23,10 +23,10 @@
 - [x] **2.5 Create SECURITY.md**: Instructions for reporting vulnerabilities.
 
 ## 🟩 Stage 3: The "Front Door" (README.md)
-- [ ] **3.1 Brand & Value Prop**: Clear explanation of what the app does.
-- [ ] **3.2 Visuals**: Add placeholders for screenshots or diagrams.
-- [ ] **3.3 Installation Guide**: Step-by-step for a fresh clone.
-- [ ] **3.4 Development Guide**: How to run tests and linters.
+- [x] **3.1 Brand & Value Prop**: Clear explanation of what the app does.
+- [x] **3.2 Visuals**: Add placeholders for screenshots or diagrams.
+- [x] **3.3 Installation Guide**: Step-by-step for a fresh clone.
+- [x] **3.4 Development Guide**: How to run tests and linters.
 
 ## 🟩 Stage 4: GitHub Metadata
 - [ ] **4.1 Issue Templates**: Bug reports and feature requests.
