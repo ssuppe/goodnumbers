@@ -28,6 +28,17 @@ GoodNumbers is a weekly journal that combines traditional statistical analysis w
 
 ---
 
+## 🔌 Required Integrations
+
+To run your own instance of GoodNumbers, you will need account access to the following services:
+
+1.  **Nightscout**: GoodNumbers pulls your blood glucose data from a Nightscout instance. You will need your Nightscout URL and an API Access Token.
+2.  **Google Cloud Console**: Required for **Google OAuth**. You must create a project and OAuth 2.0 credentials to allow users to sign in.
+3.  **Google AI Studio (Gemini)**: Required for the **AI reflection features**. You will need a Gemini API Key to enable the automated analysis and coaching.
+4.  **Database & Cache**: You will need a **PostgreSQL** database and a **Redis** instance (can be run locally via the included Docker Compose file).
+
+---
+
 ## 🏁 Getting Started
 
 ### Prerequisites
