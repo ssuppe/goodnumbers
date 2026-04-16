@@ -5,29 +5,29 @@ WORKDIR /app
 # Install openssl (required for Prisma build detection)
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-# Copy root package files and configs
-COPY package.json package-lock.json tsconfig.base.json ./
+# 1. Copy package files and configs for caching
+COPY package.json package-lock.json tsconfig.base.json tsconfig.json ./
+COPY packages/types/package.json ./packages/types/
+COPY packages/schemas/package.json ./packages/schemas/
+COPY packages/common/package.json ./packages/common/
+COPY frontend/package.json ./frontend/
+COPY backend/package.json ./backend/
+
+# 2. Install dependencies
+RUN npm install
+
+# 3. Copy source and Prisma schema
 COPY packages/ ./packages/
 COPY frontend/ ./frontend/
 COPY backend/prisma/ ./backend/prisma/
-COPY backend/package.json ./backend/package.json 
 
-# Install dependencies
-RUN npm install
-
-# Generate Prisma client (required for types)
+# 4. Generate Prisma and Build shared packages using Project References
 WORKDIR /app/backend
 RUN npx prisma@6 generate
+WORKDIR /app
+RUN npx tsc --build
 
-# Build shared packages sequentially to ensure type resolution
-WORKDIR /app/packages/types
-RUN npm run build
-WORKDIR /app/packages/schemas
-RUN npm run build
-WORKDIR /app/packages/common
-RUN npm run build
-
-# Build the frontend
+# 5. Build the frontend
 WORKDIR /app/frontend
 RUN npm run build
 
