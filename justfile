@@ -26,8 +26,9 @@ push-secrets:
     @if [ ! -f ".env.production" ]; then echo "Error: .env.production not found. Create it from backend/.env.example first."; exit 1; fi
     scp .env.production root@{{SERVER_IP}}:/root/app/.env.production
     ssh root@{{SERVER_IP}} "mkdir -p /etc/goodnumbers/secrets"
-    @if [ -f "/home/clark/.gcp/gcp-key.json" ]; then scp /home/clark/.gcp/gcp-key.json root@{{SERVER_IP}}:/etc/goodnumbers/secrets/gcp-key.json; \
-     else echo "Warning: No gcp-key.json found locally. You may need to push it manually."; fi
+    @if [ -f "/home/clark/.gcp/goodnumbers-key.json" ]; then scp /home/clark/.gcp/goodnumbers-key.json root@{{SERVER_IP}}:/etc/goodnumbers/secrets/gcp-key.json; \
+     elif [ -f "/home/clark/.gcp/gcp-key.json" ]; then scp /home/clark/.gcp/gcp-key.json root@{{SERVER_IP}}:/etc/goodnumbers/secrets/gcp-key.json; \
+     else echo "Warning: No gcp-key.json or goodnumbers-key.json found locally. You may need to push it manually."; fi
 
 # The main deployment command
 deploy:
