@@ -22,6 +22,8 @@ ARTIFACT_DIR := "./deploy-artifacts"
 
 # Build both images locally on the N100
 build-local:
+    @echo "Pre-building shared packages on host N100..."
+    npm run build:shared
     @echo "Building Docker images locally..."
     docker build -t goodnumbers-backend:latest -f backend/Dockerfile .
     docker build -t goodnumbers-frontend:latest -f frontend/Dockerfile .
