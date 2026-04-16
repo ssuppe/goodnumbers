@@ -3,12 +3,20 @@ FROM node:20-slim AS build
 WORKDIR /app
 
 # Copy root package files for workspace support
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/ ./packages/
 COPY frontend/ ./frontend/
+COPY backend/prisma/ ./backend/prisma/
 
-# Install dependencies and build shared packages first
+# Install dependencies
 RUN npm install
+
+# Generate Prisma client (needed for @goodnumbers/types)
+WORKDIR /app/backend
+RUN npx prisma generate
+WORKDIR /app
+
+# Build shared packages
 RUN npm run build:shared
 
 # Build the frontend
