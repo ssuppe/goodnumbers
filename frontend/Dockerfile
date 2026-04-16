@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 # 2. Copy the entire pre-built source
 COPY . .
 
-# 3. Install dependencies
-RUN npm install --omit=dev --legacy-peer-deps --ignore-scripts
+# 3. Install ALL dependencies (needed for build tools like tsc and vite)
+RUN npm install --legacy-peer-deps --ignore-scripts
 
 # 4. Generate Prisma and Build the frontend
 WORKDIR /app/backend
