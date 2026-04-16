@@ -10,7 +10,7 @@ RUN npm install -g pm2
 COPY . .
 
 # 3. Install production dependencies
-RUN npm install
+RUN npm install --omit=dev --legacy-peer-deps
 
 # 4. Generate Prisma inside container (ensures correct engine for the OS)
 WORKDIR /app/backend
