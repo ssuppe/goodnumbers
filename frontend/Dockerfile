@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY . .
 
 # 3. Install dependencies
-RUN npm install
+RUN npm install --omit=dev --legacy-peer-deps
 
 # 4. Generate Prisma and Build the frontend
 WORKDIR /app/backend
