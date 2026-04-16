@@ -15,25 +15,45 @@ services-down:
 
 
 # --- DEVELOPMENT WORKFLOWS ---
-# --- PRODUCTION DEPLOYMENT (MODERN MAZEL) ---
+# --- PRODUCTION DEPLOYMENT (BUILD ON N100) ---
 
 SERVER_IP := "34.46.45.86"
+ARTIFACT_DIR := "./deploy-artifacts"
 
-# Push local production secrets to the VM
-push-secrets:
-    @echo "Pushing production env and keys to {{SERVER_IP}}..."
-    # Ensure .env.production exists locally first
-    @if [ ! -f ".env.production" ]; then echo "Error: .env.production not found. Create it from backend/.env.example first."; exit 1; fi
+# Build both images locally on the N100
+build-local:
+    @echo "Building Docker images locally..."
+    docker build -t goodnumbers-backend:latest -f backend/Dockerfile .
+    docker build -t goodnumbers-frontend:latest -f frontend/Dockerfile .
+
+# Save images to compressed tarballs
+package-local:
+    @echo "Packaging images for transfer..."
+    mkdir -p {{ARTIFACT_DIR}}
+    docker save goodnumbers-backend:latest | gzip > {{ARTIFACT_DIR}}/backend.tar.gz
+    docker save goodnumbers-frontend:latest | gzip > {{ARTIFACT_DIR}}/frontend.tar.gz
+
+# Push local production secrets and images to the VM
+push-all:
+    @echo "Pushing secrets and image artifacts to {{SERVER_IP}}..."
+    # Ensure .env.production exists
+    @if [ ! -f ".env.production" ]; then echo "Error: .env.production not found."; exit 1; fi
+    ssh ssuppe@{{SERVER_IP}} "mkdir -p /home/ssuppe/app/deploy-artifacts /home/ssuppe/secrets"
     scp .env.production ssuppe@{{SERVER_IP}}:/home/ssuppe/app/.env.production
-    ssh ssuppe@{{SERVER_IP}} "mkdir -p /home/ssuppe/secrets"
     @if [ -f "/home/clark/.gcp/goodnumbers-key.json" ]; then scp /home/clark/.gcp/goodnumbers-key.json ssuppe@{{SERVER_IP}}:/home/ssuppe/secrets/gcp-key.json; \
-     elif [ -f "/home/clark/.gcp/gcp-key.json" ]; then scp /home/clark/.gcp/gcp-key.json ssuppe@{{SERVER_IP}}:/home/ssuppe/secrets/gcp-key.json; \
-     else echo "Warning: No gcp-key.json or goodnumbers-key.json found locally. You may need to push it manually."; fi
+     elif [ -f "/home/clark/.gcp/gcp-key.json" ]; then scp /home/clark/.gcp/gcp-key.json ssuppe@{{SERVER_IP}}:/home/ssuppe/secrets/gcp-key.json; fi
+    rsync -avzhP {{ARTIFACT_DIR}}/ ssuppe@{{SERVER_IP}}:/home/ssuppe/app/deploy-artifacts/
+    scp docker-compose.yml Caddyfile ssuppe@{{SERVER_IP}}:/home/ssuppe/app/
 
-# The main deployment command
-deploy:
-    @echo "Deploying GoodNumbers to production..."
-    ssh ssuppe@{{SERVER_IP}} "cd app && git pull origin main && cp .env.production .env && docker compose up -d --build"
+# The main deployment command (One-touch deploy)
+deploy: build-local package-local push-all
+    @echo "Finalizing deployment on the VM..."
+    ssh ssuppe@{{SERVER_IP}} "cd app && \
+        cp .env.production .env && \
+        docker load -i deploy-artifacts/backend.tar.gz && \
+        docker load -i deploy-artifacts/frontend.tar.gz && \
+        docker compose up -d && \
+        rm -rf deploy-artifacts/*.tar.gz"
 
 # View production logs remotely
 logs-prod:

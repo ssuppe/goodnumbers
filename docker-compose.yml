@@ -1,9 +1,7 @@
 # Production Docker Compose for GoodNumbers
 services:
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: goodnumbers-backend:latest
     env_file: .env.production
     volumes:
       # Persist the SQLite database
@@ -15,9 +13,7 @@ services:
       - redis
 
   frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
+    image: goodnumbers-frontend:latest
     restart: unless-stopped
 
   caddy:
