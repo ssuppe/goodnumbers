@@ -6,11 +6,7 @@
     "composite": true,
     "declaration": true,
     "declarationMap": true,
-    "baseUrl": ".",
-    "paths": {
-      "@goodnumbers/types": ["../types/src/index.ts"],
-      "@goodnumbers/schemas": ["../schemas/src/index.ts"]
-    }
+    "baseUrl": "."
   },
   "references": [{ "path": "../types" }, { "path": "../schemas" }],
   "include": ["src"]
