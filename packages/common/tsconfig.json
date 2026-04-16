@@ -3,10 +3,14 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
+    "baseUrl": ".",
     "composite": true,
     "declaration": true,
     "declarationMap": true,
-    "baseUrl": "."
+    "paths": {
+      "@goodnumbers/types": ["../types/src/index.ts"],
+      "@goodnumbers/schemas": ["../schemas/src/index.ts"]
+    }
   },
   "references": [{ "path": "../types" }, { "path": "../schemas" }],
   "include": ["src"]

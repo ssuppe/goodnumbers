@@ -1,5 +1,13 @@
 {
   "files": [],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@goodnumbers/types": ["packages/types/src/index.ts"],
+      "@goodnumbers/schemas": ["packages/schemas/src/index.ts"],
+      "@goodnumbers/common": ["packages/common/src/index.ts"]
+    }
+  },
   "references": [
     { "path": "packages/types" },
     { "path": "packages/schemas" },

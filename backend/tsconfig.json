@@ -13,7 +13,10 @@
     "baseUrl": ".",
     "paths": {
       "@src/*": ["src/*"],
-      "ioredis": ["./node_modules/ioredis/dist/index.d.ts"]
+      "ioredis": ["./node_modules/ioredis/dist/index.d.ts"],
+      "@goodnumbers/schemas": ["../packages/schemas/src/index.ts"],
+      "@goodnumbers/types": ["../packages/types/src/index.ts"],
+      "@goodnumbers/common": ["../packages/common/src/index.ts"]
     }
   },
   "include": ["src/**/*"],
