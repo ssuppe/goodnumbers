@@ -10,7 +10,6 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "moduleResolution": "NodeNext",
-    "baseUrl": ".",
     "paths": {
       "@src/*": ["src/*"],
       "ioredis": ["./node_modules/ioredis/dist/index.d.ts"]
