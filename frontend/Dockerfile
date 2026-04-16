@@ -2,38 +2,41 @@
 FROM node:20-slim AS build
 WORKDIR /app
 
-# Install openssl (required for Prisma build detection)
+# 1. Install openssl
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-# 1. Copy package files and configs for caching
-COPY package.json package-lock.json tsconfig.base.json tsconfig.json ./
+# 2. Copy Root Configs
+COPY package*.json tsconfig*.json ./
+
+# 3. Copy ALL package.json files
 COPY packages/types/package.json ./packages/types/
 COPY packages/schemas/package.json ./packages/schemas/
 COPY packages/common/package.json ./packages/common/
 COPY frontend/package.json ./frontend/
 COPY backend/package.json ./backend/
 
-# 2. Install dependencies
+# 4. Install Dependencies
 RUN npm install
 
-# 3. Copy source and Prisma schema
-COPY packages/ ./packages/
-COPY frontend/ ./frontend/
-COPY backend/prisma/ ./backend/prisma/
-
-# 4. Generate Prisma and Build shared packages using Project References
+# 5. Copy Prisma Schema & Generate
+COPY backend/prisma ./backend/prisma/
 WORKDIR /app/backend
 RUN npx prisma@6 generate
-WORKDIR /app
-RUN npx tsc --build
 
-# 5. Build the frontend
+# 6. Copy ALL Source Code
+WORKDIR /app
+COPY . .
+
+# 7. Build everything using Project References
+RUN npx tsc -b
+
+# 8. Build the frontend specifically
 WORKDIR /app/frontend
 RUN npm run build
 
+# 9. Serve stage with Nginx
 FROM nginx:alpine
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
-# Custom nginx config to handle SPA routing
 RUN echo 'server { \
     listen 80; \
     location / { \
@@ -42,3 +45,4 @@ RUN echo 'server { \
     } \
 }' > /etc/nginx/conf.d/default.conf
 EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

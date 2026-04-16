@@ -2,35 +2,37 @@
 FROM node:20-slim
 WORKDIR /app
 
-# Install openssl for Prisma
+# 1. Install openssl (for Prisma) and pm2
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-
-# Install pm2 globally
 RUN npm install -g pm2
 
-# 1. Copy package files for caching
-COPY package.json package-lock.json tsconfig.base.json tsconfig.json ./
+# 2. Copy Root Configs
+COPY package*.json tsconfig*.json ./
+
+# 3. Copy ALL package.json files to maintain monorepo symlinks
 COPY packages/types/package.json ./packages/types/
 COPY packages/schemas/package.json ./packages/schemas/
 COPY packages/common/package.json ./packages/common/
 COPY backend/package.json ./backend/
 
-# 2. Install dependencies (creates symlinks in node_modules)
+# 4. Install Dependencies
 RUN npm install
 
-# 3. Copy source code
-COPY packages/ ./packages/
-COPY backend/ ./backend/
-
-# 4. Generate Prisma and Build everything using Project References
+# 5. Copy Prisma Schema & Generate (Critical for @goodnumbers/types)
+COPY backend/prisma ./backend/prisma/
 WORKDIR /app/backend
 RUN npx prisma@6 generate
+
+# 6. Copy ALL Source Code
 WORKDIR /app
-RUN npx tsc --build
+COPY . .
+
+# 7. Build everything from the root using Build Mode
+RUN npx tsc -b
 
 # Expose API port
 EXPOSE 4000
 
-# Run both server and worker via PM2
+# Run via PM2
 WORKDIR /app/backend
-CMD ["pm2-runtime", "start", "ecosystem.config.cjs", "--env", "production"]
+CMD ["pm2-runtime", "start", ecosystem.config.cjs, "--env", "production"]
