@@ -15,11 +15,28 @@ services-down:
 
 
 # --- DEVELOPMENT WORKFLOWS ---
-# Starts the full development environment: Redis, backend, and frontend.
-dev:
-    @echo "Starting full development environment..."
-    @just services-up
-    @npm run dev:backend & npm run dev:worker -w backend & npm run dev:frontend
+# --- PRODUCTION DEPLOYMENT (MODERN MAZEL) ---
+
+SERVER_IP := "34.46.45.86"
+
+# Push local production secrets to the VM
+push-secrets:
+    @echo "Pushing production env and keys to {{SERVER_IP}}..."
+    # Ensure .env.production exists locally first
+    @if [ ! -f ".env.production" ]; then echo "Error: .env.production not found. Create it from backend/.env.example first."; exit 1; fi
+    scp .env.production root@{{SERVER_IP}}:/root/app/.env.production
+    ssh root@{{SERVER_IP}} "mkdir -p /etc/goodnumbers/secrets"
+    @if [ -f "/home/clark/.gcp/gcp-key.json" ]; then scp /home/clark/.gcp/gcp-key.json root@{{SERVER_IP}}:/etc/goodnumbers/secrets/gcp-key.json; \
+     else echo "Warning: No gcp-key.json found locally. You may need to push it manually."; fi
+
+# The main deployment command
+deploy:
+    @echo "Deploying GoodNumbers to production..."
+    ssh root@{{SERVER_IP}} "cd app && git pull origin main && docker compose up -d --build"
+
+# View production logs remotely
+logs-prod:
+    ssh root@{{SERVER_IP}} "cd app && docker compose logs -f"
 
 # Runs the backend development server.
 dev-backend:

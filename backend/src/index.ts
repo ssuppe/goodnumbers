@@ -157,15 +157,3 @@ export function createApp() {
 
   return app;
 }
-
-// --- Server Startup Logic ---
-// if (
-//   import.meta.url.startsWith('file://') &&
-//   process.argv[1] === new URL(import.meta.url).pathname
-// ) {
-//   const app = createApp();
-//   const PORT = process.env.PORT || 3000;
-//   app.listen(PORT, () => {
-//     console.log(`Server is running on http://localhost:${PORT}`);
-//   });
-// }
