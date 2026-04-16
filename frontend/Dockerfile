@@ -2,6 +2,9 @@
 FROM node:20-slim AS build
 WORKDIR /app
 
+# Install openssl (required for Prisma build detection)
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 # Copy root package files for workspace support
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/ ./packages/
@@ -13,7 +16,7 @@ RUN npm install
 
 # Generate Prisma client (needed for @goodnumbers/types)
 WORKDIR /app/backend
-RUN npx prisma generate
+RUN npx prisma@6 generate
 WORKDIR /app
 
 # Build shared packages
