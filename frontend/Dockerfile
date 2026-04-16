@@ -5,32 +5,35 @@ WORKDIR /app
 # Install openssl (required for Prisma build detection)
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-# Copy root package files for workspace support
+# Copy root package files and configs
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/ ./packages/
 COPY frontend/ ./frontend/
 COPY backend/prisma/ ./backend/prisma/
+COPY backend/package.json ./backend/package.json 
 
 # Install dependencies
 RUN npm install
 
-# Generate Prisma client (needed for @goodnumbers/types)
+# Generate Prisma client (required for types)
 WORKDIR /app/backend
 RUN npx prisma@6 generate
-WORKDIR /app
 
-# Build shared packages
-RUN npm run build:shared
+# Build shared packages sequentially to ensure type resolution
+WORKDIR /app/packages/types
+RUN npm run build
+WORKDIR /app/packages/schemas
+RUN npm run build
+WORKDIR /app/packages/common
+RUN npm run build
 
 # Build the frontend
 WORKDIR /app/frontend
 RUN npm run build
 
-# Serve stage with Nginx
 FROM nginx:alpine
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
-
-# Custom nginx config to handle SPA routing (redirects all requests to index.html)
+# Custom nginx config to handle SPA routing
 RUN echo 'server { \
     listen 80; \
     location / { \
@@ -38,6 +41,4 @@ RUN echo 'server { \
         try_files $uri $uri/ /index.html; \
     } \
 }' > /etc/nginx/conf.d/default.conf
-
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
