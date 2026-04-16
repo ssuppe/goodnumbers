@@ -24,20 +24,20 @@ push-secrets:
     @echo "Pushing production env and keys to {{SERVER_IP}}..."
     # Ensure .env.production exists locally first
     @if [ ! -f ".env.production" ]; then echo "Error: .env.production not found. Create it from backend/.env.example first."; exit 1; fi
-    scp .env.production root@{{SERVER_IP}}:/root/app/.env.production
-    ssh root@{{SERVER_IP}} "mkdir -p /etc/goodnumbers/secrets"
-    @if [ -f "/home/clark/.gcp/goodnumbers-key.json" ]; then scp /home/clark/.gcp/goodnumbers-key.json root@{{SERVER_IP}}:/etc/goodnumbers/secrets/gcp-key.json; \
-     elif [ -f "/home/clark/.gcp/gcp-key.json" ]; then scp /home/clark/.gcp/gcp-key.json root@{{SERVER_IP}}:/etc/goodnumbers/secrets/gcp-key.json; \
+    scp .env.production ssuppe@{{SERVER_IP}}:/home/ssuppe/app/.env.production
+    ssh ssuppe@{{SERVER_IP}} "mkdir -p /home/ssuppe/secrets"
+    @if [ -f "/home/clark/.gcp/goodnumbers-key.json" ]; then scp /home/clark/.gcp/goodnumbers-key.json ssuppe@{{SERVER_IP}}:/home/ssuppe/secrets/gcp-key.json; \
+     elif [ -f "/home/clark/.gcp/gcp-key.json" ]; then scp /home/clark/.gcp/gcp-key.json ssuppe@{{SERVER_IP}}:/home/ssuppe/secrets/gcp-key.json; \
      else echo "Warning: No gcp-key.json or goodnumbers-key.json found locally. You may need to push it manually."; fi
 
 # The main deployment command
 deploy:
     @echo "Deploying GoodNumbers to production..."
-    ssh root@{{SERVER_IP}} "cd app && git pull origin main && docker compose up -d --build"
+    ssh ssuppe@{{SERVER_IP}} "cd app && git pull origin main && docker compose up -d --build"
 
 # View production logs remotely
 logs-prod:
-    ssh root@{{SERVER_IP}} "cd app && docker compose logs -f"
+    ssh ssuppe@{{SERVER_IP}} "cd app && docker compose logs -f"
 
 # Runs the backend development server.
 dev-backend:
