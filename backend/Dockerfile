@@ -16,11 +16,17 @@ COPY backend/ ./backend/
 # Install dependencies (from root to leverage workspaces)
 RUN npm install
 
-# Generate Prisma client and build shared packages
+# Generate Prisma client
 WORKDIR /app/backend
 RUN npx prisma@6 generate
-WORKDIR /app
-RUN npm run build:shared
+
+# Build shared packages sequentially
+WORKDIR /app/packages/types
+RUN npm run build
+WORKDIR /app/packages/schemas
+RUN npm run build
+WORKDIR /app/packages/common
+RUN npm run build
 
 # Build backend
 WORKDIR /app/backend
