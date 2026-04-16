@@ -8,8 +8,8 @@ services:
     volumes:
       # Persist the SQLite database
       - ./backend/prisma/dev.db:/app/backend/prisma/dev.db
-      # Mount the GCP Service Account key file securely (mapped to the path expected in .env)
-      - /etc/goodnumbers/secrets/gcp-key.json:/app/gcp-key.json:ro
+      # Mount the GCP Service Account key file securely
+      - /home/ssuppe/secrets/gcp-key.json:/app/gcp-key.json:ro
     restart: unless-stopped
     depends_on:
       - redis
