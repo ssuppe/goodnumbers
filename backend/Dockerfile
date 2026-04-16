@@ -6,21 +6,18 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pm2
 
-# 2. Copy the entire pre-built source from host N100
-# This includes the 'dist' folders for our shared packages!
+# 2. Copy the pre-built source (including host-built 'dist' and prisma client)
 COPY . .
 
-# 3. Install dependencies (creates symlinks)
+# 3. Install production dependencies
 RUN npm install
 
-# 4. Generate Prisma and Build the final backend
+# 4. Generate Prisma inside container (ensures correct engine for the OS)
 WORKDIR /app/backend
 RUN npx prisma@6 generate
-RUN npm run build
 
 # Expose API port
 EXPOSE 4000
 
 # Run via PM2
-WORKDIR /app/backend
 CMD ["pm2-runtime", "start", "ecosystem.config.cjs", "--env", "production"]

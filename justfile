@@ -22,8 +22,9 @@ ARTIFACT_DIR := "./deploy-artifacts"
 
 # Build both images locally on the N100
 build-local:
-    @echo "Pre-building shared packages on host N100..."
-    npm run build:shared
+    @echo "Generating Prisma client and building shared packages on host N100..."
+    npx prisma@6 generate --schema=./backend/prisma/schema.prisma
+    npx tsc -b --clean && npx tsc -b
     @echo "Building Docker images locally..."
     docker build -t goodnumbers-backend:latest -f backend/Dockerfile .
     docker build -t goodnumbers-frontend:latest -f frontend/Dockerfile .
