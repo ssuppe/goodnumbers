@@ -33,7 +33,7 @@ push-secrets:
 # The main deployment command
 deploy:
     @echo "Deploying GoodNumbers to production..."
-    ssh ssuppe@{{SERVER_IP}} "cd app && git pull origin main && docker compose up -d --build"
+    ssh ssuppe@{{SERVER_IP}} "cd app && git pull origin main && cp .env.production .env && docker compose up -d --build"
 
 # View production logs remotely
 logs-prod:
