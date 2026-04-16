@@ -1,0 +1,32 @@
+# frontend/Dockerfile
+FROM node:20-slim AS build
+WORKDIR /app
+
+# Copy root package files for workspace support
+COPY package.json package-lock.json ./
+COPY packages/ ./packages/
+COPY frontend/ ./frontend/
+
+# Install dependencies and build shared packages first
+RUN npm install
+RUN npm run build:shared
+
+# Build the frontend
+WORKDIR /app/frontend
+RUN npm run build
+
+# Serve stage with Nginx
+FROM nginx:alpine
+COPY --from=build /app/frontend/dist /usr/share/nginx/html
+
+# Custom nginx config to handle SPA routing (redirects all requests to index.html)
+RUN echo 'server { \
+    listen 80; \
+    location / { \
+        root /usr/share/nginx/html; \
+        try_files $uri $uri/ /index.html; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

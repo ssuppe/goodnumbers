@@ -1,0 +1,11 @@
+# Caddyfile for GoodNumbers
+# Caddy will automatically handle SSL/HTTPS for this domain
+
+goodnumbers.net {
+    # 1. API & Auth: Proxy all requests starting with /api or /auth to the backend container
+    reverse_proxy /api/* backend:4000
+    reverse_proxy /auth/* backend:4000
+
+    # 2. Frontend: Proxy all other requests to the frontend container (Nginx)
+    reverse_proxy * frontend:80
+}
