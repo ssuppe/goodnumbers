@@ -5,36 +5,19 @@ WORKDIR /app
 # 1. Install openssl
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-# 2. Copy Root Configs
-COPY package*.json tsconfig*.json ./
-
-# 3. Copy ALL package.json files
-COPY packages/types/package.json ./packages/types/
-COPY packages/schemas/package.json ./packages/schemas/
-COPY packages/common/package.json ./packages/common/
-COPY frontend/package.json ./frontend/
-COPY backend/package.json ./backend/
-
-# 4. Install Dependencies
-RUN npm install
-
-# 5. Copy Prisma Schema & Generate
-COPY backend/prisma ./backend/prisma/
-WORKDIR /app/backend
-RUN npx prisma@6 generate
-
-# 6. Copy ALL Source Code
-WORKDIR /app
+# 2. Copy the entire pre-built source
 COPY . .
 
-# 7. Build everything using Project References
-RUN npx tsc -b
+# 3. Install dependencies
+RUN npm install
 
-# 8. Build the frontend specifically
+# 4. Generate Prisma and Build the frontend
+WORKDIR /app/backend
+RUN npx prisma@6 generate
 WORKDIR /app/frontend
 RUN npm run build
 
-# 9. Serve stage with Nginx
+# 5. Serve stage with Nginx
 FROM nginx:alpine
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 RUN echo 'server { \

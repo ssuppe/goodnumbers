@@ -1,0 +1,13 @@
+node_modules
+.git
+.husky
+.vscode
+docs
+scripts
+specs
+deploy-artifacts
+*.tar.gz
+backend/dist
+frontend/dist
+backend/prisma/dev.db
+# Note: We do NOT ignore packages/*/dist because we want to copy our pre-built shared types!
