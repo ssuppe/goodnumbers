@@ -18,7 +18,7 @@ RUN npm install
 
 # Generate Prisma client and build shared packages
 WORKDIR /app/backend
-RUN npx prisma generate
+RUN npx prisma@6 generate
 WORKDIR /app
 RUN npm run build:shared
 
