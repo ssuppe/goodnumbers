@@ -83,6 +83,7 @@ export function createApp() {
   );
 
   // --- API Routes ---
+  // PHASE 6 TASK 2: AI Text Pipeline integration will happen here.
 
   // This public endpoint provides the token to the client.
   // It needs to run AFTER cookie parser but BEFORE CSRF protection is applied anywhere.
