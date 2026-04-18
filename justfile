@@ -20,21 +20,37 @@ services-down:
 SERVER_IP := "34.46.45.86"
 ARTIFACT_DIR := "./deploy-artifacts"
 
-# Build both images locally on the N100
-build-local:
+# Sequential host setup required before Docker builds
+_host-setup:
     @echo "Generating Prisma client and building shared packages on host N100..."
     npx prisma@6 generate --schema=./backend/prisma/schema.prisma
     npx tsc -b --clean && npx tsc -b
-    @echo "Building Docker images locally..."
+
+_build-backend:
+    @echo "Building Backend Docker image..."
     docker build -t goodnumbers-backend:latest -f backend/Dockerfile .
+
+_build-frontend:
+    @echo "Building Frontend Docker image..."
     docker build -t goodnumbers-frontend:latest -f frontend/Dockerfile .
 
-# Save images to compressed tarballs
-package-local:
-    @echo "Packaging images for transfer..."
-    mkdir -p {{ARTIFACT_DIR}}
+# Main build recipe using parallel dependencies
+[parallel]
+build-local: _host-setup _build-backend _build-frontend
+
+_package-backend:
+    @echo "Packaging Backend..."
     docker save goodnumbers-backend:latest | gzip > {{ARTIFACT_DIR}}/backend.tar.gz
+
+_package-frontend:
+    @echo "Packaging Frontend..."
     docker save goodnumbers-frontend:latest | gzip > {{ARTIFACT_DIR}}/frontend.tar.gz
+
+# Main package recipe using parallel dependencies
+[parallel]
+package-local: _package-backend _package-frontend
+    @# This line runs after parallel deps finish
+    @echo "All artifacts packaged."
 
 # Push local production secrets and images to the VM
 push-all:
@@ -43,18 +59,25 @@ push-all:
     @if [ ! -f ".env.production" ]; then echo "Error: .env.production not found."; exit 1; fi
     ssh ssuppe@{{SERVER_IP}} "mkdir -p /home/ssuppe/app/deploy-artifacts /home/ssuppe/secrets"
     scp .env.production ssuppe@{{SERVER_IP}}:/home/ssuppe/app/.env.production
-    @if [ -f "/home/clark/.gcp/goodnumbers-key.json" ]; then scp /home/clark/.gcp/goodnumbers-key.json ssuppe@{{SERVER_IP}}:/home/ssuppe/secrets/gcp-key.json; \
-     elif [ -f "/home/clark/.gcp/gcp-key.json" ]; then scp /home/clark/.gcp/gcp-key.json ssuppe@{{SERVER_IP}}:/home/ssuppe/secrets/gcp-key.json; fi
+    @if [ ! -f "/home/clark/.gcp/goodnumbers-key.json" ]; then \
+        if [ -f "/home/clark/.gcp/gcp-key.json" ]; then \
+            scp /home/clark/.gcp/gcp-key.json ssuppe@{{SERVER_IP}}:/home/ssuppe/secrets/gcp-key.json; \
+        fi; \
+    else \
+        scp /home/clark/.gcp/goodnumbers-key.json ssuppe@{{SERVER_IP}}:/home/ssuppe/secrets/gcp-key.json; \
+    fi
     rsync -avzhP {{ARTIFACT_DIR}}/ ssuppe@{{SERVER_IP}}:/home/ssuppe/app/deploy-artifacts/
     scp docker-compose.yml Caddyfile ssuppe@{{SERVER_IP}}:/home/ssuppe/app/
 
 # The main deployment command (One-touch deploy)
 deploy: build-local package-local push-all
     @echo "Finalizing deployment on the VM..."
-    ssh ssuppe@{{SERVER_IP}} "cd app && \
+    ssh -t ssuppe@{{SERVER_IP}} "cd app && \
         cp .env.production .env && \
-        docker load -i deploy-artifacts/backend.tar.gz && \
-        docker load -i deploy-artifacts/frontend.tar.gz && \
+        echo '--- Loading Backend Image ---' && \
+        (pv deploy-artifacts/backend.tar.gz 2>/dev/null || cat deploy-artifacts/backend.tar.gz) | docker load && \
+        echo '--- Loading Frontend Image ---' && \
+        (pv deploy-artifacts/frontend.tar.gz 2>/dev/null || cat deploy-artifacts/frontend.tar.gz) | docker load && \
         docker compose up -d && \
         rm -rf deploy-artifacts/*.tar.gz"
 
