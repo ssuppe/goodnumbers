@@ -62,6 +62,10 @@ deploy: build-local package-local push-all
 logs-prod:
     ssh ssuppe@{{SERVER_IP}} "cd app && docker compose logs -f"
 
+# Hard reset the production database (WIPES ALL DATA)
+db-reset-prod:
+    ssh ssuppe@{{SERVER_IP}} "docker exec app-backend-1 npx prisma db push --force-reset"
+
 # Runs the backend development server.
 dev-backend:
     @npm run dev -w backend

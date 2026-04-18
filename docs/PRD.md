@@ -1,6 +1,6 @@
 # Goodnumbers Weekly Health Journal PRD
 
-**Revision:** v0.7 (Codebase-aligned)
+**Revision:** v0.8 (Post-Statistical Insights Engine)
 
 GoodNumbers is a weekly health journal that is a combination of a diary/bullet journal, statistical analyzer and AI coach.
 
@@ -8,19 +8,19 @@ GoodNumbers is a weekly health journal that is a combination of a diary/bullet j
 
 **Solution:** GoodNumbers provides a weekly practice of self-reflection, empowering Type 1 Diabetics to proactively manage their health. It leverages:
 
-- **Data Analysis:** To help users find "hotspots" and trends in their blood glucose numbers.
-- **AI Coaching:** To help users consider behavioral or treatment changes (always after consulting with a doctor).
-- **Personalized Podcast:** For novelty and a new way to explain data, offering a weekly audio summary of their progress and wins, making the self-reflection process feel positive and motivating, like a beneficial workout.
+- **Data Analysis:** To help users find "hotspots" and trends in their blood glucose numbers via a deterministic statistical engine.
+- **AI Coaching:** (Future) To help users consider behavioral or treatment changes (always after consulting with a doctor).
+- **Personalized Podcast:** (Future) For novelty and a new way to explain data, offering a weekly audio summary of their progress and wins.
 
 The goal of GoodNumbers is to give Type 1 Diabetics a weekly practice of self-reflection, including:
 
 - A pause in the week to look back over the last week, see how they are feeling, and celebrate wins and places to improve.
-- Reviewing trends, ‘problem areas’ and ‘hotspots’ in their blood glucose numbers (e.g., highs and lows). GoodNumbers will provide statistical analyses to take the work out of finding the problem areas and hotspots in their blood glucose management.
-- Use AI to take in their personal experiences, correlate to the data, and provide a report (in the form of text/charts as well as a personal podcast) so they can improve for the next week.
+- Reviewing trends, ‘problem areas’ and ‘hotspots’ in their blood glucose numbers (e.g., highs and lows). GoodNumbers provide statistical analyses to take the work out of finding the problem areas and hotspots in their blood glucose management.
+- (Future) Use AI to take in their personal experiences, correlate to the data, and provide a report (in the form of text/charts as well as a personal podcast) so they can improve for the next week.
 
 GoodNumbers is meant to be motivating - there is no judgement - just recognition of a hard job well done (managing blood glucose) and providing real data and feedback on how to improve.
 
-It should be noted that GoodNumbers does NOT provide medical advice - rather, it recognizes patterns and makes /general/ recommendations that the patient should then take to their doctor or medical healthcare team.
+It should be noted that GoodNumbers does NOT provide medical advice - rather, it recognizes patterns and makes /general/ observations that the patient should then take to their doctor or medical healthcare team.
 
 ## UX Design System
 
@@ -193,10 +193,10 @@ This page displays the generated report.
 
 #### Components
 
-- **Podcast Player:** (Placeholder/Future) For playing the AI-generated audio summary.
-- **Scorecards:** Displays key metrics (Avg Glucose, Stability, TIR) with trend indicators.
+- **Podcast Player:** (Future) For playing the AI-generated audio summary.
+- **Scorecards:** Displays key metrics (Avg Glucose, Stability, TIR) with trend indicators compared to previous weeks.
 - **AGP Chart:** Interactive chart showing median and percentile ranges.
-- **Chart Analysis:** AI-generated insights (placeholder/mocked in MVP if AI not active).
+- **Chart Analysis:** Deterministic statistical insights (e.g., GMI estimation, TIR alerts). AI-driven coaching is a planned future enhancement.
 - **Weekly Vibe:** Subjective tracking with emoji options (🥀 Wilted, 🌱 Sprouting, 🌿 Growing, 🌻 Flourishing).
 - **Influencing Factors:** Multi-select chips organized by category:
   - **Food:** Heavy/Fatty Meal, Carb Error, Eating Out, Alcohol.
@@ -204,6 +204,6 @@ This page displays the generated report.
   - **Body & Meds:** Illness, Hormonal, Dehydration, Set Change, Steroids.
   - **Mind & Mood:** Stress, Anxiety, Sleep Quality.
   - **Life & Tech:** Travel, System Malfunction.
-- **Event Cluster Cards:** Detailed view of detected glycemic patterns. Includes an interactive chart that visualizes **both glucose and treatment/carb data** to help identify causes.
+- **Event Cluster Cards:** Detailed view of detected glycemic patterns. Includes an interactive chart that visualizes **both glucose and treatment/carb data** to help identify causes. Each card features statistical analysis (e.g., "Potential uncovered meal detected").
 - **Goals:** Text area for next week's goals.
 - **Sticky Action Bar:** For saving changes.
