@@ -12,6 +12,9 @@
     "moduleResolution": "NodeNext",
     "paths": {
       "@src/*": ["./src/*"],
+      "@goodnumbers/schemas": ["../packages/schemas"],
+      "@goodnumbers/types": ["../packages/types"],
+      "@goodnumbers/common": ["../packages/common"],
       "ioredis": ["./node_modules/ioredis/dist/index.d.ts"]
     }
   },
