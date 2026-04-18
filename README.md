@@ -15,6 +15,8 @@ GoodNumbers is a weekly journal that combines traditional statistical analysis w
 - **Weekly Practice**: A dedicated pause in your week to look back, learn, and improve for the next seven days.
 - **Motivation without Judgment**: Designed to be a positive, motivating tool for a challenging daily job.
 
+![GoodNumbers Demo](docs/videos/gn_demo.mp4)
+
 > **Note**: GoodNumbers is an experiment and is for educational use only. It is **not** a medical device and does **not** provide medical advice.
 
 ---
@@ -33,22 +35,28 @@ GoodNumbers is a weekly journal that combines traditional statistical analysis w
 GoodNumbers provides a multi-layered analysis of your 7-day diabetes data:
 
 ### 📊 Statistical Analysis (No AI)
+
 The core of the report is built on robust statistical methods to provide an objective view of your week:
--   **Ambulatory Glucose Profile (AGP)**: A standardized chart showing your glucose patterns and percentiles (5th, 25th, 50th, 75th, 95th) over a 24-hour period.
--   **Voyager Scorecards**: Key performance metrics including Average Glucose, Stability (Rate of Change), and Time in Range (Standard and Tight).
--   **Trend Tracking**: Automatic comparison with your previous week's data to see if you are improving.
--   **Glycemic Hotspot Detection**: A custom engine that identifies recurring "clusters" of highs or lows at specific times of day, helping you find patterns that might otherwise be missed.
+
+- **Ambulatory Glucose Profile (AGP)**: A standardized chart showing your glucose patterns and percentiles (5th, 25th, 50th, 75th, 95th) over a 24-hour period.
+- **Voyager Scorecards**: Key performance metrics including Average Glucose, Stability (Rate of Change), and Time in Range (Standard and Tight).
+- **Trend Tracking**: Automatic comparison with your previous week's data to see if you are improving.
+- **Glycemic Hotspot Detection**: A custom engine that identifies recurring "clusters" of highs or lows at specific times of day, helping you find patterns that might otherwise be missed.
 
 ### 📝 The Weekly Report
+
 Each journal entry generates a comprehensive summary:
--   **Subjective Reflection**: Capture your "Weekly Vibe," influencing factors (like stress or illness), and goals for the coming week.
--   **Automated Insights**: Rule-based insights derived from your statistical data.
--   **Hotspot Analysis**: Detailed breakdown of recurring events with the ability to add your own notes to each cluster.
+
+- **Subjective Reflection**: Capture your "Weekly Vibe," influencing factors (like stress or illness), and goals for the coming week.
+- **Automated Insights**: Rule-based insights derived from your statistical data.
+- **Hotspot Analysis**: Detailed breakdown of recurring events with the ability to add your own notes to each cluster.
 
 ### 🎙️ AI-Driven Personalization (Experimental)
+
 Leveraging the power of Large Language Models (Gemini):
--   **Clinical Assessment**: An AI-generated qualitative review of your data, identifying blind spots and suggesting areas for reflection.
--   **Personalized Podcast**: GoodNumbers can generate a short audio summary (scripted by AI) that talks you through your week, making the reflection process feel more like a conversation than a chore.
+
+- **Clinical Assessment**: An AI-generated qualitative review of your data, identifying blind spots and suggesting areas for reflection.
+- **Personalized Podcast**: GoodNumbers can generate a short audio summary (scripted by AI) that talks you through your week, making the reflection process feel more like a conversation than a chore.
 
 ---
 
@@ -74,6 +82,7 @@ To run your own instance of GoodNumbers, you will need account access to the fol
 ### Installation
 
 1.  **Clone the repository**:
+
     ```bash
     git clone https://github.com/your-username/goodnumbers.git
     cd goodnumbers
@@ -95,27 +104,29 @@ cp backend/.env.example backend/.env
 
 #### Required Variables
 
-| Variable | Description | Location |
-| :--- | :--- | :--- |
-| `ENCRYPTION_KEY` | 32-byte hex string for data encryption | Root `.env` |
-| `DATABASE_URL` | PostgreSQL connection string | `backend/.env` |
-| `REDIS_HOST` | Redis server hostname | Root `.env` |
-| `REDIS_PORT` | Redis server port (default: 6379) | Root `.env` |
-| `REDIS_PASSWORD` | Redis server password | Root `.env` |
-| `AUTH_SECRET` | Secret key for session signing | `backend/.env` |
-| `AUTH_GOOGLE_ID` | Google OAuth Client ID | `backend/.env` |
-| `AUTH_GOOGLE_SECRET`| Google OAuth Client Secret | `backend/.env` |
-| `CSRF_SECRET` | 32+ character string for CSRF protection | `backend/.env` |
-| `COOKIE_SECRET` | Secret key for cookie parsing | `backend/.env` |
-| `GEMINI_API_KEY` | API key for AI reflection features | `backend/.env` |
+| Variable             | Description                              | Location       |
+| :------------------- | :--------------------------------------- | :------------- |
+| `ENCRYPTION_KEY`     | 32-byte hex string for data encryption   | Root `.env`    |
+| `DATABASE_URL`       | PostgreSQL connection string             | `backend/.env` |
+| `REDIS_HOST`         | Redis server hostname                    | Root `.env`    |
+| `REDIS_PORT`         | Redis server port (default: 6379)        | Root `.env`    |
+| `REDIS_PASSWORD`     | Redis server password                    | Root `.env`    |
+| `AUTH_SECRET`        | Secret key for session signing           | `backend/.env` |
+| `AUTH_GOOGLE_ID`     | Google OAuth Client ID                   | `backend/.env` |
+| `AUTH_GOOGLE_SECRET` | Google OAuth Client Secret               | `backend/.env` |
+| `CSRF_SECRET`        | 32+ character string for CSRF protection | `backend/.env` |
+| `COOKIE_SECRET`      | Secret key for cookie parsing            | `backend/.env` |
+| `GEMINI_API_KEY`     | API key for AI reflection features       | `backend/.env` |
 
 #### Start Services
+
     Launch the database and cache using Docker Compose:
     ```bash
     docker-compose up -d
     ```
 
 5.  **Initialize Database**:
+
     ```bash
     cd backend
     npx prisma migrate dev
@@ -148,11 +159,11 @@ For more details on contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 🤖 How This Project Was Created
 
-GoodNumbers was created using a **human-in-the-loop AI development process**. 
+GoodNumbers was created using a **human-in-the-loop AI development process**.
 
 The majority of the code, tests, and documentation were generated by AI agents (using the Gemini API and related tooling). The project is steered and reviewed by a **former software engineer** who acted as the "Senior Tech Lead." While every line of code has been reviewed for intent and functionality, this remains an experimental project.
 
-**The author offers NO GUARANTEES of correctness, safety, or reliability.** 
+**The author offers NO GUARANTEES of correctness, safety, or reliability.**
 
 This project is a demonstration of how AI can assist in building complex health-tech tools, but it must be used with extreme caution.
 
@@ -173,4 +184,5 @@ GoodNumbers is actively evolving. Our current focus is on **Simplification**:
 - **Medical Disclaimer**: This software is not intended for medical use. **Read the full [DISCLAIMER.md](DISCLAIMER.md) before use.**
 
 ---
-*GoodNumbers is dedicated to the idea that better data and regular reflection can lead to better outcomes.*
+
+_GoodNumbers is dedicated to the idea that better data and regular reflection can lead to better outcomes._
