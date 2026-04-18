@@ -37,10 +37,19 @@ export function createApp() {
       'FATAL: CSRF_SECRET is not set or is not 32+ characters long.',
     );
   }
+
+  // tiny-csrf REQUIREMENT: The secret MUST be exactly 32 characters long.
+  // We truncate the secret to 32 characters to satisfy this requirement safely.
+  const safeCsrfSecret = csrfSecret.substring(0, 32);
+
   const cookieSecret = process.env.COOKIE_SECRET;
   if (!cookieSecret) throw new Error('FATAL: COOKIE_SECRET is not set.');
 
   const app = express();
+
+  // --- Proxy & Infrastructure ---
+  // Trust the Caddy reverse proxy to correctly handle HTTPS and IP detection.
+  app.set('trust proxy', true);
 
   // --- Security & Core Middlewares ---
   app.use(helmet({ contentSecurityPolicy: false }));
@@ -50,6 +59,7 @@ export function createApp() {
       max: 100,
       standardHeaders: true,
       legacyHeaders: false,
+      validate: { trustProxy: false },
     }),
   );
   app.use(express.static('public'));
@@ -67,7 +77,7 @@ export function createApp() {
 
   // Create a reusable CSRF protection middleware.
   const csrfProtection = csrf(
-    csrfSecret,
+    safeCsrfSecret,
     ['POST', 'PUT', 'DELETE'],
     ['/api/auth/callback/google'],
   );

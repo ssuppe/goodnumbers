@@ -1,7 +1,7 @@
 # Goodnumbers Implementation Plan
 
-**Version:** 5.0 (Post-MVP Reconciliation)
-**Date:** 2025-10-23
+**Version:** 6.0 (Statistical Insights & Deployment Reconciliation)
+**Date:** 2026-04-16
 
 ## 1. Overview
 
@@ -39,6 +39,7 @@ This document tracks the phased implementation of the Goodnumbers project. It se
   - Implemented `NightscoutClient` to fetch Entries, Treatments, and Profiles.
   - Implemented `HotspotDetector` for glycemic event clustering.
   - Implemented `calculateAgp` and `calculateMetrics` (Voyager Scorecards).
+  - **COMPLETE:** Statistical Insights Engine (`aggregate.ts` and `cluster.ts`) with mandatory Zod validation and TDD workflow.
 
 - [ ] **Task 2: AI & TTS Pipeline**
   - **Status:** PENDING / DEFERRED.
@@ -55,3 +56,14 @@ This document tracks the phased implementation of the Goodnumbers project. It se
 - [ ] **Task 2: RSS Token Endpoint:** Implement `POST /api/user/regenerate-rss-token`.
 - [ ] **Task 3: Production Logging:** Replace `console.log` with a structured logger (Winston/Pino).
 - [ ] **Task 4: E2E Testing:** Implement Playwright tests for critical user journeys.
+
+### **Phase 8: Infrastructure & Deployment** - IN PROGRESS
+
+- [x] **Task 1: Dockerization**
+  - Create optimized Dockerfiles for `backend` (with PM2) and `frontend` (with Nginx).
+- [x] **Task 2: Orchestration**
+  - Implement `docker-compose.yml` and `Caddyfile` for automated reverse proxy and SSL.
+- [ ] **Task 3: VM Hardening**
+  - Configure swap space on GCP e2-micro to prevent OOM errors.
+- [ ] **Task 4: Automation**
+  - Finalize `Justfile` commands for seamless production deployment (`just deploy`).

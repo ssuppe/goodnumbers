@@ -1,7 +1,7 @@
 # Technical Specification: Goodnumbers Weekly Health Journal
 
-**Version:** 1.3 (Updated post-implementation)
-**Date:** 2025-10-23
+**Version:** 1.4 (Updated post-Statistical Insights)
+**Date:** 2026-04-16
 **Status:** Revised to reflect current codebase
 
 ## 1. Introduction
@@ -27,11 +27,12 @@ This document provides a comprehensive technical specification for the Goodnumbe
 - **Trigger:** User clicks "Start Journal" on the Dashboard.
 - **Process:** A background job (BullMQ) is enqueued.
 - **Worker Logic:**
-  1.  Fetch 7 days of entries, treatments, and profile from Nightscout.
-  2.  Calculate AGP metrics (Median, Percentiles).
-  3.  Calculate Voyager Scorecard metrics (Avg Glucose, Stability, Time in Range, Time in Tight Range).
-  4.  Detect "Hotspots" (clusters of glycemic events) using the `HotspotDetector` engine.
-  5.  Persist all data to the database.
+  1.  **Fetch Data:** Fetch 7 days of entries, treatments, and profile from Nightscout.
+  2.  **AGP Generation:** Calculate AGP metrics (Median, Percentiles) for the chart.
+  3.  **Scorecard Metrics:** Calculate Voyager Scorecard metrics (Avg Glucose, Stability, Time in Range, Time in Tight Range) and compare with previous weeks for trends.
+  4.  **Hotspot Detection:** Detect "Hotspots" (clusters of glycemic events) using the `HotspotDetector` engine.
+  5.  **Statistical Insights:** Execute the deterministic `Insights Engine` to generate aggregate insights (GMI, TIR warnings) and cluster-specific insights (e.g., uncovered meal detection).
+  6.  **Persistence:** Persist all results, including normalized treatments, to the database.
 
 ## 3. Architecture
 
@@ -108,14 +109,16 @@ model GlycemicEventCluster {
   meanTimeMinutes     Int
   clusterDataJson     Json      // Full cluster data for charts
   userNotes           String?
+  insights            Json?     // Statistical insights (Zod validated)
 }
 ```
 
 ### 4.2. Flexible JSON Fields
 
 - `agpChartData`: Array of `AgpDataPoint` objects.
-- `scoreCardData`: Object containing `avgGlucose`, `stability`, `timeInRange`, `timeInTightRange` and `trends`.
+- `scoreCardData`: Object containing metrics and `trends`.
 - `treatments`: Array of normalized treatment objects (carbs, insulin).
+- `analysisInsights`: Array of `Insight` objects (Priority, Note).
 
 ## 5. API Design
 
@@ -131,18 +134,16 @@ All endpoints require authentication (`protect`) and CSRF protection.
 - **`DELETE /api/journals/:id`**: Deletes a journal.
 
 - **`PUT /api/user/settings`**: Updates Nightscout credentials and units.
-  - Note: `nightscoutToken` is encrypted before storage. `nightscoutTokenLast3` is stored as a hint.
 
 ## 6. Security Measures
 
-- **Encryption:** `nightscoutToken` is encrypted at rest using AES-256-GCM (`backend/src/lib/encryption.ts`).
+- **Encryption:** `nightscoutToken` is encrypted at rest using AES-256-GCM.
 - **CSRF:** Implemented via `tiny-csrf` with a token endpoint.
-- **Rate Limiting:** Applied to all API routes, with stricter limits on `POST /journals` and `PUT /settings`.
-- **Input Validation:** Zod 4.3.5 schemas used for all API inputs (shared via `@goodnumbers/schemas`). Version is pinned monorepo-wide to ensure type safety.
-- **Package Security:** All shared packages are marked `private: true` to prevent dependency confusion attacks.
+- **Rate Limiting:** Applied to all API routes.
+- **Input Validation:** Zod schemas used for all API inputs and internal JSON storage.
 - **Data Segregation:** All DB queries filter by `userId`.
 
 ## 7. Future Work / Known Limitations
 
-- **AI/Podcast:** The schema supports AI-generated content (`podcastAudioUrl`, `analysisInsights`), but the backend integration with Gemini/TTS is currently a placeholder or pending implementation in the worker.
-- **RSS Token:** The `rssToken` field exists on the User model, but the endpoint to regenerate it (`POST /api/user/regenerate-rss-token`) is not yet implemented.
+- **AI/Podcast:** The schema supports AI-generated content, but the backend integration with Gemini/TTS is currently pending. Deterministic statistical insights are fully implemented.
+- **RSS Token:** The regeneration endpoint is not yet implemented.
