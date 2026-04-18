@@ -16,7 +16,7 @@ GoodNumbers is a weekly journal that combines traditional statistical analysis w
 - **Motivation without Judgment**: Designed to be a positive, motivating tool for a challenging daily job.
 
 <p align="center" width="100%">
-  <video src="YOUR_GITHUB_ASSET_URL_HERE" width="80%" controls></video>
+  <video src="https://raw.githubusercontent.com/ssuppe/goodnumbers/main/docs/videos/gn_demo_compressed.mp4" width="80%" controls></video>
 </p>
 
 > **Note**: GoodNumbers is an experiment and is for educational use only. It is **not** a medical device and does **not** provide medical advice.
