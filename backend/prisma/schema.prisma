@@ -1,110 +1,79 @@
-datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
-}
-
 generator client {
   provider = "prisma-client-js"
   output   = "../../packages/types/src/generated/client"
 }
 
-// Enum for type safety on user's preferred glucose units
-enum GlucoseUnit {
-  MGDL
-  MMOL
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
-// --- Core Application Models ---
-
 model User {
-  id              String    @id @default(cuid())
-  name            String?
-  email           String?   @unique
-  emailVerified   DateTime?
-  image           String?
-  accounts        Account[]
-  sessions        Session[]
-  journals        Journal[]
-
-  // Field required for the onboarding flow. Defaults to false for new users.
-  agreementsSigned Boolean   @default(false)
-
-  // Application-specific settings
-  nightscoutUrl   String?
-  nightscoutToken String?
+  id                   String      @id @default(cuid())
+  name                 String?
+  email                String?     @unique
+  emailVerified        DateTime?
+  image                String?
+  agreementsSigned     Boolean     @default(false)
+  nightscoutUrl        String?
+  nightscoutToken      String?
+  preferredUnits       GlucoseUnit @default(MGDL)
+  rssToken             String      @unique @default(cuid())
   nightscoutTokenLast3 String?
-  preferredUnits  GlucoseUnit @default(MGDL)
-  rssToken        String    @unique @default(cuid())
+  accounts             Account[]
+  journals             Journal[]
+  sessions             Session[]
 }
 
 model Journal {
-  id                   String    @id @default(cuid())
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  userId               String
-  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Job progress tracking
-  status               String    @default("PENDING")
-  progress             Int       @default(0)
-  statusMessage        String?
-
-  // User-provided subjective inputs
-  weeklyVibe           String?
-  influencingFactors   Json?
-  goalsForNextWeek     String?
-
-  // AI-generated content
-  podcastTitle         String?
-  podcastDescription   String?
-  podcastAudioUrl      String?
-  agpChartData         Json?
-  analysisInsights     Json?
-  treatments           Json?
-  
-  // Voyager Scorecards Data
-  scoreCardData        Json?
-
-  // Relation to detailed analysis
-  clusters             GlycemicEventCluster[]
+  id                 String                 @id @default(cuid())
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  userId             String
+  status             String                 @default("PENDING")
+  progress           Int                    @default(0)
+  statusMessage      String?
+  weeklyVibe         String?
+  influencingFactors Json?
+  goalsForNextWeek   String?
+  podcastTitle       String?
+  podcastDescription String?
+  podcastAudioUrl    String?
+  agpChartData       Json?
+  analysisInsights   Json?
+  scoreCardData      Json?
+  treatments         Json?
+  clusters           GlycemicEventCluster[]
+  user               User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model GlycemicEventCluster {
-  id                  String    @id @default(cuid())
-  journalId           String
-  journal             Journal   @relation(fields: [journalId], references: [id], onDelete: Cascade)
-
-  // Cluster summary data
-  eventType           String
-  eventCount          Int
-  meanTimeMinutes     Int
-
-  // Detailed data and user notes
-  clusterDataJson     Json
-  userNotes           String?
-
-  // Validated via Zod in app layer
-  insights            Json?
+  id              String  @id @default(cuid())
+  journalId       String
+  eventType       String
+  eventCount      Int
+  meanTimeMinutes Int
+  clusterDataJson Json
+  userNotes       String?
+  insights        Json?
+  aiInsight       String?
+  journal         Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)
 }
 
-
-// --- Standard Auth.js Models ---
-
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?
-  access_token       String?
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?
-  session_state      String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -123,4 +92,9 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+enum GlucoseUnit {
+  MGDL
+  MMOL
 }

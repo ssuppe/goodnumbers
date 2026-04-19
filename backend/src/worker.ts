@@ -15,8 +15,9 @@ import { z } from 'zod';
 import { NightscoutTreatment } from './lib/nightscout/types.js';
 import { generateAggregateInsights } from './lib/insights/aggregate.js';
 import { generateClusterInsights } from './lib/insights/cluster.js';
+import { generateClusterAIInsight } from './lib/ai/gemini.js';
 import { InsightArraySchema } from '@goodnumbers/schemas';
-import { GlucoseUnit } from '@goodnumbers/types';
+import { GlucoseUnit, GlycemicCluster } from '@goodnumbers/types';
 
 // --- Sanitization Logic ---
 const StoredTreatmentSchema = z.object({
@@ -259,7 +260,7 @@ export async function processJournalJob(job: Job) {
     const allClusters = [...hyperClusters, ...hypoClusters];
 
     console.log(
-      `[Worker] Identified ${allClusters.length} recurring clusters.`,
+      `[Worker] Identified ${allClusters.length} recurring clusters. Timezone: ${userTimezone}`,
     );
 
     // --- Insights Generation ---
@@ -272,21 +273,51 @@ export async function processJournalJob(job: Job) {
     // SECURITY: Validate
     const analysisInsights = InsightArraySchema.parse(rawAnalysisInsights);
 
-    // 2. Cluster Insights
+    // 2. Cluster Insights (Deterministic + AI)
     // Optimization: Sort treatments once
     treatments.sort((a, b) => a.date - b.date);
 
-    const clusterData = allClusters.map((c) => {
-      // treatments has carbs/insulin as numbers (0 for null), so it satisfies the interface
-      const rawInsights = generateClusterInsights(c, treatments);
+    console.log(
+      `[Worker] Generating AI insights for ${allClusters.length} clusters...`,
+    );
 
-      // SECURITY: Validate before DB write
-      const safeInsights = InsightArraySchema.safeParse(rawInsights);
+    const clusterData = [];
+    let currentIdx = 0;
+
+    for (const c of allClusters) {
+      currentIdx++;
+      const progress = Math.min(
+        60 + (currentIdx / allClusters.length) * 30,
+        95,
+      );
+
+      await prisma.journal.update({
+        where: { id: journalId },
+        data: {
+          progress: Math.floor(progress),
+          statusMessage: `AI Analysis: Deep-diving into pattern ${currentIdx} of ${allClusters.length}...`,
+        },
+      });
+
+      // Step A: Deterministic Heuristics (Ground Truth)
+      const deterministicInsights = generateClusterInsights(c, treatments);
+
+      // Step B: AI Clinical Assessment (Pro Model)
+      const aiAssessment = await generateClusterAIInsight(
+        c as unknown as GlycemicCluster,
+        deterministicInsights,
+        journal.user.preferredUnits as GlucoseUnit,
+        treatments, // Pass raw treatments for better context
+        userTimezone, // Pass timezone for accurate evidence formatting
+      );
+
+      // SECURITY: Validate deterministic insights before DB write
+      const safeInsights = InsightArraySchema.safeParse(deterministicInsights);
       if (!safeInsights.success) {
         console.error(`[Worker] Insight validation failed for cluster ${c.id}`);
       }
 
-      return {
+      clusterData.push({
         journalId,
         eventType: c.type,
         eventCount: c.eventCount,
@@ -295,10 +326,19 @@ export async function processJournalJob(job: Job) {
         insights: safeInsights.success
           ? (safeInsights.data as unknown as Prisma.InputJsonValue)
           : [],
-      };
-    });
+        aiInsight: aiAssessment,
+      });
+    }
 
     // 5. Atomic Persistence (Delete Old + Save New)
+    await prisma.journal.update({
+      where: { id: journalId },
+      data: {
+        progress: 95,
+        statusMessage: 'Saving your weekly report...',
+      },
+    });
+
     await prisma.$transaction([
       prisma.glycemicEventCluster.deleteMany({ where: { journalId } }),
       prisma.glycemicEventCluster.createMany({

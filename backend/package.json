@@ -28,6 +28,7 @@
     "@goodnumbers/common": "file:../packages/common",
     "@goodnumbers/schemas": "file:../packages/schemas",
     "@goodnumbers/types": "file:../packages/types",
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.14.0",
     "axios": "^1.13.2",
     "body-parser": "^1.20.2",
