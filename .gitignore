@@ -45,7 +45,7 @@ venv/
 .venv/
 .aicodeprep-gui
 goodnumbers-workspace2/
-proof_of_concept/
+proof_of_concept
 commit_message.txt
 *patch
 *swp
@@ -56,5 +56,3 @@ repomix*
 .venv/
 .agent/dynamic_context/
 specs/drafts/
-
-proof_of_concept/
