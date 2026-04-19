@@ -13,8 +13,28 @@ services-down:
     @echo "Stopping and removing Redis container..."
     @docker compose down
 
+# Flushes all data from local Redis (clears queues).
+redis-flush:
+    @echo "Flushing local Redis..."
+    @docker exec goodnumbers-clean-redis-1 redis-cli -a ${REDIS_PASSWORD} FLUSHALL
 
-# --- DEVELOPMENT WORKFLOWS ---
+# Hard resets the local development database.
+db-reset-dev:
+    @echo "Resetting local development database..."
+    @cd backend && PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=yes npx prisma migrate reset --force
+
+# Runs the backend development server.
+dev-backend:
+    @npm run dev -w backend
+
+# Runs the backend background worker.
+dev-worker:
+    @npm run dev:worker -w backend
+
+# Runs the frontend development server.
+dev-frontend:
+    @npm run dev -w frontend
+
 # --- PRODUCTION DEPLOYMENT (BUILD ON N100) ---
 
 SERVER_IP := "34.46.45.86"
@@ -88,14 +108,6 @@ logs-prod:
 # Hard reset the production database (WIPES ALL DATA)
 db-reset-prod:
     ssh ssuppe@{{SERVER_IP}} "docker exec app-backend-1 npx prisma db push --force-reset"
-
-# Runs the backend development server.
-dev-backend:
-    @npm run dev -w backend
-
-# Runs the frontend development server.
-dev-frontend:
-    @npm run dev -w frontend
 
 
 # --- TESTING WORKFLOWS ---

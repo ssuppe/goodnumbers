@@ -26,10 +26,12 @@ export default defineConfig({
     },
   },
   server: {
+    host: "0.0.0.0",
+    allowedHosts: ["192.168.1.3.nip.io"],
     proxy: {
       "/api": {
         target: "http://localhost:4001",
-        changeOrigin: true,
+        changeOrigin: false,
       },
     },
   },

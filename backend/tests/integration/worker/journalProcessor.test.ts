@@ -67,6 +67,11 @@ vi.mock('../../../src/lib/analysis/HotspotDetector.js', () => ({
   })),
 }));
 
+// 5. Mock Gemini AI
+vi.mock('../../../src/lib/ai/gemini.js', () => ({
+  generateClusterAIInsight: vi.fn().mockResolvedValue('Mocked AI Insight'),
+}));
+
 // Mock other libs to avoid side effects
 vi.mock('../../../src/lib/queue.js');
 vi.mock('ioredis');

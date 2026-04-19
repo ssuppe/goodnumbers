@@ -58,6 +58,51 @@ const getBgColor = (priority: InsightPriority) => {
   }
 };
 
+// Sub-component to parse and render structured AI insights
+function AiAssessmentDisplay({ text }: { text: string }) {
+  // Split by the known headers, keeping the headers in the result
+  const parts = text.split(
+    /(Key takeaway or observation:|Recommendation:|In detail:)/gi,
+  );
+
+  const sections: React.ReactNode[] = [];
+
+  for (let i = 1; i < parts.length; i += 2) {
+    const header = parts[i].trim();
+    const content = parts[i + 1]?.trim();
+
+    if (content) {
+      sections.push(
+        <div key={header} className="space-y-1">
+          <p className="font-bold text-blue-800 text-[10px] uppercase tracking-wider">
+            {header.replace(":", "")}
+          </p>
+          <div className="text-gray-900 leading-relaxed">
+            {header.includes("Recommendation") ? (
+              <ul className="list-disc ml-4 space-y-1">
+                {content.split("\n").map((line, idx) => {
+                  // Remove leading bullets/dashes if the AI added them
+                  const cleanLine = line.replace(/^[*-]\s*/, "").trim();
+                  return cleanLine ? <li key={idx}>{cleanLine}</li> : null;
+                })}
+              </ul>
+            ) : (
+              <p>{content}</p>
+            )}
+          </div>
+        </div>,
+      );
+    }
+  }
+
+  // Fallback to plain text if parsing fails to find sections
+  if (sections.length === 0) {
+    return <div className="whitespace-pre-wrap italic">{text}</div>;
+  }
+
+  return <div className="space-y-4">{sections}</div>;
+}
+
 export default function EventClusterCard({
   cluster,
   userNote,
@@ -145,20 +190,36 @@ export default function EventClusterCard({
       </div>
 
       {/* Insight Section */}
-      {displayInsights && displayInsights.length > 0 && (
-        <div className="px-4 pb-4 space-y-2 border-t border-gray-100 pt-4">
-          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-            Analysis
-          </h4>
-          {displayInsights.map((i, idx) => (
-            <div
-              key={idx}
-              className={`p-3 rounded-lg text-sm border ${getBgColor(i.priority)}`}
-            >
-              {/* SECURITY: React escapes children by default. Do NOT use dangerouslySetInnerHTML */}
-              {i.note}
+      {((displayInsights && displayInsights.length > 0) ||
+        cluster.aiInsight) && (
+        <div className="px-4 pb-4 space-y-4 border-t border-gray-100 pt-4">
+          {displayInsights && displayInsights.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Analysis
+              </h4>
+              {displayInsights.map((i, idx) => (
+                <div
+                  key={idx}
+                  className={`p-3 rounded-lg text-sm border ${getBgColor(i.priority)}`}
+                >
+                  {/* SECURITY: React escapes children by default. Do NOT use dangerouslySetInnerHTML */}
+                  {i.note}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          {cluster.aiInsight && (
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider">
+                AI Clinical Assessment
+              </h4>
+              <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-gray-800 leading-relaxed shadow-sm">
+                <AiAssessmentDisplay text={cluster.aiInsight} />
+              </div>
+            </div>
+          )}
         </div>
       )}
 

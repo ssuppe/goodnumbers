@@ -107,7 +107,13 @@ router.get('/:id', async (req, res, next) => {
 
     const journal = await prisma.journal.findFirst({
       where: { id: journalId, userId: userId },
-      include: { clusters: true }, // Include the related clusters
+      include: {
+        clusters: {
+          orderBy: {
+            meanTimeMinutes: 'asc',
+          },
+        },
+      },
     });
 
     if (!journal) {
