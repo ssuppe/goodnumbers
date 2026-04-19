@@ -56,3 +56,5 @@ repomix*
 .venv/
 .agent/dynamic_context/
 specs/drafts/
+
+proof_of_concept/
