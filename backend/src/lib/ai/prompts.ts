@@ -6,8 +6,9 @@ import { u } from '../../utils/text.js';
 import { TreatmentContext } from './gemini.js';
 
 /**
- * Builds a chronological text representation of glucose and treatments
+ * Builds a chronological text representation of blood sugar and treatments
  * surrounding each event in the cluster to provide raw evidence for the AI.
+ * Timestamps are rounded to the nearest 10 minutes for readability.
  */
 function buildRawEvidence(
   cluster: GlycemicCluster,
@@ -38,22 +39,25 @@ function buildRawEvidence(
         label: `${t.carbs ? `${t.carbs}g carbs` : ''}${t.carbs && t.insulin ? ', ' : ''}${t.insulin ? `${t.insulin}u insulin` : ''}`,
       }));
 
-    // 2. Get glucose readings for this specific event
+    // 2. Get blood sugar readings for this specific event
     const relevantReadings = (event.readings || []).map((r) => ({
       time: new Date(r.timestamp).getTime(),
       type: 'GLUCOSE',
       label: `${u(r.value, preferredUnits)} ${unitsLabel}`,
     }));
 
-    // 3. Combine and sort chronologically
+    // 3. Combine, sort, and round times
     const timeline = [...relevantTreatments, ...relevantReadings].sort(
       (a, b) => a.time - b.time,
     );
 
     timeline.forEach((item) => {
-      const timeStr = DateTime.fromMillis(item.time)
-        .setZone(timezone)
-        .toFormat('HH:mm');
+      const dt = DateTime.fromMillis(item.time).setZone(timezone);
+      // Round to nearest 10 minutes
+      const roundedDt = dt
+        .plus({ minutes: Math.round(dt.minute / 10) * 10 - dt.minute })
+        .startOf('minute');
+      const timeStr = roundedDt.toFormat('HH:mm');
       evidence += `  [${timeStr}] ${item.label}\n`;
     });
   });
@@ -80,31 +84,33 @@ export const CLUSTER_AI_INSIGHT_PROMPT = (
   );
 
   return `
-You are a clinical diabetes coach analyzing a recurring pattern (cluster) of glucose events. 
-Your goal is to provide a precise, professional, and actionable assessment without "AI slop."
+You are a helpful diabetes coach reviewing a recurring pattern in a weekly health journal. 
+Your goal is to share what you see in the data using friendly, plain English.
 
 CLUSTER SUMMARY:
-- Type: ${cluster.type === 'hyper' ? 'High Glucose' : 'Low Glucose'}
+- Pattern: ${cluster.type === 'hyper' ? 'High Blood Sugar' : 'Low Blood Sugar'}
 - Typical Time: ${Math.floor(cluster.avgStartMinute / 60)}:${(cluster.avgStartMinute % 60).toString().padStart(2, '0')}
-- Occurrences: ${cluster.eventCount} events this week.
+- Occurrences: Happened ${cluster.eventCount} times this week.
 
 DETERMINISTIC FINDINGS (Ground Truth):
 ${insightsList}
 
-RAW EVIDENCE (Timeline of select events in timezone ${timezone}):
+RAW EVIDENCE (Timeline of select events - times are rounded to nearest 10m):
 ${rawEvidence}
 
 INSTRUCTIONS:
 Your response must strictly follow this structure:
 
-Key takeaway or observation: [One sentence summarizing the core issue]
-Recommendation: [1-3 specific, actionable points to discuss with a doctor]
-In detail: [One paragraph (4-6 sentences) explaining the clinical reasoning in simple, professional but colloquial language. Be precise about the timing of insulin vs carbs seen in the raw evidence.]
+Key takeaway or observation: [One short sentence summarizing the core issue]
+Recommendation: [1-3 specific, punchy actions to discuss with a doctor]
+In detail: [One short paragraph (3-4 sentences) explaining what's happening. Use everyday language like "insulin kicking in" instead of "insulin action." Be precise about the timing seen in the raw evidence.]
 
 CONSTRAINTS:
-- NEVER give medical prescriptions or direct instructions. Frame as "patterns to discuss with your doctor."
-- CRITICAL: Use ${unitsLabel} for ALL glucose values. 
-- Do not use conversational filler (e.g., "Certainly," "I've analyzed...").
-- Be concise. Avoid "AI slop."
+- Audience is the patient. Be professional but colloquial and supportive.
+- Use "blood sugar" instead of "glucose" or "glucose levels."
+- NEVER give medical prescriptions or direct instructions. Frame everything as "something to talk about with your doctor."
+- CRITICAL: Use ${unitsLabel} for ALL blood sugar values mentioned.
+- Do not use conversational filler (e.g., "I've analyzed," "Certainly").
+- Keep it very concise. Avoid "AI slop."
 `;
 };
