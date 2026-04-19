@@ -15,7 +15,7 @@ GoodNumbers is a weekly journal that combines traditional statistical analysis w
 - **Weekly Practice**: A dedicated pause in your week to look back, learn, and improve for the next seven days.
 - **Motivation without Judgment**: Designed to be a positive, motivating tool for a challenging daily job.
 
-https://github.com/user-attachments/assets/bfea33b1-9aef-40e3-9316-a9fd80f4ec34
+https://github.com/user-attachments/assets/4ec7fa7b-3743-47a6-aac8-22760a915135
 
 > **Note**: GoodNumbers is an experiment and is for educational use only. It is **not** a medical device and does **not** provide medical advice.
 
