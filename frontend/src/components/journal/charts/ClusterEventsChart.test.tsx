@@ -17,7 +17,8 @@ vi.mock("echarts-for-react", () => ({
 interface MockDataPoint {
   value: [number, number];
   originalDate: string;
-  originalCarbs?: number;
+  originalValue?: number;
+  treatmentType?: "carbs" | "insulin";
 }
 
 interface MockSeries {
@@ -224,7 +225,38 @@ describe("ClusterEventsChart", () => {
     // Check if the carb data is present
     const carbPoint = barSeries[0].data[0];
     expect(carbPoint.value[1]).toBe(45); // 45g carbs
-    expect(carbPoint).toHaveProperty("originalCarbs", 45);
+    expect(carbPoint).toHaveProperty("originalValue", 45);
+    expect(carbPoint).toHaveProperty("treatmentType", "carbs");
+  });
+
+  it("renders treatment (insulin) bars when provided", () => {
+    const mockInsulinTreatments = [
+      {
+        id: "t2",
+        date: "2023-01-01T13:45:00Z",
+        insulin: 5,
+        eventType: "Meal Bolus",
+      },
+    ];
+    render(
+      <ClusterEventsChart
+        cluster={mockCluster}
+        units="MGDL"
+        treatments={mockInsulinTreatments}
+      />,
+    );
+
+    const options = mockReactECharts.mock.calls[0][0].option as MockOption;
+
+    // Find bar series
+    const barSeries = options.series.filter((s) => s.type === "bar");
+    expect(barSeries.length).toBeGreaterThan(0);
+
+    // Check if the insulin data is present
+    const insulinPoint = barSeries[0].data[0];
+    expect(insulinPoint.value[1]).toBe(5); // 5u insulin
+    expect(insulinPoint).toHaveProperty("originalValue", 5);
+    expect(insulinPoint).toHaveProperty("treatmentType", "insulin");
   });
 
   it("displays the correct units on the Y-axis when no treatments are present", () => {

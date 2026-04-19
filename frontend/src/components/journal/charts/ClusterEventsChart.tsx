@@ -102,8 +102,7 @@ export function ClusterEventsChart({
         treatments.forEach((t) => {
           const tTime = new Date(t.date).getTime();
           if (
-            t.carbs &&
-            t.carbs > 0 &&
+            ((t.carbs && t.carbs > 0) || (t.insulin && t.insulin > 0)) &&
             tTime >= searchStart &&
             tTime <= searchEnd
           ) {
@@ -163,8 +162,6 @@ export function ClusterEventsChart({
     );
 
     // Calculate global normalized bounds for the entire cluster
-    // This ensures that if one day starts early (e.g. 1pm) and another late (e.g. 3pm),
-    // we search for carbs starting from the earliest time (1pm - buffer) for ALL days.
     let globalMinNormalized = Infinity;
     let globalMaxNormalized = -Infinity;
 
@@ -175,13 +172,14 @@ export function ClusterEventsChart({
       if (nEnd > globalMaxNormalized) globalMaxNormalized = nEnd;
     });
 
-    // Apply buffer to the global normalized window
     const globalSearchStart =
       globalMinNormalized - TREATMENT_BUFFER_MINUTES * 60000;
     const globalSearchEnd =
       globalMaxNormalized + TREATMENT_BUFFER_MINUTES * 60000;
 
     const hasCarbData = treatments.some((t) => t.carbs && t.carbs > 0);
+    const hasInsulinData = treatments.some((t) => t.insulin && t.insulin > 0);
+    const hasAnyTreatments = hasCarbData || hasInsulinData;
 
     // Create a map of unique days to assign consistent colors
     const uniqueDays = Array.from(
@@ -193,7 +191,6 @@ export function ClusterEventsChart({
     const lineSeries = sortedEvents.map((event) => {
       const startDate = new Date(event.startTime);
       const seriesName = format(startDate, "EEE, MMM d");
-      // Assign color based on the unique day index
       const dayIndex = uniqueDays.indexOf(seriesName);
       const visuals = getEventVisuals(dayIndex);
 
@@ -213,8 +210,6 @@ export function ClusterEventsChart({
         itemStyle: {
           color: visuals.color,
         },
-        // We keep focus: 'series' to blur *other* days.
-        // Our manual event handler will ensure the sibling bar chart stays lit.
         emphasis: {
           focus: "series",
           lineStyle: {
@@ -235,167 +230,217 @@ export function ClusterEventsChart({
       };
     });
 
-    const barSeries = hasCarbData
-      ? sortedEvents
-          .map((event) => {
-            const eventStartDate = new Date(event.startTime);
-            const seriesName = format(eventStartDate, "EEE, MMM d");
-            const dayIndex = uniqueDays.indexOf(seriesName);
-            const visuals = getEventVisuals(dayIndex);
+    // Helper to build bar series for treatments (Carbs or Insulin)
+    const buildBarSeries = (
+      type: "carbs" | "insulin",
+      xAxisIdx: number,
+      yAxisIdx: number,
+    ) => {
+      return sortedEvents
+        .map((event) => {
+          const seriesName = format(new Date(event.startTime), "EEE, MMM d");
+          const dayIndex = uniqueDays.indexOf(seriesName);
+          const visuals = getEventVisuals(dayIndex);
 
-            // Calculate the time shift for this specific day
-            // Shift = RealTime - NormalizedTime
-            // This allows us to project the Global Normalized Window onto this specific specific calendar day
-            const realStart = new Date(event.startTime).getTime();
-            const normalizedStart = normalizeTime(
-              event.startTime,
-              boundaryHour,
-            );
-            const timeShift = realStart - normalizedStart;
+          const realStart = new Date(event.startTime).getTime();
+          const timeShift =
+            realStart - normalizeTime(event.startTime, boundaryHour);
+          const localSearchStart = globalSearchStart + timeShift;
+          const localSearchEnd = globalSearchEnd + timeShift;
 
-            const localSearchStart = globalSearchStart + timeShift;
-            const localSearchEnd = globalSearchEnd + timeShift;
+          const eventTreatments = treatments.filter((t) => {
+            const val = type === "carbs" ? t.carbs : t.insulin;
+            if (!val || val <= 0) return false;
+            const tTime = new Date(t.date).getTime();
+            return tTime >= localSearchStart && tTime <= localSearchEnd;
+          });
 
-            const eventTreatments = treatments.filter((t) => {
-              if (!t.carbs || t.carbs <= 0) return false;
-              const tTime = new Date(t.date).getTime();
-              return tTime >= localSearchStart && tTime <= localSearchEnd;
-            });
+          if (eventTreatments.length === 0) return null;
 
-            if (eventTreatments.length === 0) return null;
+          return {
+            name: seriesName,
+            type: "bar",
+            xAxisIndex: xAxisIdx,
+            yAxisIndex: yAxisIdx,
+            barWidth: 8,
+            itemStyle: { color: visuals.color, opacity: 1 },
+            emphasis: { focus: "series" },
+            blur: { itemStyle: { opacity: 0.1 } },
+            data: eventTreatments.map((t) => ({
+              value: [
+                normalizeTime(t.date, boundaryHour),
+                type === "carbs" ? t.carbs : t.insulin,
+              ],
+              originalDate: t.date,
+              originalValue: type === "carbs" ? t.carbs : t.insulin,
+              treatmentType: type,
+            })),
+          };
+        })
+        .filter(Boolean);
+    };
 
-            return {
-              name: seriesName,
-              type: "bar",
-              xAxisIndex: 1,
-              yAxisIndex: 1,
-              barWidth: 10,
-              itemStyle: {
-                color: visuals.color,
-                opacity: 1,
-              },
-              emphasis: {
-                focus: "series",
-              },
-              blur: {
-                itemStyle: { opacity: 0.1 },
-              },
-              data: eventTreatments.map((t) => ({
-                value: [normalizeTime(t.date, boundaryHour), t.carbs],
-                originalDate: t.date,
-                originalCarbs: t.carbs,
-              })),
-            };
-          })
-          .filter(Boolean)
+    const carbSeries = hasCarbData
+      ? buildBarSeries(
+          "carbs",
+          hasAnyTreatments ? 1 : 0,
+          hasAnyTreatments ? 1 : 0,
+        )
       : [];
 
-    const grid = hasCarbData
-      ? [
-          {
-            show: true,
-            backgroundColor: "#f8f9fa",
-            borderWidth: 0,
-            left: 60,
-            right: 20,
-            top: "10%",
-            height: "55%",
-            containLabel: false,
-          },
-          {
-            left: 60,
-            right: 20,
-            top: "70%",
-            height: "15%",
-            containLabel: false,
-          },
-        ]
-      : [
-          {
-            show: true,
-            backgroundColor: "#f8f9fa",
-            borderWidth: 0,
-            left: 60,
-            right: 20,
-            bottom: "15%",
-            top: "10%",
-            containLabel: false,
-          },
-        ];
+    // Determine the next available grid indices for insulin
+    let insulinGridIdx = 0;
+    if (hasCarbData && hasInsulinData) {
+      insulinGridIdx = 2;
+    } else if (hasCarbData || hasInsulinData) {
+      insulinGridIdx = 1;
+    }
 
-    // Calculate common domain for synchronized axes
-    const allSeries = [...lineSeries, ...barSeries];
+    const insulinSeries = hasInsulinData
+      ? buildBarSeries("insulin", insulinGridIdx, insulinGridIdx)
+      : [];
+
+    // --- Dynamic Grid Layout ---
+    const grid = [];
+    if (!hasAnyTreatments) {
+      grid.push({
+        show: true,
+        backgroundColor: "#f8f9fa",
+        borderWidth: 0,
+        left: 60,
+        right: 20,
+        bottom: "15%",
+        top: "10%",
+        containLabel: false,
+      });
+    } else {
+      // We have one or two subplots
+      const subplotsCount = (hasCarbData ? 1 : 0) + (hasInsulinData ? 1 : 0);
+
+      // Main chart (Glucose)
+      grid.push({
+        show: true,
+        backgroundColor: "#f8f9fa",
+        borderWidth: 0,
+        left: 60,
+        right: 20,
+        top: "8%",
+        height: subplotsCount === 2 ? "40%" : "55%", // Make it smaller if 3 charts total
+        containLabel: false,
+      });
+
+      // Carbs (Middle)
+      if (hasCarbData) {
+        grid.push({
+          left: 60,
+          right: 20,
+          top: subplotsCount === 2 ? "55%" : "70%",
+          height: "15%",
+          containLabel: false,
+        });
+      }
+
+      // Insulin (Bottom)
+      if (hasInsulinData) {
+        grid.push({
+          left: 60,
+          right: 20,
+          top: subplotsCount === 2 ? "75%" : "70%",
+          height: "15%",
+          containLabel: false,
+        });
+      }
+    }
+
+    const allSeries = [...lineSeries, ...carbSeries, ...insulinSeries];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
     const domain = calculateCommonDomain(allSeries as any);
-
     const xAxisCommon = {
       min: domain ? domain.min : undefined,
       max: domain ? domain.max : undefined,
     };
 
-    const xAxis = hasCarbData
-      ? [
-          {
-            type: "time",
-            gridIndex: 0,
-            axisLabel: { show: false },
-            axisTick: { show: false },
-            ...xAxisCommon,
-          },
-          {
-            type: "time",
-            gridIndex: 1,
-            axisLabel: { formatter: formatAxisLabel },
-            interval: 1800 * 1000,
-            ...xAxisCommon,
-          },
-        ]
-      : [
-          {
-            type: "time",
-            axisLabel: { formatter: formatAxisLabel },
-            interval: 3600 * 1000,
-            ...xAxisCommon,
-          },
-        ];
+    // --- Dynamic X-Axes ---
+    const xAxis = [];
+    if (!hasAnyTreatments) {
+      xAxis.push({
+        type: "time",
+        axisLabel: { formatter: formatAxisLabel },
+        interval: 3600 * 1000,
+        ...xAxisCommon,
+      });
+    } else {
+      const subplotsCount = (hasCarbData ? 1 : 0) + (hasInsulinData ? 1 : 0);
 
-    const yAxis = hasCarbData
-      ? [
-          {
-            type: "value",
-            gridIndex: 0,
-            name: `Glucose (${isMmol ? "mmol/L" : "mg/dL"})`,
-            nameLocation: "middle",
-            nameRotate: 90,
-            nameGap: 50,
-            min: (value: { min: number }) => Math.floor(value.min * 0.9),
-            max: (value: { max: number }) => Math.ceil(value.max * 1.1),
-            splitLine: { lineStyle: { type: "dashed", color: "#eee" } },
-          },
-          {
-            type: "value",
-            gridIndex: 1,
-            name: "Carbs (g)",
-            nameLocation: "middle", // Center the label
-            nameRotate: 90, // Rotate 90 degrees counter-clockwise
-            nameGap: 50, // Match the spacing of the glucose axis
-            splitLine: { show: false },
-          },
-        ]
-      : [
-          {
-            type: "value",
-            gridIndex: 0,
-            name: `Glucose (${isMmol ? "mmol/L" : "mg/dL"})`,
-            nameLocation: "middle",
-            nameRotate: 90,
-            nameGap: 50,
-            scale: true,
-            min: (value: { min: number }) => Math.floor(value.min * 0.9),
-            max: (value: { max: number }) => Math.ceil(value.max * 1.1),
-            splitLine: { lineStyle: { type: "dashed", color: "#eee" } },
-          },
-        ];
+      // Axis 0 (Glucose)
+      xAxis.push({
+        type: "time",
+        gridIndex: 0,
+        axisLabel: { show: false },
+        axisTick: { show: false },
+        ...xAxisCommon,
+      });
+
+      // Axis 1 (First Subplot)
+      xAxis.push({
+        type: "time",
+        gridIndex: 1,
+        // Only show labels if it's the bottom-most axis
+        axisLabel: { show: subplotsCount === 1, formatter: formatAxisLabel },
+        axisTick: { show: subplotsCount === 1 },
+        interval: 1800 * 1000,
+        ...xAxisCommon,
+      });
+
+      // Axis 2 (Second Subplot, if exists)
+      if (subplotsCount === 2) {
+        xAxis.push({
+          type: "time",
+          gridIndex: 2,
+          axisLabel: { formatter: formatAxisLabel },
+          interval: 1800 * 1000,
+          ...xAxisCommon,
+        });
+      }
+    }
+
+    // --- Dynamic Y-Axes ---
+    const yAxis = [];
+    yAxis.push({
+      type: "value",
+      gridIndex: 0,
+      name: `Glucose (${isMmol ? "mmol/L" : "mg/dL"})`,
+      nameLocation: "middle",
+      nameRotate: 90,
+      nameGap: 50,
+      min: (value: { min: number }) => Math.floor(value.min * 0.9),
+      max: (value: { max: number }) => Math.ceil(value.max * 1.1),
+      splitLine: { lineStyle: { type: "dashed", color: "#eee" } },
+    });
+
+    if (hasCarbData) {
+      yAxis.push({
+        type: "value",
+        gridIndex: grid.length - (hasInsulinData ? 2 : 1), // Index based on grid count
+        name: "Carbs (g)",
+        nameLocation: "middle",
+        nameRotate: 90,
+        nameGap: 50,
+        splitLine: { show: false },
+      });
+    }
+
+    if (hasInsulinData) {
+      yAxis.push({
+        type: "value",
+        gridIndex: grid.length - 1, // Always last
+        name: "Insulin (u)",
+        nameLocation: "middle",
+        nameRotate: 90,
+        nameGap: 50,
+        splitLine: { show: false },
+      });
+    }
 
     return {
       tooltip: {
@@ -403,29 +448,27 @@ export function ClusterEventsChart({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         formatter: (params: any) => {
           const p = params;
-          // Use originalDate for the truth.
-          // params.value[0] is the NORMALIZED time (year 2000).
           const dateSource = (p.data.originalDate || p.data.value[0]) as
             | string
             | number;
           const time = new Date(dateSource);
-
           const timeStr = time.toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
             timeZone: "UTC",
           });
-          const color = p.color;
-          const seriesName = p.seriesName;
 
-          let content = `<div><span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color:${color};"></span>${seriesName}</div>`;
+          let content = `<div><span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color:${p.color};"></span>${p.seriesName}</div>`;
           content += `<div>${timeStr}</div>`;
 
           if (p.seriesType === "line") {
             const unitLabel = isMmol ? "mmol/L" : "mg/dL";
             content += `<div>Glucose: <strong>${p.data.value[1]}</strong> ${unitLabel}</div>`;
           } else if (p.seriesType === "bar") {
-            content += `<div>Carbs: <strong>${p.data.originalCarbs}g</strong></div>`;
+            const label =
+              p.data.treatmentType === "carbs" ? "Carbs" : "Insulin";
+            const unit = p.data.treatmentType === "carbs" ? "g" : "u";
+            content += `<div>${label}: <strong>${p.data.originalValue}${unit}</strong></div>`;
           }
           return content;
         },
@@ -459,7 +502,8 @@ export function ClusterEventsChart({
           xAxisIndex: 0,
           yAxisIndex: 0,
         },
-        ...barSeries,
+        ...carbSeries,
+        ...insulinSeries,
       ],
     };
   }, [cluster, units, treatments, boundaryHour]);

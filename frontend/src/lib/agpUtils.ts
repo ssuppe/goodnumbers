@@ -53,6 +53,7 @@ export interface Treatment {
   id: string;
   date: string;
   carbs?: number;
+  insulin?: number;
   eventType?: string;
   notes?: string;
 }
