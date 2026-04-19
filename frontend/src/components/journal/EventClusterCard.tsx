@@ -1,14 +1,14 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import type {
   GlycemicEventCluster,
   GlycemicCluster,
   Insight,
 } from "@goodnumbers/types";
-import { InsightPriority } from "@goodnumbers/types";
 import { ClusterEventsChart } from "./charts/ClusterEventsChart";
 import CollapsingNoteArea from "./CollapsingNoteArea";
 import { format } from "date-fns";
 import { type GlucoseUnit, type Treatment } from "../../lib/agpUtils";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface EventClusterCardProps {
   cluster: GlycemicEventCluster;
@@ -43,20 +43,6 @@ export function getColloquialEventName(type: string): string {
   }
   return type;
 }
-
-// Helper for styling (match ChartAnalysisCard)
-const getBgColor = (priority: InsightPriority) => {
-  switch (priority) {
-    case InsightPriority.CRITICAL:
-      return "bg-red-50 border-red-100 text-red-900";
-    case InsightPriority.SERIOUS:
-      return "bg-amber-50 border-amber-100 text-amber-900";
-    case InsightPriority.IMPORTANT:
-      return "bg-blue-50 border-blue-100 text-blue-900";
-    default:
-      return "bg-gray-50 border-gray-100 text-gray-700";
-  }
-};
 
 // Sub-component to parse and render structured AI insights
 function AiAssessmentDisplay({ text }: { text: string }) {
@@ -165,6 +151,8 @@ export default function EventClusterCard({
   // Generate dynamic title using the full summary structure as requested
   const title = summaryText;
 
+  const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
+
   // Use insights prop if provided, otherwise fallback to cluster.insights if it matches the shape
   const displayInsights =
     insights || (cluster.insights as unknown as Insight[]);
@@ -195,18 +183,31 @@ export default function EventClusterCard({
         <div className="px-4 pb-4 space-y-4 border-t border-gray-100 pt-4">
           {displayInsights && displayInsights.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                Analysis
-              </h4>
-              {displayInsights.map((i, idx) => (
-                <div
-                  key={idx}
-                  className={`p-3 rounded-lg text-sm border ${getBgColor(i.priority)}`}
-                >
-                  {/* SECURITY: React escapes children by default. Do NOT use dangerouslySetInnerHTML */}
-                  {i.note}
+              <button
+                onClick={() => setIsAnalysisExpanded(!isAnalysisExpanded)}
+                className="flex items-center space-x-1 text-xs font-bold text-gray-500 uppercase tracking-wider hover:text-gray-700 transition-colors"
+              >
+                {isAnalysisExpanded ? (
+                  <ChevronDown className="w-3 h-3" />
+                ) : (
+                  <ChevronRight className="w-3 h-3" />
+                )}
+                <span>Data Analysis</span>
+              </button>
+
+              {isAnalysisExpanded && (
+                <div className="space-y-1.5 pt-1">
+                  {displayInsights.map((i, idx) => (
+                    <div
+                      key={idx}
+                      className="px-2 py-1 rounded-md text-[11px] bg-gray-50 border border-gray-100 text-gray-600 leading-tight"
+                    >
+                      {/* SECURITY: React escapes children by default. Do NOT use dangerouslySetInnerHTML */}
+                      {i.note}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           )}
 
