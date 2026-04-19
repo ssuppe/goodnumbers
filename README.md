@@ -15,7 +15,6 @@ GoodNumbers is a weekly journal that combines traditional statistical analysis w
 - **Weekly Practice**: A dedicated pause in your week to look back, learn, and improve for the next seven days.
 - **Motivation without Judgment**: Designed to be a positive, motivating tool for a challenging daily job.
 
-
 https://github.com/user-attachments/assets/bfea33b1-9aef-40e3-9316-a9fd80f4ec34
 
 > **Note**: GoodNumbers is an experiment and is for educational use only. It is **not** a medical device and does **not** provide medical advice.
@@ -25,9 +24,9 @@ https://github.com/user-attachments/assets/bfea33b1-9aef-40e3-9316-a9fd80f4ec34
 ## 🛠️ Built With
 
 - **Frontend**: React (Vite), TypeScript, Tailwind CSS, Refine (v5)
-- **Backend**: Node.js, Hono, Prisma, Better Auth
-- **Data**: PostgreSQL, Redis (for background jobs)
-- **AI**: Integration with LLMs for personalized data analysis and reflection
+- **Backend**: Node.js, Express, Prisma, Auth.js (NextAuth for Express)
+- **Data**: SQLite (Development) / PostgreSQL (Production), Redis (for background jobs)
+- **AI**: Gemini 3.1 Pro (via Google AI Studio) for deep clinical reasoning
 
 ---
 
@@ -35,29 +34,36 @@ https://github.com/user-attachments/assets/bfea33b1-9aef-40e3-9316-a9fd80f4ec34
 
 GoodNumbers provides a multi-layered analysis of your 7-day diabetes data:
 
-### 📊 Statistical Analysis (No AI)
+### 📊 Statistical Analysis & Heuristics (Ground Truth)
 
-The core of the report is built on robust statistical methods to provide an objective view of your week:
+The core of the report is built on robust statistical methods and deterministic logic:
 
-- **Ambulatory Glucose Profile (AGP)**: A standardized chart showing your glucose patterns and percentiles (5th, 25th, 50th, 75th, 95th) over a 24-hour period.
+- **Ambulatory Glucose Profile (AGP)**: A standardized chart showing your blood sugar patterns and percentiles (5th, 25th, 50th, 75th, 95th) over a 24-hour period.
 - **Voyager Scorecards**: Key performance metrics including Average Glucose, Stability (Rate of Change), and Time in Range (Standard and Tight).
-- **Trend Tracking**: Automatic comparison with your previous week's data to see if you are improving.
-- **Glycemic Hotspot Detection**: A custom engine that identifies recurring "clusters" of highs or lows at specific times of day, helping you find patterns that might otherwise be missed.
+- **Bolus Timing Heuristics**: A deterministic engine that identifies:
+  - **Uncovered Meals**: Meals detected without matching insulin.
+  - **Post-bolusing**: Insulin given at or after the start of a meal.
+  - **Pre-bolusing**: Insulin given significantly before a meal.
+- **Glycemic Hotspot Detection**: Automatically identifies recurring "clusters" of highs or lows at specific times of day.
 
 ### 📝 The Weekly Report
 
 Each journal entry generates a comprehensive summary:
 
 - **Subjective Reflection**: Capture your "Weekly Vibe," influencing factors (like stress or illness), and goals for the coming week.
-- **Automated Insights**: Rule-based insights derived from your statistical data.
-- **Hotspot Analysis**: Detailed breakdown of recurring events with the ability to add your own notes to each cluster.
+- **Data Analysis**: Compact, collapsible breakdown of deterministic insights for every pattern found.
+- **Interactive Charts**: Patterns are visualized with both blood sugar and treatment (carbs/insulin) data on a single timeline.
 
-### 🎙️ AI-Driven Personalization (Experimental)
+### 🎙️ AI-Driven Personalization (Gemini 3.1 Pro)
 
-Leveraging the power of Large Language Models (Gemini):
+Leveraging the state-of-the-art **Gemini 3.1 Pro** model for deep analysis:
 
-- **Clinical Assessment**: An AI-generated qualitative review of your data, identifying blind spots and suggesting areas for reflection.
-- **Personalized Podcast**: GoodNumbers can generate a short audio summary (scripted by AI) that talks you through your week, making the reflection process feel more like a conversation than a chore.
+- **Clinical Assessment**: A structured, qualitative review of every recurring pattern. The AI uses **Hybrid Prompting**—it receives both the hard-coded heuristics ("Ground Truth") and a 4-hour raw data trace for every event in a pattern.
+- **Structured Insights**: Every AI assessment is parsed into a professional, patient-friendly report:
+  - **Key Takeaway**: A single-sentence summary of the core issue.
+  - **Recommendation**: 1-3 actionable items to discuss with a doctor.
+  - **In Detail**: A precise, colloquial explanation of the physiological cause-and-effect.
+- **Patient-First Language**: Insights use common T1D vernacular (e.g., "blood sugar," "insulin kicking in") instead of dense clinical terminology.
 
 ---
 
@@ -65,10 +71,10 @@ Leveraging the power of Large Language Models (Gemini):
 
 To run your own instance of GoodNumbers, you will need account access to the following services:
 
-1.  **Nightscout**: GoodNumbers pulls your blood glucose data from a Nightscout instance. You will need your Nightscout URL and an API Access Token.
-2.  **Google Cloud Console**: Required for **Google OAuth**. You must create a project and OAuth 2.0 credentials to allow users to sign in.
-3.  **Google AI Studio (Gemini)**: Required for the **AI reflection features**. You will need a Gemini API Key to enable the automated analysis and coaching.
-4.  **Database & Cache**: You will need a **PostgreSQL** database and a **Redis** instance (can be run locally via the included Docker Compose file).
+1.  **Nightscout**: GoodNumbers pulls your data from a Nightscout instance. You will need your Nightscout URL and an API Access Token.
+2.  **Google Cloud Console**: Required for **Google OAuth**. You must create a project and OAuth 2.0 credentials.
+3.  **Google AI Studio (Gemini)**: Required for the **AI features**. A Gemini API Key is needed (Free tier available).
+4.  **Database & Cache**: **SQLite** is used by default for local development. **Redis** is required for the background worker (run via Docker).
 
 ---
 
@@ -77,82 +83,53 @@ To run your own instance of GoodNumbers, you will need account access to the fol
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (v18+)
-- [Docker](https://www.docker.com/) (for PostgreSQL and Redis)
-- [Prisma CLI](https://www.prisma.io/docs/orm/prisma-cli/installation)
+- [Docker](https://www.docker.com/) (for Redis)
+- [Just](https://github.com/casey/just) (Command runner - optional but recommended)
 
 ### Installation
 
-1.  **Clone the repository**:
+1.  **Clone and Install**:
 
     ```bash
     git clone https://github.com/your-username/goodnumbers.git
     cd goodnumbers
-    ```
-
-2.  **Install dependencies**:
-    ```bash
     npm install
     ```
 
-### Environment Setup
-
-GoodNumbers requires several environment variables to function correctly. Copy the example files and update them with your specific configuration:
-
-```bash
-cp .env.example .env
-cp backend/.env.example backend/.env
-```
-
-#### Required Variables
-
-| Variable             | Description                              | Location       |
-| :------------------- | :--------------------------------------- | :------------- |
-| `ENCRYPTION_KEY`     | 32-byte hex string for data encryption   | Root `.env`    |
-| `DATABASE_URL`       | PostgreSQL connection string             | `backend/.env` |
-| `REDIS_HOST`         | Redis server hostname                    | Root `.env`    |
-| `REDIS_PORT`         | Redis server port (default: 6379)        | Root `.env`    |
-| `REDIS_PASSWORD`     | Redis server password                    | Root `.env`    |
-| `AUTH_SECRET`        | Secret key for session signing           | `backend/.env` |
-| `AUTH_GOOGLE_ID`     | Google OAuth Client ID                   | `backend/.env` |
-| `AUTH_GOOGLE_SECRET` | Google OAuth Client Secret               | `backend/.env` |
-| `CSRF_SECRET`        | 32+ character string for CSRF protection | `backend/.env` |
-| `COOKIE_SECRET`      | Secret key for cookie parsing            | `backend/.env` |
-| `GEMINI_API_KEY`     | API key for AI reflection features       | `backend/.env` |
-
-#### Start Services
-
-    Launch the database and cache using Docker Compose:
-    ```bash
-    docker-compose up -d
-    ```
-
-5.  **Initialize Database**:
+2.  **Environment Setup**:
 
     ```bash
-    cd backend
-    npx prisma migrate dev
-    npx prisma generate
+    cp .env.example .env
+    cp backend/.env.example backend/.env
     ```
 
-6.  **Run the Application**:
-    From the root directory, start both the frontend and backend:
-    ```bash
-    npm run dev
-    ```
+3.  **Local Network Access (Optional)**:
+    To access the app from other devices on your network, use a `nip.io` domain (e.g., `http://192.168.1.x.nip.io:5173`). This allows Google OAuth to function correctly on private IPs.
+
+### Start Development
+
+The easiest way to start is using the included **`just`** recipes:
+
+1.  **Start Services**: `just services-up` (Starts Redis)
+2.  **Reset DB**: `just db-reset-dev` (Initializes SQLite)
+3.  **Run App**:
+    - Backend: `just dev-backend`
+    - Worker: `just dev-worker` (Required for AI insights)
+    - Frontend: `just dev-frontend`
 
 ---
 
 ## 🧬 Development & Testing
 
-We follow a strict **Test-Driven Development (TDD)** workflow. All contributions must include tests.
+We follow a strict **Test-Driven Development (TDD)** workflow.
 
 ### Quality Gates
 
-Run these commands before pushing any changes:
+Run these commands before pushing:
 
 - **Linting**: `npm run lint`
-- **Type Check**: `npm run build:backend` && `npm run build:frontend`
-- **Tests**: `npm run test:ai` (Optimized for CI/CD and AI contexts)
+- **Tests**: `npm test` (Runs all 270+ backend and frontend tests)
+- **Reset Environment**: `just redis-flush` && `just db-reset-dev`
 
 For more details on contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
