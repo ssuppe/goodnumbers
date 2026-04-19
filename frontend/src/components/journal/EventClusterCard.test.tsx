@@ -193,7 +193,13 @@ describe("EventClusterCard", () => {
         onNoteChange={mockOnNoteChange}
       />,
     );
+    // Initially hidden
+    expect(screen.queryByText("Uncovered meal")).not.toBeInTheDocument();
+
+    // Click to expand
+    const toggle = screen.getByText("Data Analysis");
+    fireEvent.click(toggle);
+
     expect(screen.getByText("Uncovered meal")).toBeInTheDocument();
-    expect(screen.getByText("Analysis")).toBeInTheDocument();
   });
 });

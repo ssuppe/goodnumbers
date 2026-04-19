@@ -132,4 +132,18 @@ describe('Cluster Bolus Timing Insights', () => {
       }),
     );
   });
+
+  it('does not generate meal insights for non-meal events', () => {
+    const treatments = [
+      {
+        date: new Date('2023-01-01T10:00:00Z').getTime(),
+        insulin: 5, // Correction bolus, no carbs
+      },
+    ];
+    const insights = generateClusterInsights(mockCluster, treatments);
+    // Should only have 0 insights (or at least no meal-related ones)
+    expect(
+      insights.filter((i) => i.note.toLowerCase().includes('meal')),
+    ).toHaveLength(0);
+  });
 });
