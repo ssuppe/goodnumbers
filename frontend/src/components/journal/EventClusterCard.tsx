@@ -152,10 +152,36 @@ export default function EventClusterCard({
   const title = summaryText;
 
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
+  const [isAiExpanded, setIsAiExpanded] = useState(false);
 
   // Use insights prop if provided, otherwise fallback to cluster.insights if it matches the shape
   const displayInsights =
     insights || (cluster.insights as unknown as Insight[]);
+
+  // Parse quick log suggestions
+  const quickLogSuggestions = useMemo(() => {
+    try {
+      if (typeof cluster.quickLogSuggestions === "string") {
+        return JSON.parse(cluster.quickLogSuggestions) as string[];
+      }
+      if (Array.isArray(cluster.quickLogSuggestions)) {
+        return cluster.quickLogSuggestions as string[];
+      }
+    } catch (e) {
+      console.error("Failed to parse quick log suggestions", e);
+    }
+    return [];
+  }, [cluster.quickLogSuggestions]);
+
+  const handleQuickLog = (suggestion: string) => {
+    if (onNoteChange) {
+      const currentNote = userNote || "";
+      const newNote = currentNote
+        ? `${currentNote.trim()}\n- ${suggestion}`
+        : `- ${suggestion}`;
+      onNoteChange(newNote);
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
@@ -213,12 +239,47 @@ export default function EventClusterCard({
 
           {cluster.aiInsight && (
             <div className="space-y-3">
-              <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider">
-                AI Clinical Assessment
-              </h4>
-              <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-gray-800 leading-relaxed shadow-sm">
-                <AiAssessmentDisplay text={cluster.aiInsight} />
-              </div>
+              <button
+                onClick={() => setIsAiExpanded(!isAiExpanded)}
+                className="flex items-center space-x-1 w-full text-left"
+              >
+                <div className="flex items-center space-x-2 flex-grow">
+                  <span className="text-sm">✨</span>
+                  <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider">
+                    AI Co-pilot Hypothesis
+                  </h4>
+                </div>
+                {isAiExpanded ? (
+                  <ChevronDown className="w-4 h-4 text-blue-400" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-blue-400" />
+                )}
+              </button>
+
+              {isAiExpanded && (
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-gray-800 leading-relaxed shadow-sm transition-all animate-in fade-in slide-in-from-top-1">
+                  <AiAssessmentDisplay text={cluster.aiInsight} />
+
+                  {quickLogSuggestions.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-blue-100">
+                      <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-2">
+                        Quick Log Suggestions
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {quickLogSuggestions.map((suggestion, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleQuickLog(suggestion)}
+                            className="px-3 py-1 bg-white border border-blue-200 text-blue-700 text-xs rounded-full hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm"
+                          >
+                            + {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

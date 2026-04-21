@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { CLUSTER_AI_INSIGHT_PROMPT } from '@src/lib/ai/prompts';
+import {
+  CLUSTER_AI_INSIGHT_PROMPT,
+  EXECUTIVE_SUMMARY_PROMPT,
+} from '@src/lib/ai/prompts';
 import {
   GlucoseUnit,
   type GlycemicCluster,
@@ -51,11 +54,11 @@ describe('AI Prompt Generation', () => {
       'UTC',
     );
 
-    // Reading at 07:05 -> 07:10
+    // Reading at 07:10 (rounded)
     expect(prompt).toContain('[07:10] 200 mg/dL');
-    // Reading at 07:52 -> 07:50
+    // Reading at 07:50 (rounded)
     expect(prompt).toContain('[07:50] 250 mg/dL');
-    // Treatment at 06:58 -> 07:00
+    // Treatment at 07:00 (rounded)
     expect(prompt).toContain('[07:00] 50g carbs, 5u insulin');
   });
 
@@ -88,7 +91,7 @@ describe('AI Prompt Generation', () => {
     expect(prompt).toContain('[02:10] 200 mg/dL');
   });
 
-  it('enforces the concise structure and friendly persona', () => {
+  it('enforces JSON structure for cluster assessment', () => {
     const prompt = CLUSTER_AI_INSIGHT_PROMPT(
       mockCluster,
       deterministicInsights,
@@ -97,10 +100,58 @@ describe('AI Prompt Generation', () => {
       'UTC',
     );
 
+    expect(prompt).toContain('JSON object with this structure');
+    expect(prompt).toContain('"assessment":');
+    expect(prompt).toContain('"quick_log_suggestions":');
     expect(prompt).toContain('Key takeaway or observation:');
     expect(prompt).toContain('Recommendation:');
     expect(prompt).toContain('In detail:');
-    expect(prompt).toContain('helpful diabetes coach');
-    expect(prompt).toContain('friendly, plain English');
+  });
+
+  describe('Executive Summary Prompt', () => {
+    it('generates a prompt with current and previous stats', () => {
+      const currentStats = {
+        avgGlucose: 140,
+        timeInRange: 75,
+        stability: 80,
+        lowPercentage: 2,
+      };
+      const previousStats = {
+        avgGlucose: 150,
+        timeInRange: 70,
+        stability: 75,
+      };
+
+      const prompt = EXECUTIVE_SUMMARY_PROMPT(
+        currentStats,
+        previousStats,
+        GlucoseUnit.MGDL,
+      );
+
+      expect(prompt).toContain('CURRENT WEEK STATS:');
+      expect(prompt).toContain('Avg Glucose: 140 mg/dL');
+      expect(prompt).toContain('Time In Range (TIR): 75%');
+      expect(prompt).toContain('PREVIOUS WEEK STATS:');
+      expect(prompt).toContain('TIR: 70%');
+      expect(prompt).toContain('exactly 3 executive summary highlight cards');
+      expect(prompt).toContain('JSON array of exactly 3 objects');
+    });
+
+    it('handles missing previous stats gracefully', () => {
+      const currentStats = {
+        avgGlucose: 140,
+        timeInRange: 75,
+        stability: 80,
+        lowPercentage: 2,
+      };
+
+      const prompt = EXECUTIVE_SUMMARY_PROMPT(
+        currentStats,
+        null,
+        GlucoseUnit.MGDL,
+      );
+
+      expect(prompt).toContain('No previous week data available');
+    });
   });
 });

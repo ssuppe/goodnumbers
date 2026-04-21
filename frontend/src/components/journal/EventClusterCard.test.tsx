@@ -202,4 +202,65 @@ describe("EventClusterCard", () => {
 
     expect(screen.getByText("Uncovered meal")).toBeInTheDocument();
   });
+
+  it("renders AI Co-pilot hypothesis and quick log suggestions", () => {
+    const aiInsight = "Test AI Insight";
+    const quickLogSuggestions = ["Suggestion 1", "Suggestion 2"];
+    const clusterWithAi = {
+      ...mockCluster,
+      aiInsight,
+      quickLogSuggestions,
+    };
+
+    render(
+      <EventClusterCard
+        cluster={clusterWithAi}
+        userNote=""
+        onNoteChange={mockOnNoteChange}
+      />,
+    );
+
+    // Initially hidden
+    expect(screen.queryByText(aiInsight)).not.toBeInTheDocument();
+    expect(screen.queryByText("+ Suggestion 1")).not.toBeInTheDocument();
+
+    // Click to expand
+    const toggle = screen.getByText("AI Co-pilot Hypothesis");
+    fireEvent.click(toggle);
+
+    expect(screen.getByText(aiInsight)).toBeInTheDocument();
+    expect(screen.getByText("+ Suggestion 1")).toBeInTheDocument();
+    expect(screen.getByText("+ Suggestion 2")).toBeInTheDocument();
+
+    // Click a suggestion
+    fireEvent.click(screen.getByText("+ Suggestion 1"));
+    expect(mockOnNoteChange).toHaveBeenCalledWith("- Suggestion 1");
+  });
+
+  it("appends quick log suggestion to existing note", () => {
+    const aiInsight = "Test AI Insight";
+    const quickLogSuggestions = ["Suggestion 1"];
+    const clusterWithAi = {
+      ...mockCluster,
+      aiInsight,
+      quickLogSuggestions,
+    };
+
+    render(
+      <EventClusterCard
+        cluster={clusterWithAi}
+        userNote="Existing note"
+        onNoteChange={mockOnNoteChange}
+      />,
+    );
+
+    // Expand AI
+    fireEvent.click(screen.getByText("AI Co-pilot Hypothesis"));
+
+    // Click suggestion
+    fireEvent.click(screen.getByText("+ Suggestion 1"));
+    expect(mockOnNoteChange).toHaveBeenCalledWith(
+      "Existing note\n- Suggestion 1",
+    );
+  });
 });

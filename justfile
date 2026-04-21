@@ -35,6 +35,16 @@ dev-worker:
 dev-frontend:
     @npm run dev -w frontend
 
+# Runs backend, worker, and frontend concurrently in the foreground.
+dev:
+    #!/usr/bin/env bash
+    trap 'kill 0' EXIT
+    echo "Starting all services (Backend, Worker, Frontend)..."
+    just dev-backend & \
+    just dev-worker & \
+    just dev-frontend & \
+    wait
+
 # --- PRODUCTION DEPLOYMENT (BUILD ON N100) ---
 
 SERVER_IP := "34.46.45.86"

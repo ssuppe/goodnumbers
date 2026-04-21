@@ -2,7 +2,6 @@ import React, { useMemo } from "react";
 import { AgpChart, type AgpDataPoint } from "./charts/AgpChart";
 import { type GlucoseUnit } from "../../lib/agpUtils";
 import { InfoTooltip } from "../common/InfoTooltip";
-import { UnifiedInsightRow } from "./UnifiedInsightRow";
 import type { ScoreCardData } from "@goodnumbers/schemas";
 
 export interface Insight {
@@ -112,15 +111,112 @@ export function ChartAnalysisCard({
   }, [matchedInsights.gmi]);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-      <div className="p-4">
-        <div className="flex items-center">
-          <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-          {title.includes("AGP") && <InfoTooltip content={tooltipContent} />}
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="flex items-center">
+              <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+              {title.includes("AGP") && (
+                <InfoTooltip content={tooltipContent} />
+              )}
+            </div>
+            {subtitle && (
+              <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
+            )}
+          </div>
         </div>
-        {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
 
-        <div className="mt-4 mb-6">
+        {/* --- Raw Metrics Grid (Top-level) --- */}
+        {scoreCardData && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {/* 1. Avg Glucose */}
+            <div
+              data-testid="metric-card-avg"
+              className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex flex-col items-center justify-center text-center"
+            >
+              <span className="text-xs font-bold text-mesa-primary uppercase tracking-wider mb-1">
+                Avg Glucose
+              </span>
+              <div className="flex items-baseline space-x-1">
+                <span
+                  data-testid="metric-value-avg"
+                  className="text-2xl font-black text-slate-900"
+                >
+                  {formatValue(scoreCardData.avgGlucose)}
+                </span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase">
+                  {formatUnit()}
+                </span>
+              </div>
+            </div>
+
+            {/* 2. Time In Range */}
+            <div
+              data-testid="metric-card-tir"
+              className="bg-emerald-50 p-3 rounded-lg border border-emerald-100 flex flex-col items-center justify-center text-center"
+            >
+              <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">
+                Time In Range
+              </span>
+              <div className="flex items-baseline space-x-1">
+                <span
+                  data-testid="metric-value-tir"
+                  className="text-2xl font-black text-emerald-900"
+                >
+                  {formatValue(scoreCardData.timeInRange, true)}
+                </span>
+                <span className="text-[10px] font-bold text-emerald-600 uppercase">
+                  %
+                </span>
+              </div>
+            </div>
+
+            {/* 3. Stability */}
+            <div
+              data-testid="metric-card-stability"
+              className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex flex-col items-center justify-center text-center"
+            >
+              <span className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-1">
+                Stability
+              </span>
+              <div className="flex items-baseline space-x-1">
+                <span
+                  data-testid="metric-value-stability"
+                  className="text-2xl font-black text-blue-900"
+                >
+                  {formatValue(scoreCardData.stability, true)}
+                </span>
+                <span className="text-[10px] font-bold text-blue-600 uppercase">
+                  %
+                </span>
+              </div>
+            </div>
+
+            {/* 4. GMI (Est. A1c) */}
+            <div
+              data-testid="metric-card-gmi"
+              className="bg-purple-50 p-3 rounded-lg border border-purple-100 flex flex-col items-center justify-center text-center"
+            >
+              <span className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-1">
+                Est. GMI
+              </span>
+              <div className="flex items-baseline space-x-1">
+                <span
+                  data-testid="metric-value-gmi"
+                  className="text-2xl font-black text-purple-900"
+                >
+                  {gmiValue}
+                </span>
+                <span className="text-[10px] font-bold text-purple-600 uppercase">
+                  %
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="mb-2">
           <AgpChart
             data={data}
             units={units}
@@ -128,72 +224,6 @@ export function ChartAnalysisCard({
             patientHighGoal={patientHighGoal}
           />
         </div>
-
-        {/* --- Insights Ledger --- */}
-        {scoreCardData && (
-          <div className="px-2 sm:px-6 divide-y divide-gray-100 border-t border-gray-100 pt-2">
-            {/* 1. Avg Glucose */}
-            <UnifiedInsightRow
-              label="Avg Glucose"
-              value={formatValue(scoreCardData.avgGlucose)}
-              unit={formatUnit()}
-              icon="🧭"
-              iconColor="text-mesa-primary"
-              insight={
-                matchedInsights.avgGlucose?.note ||
-                "Your average blood sugar over the last 7 days."
-              }
-            />
-
-            {/* 2. Stability (using Hypo insight as proxy for safety/stability context if available) */}
-            <UnifiedInsightRow
-              label="Stability"
-              value={formatValue(scoreCardData.stability, true)}
-              unit="%"
-              icon="🌊"
-              iconColor="text-mesa-secondary"
-              insight={
-                matchedInsights.hypo?.note ||
-                "Measures how often your glucose levels were changing slowly. High stability means fewer sudden drops or spikes."
-              }
-            />
-
-            {/* 3. Time In Range */}
-            <UnifiedInsightRow
-              label="Time In Range"
-              value={formatValue(scoreCardData.timeInRange, true)}
-              unit="%"
-              icon="⛵"
-              iconColor="text-emerald-600"
-              insight={
-                matchedInsights.tir?.note ||
-                "Percentage of time spent in your target range (70-180 mg/dL)."
-              }
-            />
-
-            {/* 4. Time In Tight Range */}
-            <UnifiedInsightRow
-              label="Time In Tight Range"
-              value={formatValue(scoreCardData.timeInTightRange, true)}
-              unit="%"
-              icon="🏝️"
-              iconColor="text-teal-600"
-              insight="Percentage of time spent in the ideal tight range (70-140 mg/dL). This is your 'island of calm'."
-            />
-
-            {/* 5. GMI (Only if insight exists) */}
-            {matchedInsights.gmi && (
-              <UnifiedInsightRow
-                label="GMI (Est. A1c)"
-                value={gmiValue}
-                unit="%"
-                icon="📈"
-                iconColor="text-purple-600"
-                insight={matchedInsights.gmi.note}
-              />
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

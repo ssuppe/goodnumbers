@@ -42,22 +42,24 @@ model Journal {
   agpChartData       Json?
   analysisInsights   Json?
   scoreCardData      Json?
+  executiveSummary   Json?
   treatments         Json?
   clusters           GlycemicEventCluster[]
   user               User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model GlycemicEventCluster {
-  id              String  @id @default(cuid())
-  journalId       String
-  eventType       String
-  eventCount      Int
-  meanTimeMinutes Int
-  clusterDataJson Json
-  userNotes       String?
-  insights        Json?
-  aiInsight       String?
-  journal         Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  id                  String  @id @default(cuid())
+  journalId           String
+  eventType           String
+  eventCount          Int
+  meanTimeMinutes     Int
+  clusterDataJson     Json
+  userNotes           String?
+  insights            Json?
+  aiInsight           String?
+  quickLogSuggestions Json?
+  journal             Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)
 }
 
 model Account {

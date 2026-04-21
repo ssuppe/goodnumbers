@@ -10,6 +10,7 @@ import type {
 const mockPrismaUpdate = vi.fn();
 const mockPrismaFindUnique = vi.fn();
 const mockPrismaFindFirst = vi.fn();
+const mockPrismaFindMany = vi.fn();
 const mockPrismaTransaction = vi.fn();
 const mockPrismaDeleteMany = vi.fn();
 const mockPrismaCreateMany = vi.fn();
@@ -22,6 +23,7 @@ vi.mock('../../../src/lib/prisma.js', () => ({
       findFirst: mockPrismaFindFirst,
     },
     glycemicEventCluster: {
+      findMany: mockPrismaFindMany,
       deleteMany: mockPrismaDeleteMany,
       createMany: mockPrismaCreateMany,
     },
@@ -66,9 +68,33 @@ vi.mock('../../../src/lib/analysis/HotspotDetector.js', () => ({
 }));
 
 // 5. Mock Gemini AI
-const MOCK_AI_ASSESSMENT = 'Mocked AI Assessment: Dawn Phenomenon suspected.';
+const MOCK_AI_ASSESSMENT = {
+  assessment: 'Mocked AI Assessment: Dawn Phenomenon suspected.',
+  quickLogSuggestions: ['Late snack', 'Adjust basal', 'Dawn phenomenon'],
+};
+const MOCK_EXECUTIVE_SUMMARY = [
+  {
+    type: 'win',
+    icon: '🏆',
+    title: 'TIR on Target',
+    short_description: 'Great job!',
+  },
+  {
+    type: 'trend',
+    icon: '📈',
+    title: 'Stable Glucose',
+    short_description: 'Steady week.',
+  },
+  {
+    type: 'warn',
+    icon: '⚠️',
+    title: 'Morning Highs',
+    short_description: 'Check basal.',
+  },
+];
 vi.mock('../../../src/lib/ai/gemini.js', () => ({
   generateClusterAIInsight: vi.fn().mockResolvedValue(MOCK_AI_ASSESSMENT),
+  generateExecutiveSummary: vi.fn().mockResolvedValue(MOCK_EXECUTIVE_SUMMARY),
 }));
 
 // Mock other libs to avoid side effects
@@ -110,6 +136,7 @@ describe('Journal AI Insights Integration', () => {
     mockPrismaFindUnique.mockResolvedValue(mockJournal as unknown as Journal);
     mockPrismaUpdate.mockResolvedValue({});
     mockPrismaFindFirst.mockResolvedValue(null);
+    mockPrismaFindMany.mockResolvedValue([]);
     mockPrismaTransaction.mockResolvedValue([[], []]);
   });
 
@@ -137,8 +164,18 @@ describe('Journal AI Insights Integration', () => {
     expect(clustersSaved).toHaveLength(2);
 
     // Verify AI assessment is present in the saved cluster data
-    expect(clustersSaved[0]).toHaveProperty('aiInsight', MOCK_AI_ASSESSMENT);
-    expect(clustersSaved[1]).toHaveProperty('aiInsight', MOCK_AI_ASSESSMENT);
+    expect(clustersSaved[0]).toHaveProperty(
+      'aiInsight',
+      MOCK_AI_ASSESSMENT.assessment,
+    );
+    expect(clustersSaved[1]).toHaveProperty(
+      'aiInsight',
+      MOCK_AI_ASSESSMENT.assessment,
+    );
+    expect(clustersSaved[0]).toHaveProperty(
+      'quickLogSuggestions',
+      MOCK_AI_ASSESSMENT.quickLogSuggestions,
+    );
 
     // Verify deterministic insights array is also present (even if empty)
     expect(clustersSaved[0]).toHaveProperty('insights');

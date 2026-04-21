@@ -21,11 +21,14 @@ import InfluencingFactors from "../components/journal/InfluencingFactors";
 import EventClusterCard from "../components/journal/EventClusterCard";
 import CollapsingNoteArea from "../components/journal/CollapsingNoteArea";
 import StickyActionBar from "../components/journal/StickyActionBar";
+import ExecutiveSummary from "../components/journal/ExecutiveSummary";
+import { type Highlight } from "@goodnumbers/types";
 import { PencilLine } from "lucide-react";
 
 type JournalResponse = Journal & {
   clusters: GlycemicEventCluster[];
   treatments?: Treatment[];
+  executiveSummary?: Highlight[];
 };
 
 interface JournalFormData {
@@ -165,6 +168,12 @@ export default function JournalPage() {
         description={journal.podcastDescription}
         audioUrl={journal.podcastAudioUrl}
       />
+
+      {journal.executiveSummary && (
+        <section className="animate-in fade-in slide-in-from-top-2 duration-500">
+          <ExecutiveSummary highlights={journal.executiveSummary} />
+        </section>
+      )}
 
       <ChartAnalysisCard
         title="Ambulatory Glucose Profile (AGP)"
