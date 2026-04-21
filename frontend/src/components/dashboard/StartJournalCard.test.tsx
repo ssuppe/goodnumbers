@@ -5,9 +5,13 @@ import StartJournalCard from "./StartJournalCard";
 // Mock lucide-react to replace icons with simple divs for the JSDOM environment
 vi.mock("lucide-react", () => ({
   // The 'Sprout' icon in the enabled and disabled states
-  Sprout: (props: any) => <div data-testid="sprout-icon" {...props} />,
+  Sprout: (props: React.ComponentProps<"div">) => (
+    <div data-testid="sprout-icon" {...props} />
+  ),
   // The 'Loader2' icon in the submitting state
-  Loader2: (props: any) => <div data-testid="loader-icon" {...props} />,
+  Loader2: (props: React.ComponentProps<"div">) => (
+    <div data-testid="loader-icon" {...props} />
+  ),
 }));
 
 describe("StartJournalCard", () => {
@@ -53,9 +57,11 @@ describe("StartJournalCard", () => {
     // Loader should be visible (reusing Loader2 icon usually, or checking text if simpler)
     // The plan says "large Spinner", let's assume it uses Loader2
     expect(screen.getByTestId("loader-icon")).toBeInTheDocument();
-    
+
     // Button should NOT be present
-    expect(screen.queryByRole("button", { name: /Start Journal/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Start Journal/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the submitting state correctly", () => {

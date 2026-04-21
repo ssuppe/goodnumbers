@@ -9,13 +9,16 @@ import { NightscoutClient } from './lib/nightscout/client.js';
 import { decrypt } from './lib/encryption.js';
 import { calculateAgp } from './lib/agp/calculateAgp.js';
 import { calculateMetrics, calculateTrends } from './lib/scorecard.js';
-import { ScoreCardDataSchema } from '@goodnumbers/schemas';
+import { ScoreCardDataSchema, type ScoreCardData } from '@goodnumbers/schemas';
 import { HotspotDetector } from './lib/analysis/HotspotDetector.js';
 import { z } from 'zod';
 import { NightscoutTreatment } from './lib/nightscout/types.js';
 import { generateAggregateInsights } from './lib/insights/aggregate.js';
 import { generateClusterInsights } from './lib/insights/cluster.js';
-import { generateClusterAIInsight } from './lib/ai/gemini.js';
+import {
+  generateClusterAIInsight,
+  generateExecutiveSummary,
+} from './lib/ai/gemini.js';
 import { InsightArraySchema } from '@goodnumbers/schemas';
 import { GlucoseUnit, GlycemicCluster } from '@goodnumbers/types';
 
@@ -231,6 +234,24 @@ export async function processJournalJob(job: Job) {
 
     const scoreCardData = { ...scoreCardMetrics, trends };
 
+    // --- Executive Summary Generation ---
+    console.log(
+      `[Worker] Generating Executive Summary for Journal ${journalId}...`,
+    );
+    const executiveSummary = await generateExecutiveSummary(
+      {
+        avgGlucose: scoreCardMetrics.avgGlucose,
+        timeInRange: scoreCardMetrics.timeInRange,
+        stability: scoreCardMetrics.stability,
+        lowPercentage:
+          entries.length > 0
+            ? (entries.filter((e) => e.sgv < 70).length / entries.length) * 100
+            : 0,
+      },
+      previousJournal?.scoreCardData as unknown as ScoreCardData,
+      journal.user.preferredUnits as GlucoseUnit,
+    );
+
     // --- Hotspot Engine Execution ---
     console.log(
       `[Worker] Starting Hotspot Detection for Journal ${journalId}...`,
@@ -281,6 +302,16 @@ export async function processJournalJob(job: Job) {
       `[Worker] Generating AI insights for ${allClusters.length} clusters...`,
     );
 
+    // Fetch existing clusters to preserve userNotes if they exist
+    const existingClusters = await prisma.glycemicEventCluster.findMany({
+      where: { journalId },
+    });
+    const existingNotesMap = new Map(
+      existingClusters
+        .filter((c) => c.userNotes)
+        .map((c) => [`${c.eventType}-${c.meanTimeMinutes}`, c.userNotes]),
+    );
+
     const clusterData = [];
     let currentIdx = 0;
 
@@ -317,6 +348,10 @@ export async function processJournalJob(job: Job) {
         console.error(`[Worker] Insight validation failed for cluster ${c.id}`);
       }
 
+      // Attempt to match existing note based on event signature (Type + Time)
+      const signature = `${c.type}-${c.avgStartMinute}`;
+      const preservedNote = existingNotesMap.get(signature) || null;
+
       clusterData.push({
         journalId,
         eventType: c.type,
@@ -326,7 +361,10 @@ export async function processJournalJob(job: Job) {
         insights: safeInsights.success
           ? (safeInsights.data as unknown as Prisma.InputJsonValue)
           : [],
-        aiInsight: aiAssessment,
+        aiInsight: aiAssessment.assessment,
+        quickLogSuggestions:
+          aiAssessment.quickLogSuggestions as unknown as Prisma.InputJsonValue,
+        userNotes: preservedNote,
       });
     }
 
@@ -364,6 +402,7 @@ export async function processJournalJob(job: Job) {
           finalPayload.agpChartData as unknown as Prisma.InputJsonValue,
         scoreCardData:
           finalPayload.scoreCardData as unknown as Prisma.InputJsonValue,
+        executiveSummary: executiveSummary as unknown as Prisma.InputJsonValue,
         treatments: treatments as unknown as Prisma.InputJsonValue,
         analysisInsights: analysisInsights as unknown as Prisma.InputJsonValue,
       },

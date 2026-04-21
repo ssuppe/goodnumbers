@@ -5,6 +5,7 @@ import type { PrismaClient } from '@goodnumbers/types';
 const mockPrismaUpdate = vi.fn();
 const mockPrismaFindUnique = vi.fn();
 const mockPrismaFindFirst = vi.fn();
+const mockPrismaFindMany = vi.fn();
 const mockPrismaTransaction = vi.fn();
 const mockPrismaDeleteMany = vi.fn();
 const mockPrismaCreateMany = vi.fn();
@@ -17,6 +18,7 @@ vi.mock('@src/lib/prisma.js', () => ({
       findFirst: mockPrismaFindFirst,
     },
     glycemicEventCluster: {
+      findMany: mockPrismaFindMany,
       deleteMany: mockPrismaDeleteMany,
       createMany: mockPrismaCreateMany,
     },
@@ -100,6 +102,9 @@ describe('Worker Job Processing (Real Logic)', () => {
     // Arrange: Mock Previous Journal (Trend Calculation)
     mockPrismaFindFirst.mockResolvedValue(null); // No previous journal for this test
 
+    // Arrange: Mock Existing Clusters
+    mockPrismaFindMany.mockResolvedValue([]);
+
     // Act
     const result = await processJournalJob(fakeJob);
 
@@ -115,7 +120,10 @@ describe('Worker Job Processing (Real Logic)', () => {
     // Assert: Client interaction
     expect(mockFetchEntries).toHaveBeenCalledWith(7);
     // We expect date objects now
-    expect(mockFetchTreatments).toHaveBeenCalledWith(expect.any(Date), expect.any(Date));
+    expect(mockFetchTreatments).toHaveBeenCalledWith(
+      expect.any(Date),
+      expect.any(Date),
+    );
     expect(mockFetchProfile).toHaveBeenCalled();
 
     // Assert: Final Persistence

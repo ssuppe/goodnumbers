@@ -44,3 +44,10 @@ export interface GlycemicCluster {
 
 // --- Insights Types ---
 export * from "./insights.js";
+
+export interface Highlight {
+  type: "win" | "warn" | "trend";
+  icon: string;
+  title: string;
+  short_description: string;
+}

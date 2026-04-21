@@ -41,23 +41,33 @@ This document tracks the phased implementation of the Goodnumbers project. It se
   - Implemented `calculateAgp` and `calculateMetrics` (Voyager Scorecards).
   - **COMPLETE:** Statistical Insights Engine (`aggregate.ts` and `cluster.ts`) with mandatory Zod validation and TDD workflow.
 
-- [ ] **Task 2: AI & TTS Pipeline**
-  - **Status:** PENDING / DEFERRED.
+- [x] **Task 2: AI & TTS Pipeline**
   - **Goal:** Integrate Gemini for insights and TTS for podcast audio.
-  - **Current State:** The worker currently calculates stats and marks the journal as COMPLETE without generating audio or AI text.
+  - **Status:** **COMPLETE** (AI Insights). Gemini 3.1 Pro/Flash integrated for clinical assessments and executive summaries. TTS/Podcast audio deferred to later phase.
 
-- [x] **Task 3: Finalize Job**
-  - Worker successfully saves AGP data, Scorecard data, Clusters, and Treatments to the database.
-  - Worker updates Journal status to `COMPLETE`.
+### **Phase 7: UX Revamp & Cognitive Polish** - COMPLETE
 
-### **Phase 7: Future Work & Polish**
+- [x] **Task 1: Executive Summary Highlights**
+  - Replaced narrative paragraphs with 3 scannable highlight cards (Win, Trend, Warning).
+  - Updated Gemini prompt to return structured JSON highlights based on AGP stats.
+- [x] **Task 2: Purely Visual AGP Metrics**
+  - Moved AGP metrics (Avg, TIR, Stability, GMI) to a clean 4-column grid above the chart.
+  - Removed dense explanatory text beneath the AGP chart to reduce data fatigue.
+- [x] **Task 3: AI Co-pilot & Progressive Disclosure**
+  - Wrapped AI clinical assessments in a collapsible "✨ AI Co-pilot Hypothesis" section.
+  - Implemented "Quick Log" chips to allow one-tap journaling suggestions.
+- [x] **Task 4: Data Resilience**
+  - Updated worker to preserve `userNotes` when recreating clusters.
+  - Standardized `Highlight` and other types in the mono-repo.
 
-- [ ] **Task 1: AI Integration:** Implement the missing Gemini/TTS logic in the worker.
+### **Phase 8: Future Work & Polish**
+
+- [ ] **Task 1: Podcast Audio:** Implement TTS generation for the weekly summary.
 - [ ] **Task 2: RSS Token Endpoint:** Implement `POST /api/user/regenerate-rss-token`.
 - [ ] **Task 3: Production Logging:** Replace `console.log` with a structured logger (Winston/Pino).
 - [ ] **Task 4: E2E Testing:** Implement Playwright tests for critical user journeys.
 
-### **Phase 8: Infrastructure & Deployment** - IN PROGRESS
+### **Phase 9: Infrastructure & Deployment** - IN PROGRESS
 
 - [x] **Task 1: Dockerization**
   - Create optimized Dockerfiles for `backend` (with PM2) and `frontend` (with Nginx).

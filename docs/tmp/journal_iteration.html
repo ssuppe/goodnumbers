@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoodNumbers - Weekly Journal Iteration</title>
+    <style>
+        :root {
+            /* Mesa Design System V3 (Unified Petrol & Terracotta) */
+            --mesa-primary: #D9775B;        /* Terracotta - Actions */
+            --mesa-secondary: #2C4C5B;      /* Petrol Blue - Brand/Headers */
+            --mesa-bg: #F4F1EA;             /* Off-white Canvas */
+            --mesa-surface: #FFFFFF;        /* Cards */
+            --mesa-text: #1F2937;           /* Primary Text */
+            --mesa-muted: #9CA3AF;          /* Secondary Text */
+            --mesa-border: #E5E7EB;         /* Dividers */
+            --feedback-critical: #D32F2F;   /* Medical Disclaimer */
+            --feedback-success: #059669;    /* Positive Trends */
+            --feedback-info: #1976D2;       /* Stability/Analysis */
+            
+            --radius-lg: 12px;
+            --shadow-sm: 0 2px 5px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--mesa-bg);
+            color: var(--mesa-text);
+            margin: 0;
+            line-height: 1.5;
+            padding-bottom: 100px; /* Space for Sticky Bar */
+        }
+
+        /* 1. Global Components */
+        .banner {
+            background-color: var(--feedback-critical);
+            color: white;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        header {
+            background: var(--mesa-surface);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--mesa-border);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .brand {
+            color: var(--mesa-secondary);
+            font-weight: 800;
+            font-size: 1.25rem;
+            text-decoration: none;
+        }
+
+        /* 2. Main Layout */
+        .container {
+            max-width: 800px;
+            margin: 32px auto;
+            padding: 0 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--mesa-surface);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--mesa-border);
+        }
+
+        /* 3. Journal Specific Components */
+        .intro-summary {
+            background: #EBF2F5; /* Soft Petrol Tint */
+            border-left: 6px solid var(--mesa-secondary);
+        }
+
+        .podcast-player {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: #f9f9f9;
+            padding: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .scorecard-grid {
+            display: grid;
+            grid-template-cols: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .score-item {
+            text-align: center;
+            padding: 12px;
+            background: #F9FAFB;
+            border-radius: 8px;
+            border: 1px solid var(--mesa-border);
+        }
+
+        .score-value { font-size: 1.5rem; font-weight: 700; color: var(--mesa-secondary); }
+        .score-label { font-size: 0.75rem; text-transform: uppercase; color: var(--mesa-muted); }
+
+        .chart-placeholder {
+            width: 100%;
+            height: 240px;
+            background: #F3F4F6;
+            border: 2px dashed #D1D5DB;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9CA3AF;
+            margin: 16px 0;
+        }
+
+        .insight-row {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-top: 1px solid #F3F4F6;
+            font-size: 0.9rem;
+        }
+
+        /* 4. Selectors */
+        .vibe-grid {
+            display: grid;
+            grid-template-cols: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        .vibe-option {
+            padding: 16px;
+            border: 2px solid var(--mesa-border);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .vibe-option:hover { border-color: var(--mesa-primary); background: #FFF7F5; }
+        .vibe-option.selected { border-color: var(--mesa-primary); background: #FFF7F5; box-shadow: 0 0 0 2px var(--mesa-primary); }
+
+        .chip-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chip {
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: #F3F4F6;
+            border: 1px solid var(--mesa-border);
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        .chip.active { background: var(--mesa-secondary); color: white; border-color: var(--mesa-secondary); }
+
+        /* 5. Sticky Action Bar */
+        .action-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 16px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            z-index: 100;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: 0.2s;
+        }
+        .btn-primary { background: var(--mesa-primary); color: white; }
+        .btn-primary:hover { transform: scale(1.02); filter: brightness(1.1); }
+        .btn-secondary { background: white; color: var(--mesa-secondary); border: 2px solid var(--mesa-secondary); }
+
+        textarea {
+            width: 100%;
+            border: 1px solid var(--mesa-border);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 1rem;
+            min-height: 120px;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="banner">
+        <strong>NOTE:</strong> GoodNumbers is an experiment. Always consult your doctor before changing your healthcare plan.
+    </div>
+
+    <header>
+        <a href="#" class="brand">GoodNumbers</a>
+        <div style="font-size: 0.9rem; color: var(--mesa-muted)">April 12 - 18, 2026</div>
+    </header>
+
+    <div class="container">
+        
+        <!-- WEEKLY INTRO (Narrative Summary) -->
+        <section class="card intro-summary">
+            <h2 style="margin-top: 0; color: var(--mesa-secondary)">Your Week at a Glance</h2>
+            <p>You had a strong week of stability, particularly in the mornings. Your average blood sugar is slightly lower than last week, and you reached your Time in Range goal 4 days out of 7. The main pattern we noticed was a recurring rise after dinner on Wednesday and Friday.</p>
+            
+            <div class="podcast-player">
+                <span style="font-size: 2rem">🎙️</span>
+                <div>
+                    <div style="font-weight: bold">Weekly Audio Discussion</div>
+                    <div style="font-size: 0.85rem; color: var(--mesa-muted)">Click to hear Dr. Turner & Rebecca discuss your trends</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MAIN DATA ANALYSIS -->
+        <section class="card">
+            <h3 style="margin-top: 0">Ambulatory Glucose Profile</h3>
+            
+            <div class="scorecard-grid">
+                <div class="score-item">
+                    <div class="score-label">Avg Glucose</div>
+                    <div class="score-value">142</div>
+                    <div style="font-size: 0.7rem; color: var(--feedback-success)">↓ 4% vs last week</div>
+                </div>
+                <div class="score-item">
+                    <div class="score-label">Stability</div>
+                    <div class="score-value">78%</div>
+                    <div style="font-size: 0.7rem; color: var(--mesa-muted)">Steady</div>
+                </div>
+                <div class="score-item">
+                    <div class="score-label">Time in Range</div>
+                    <div class="score-value">72%</div>
+                    <div style="font-size: 0.7rem; color: var(--feedback-success)">↑ 2% vs last week</div>
+                </div>
+                <div class="score-item">
+                    <div class="score-label">GMI (Est. A1c)</div>
+                    <div class="score-value">6.8%</div>
+                </div>
+            </div>
+
+            <div class="chart-placeholder">
+                [ AGP CHART AREA ]
+            </div>
+
+            <div class="insight-row">
+                <span>🧭</span>
+                <div><strong>Stability Win:</strong> Your overnight levels stayed within a 20mg/dL band for 6 out of 7 nights. This is a solid foundation.</div>
+            </div>
+            <div class="insight-row">
+                <span>⚠️</span>
+                <div><strong>GMI Alert:</strong> Your estimated GMI is 6.8%. This is consistent with your target of <7.0%.</div>
+            </div>
+        </section>
+
+        <!-- WEEKLY VIBE -->
+        <section class="card">
+            <h3 style="margin-top: 0">How did the week feel?</h3>
+            <div class="vibe-grid">
+                <div class="vibe-option">
+                    <div style="font-size: 2rem">🥀</div>
+                    <div style="font-weight: 600">Wilted</div>
+                </div>
+                <div class="vibe-option selected">
+                    <div style="font-size: 2rem">🌱</div>
+                    <div style="font-weight: 600">Sprouting</div>
+                </div>
+                <div class="vibe-option">
+                    <div style="font-size: 2rem">🌿</div>
+                    <div style="font-weight: 600">Growing</div>
+                </div>
+                <div class="vibe-option">
+                    <div style="font-size: 2rem">🌻</div>
+                    <div style="font-weight: 600">Thriving</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- INFLUENCING FACTORS -->
+        <section class="card">
+            <h3 style="margin-top: 0">Influencing Factors</h3>
+            <p style="font-size: 0.85rem; color: var(--mesa-muted); margin-bottom: 16px;">What impacted your numbers this week?</p>
+            
+            <div style="margin-bottom: 12px; font-size: 0.75rem; font-weight: bold; color: var(--mesa-muted)">FOOD & MOVEMENT</div>
+            <div class="chip-group">
+                <div class="chip active">Eating Out</div>
+                <div class="chip">Heavy/Fatty Meals</div>
+                <div class="chip active">Strenuous Exercise</div>
+                <div class="chip">Alcohol</div>
+            </div>
+            
+            <div style="margin: 16px 0 12px; font-size: 0.75rem; font-weight: bold; color: var(--mesa-muted)">MIND & BODY</div>
+            <div class="chip-group">
+                <div class="chip active">Stress</div>
+                <div class="chip active">Poor Sleep</div>
+                <div class="chip">Illness</div>
+                <div class="chip">Travel</div>
+            </div>
+        </section>
+
+        <!-- EVENT CLUSTER (HOTSPOT) -->
+        <section class="card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                <div>
+                    <h3 style="margin: 0; color: var(--mesa-primary)">Evening High Pattern</h3>
+                    <div style="font-size: 0.85rem; color: var(--mesa-muted)">Occurred 3 times (Wed, Fri, Sun)</div>
+                </div>
+                <div style="background: #FFF7F5; color: var(--mesa-primary); padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold;">HOTSPOT</div>
+            </div>
+
+            <div class="chart-placeholder" style="height: 180px;">
+                [ CLUSTER DATA VISUALIZATION ]
+            </div>
+
+            <div class="insight-row" style="background: #fdfdfd; padding: 12px; border-radius: 8px; border: 1px solid #eee;">
+                <span>💡</span>
+                <div><strong>Analysis:</strong> We noticed these highs occur ~2 hours after dinner on nights when "Eating Out" was selected. This might indicate an underestimation of carbs or a delayed fat/protein spike.</div>
+            </div>
+
+            <div style="margin-top: 16px;">
+                <label style="font-size: 0.85rem; font-weight: bold; display: block; margin-bottom: 8px;">Your Notes on this pattern:</label>
+                <textarea placeholder="e.g., 'This was the Thai food place - I always struggle with their rice portions.'"></textarea>
+            </div>
+        </section>
+
+        <!-- GOALS / REFLECTION -->
+        <section class="card">
+            <h3 style="margin-top: 0">On reflection...</h3>
+            <p style="font-size: 0.85rem; color: var(--mesa-muted); margin-bottom: 16px;">What are your goals or focus areas for next week?</p>
+            <textarea placeholder="e.g., 'Focus on pre-bolusing 15 mins before dinner'"></textarea>
+        </section>
+
+    </div>
+
+    <!-- STICKY ACTION BAR -->
+    <div class="action-bar">
+        <button class="btn btn-secondary">Discard Changes</button>
+        <button class="btn btn-primary">Save and Finish Journal</button>
+    </div>
+
+</body>
+</html>

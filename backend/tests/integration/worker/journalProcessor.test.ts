@@ -12,6 +12,7 @@ import type { Prisma } from '@goodnumbers/types/src/generated/client';
 const mockPrismaUpdate = vi.fn();
 const mockPrismaFindUnique = vi.fn();
 const mockPrismaFindFirst = vi.fn();
+const mockPrismaFindMany = vi.fn();
 const mockPrismaTransaction = vi.fn();
 const mockPrismaDeleteMany = vi.fn();
 const mockPrismaCreateMany = vi.fn();
@@ -24,6 +25,7 @@ vi.mock('../../../src/lib/prisma.js', () => ({
       findFirst: mockPrismaFindFirst,
     },
     glycemicEventCluster: {
+      findMany: mockPrismaFindMany,
       deleteMany: mockPrismaDeleteMany,
       createMany: mockPrismaCreateMany,
     },
@@ -69,7 +71,30 @@ vi.mock('../../../src/lib/analysis/HotspotDetector.js', () => ({
 
 // 5. Mock Gemini AI
 vi.mock('../../../src/lib/ai/gemini.js', () => ({
-  generateClusterAIInsight: vi.fn().mockResolvedValue('Mocked AI Insight'),
+  generateClusterAIInsight: vi.fn().mockResolvedValue({
+    assessment: 'Mocked AI Insight',
+    quickLogSuggestions: ['Suggestion 1', 'Suggestion 2'],
+  }),
+  generateExecutiveSummary: vi.fn().mockResolvedValue([
+    {
+      type: 'win',
+      icon: '🏆',
+      title: 'Mock Win',
+      short_description: 'Mock desc',
+    },
+    {
+      type: 'trend',
+      icon: '📈',
+      title: 'Mock Trend',
+      short_description: 'Mock desc',
+    },
+    {
+      type: 'warn',
+      icon: '⚠️',
+      title: 'Mock Warn',
+      short_description: 'Mock desc',
+    },
+  ]),
 }));
 
 // Mock other libs to avoid side effects
@@ -112,6 +137,7 @@ describe('Journal Processor Worker', () => {
 
     mockPrismaUpdate.mockResolvedValue({});
     mockPrismaFindFirst.mockResolvedValue(null);
+    mockPrismaFindMany.mockResolvedValue([]);
 
     // Mock transaction to return empty array (no clusters found is fine for this test)
     mockPrismaTransaction.mockResolvedValue([[], []]);
