@@ -67,7 +67,7 @@ describe('Cluster Bolus Timing Insights', () => {
       expect.objectContaining({
         priority: InsightPriority.IMPORTANT,
         note: expect.stringContaining(
-          'Post-meal hyperglycemia detected in 2 events where insulin was given at or after eating',
+          'Post-meal hyperglycemia detected in 2 events (Sun 12:00 PM, Mon 12:00 PM) where insulin was given at or after eating (post-bolused).',
         ),
       }),
     );
@@ -89,7 +89,7 @@ describe('Cluster Bolus Timing Insights', () => {
       expect.objectContaining({
         priority: InsightPriority.IMPORTANT,
         note: expect.stringContaining(
-          'Hyperglycemia occurred in 1 events despite insulin being given before the meal',
+          'Hyperglycemia occurred in 1 event (Sun 12:00 PM) despite insulin being given before the meal.',
         ),
       }),
     );
@@ -120,14 +120,14 @@ describe('Cluster Bolus Timing Insights', () => {
     expect(insights).toContainEqual(
       expect.objectContaining({
         note: expect.stringContaining(
-          'Potential uncovered meals detected in 1 events',
+          'Potential uncovered meals detected in 1 event (Sun 12:00 PM)',
         ),
       }),
     );
     expect(insights).toContainEqual(
       expect.objectContaining({
         note: expect.stringContaining(
-          'Post-meal hyperglycemia detected in 1 events where insulin was given at or after eating (post-bolused)',
+          'Post-meal hyperglycemia detected in 1 event (Mon 12:00 PM) where insulin was given at or after eating (post-bolused)',
         ),
       }),
     );

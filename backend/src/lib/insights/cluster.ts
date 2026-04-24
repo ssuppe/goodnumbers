@@ -10,28 +10,176 @@ const MEAL_LOOKBACK_MS = 180 * 60 * 1000; // 3 hours
 const BOLUS_SEARCH_MS = 30 * 60 * 1000; // 30 minutes
 const PREBOLUS_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
+/**
+ * Formats an ISO string into a concise human-readable day and time.
+ * Example: "Mon 2:15 PM"
+ */
+function formatEventTime(isoString: string, timezone: string = 'UTC'): string {
+  try {
+    const d = new Date(isoString);
+    const weekday = d.toLocaleDateString('en-US', {
+      weekday: 'short',
+      timeZone: timezone,
+    });
+    const time = d.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: timezone,
+    });
+    return `${weekday} ${time}`;
+  } catch (e) {
+    // Fallback if timezone is invalid
+    return formatEventTime(isoString, 'UTC');
+  }
+}
+
+/**
+ * Helper to format a list of event times.
+ */
+function formatEventList(times: string[]): string {
+  if (times.length === 0) return '';
+  if (times.length === 1) return `(${times[0]})`;
+  return `(${times.join(', ')})`;
+}
+
 export function generateClusterInsights(
   cluster: GlycemicCluster,
   treatments: Treatment[],
+  timezone: string = 'UTC',
 ): Insight[] {
   if (!cluster.events || !cluster.events.length) return [];
 
   const insights: Insight[] = [];
 
   if (cluster.type === 'hypo') {
-    // TODO: Implement hypo-specific heuristics if needed
-    return [];
+    const compressionEvents: string[] = [];
+    const carbMismatchEvents: string[] = [];
+    const aggressiveCrashEvents: string[] = [];
+    const driftEvents: string[] = [];
+
+    cluster.events.forEach((event) => {
+      const eventTime = new Date(event.startTime).getTime();
+      const displayTime = formatEventTime(event.startTime, timezone);
+
+      // 1. DYNAMIC VELOCITY (ROC) CALCULATION
+      let roc = 0;
+      if (event.readings && event.readings.length > 0) {
+        // Sort readings chronologically
+        const sortedReadings = [...event.readings].sort(
+          (a, b) =>
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+        );
+
+        // Find the reading exactly at or immediately before the event trigger
+        const startReading = sortedReadings
+          .filter((r) => new Date(r.timestamp).getTime() <= eventTime)
+          .pop();
+
+        if (startReading) {
+          // Target 30 mins ago
+          const targetLookback = eventTime - 30 * 60000;
+          let priorReading = sortedReadings[0];
+          let minDiff = Infinity;
+
+          // Find the reading CLOSEST to t-30
+          for (const r of sortedReadings) {
+            const rTime = new Date(r.timestamp).getTime();
+            if (rTime >= new Date(startReading.timestamp).getTime()) continue;
+            const diff = Math.abs(rTime - targetLookback);
+            if (diff < minDiff) {
+              minDiff = diff;
+              priorReading = r;
+            }
+          }
+
+          // Calculate ROC only if we have a valid time gap (at least 10 mins)
+          if (
+            priorReading &&
+            priorReading.timestamp !== startReading.timestamp
+          ) {
+            const t1 = new Date(priorReading.timestamp).getTime();
+            const t2 = new Date(startReading.timestamp).getTime();
+            const deltaMins = (t2 - t1) / 60000;
+
+            if (deltaMins >= 10) {
+              // Positive ROC means dropping
+              roc = (priorReading.value - startReading.value) / deltaMins;
+            }
+          }
+        }
+      }
+
+      // 2. TREATMENT CONTEXT VERIFICATION
+      const lookback3h = eventTime - 180 * 60000;
+      const lookback2h = eventTime - 120 * 60000;
+
+      const recentTreatments = treatments.filter(
+        (t) => t.date >= lookback3h && t.date <= eventTime,
+      );
+
+      // Check for carbs in last 3 hours
+      const hasCarbs = recentTreatments.some((t) => (t.carbs || 0) > 0);
+
+      // Check for ANY insulin delivery in the last 2 hours
+      const hasRecentInsulin = recentTreatments.some(
+        (t) => t.date >= lookback2h && (t.insulin || 0) > 0,
+      );
+
+      // 3. STRICT CLINICAL HIERARCHY
+      if (roc >= 3.0) {
+        compressionEvents.push(displayTime);
+      } else if (hasCarbs) {
+        carbMismatchEvents.push(displayTime);
+      } else if (roc >= 1.5 && hasRecentInsulin) {
+        aggressiveCrashEvents.push(displayTime);
+      } else {
+        driftEvents.push(displayTime);
+      }
+    });
+
+    // 4. INSIGHT GENERATION
+    if (compressionEvents.length > 0) {
+      insights.push({
+        priority: InsightPriority.INFO,
+        note: `Compression Lows: ${compressionEvents.length} event${compressionEvents.length > 1 ? 's' : ''} ${formatEventList(compressionEvents)} show a sudden, vertical drop that usually indicates a sensor error or sleeping on the sensor, rather than a true low.`,
+      });
+    }
+
+    if (carbMismatchEvents.length > 0) {
+      insights.push({
+        priority: InsightPriority.IMPORTANT,
+        note: `Over-Announced Meals: ${carbMismatchEvents.length} low${carbMismatchEvents.length > 1 ? 's' : ''} ${formatEventList(carbMismatchEvents)} happened shortly after announcing carbs. Your system delivered insulin for the food, but your blood sugar dropped. Did you eat less than entered, or eat a high-fat/protein meal that absorbed slowly?`,
+      });
+    }
+
+    if (aggressiveCrashEvents.length > 0) {
+      insights.push({
+        priority: InsightPriority.IMPORTANT,
+        note: `High Insulin Pressure: ${aggressiveCrashEvents.length} low${aggressiveCrashEvents.length > 1 ? 's' : ''} ${formatEventList(aggressiveCrashEvents)} feature a steep drop and follow periods where your system delivered insulin (via micro-boluses or corrections). The insulin may have been too aggressive.`,
+      });
+    }
+
+    if (driftEvents.length > 0) {
+      insights.push({
+        priority: InsightPriority.IMPORTANT,
+        note: `Background Drifts: ${driftEvents.length} event${driftEvents.length > 1 ? 's' : ''} ${formatEventList(driftEvents)} are slow, drifting lows that happen when you have very little active insulin and haven't eaten recently. If these happen overnight or after exercise, your baseline sensitivity might have increased.`,
+      });
+    }
+
+    return insights;
   }
 
-  let uncoveredCount = 0;
-  let postBolusCount = 0;
-  let preBolusCount = 0;
+  // Hyperglycemia (Meal-related)
+  const uncoveredEvents: string[] = [];
+  const postBolusEvents: string[] = [];
+  const preBolusEvents: string[] = [];
   let mealRelatedCount = 0;
 
   cluster.events.forEach((event) => {
     const eventTime = new Date(event.startTime).getTime();
+    const displayTime = formatEventTime(event.startTime, timezone);
 
-    // 1. Find all meals in the 3h lookback window
     const relevantMeals = treatments.filter(
       (t) =>
         (t.carbs || 0) > 0 &&
@@ -41,13 +189,11 @@ export function generateClusterInsights(
 
     if (relevantMeals.length === 0) return;
 
-    // Categorize this event based on the bolus status of its meals
     let eventUncovered = false;
     let eventPostBolus = false;
     let eventPreBolus = false;
 
     relevantMeals.forEach((meal) => {
-      // Find closest bolus within +/- 30 mins of the meal
       let closestBolus: Treatment | null = null;
       let minDelta = Infinity;
 
@@ -73,18 +219,16 @@ export function generateClusterInsights(
       }
     });
 
-    // Priority: Uncovered > Post-bolus > Pre-bolus
     mealRelatedCount++;
     if (eventUncovered) {
-      uncoveredCount++;
+      uncoveredEvents.push(displayTime);
     } else if (eventPostBolus) {
-      postBolusCount++;
+      postBolusEvents.push(displayTime);
     } else if (eventPreBolus) {
-      preBolusCount++;
+      preBolusEvents.push(displayTime);
     }
   });
 
-  // Add Summary Insight
   if (mealRelatedCount > 0) {
     const percent = Math.round((mealRelatedCount / cluster.eventCount) * 100);
     insights.push({
@@ -93,24 +237,24 @@ export function generateClusterInsights(
     });
   }
 
-  if (uncoveredCount > 0) {
+  if (uncoveredEvents.length > 0) {
     insights.push({
       priority: InsightPriority.IMPORTANT,
-      note: `Potential uncovered meals detected in ${uncoveredCount} events.`,
+      note: `Potential uncovered meals detected in ${uncoveredEvents.length} event${uncoveredEvents.length > 1 ? 's' : ''} ${formatEventList(uncoveredEvents)}.`,
     });
   }
 
-  if (postBolusCount > 0) {
+  if (postBolusEvents.length > 0) {
     insights.push({
       priority: InsightPriority.IMPORTANT,
-      note: `Post-meal hyperglycemia detected in ${postBolusCount} events where insulin was given at or after eating (post-bolused).`,
+      note: `Post-meal hyperglycemia detected in ${postBolusEvents.length} event${postBolusEvents.length > 1 ? 's' : ''} ${formatEventList(postBolusEvents)} where insulin was given at or after eating (post-bolused).`,
     });
   }
 
-  if (preBolusCount > 0) {
+  if (preBolusEvents.length > 0) {
     insights.push({
       priority: InsightPriority.IMPORTANT,
-      note: `Hyperglycemia occurred in ${preBolusCount} events despite insulin being given before the meal.`,
+      note: `Hyperglycemia occurred in ${preBolusEvents.length} event${preBolusEvents.length > 1 ? 's' : ''} ${formatEventList(preBolusEvents)} despite insulin being given before the meal.`,
     });
   }
 

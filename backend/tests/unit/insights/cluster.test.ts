@@ -56,7 +56,7 @@ describe('Cluster Insights', () => {
       expect.objectContaining({
         priority: InsightPriority.IMPORTANT,
         note: expect.stringContaining(
-          'Potential uncovered meals detected in 2 events',
+          'Potential uncovered meals detected in 2 events (Sun 12:00 PM, Mon 12:00 PM)',
         ),
       }),
     );
