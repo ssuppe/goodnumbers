@@ -60,7 +60,14 @@ export class HotspotDetector {
               const next = sorted[i + 1];
               if (next && next.sgv > entry.sgv + 5) {
                 // Split point found
-                this.processSequence(sorted, startIndex, i + 1, events, type);
+                this.processSequence(
+                  sorted,
+                  startIndex,
+                  i + 1,
+                  events,
+                  type,
+                  threshold,
+                );
                 startIndex = i + 1;
                 localPeak = next.sgv;
               }
@@ -72,7 +79,14 @@ export class HotspotDetector {
             } else if (entry.sgv > localPeak + VALLEY_SPLIT_MARGIN) {
               const next = sorted[i + 1];
               if (next && next.sgv < entry.sgv - 5) {
-                this.processSequence(sorted, startIndex, i + 1, events, type);
+                this.processSequence(
+                  sorted,
+                  startIndex,
+                  i + 1,
+                  events,
+                  type,
+                  threshold,
+                );
                 startIndex = i + 1;
                 localPeak = next.sgv;
               }
@@ -82,14 +96,21 @@ export class HotspotDetector {
       } else {
         if (startIndex !== -1) {
           // Sequence ended at i - 1
-          this.processSequence(sorted, startIndex, i, events, type);
+          this.processSequence(sorted, startIndex, i, events, type, threshold);
           startIndex = -1;
         }
       }
     }
     // Check tail
     if (startIndex !== -1) {
-      this.processSequence(sorted, startIndex, sorted.length, events, type);
+      this.processSequence(
+        sorted,
+        startIndex,
+        sorted.length,
+        events,
+        type,
+        threshold,
+      );
     }
 
     return events;
@@ -101,6 +122,7 @@ export class HotspotDetector {
     endIndex: number,
     events: GlycemicEvent[],
     type: 'hyper' | 'hypo',
+    threshold: number,
   ) {
     // Core event entries (exclusive of endIndex)
     const seq = allEntries.slice(startIndex, endIndex);
@@ -119,7 +141,18 @@ export class HotspotDetector {
     // Calculate duration in minutes
     const duration = endTime.diff(startTime, 'minutes').minutes;
 
-    if (duration >= MIN_DURATION_MINUTES) {
+    // --- Intensity Calculation (Magnitude) ---
+    // Magnitude is the maximum distance from the threshold during the event
+    let magnitude = 0;
+    seq.forEach((e) => {
+      const diff = Math.abs(e.sgv - threshold);
+      if (diff > magnitude) magnitude = diff;
+    });
+
+    const MIN_MAGNITUDE_MGDL = 20;
+
+    // Filter: Keep if it's long enough OR intense enough
+    if (duration >= MIN_DURATION_MINUTES || magnitude >= MIN_MAGNITUDE_MGDL) {
       // --- Calculate Buffer Indices ---
       const bufferStartTime = startTime.minus({ minutes: BUFFER_MINUTES });
       const bufferEndTime = endTime.plus({ minutes: BUFFER_MINUTES });
