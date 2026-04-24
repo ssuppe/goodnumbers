@@ -97,7 +97,10 @@ describe("ClusterEventsChart", () => {
 
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
-      (s) => s.type === "line" && !s.markLine,
+      (s) =>
+        s.type === "line" &&
+        (!s.markLine ||
+          !s.markLine.data.some((d: { yAxis?: number }) => d.yAxis)),
     );
     expect(dataSeries).toHaveLength(2);
 
@@ -122,7 +125,10 @@ describe("ClusterEventsChart", () => {
 
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
-      (s) => s.type === "line" && !s.markLine,
+      (s) =>
+        s.type === "line" &&
+        (!s.markLine ||
+          !s.markLine.data.some((d: { yAxis?: number }) => d.yAxis)),
     );
 
     const color1 = dataSeries[0].lineStyle?.color;
@@ -138,7 +144,10 @@ describe("ClusterEventsChart", () => {
 
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
-      (s) => s.type === "line" && !s.markLine,
+      (s) =>
+        s.type === "line" &&
+        (!s.markLine ||
+          !s.markLine.data.some((d: { yAxis?: number }) => d.yAxis)),
     );
 
     const series1 = dataSeries[0];
@@ -151,7 +160,10 @@ describe("ClusterEventsChart", () => {
 
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
-      (s) => s.type === "line" && !s.markLine,
+      (s) =>
+        s.type === "line" &&
+        (!s.markLine ||
+          !s.markLine.data.some((d: { yAxis?: number }) => d.yAxis)),
     );
 
     // Event 1 is 2023-01-01 (Sunday)
@@ -174,7 +186,10 @@ describe("ClusterEventsChart", () => {
 
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
-      (s) => s.type === "line" && !s.markLine,
+      (s) =>
+        s.type === "line" &&
+        (!s.markLine ||
+          !s.markLine.data.some((d: { yAxis?: number }) => d.yAxis)),
     );
 
     const point = dataSeries[0].data[0];
@@ -199,7 +214,10 @@ describe("ClusterEventsChart", () => {
 
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
-      (s) => s.type === "line" && !s.markLine,
+      (s) =>
+        s.type === "line" &&
+        (!s.markLine ||
+          !s.markLine.data.some((d: { yAxis?: number }) => d.yAxis)),
     );
 
     // Should be sorted by date (Jan 1 first)
@@ -276,7 +294,10 @@ describe("ClusterEventsChart", () => {
 
     const options = mockReactECharts.mock.calls[0][0].option as MockOption;
     const dataSeries = options.series.filter(
-      (s) => s.type === "line" && !s.markLine,
+      (s) =>
+        s.type === "line" &&
+        (!s.markLine ||
+          !s.markLine.data.some((d: { yAxis?: number }) => d.yAxis)),
     );
 
     const point = dataSeries[0].data[0];

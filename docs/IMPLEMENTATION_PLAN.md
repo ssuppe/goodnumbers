@@ -1,7 +1,7 @@
 # Goodnumbers Implementation Plan
 
-**Version:** 6.0 (Statistical Insights & Deployment Reconciliation)
-**Date:** 2026-04-16
+**Version:** 6.1 (Hypoglycemia Heuristics & Smart Zoom)
+**Date:** 2026-04-24
 
 ## 1. Overview
 
@@ -40,6 +40,10 @@ This document tracks the phased implementation of the Goodnumbers project. It se
   - Implemented `HotspotDetector` for glycemic event clustering.
   - Implemented `calculateAgp` and `calculateMetrics` (Voyager Scorecards).
   - **COMPLETE:** Statistical Insights Engine (`aggregate.ts` and `cluster.ts`) with mandatory Zod validation and TDD workflow.
+- [x] **Task 1.1: Hypoglycemia Heuristics & Smart Zoom**
+  - **Goal:** Implement loop-aware hypoglycemia heuristics using velocity (ROC) and treatment presence.
+  - **Status:** **COMPLETE**. Categorizes lows into Compression, Over-Announced, Aggressive Loop, or Background Drift.
+  - **Status:** **COMPLETE**. Implemented "Smart Zoom" for hotspot charts to automatically expand to show relevant evidence.
 
 - [x] **Task 2: AI & TTS Pipeline**
   - **Goal:** Integrate Gemini for insights and TTS for podcast audio.
