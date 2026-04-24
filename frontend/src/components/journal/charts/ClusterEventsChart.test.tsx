@@ -122,17 +122,11 @@ describe("ClusterEventsChart", () => {
 
   it("assigns distinct colors to different events", () => {
     render(<ClusterEventsChart cluster={mockCluster} units="MGDL" />);
+    const options = mockReactECharts.mock.calls[0][0].option;
 
-    const options = mockReactECharts.mock.calls[0][0].option as MockOption;
-    const dataSeries = options.series.filter(
-      (s) =>
-        s.type === "line" &&
-        (!s.markLine ||
-          !s.markLine.data.some((d: { yAxis?: number }) => d.yAxis)),
-    );
-
-    const color1 = dataSeries[0].lineStyle?.color;
-    const color2 = dataSeries[1].lineStyle?.color;
+    // With visualMap implementation, colors are in visualMap pieces
+    const color1 = options.visualMap[0].pieces[1].color;
+    const color2 = options.visualMap[1].pieces[1].color;
 
     expect(color1).toBeDefined();
     expect(color2).toBeDefined();

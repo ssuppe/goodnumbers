@@ -45,13 +45,23 @@ describe('HotspotDetector - Event Detection', () => {
     expect(events[0].readings).toHaveLength(6);
   });
 
-  it('filters out short spikes (< 20 mins)', () => {
+  it('filters out short spikes (< 20 mins) with low magnitude', () => {
     // 4 entries * 5 mins = 15 minutes duration (0, 5, 10, 15)
-    const entries = generateSequence('2023-01-01T12:00:00Z', 4, 200);
+    // Value 185 is only 5mg/dL above threshold (below 20 threshold)
+    const entries = generateSequence('2023-01-01T12:00:00Z', 4, 185);
 
     const events = detector.detectEvents(entries, 'hyper', 180);
 
     expect(events).toHaveLength(0);
+  });
+
+  it('keeps short spikes (< 20 mins) if magnitude is high (>= 20 mg/dL)', () => {
+    // 15 mins duration but reaches 210 (30mg/dL magnitude)
+    const entries = generateSequence('2023-01-01T12:00:00Z', 4, 210);
+
+    const events = detector.detectEvents(entries, 'hyper', 180);
+
+    expect(events).toHaveLength(1);
   });
 
   it('detects multiple separated events', () => {

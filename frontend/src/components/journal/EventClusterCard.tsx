@@ -8,7 +8,7 @@ import { ClusterEventsChart } from "./charts/ClusterEventsChart";
 import CollapsingNoteArea from "./CollapsingNoteArea";
 import { format } from "date-fns";
 import { type GlucoseUnit, type Treatment } from "../../lib/agpUtils";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
 
 interface EventClusterCardProps {
   cluster: GlycemicEventCluster;
@@ -153,6 +153,7 @@ export default function EventClusterCard({
 
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
   const [isAiExpanded, setIsAiExpanded] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   // Use insights prop if provided, otherwise fallback to cluster.insights if it matches the shape
   const displayInsights =
@@ -168,6 +169,60 @@ export default function EventClusterCard({
         .filter((val) => typeof val === "number"),
     );
   }, [displayInsights]);
+
+  const handleCopyData = async () => {
+    const dataToCopy = {
+      clusterHeader: {
+        id: cluster.id,
+        eventType: cluster.eventType,
+        meanTimeMinutes: cluster.meanTimeMinutes,
+        eventCount: cluster.eventCount,
+      },
+      clusterData,
+      treatments,
+      insights: displayInsights,
+      maxEvidenceWindow,
+    };
+
+    const text = JSON.stringify(dataToCopy, null, 2);
+    console.log(`[Debug] Prepared ${text.length} characters for clipboard.`);
+
+    try {
+      // Primary: Modern Clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        setIsCopied(true);
+      } else {
+        // Fallback: Textarea selection (works in non-secure contexts)
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+
+        // Ensure it's not visible but exists in DOM
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+
+        textArea.focus();
+        textArea.select();
+
+        try {
+          const successful = document.execCommand("copy");
+          if (successful) {
+            setIsCopied(true);
+          } else {
+            console.error("ExecCommand copy was unsuccessful");
+          }
+        } catch (err) {
+          console.error("Fallback copy failed", err);
+        }
+        document.body.removeChild(textArea);
+      }
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy chart data", err);
+    }
+  };
 
   // Parse quick log suggestions
   const quickLogSuggestions = useMemo(() => {
@@ -199,10 +254,27 @@ export default function EventClusterCard({
       {/* Top Section: Title and Chart */}
       <div className="p-4 pb-2">
         <div className="flex justify-between items-start mb-4">
-          <h3 className="text-lg font-bold text-gray-900 flex-grow">{title}</h3>
-          <span className="flex-shrink-0 ml-2 px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider rounded border border-blue-100">
-            {Math.max(maxEvidenceWindow, 60)}m lookback
-          </span>
+          <div className="flex-grow">
+            <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+          </div>
+          <div className="flex items-center space-x-2 ml-4">
+            <button
+              onClick={() => {
+                void handleCopyData();
+              }}
+              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors flex items-center space-x-1"
+              title="Copy chart data for debugging"
+            >
+              {isCopied ? (
+                <Check className="w-4 h-4 text-green-500" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+            </button>
+            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider rounded border border-blue-100 whitespace-nowrap">
+              {Math.max(maxEvidenceWindow, 60)}m lookback
+            </span>
+          </div>
         </div>
         <div className="w-full">
           {clusterData ? (

@@ -190,15 +190,52 @@ export function ClusterEventsChart({
       ),
     );
 
+    // Create visualMaps for each line series to dim the actual line segments
+    const visualMaps = sortedEvents.map((event, index) => {
+      const startDate = new Date(event.startTime);
+      const dayIndex = uniqueDays.indexOf(format(startDate, "EEE, MMM d"));
+      const visuals = getEventVisuals(dayIndex);
+
+      const normalizedStartTime = normalizeTime(event.startTime, boundaryHour);
+      const durationMillis =
+        new Date(event.endTime).getTime() - new Date(event.startTime).getTime();
+      const normalizedEndTime = normalizedStartTime + durationMillis;
+
+      return {
+        show: false,
+        dimension: 0, // Map along the X-axis (normalized time)
+        seriesIndex: index,
+        pieces: [
+          {
+            gt: -Infinity,
+            lt: normalizedStartTime,
+            color: `${visuals.color}33`, // 20% opacity for context
+          },
+          {
+            gte: normalizedStartTime,
+            lte: normalizedEndTime,
+            color: visuals.color, // 100% opacity for event
+          },
+          {
+            gt: normalizedEndTime,
+            color: `${visuals.color}33`, // 20% opacity for context
+          },
+        ],
+      };
+    });
+
     const lineSeries = sortedEvents.map((event) => {
       const startDate = new Date(event.startTime);
-      const seriesName = format(startDate, "EEE, MMM d");
-      const dayIndex = uniqueDays.indexOf(seriesName);
+      const dayIndex = uniqueDays.indexOf(format(startDate, "EEE, MMM d"));
       const visuals = getEventVisuals(dayIndex);
 
       // ANCHOR: Calculate a single base normalized time for the event start
       const normalizedStartTime = normalizeTime(event.startTime, boundaryHour);
       const originalStartTimeMillis = startDate.getTime();
+
+      // LEGEND: Force the series name to match the normalized UTC time seen on the axis.
+      // This prevents the "7:30 AM vs 12:45 AM" discrepancy caused by browser local time.
+      const seriesName = `${format(startDate, "EEE, MMM d")} @ ${new Date(normalizedStartTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", timeZone: "UTC" })}`;
 
       return {
         name: seriesName,
@@ -206,15 +243,16 @@ export function ClusterEventsChart({
         xAxisIndex: 0,
         yAxisIndex: 0,
         showSymbol: true,
+        symbol: "circle",
+        symbolSize: 3, // Smaller markers as requested
         smooth: true,
         lineStyle: {
           width: 4,
-          opacity: 0.8,
-          color: visuals.color,
-          type: visuals.lineType,
+          // Removed static opacity to let visualMap handle piecewise opacity
         },
         itemStyle: {
-          color: visuals.color,
+          borderWidth: 0,
+          // Color is now handled by visualMap as well
         },
         emphasis: {
           focus: "series",
@@ -223,8 +261,8 @@ export function ClusterEventsChart({
           },
         },
         blur: {
-          lineStyle: { opacity: 0.1 },
-          itemStyle: { opacity: 0.1 },
+          lineStyle: { opacity: 0.15 },
+          itemStyle: { opacity: 0.15 },
         },
         markLine: {
           silent: true,
@@ -511,6 +549,7 @@ export function ClusterEventsChart({
         link: { xAxisIndex: "all" },
         label: { backgroundColor: "#777" },
       },
+      visualMap: visualMaps,
       legend: { show: true, bottom: 0, type: "scroll" },
       grid: grid,
       xAxis: xAxis,
