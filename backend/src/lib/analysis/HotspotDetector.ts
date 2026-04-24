@@ -31,6 +31,8 @@ export class HotspotDetector {
   ): GlycemicEvent[] {
     const events: GlycemicEvent[] = [];
     let startIndex = -1;
+    let localPeak = type === 'hyper' ? -Infinity : Infinity;
+    const VALLEY_SPLIT_MARGIN = 35; // mg/dL
 
     // 0. Security: Limit input size to prevent DoS
     const limitedEntries = entries.slice(0, MAX_ENTRIES);
@@ -46,6 +48,36 @@ export class HotspotDetector {
       if (isTrigger) {
         if (startIndex === -1) {
           startIndex = i;
+          localPeak = entry.sgv;
+        } else {
+          // Check for significant valley to split
+          if (type === 'hyper') {
+            if (entry.sgv > localPeak) {
+              localPeak = entry.sgv;
+            } else if (entry.sgv < localPeak - VALLEY_SPLIT_MARGIN) {
+              // We hit a significant dip. If it starts rising again, we split.
+              // Look ahead to see if it recovers
+              const next = sorted[i + 1];
+              if (next && next.sgv > entry.sgv + 5) {
+                // Split point found
+                this.processSequence(sorted, startIndex, i + 1, events, type);
+                startIndex = i + 1;
+                localPeak = next.sgv;
+              }
+            }
+          } else {
+            // Hypo valley splitting (less common but same logic)
+            if (entry.sgv < localPeak) {
+              localPeak = entry.sgv;
+            } else if (entry.sgv > localPeak + VALLEY_SPLIT_MARGIN) {
+              const next = sorted[i + 1];
+              if (next && next.sgv < entry.sgv - 5) {
+                this.processSequence(sorted, startIndex, i + 1, events, type);
+                startIndex = i + 1;
+                localPeak = next.sgv;
+              }
+            }
+          }
         }
       } else {
         if (startIndex !== -1) {
