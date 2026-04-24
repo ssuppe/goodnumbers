@@ -196,6 +196,10 @@ export function ClusterEventsChart({
       const dayIndex = uniqueDays.indexOf(seriesName);
       const visuals = getEventVisuals(dayIndex);
 
+      // ANCHOR: Calculate a single base normalized time for the event start
+      const normalizedStartTime = normalizeTime(event.startTime, boundaryHour);
+      const originalStartTimeMillis = startDate.getTime();
+
       return {
         name: seriesName,
         type: "line",
@@ -227,7 +231,7 @@ export function ClusterEventsChart({
           symbol: "none",
           data: [
             {
-              xAxis: normalizeTime(event.startTime, boundaryHour),
+              xAxis: normalizedStartTime,
               lineStyle: {
                 color: visuals.color,
                 type: "dashed",
@@ -238,13 +242,17 @@ export function ClusterEventsChart({
             },
           ],
         },
-        data: event.readings.map((r) => ({
-          value: [
-            normalizeTime(r.timestamp, boundaryHour),
-            convertGlucose(r.value, normalizedUnits),
-          ],
-          originalDate: r.timestamp,
-        })),
+        data: event.readings.map((r) => {
+          const originalReadingTime = new Date(r.timestamp).getTime();
+          const offset = originalReadingTime - originalStartTimeMillis;
+          return {
+            value: [
+              normalizedStartTime + offset,
+              convertGlucose(r.value, normalizedUnits),
+            ],
+            originalDate: r.timestamp,
+          };
+        }),
       };
     });
 
