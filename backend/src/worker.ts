@@ -331,7 +331,11 @@ export async function processJournalJob(job: Job) {
       });
 
       // Step A: Deterministic Heuristics (Ground Truth)
-      const deterministicInsights = generateClusterInsights(c, treatments);
+      const deterministicInsights = generateClusterInsights(
+        c,
+        treatments,
+        userTimezone,
+      );
 
       // Step B: AI Clinical Assessment (Pro Model)
       const aiAssessment = await generateClusterAIInsight(

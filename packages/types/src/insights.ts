@@ -8,4 +8,9 @@ export enum InsightPriority {
 export interface Insight {
   priority: InsightPriority;
   note: string;
+  /**
+   * The number of minutes before the event startTime that contains relevant evidence.
+   * Used by the frontend to dynamically expand the chart window.
+   */
+  evidenceWindowMins?: number;
 }

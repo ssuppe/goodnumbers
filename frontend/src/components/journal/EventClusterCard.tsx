@@ -158,6 +158,17 @@ export default function EventClusterCard({
   const displayInsights =
     insights || (cluster.insights as unknown as Insight[]);
 
+  // Calculate the maximum evidence window across all insights to adjust the chart Zoom
+  const maxEvidenceWindow = useMemo(() => {
+    if (!displayInsights || displayInsights.length === 0) return 0;
+    return Math.max(
+      0,
+      ...displayInsights
+        .map((i) => i.evidenceWindowMins || 0)
+        .filter((val) => typeof val === "number"),
+    );
+  }, [displayInsights]);
+
   // Parse quick log suggestions
   const quickLogSuggestions = useMemo(() => {
     try {
@@ -187,13 +198,19 @@ export default function EventClusterCard({
     <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
       {/* Top Section: Title and Chart */}
       <div className="p-4 pb-2">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">{title}</h3>
+        <div className="flex justify-between items-start mb-4">
+          <h3 className="text-lg font-bold text-gray-900 flex-grow">{title}</h3>
+          <span className="flex-shrink-0 ml-2 px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider rounded border border-blue-100">
+            {Math.max(maxEvidenceWindow, 60)}m lookback
+          </span>
+        </div>
         <div className="w-full">
           {clusterData ? (
             <ClusterEventsChart
               cluster={clusterData}
               units={units as GlucoseUnit}
               treatments={treatments}
+              evidenceWindowMins={maxEvidenceWindow}
             />
           ) : (
             <div className="p-4 text-center text-gray-500 bg-gray-50 rounded-lg">

@@ -43,6 +43,7 @@ interface ClusterEventsChartProps {
   cluster: GlycemicCluster;
   units: GlucoseUnit;
   treatments?: Treatment[];
+  evidenceWindowMins?: number;
 }
 
 // Buffer in minutes to search for treatments around an event
@@ -82,10 +83,11 @@ export function ClusterEventsChart({
   cluster,
   units,
   treatments = [],
+  evidenceWindowMins = 0,
 }: ClusterEventsChartProps) {
   const chartRef = useRef<ReactECharts>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  console.log("Treatments in ClusterEventsChart:", treatments);
+
   // Calculate the best start hour for this specific cluster to handle midnight wraparound
   // We MUST include relevant treatments in this calculation so they don't get split from their events.
   const boundaryHour = useMemo(() => {
@@ -219,6 +221,22 @@ export function ClusterEventsChart({
         blur: {
           lineStyle: { opacity: 0.1 },
           itemStyle: { opacity: 0.1 },
+        },
+        markLine: {
+          silent: true,
+          symbol: "none",
+          data: [
+            {
+              xAxis: normalizeTime(event.startTime, boundaryHour),
+              lineStyle: {
+                color: visuals.color,
+                type: "dashed",
+                width: 1,
+                opacity: 0.6,
+              },
+              label: { show: false },
+            },
+          ],
         },
         data: event.readings.map((r) => ({
           value: [
@@ -355,8 +373,16 @@ export function ClusterEventsChart({
     const allSeries = [...lineSeries, ...carbSeries, ...insulinSeries];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
     const domain = calculateCommonDomain(allSeries as any);
+
+    // Apply Smart Zoom: Adjust domain.min if evidenceWindowMins is set
+    const finalMin = domain
+      ? evidenceWindowMins > 0
+        ? Math.min(domain.min, globalMinNormalized - evidenceWindowMins * 60000)
+        : domain.min
+      : undefined;
+
     const xAxisCommon = {
-      min: domain ? domain.min : undefined,
+      min: finalMin,
       max: domain ? domain.max : undefined,
     };
 
@@ -506,7 +532,7 @@ export function ClusterEventsChart({
         ...insulinSeries,
       ],
     };
-  }, [cluster, units, treatments, boundaryHour]);
+  }, [cluster, units, treatments, boundaryHour, evidenceWindowMins]);
 
   return (
     <div ref={containerRef} className="w-full h-96">

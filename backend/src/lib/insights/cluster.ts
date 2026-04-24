@@ -58,6 +58,8 @@ export function generateClusterInsights(
     const aggressiveCrashEvents: string[] = [];
     const driftEvents: string[] = [];
 
+    let maxHypoLookback = 30; // Default to ROC window
+
     cluster.events.forEach((event) => {
       const eventTime = new Date(event.startTime).getTime();
       const displayTime = formatEventTime(event.startTime, timezone);
@@ -65,24 +67,20 @@ export function generateClusterInsights(
       // 1. DYNAMIC VELOCITY (ROC) CALCULATION
       let roc = 0;
       if (event.readings && event.readings.length > 0) {
-        // Sort readings chronologically
         const sortedReadings = [...event.readings].sort(
           (a, b) =>
             new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
         );
 
-        // Find the reading exactly at or immediately before the event trigger
         const startReading = sortedReadings
           .filter((r) => new Date(r.timestamp).getTime() <= eventTime)
           .pop();
 
         if (startReading) {
-          // Target 30 mins ago
           const targetLookback = eventTime - 30 * 60000;
           let priorReading = sortedReadings[0];
           let minDiff = Infinity;
 
-          // Find the reading CLOSEST to t-30
           for (const r of sortedReadings) {
             const rTime = new Date(r.timestamp).getTime();
             if (rTime >= new Date(startReading.timestamp).getTime()) continue;
@@ -93,7 +91,6 @@ export function generateClusterInsights(
             }
           }
 
-          // Calculate ROC only if we have a valid time gap (at least 10 mins)
           if (
             priorReading &&
             priorReading.timestamp !== startReading.timestamp
@@ -103,7 +100,6 @@ export function generateClusterInsights(
             const deltaMins = (t2 - t1) / 60000;
 
             if (deltaMins >= 10) {
-              // Positive ROC means dropping
               roc = (priorReading.value - startReading.value) / deltaMins;
             }
           }
@@ -118,21 +114,33 @@ export function generateClusterInsights(
         (t) => t.date >= lookback3h && t.date <= eventTime,
       );
 
-      // Check for carbs in last 3 hours
-      const hasCarbs = recentTreatments.some((t) => (t.carbs || 0) > 0);
-
-      // Check for ANY insulin delivery in the last 2 hours
-      const hasRecentInsulin = recentTreatments.some(
+      const carbsTreatments = recentTreatments.filter(
+        (t) => (t.carbs || 0) > 0,
+      );
+      const insulinTreatments = recentTreatments.filter(
         (t) => t.date >= lookback2h && (t.insulin || 0) > 0,
       );
+
+      const hasCarbs = carbsTreatments.length > 0;
+      const hasRecentInsulin = insulinTreatments.length > 0;
 
       // 3. STRICT CLINICAL HIERARCHY
       if (roc >= 3.0) {
         compressionEvents.push(displayTime);
       } else if (hasCarbs) {
         carbMismatchEvents.push(displayTime);
+        // Track how far back the carbs were
+        carbsTreatments.forEach((t) => {
+          const delta = Math.ceil((eventTime - t.date) / 60000);
+          if (delta > maxHypoLookback) maxHypoLookback = delta;
+        });
       } else if (roc >= 1.5 && hasRecentInsulin) {
         aggressiveCrashEvents.push(displayTime);
+        // Track how far back the insulin was
+        insulinTreatments.forEach((t) => {
+          const delta = Math.ceil((eventTime - t.date) / 60000);
+          if (delta > maxHypoLookback) maxHypoLookback = delta;
+        });
       } else {
         driftEvents.push(displayTime);
       }
@@ -143,6 +151,7 @@ export function generateClusterInsights(
       insights.push({
         priority: InsightPriority.INFO,
         note: `Compression Lows: ${compressionEvents.length} event${compressionEvents.length > 1 ? 's' : ''} ${formatEventList(compressionEvents)} show a sudden, vertical drop that usually indicates a sensor error or sleeping on the sensor, rather than a true low.`,
+        evidenceWindowMins: 30,
       });
     }
 
@@ -150,6 +159,7 @@ export function generateClusterInsights(
       insights.push({
         priority: InsightPriority.IMPORTANT,
         note: `Over-Announced Meals: ${carbMismatchEvents.length} low${carbMismatchEvents.length > 1 ? 's' : ''} ${formatEventList(carbMismatchEvents)} happened shortly after announcing carbs. Your system delivered insulin for the food, but your blood sugar dropped. Did you eat less than entered, or eat a high-fat/protein meal that absorbed slowly?`,
+        evidenceWindowMins: Math.max(maxHypoLookback, 60),
       });
     }
 
@@ -157,6 +167,7 @@ export function generateClusterInsights(
       insights.push({
         priority: InsightPriority.IMPORTANT,
         note: `High Insulin Pressure: ${aggressiveCrashEvents.length} low${aggressiveCrashEvents.length > 1 ? 's' : ''} ${formatEventList(aggressiveCrashEvents)} feature a steep drop and follow periods where your system delivered insulin (via micro-boluses or corrections). The insulin may have been too aggressive.`,
+        evidenceWindowMins: Math.max(maxHypoLookback, 60),
       });
     }
 
@@ -164,6 +175,7 @@ export function generateClusterInsights(
       insights.push({
         priority: InsightPriority.IMPORTANT,
         note: `Background Drifts: ${driftEvents.length} event${driftEvents.length > 1 ? 's' : ''} ${formatEventList(driftEvents)} are slow, drifting lows that happen when you have very little active insulin and haven't eaten recently. If these happen overnight or after exercise, your baseline sensitivity might have increased.`,
+        evidenceWindowMins: 60,
       });
     }
 
@@ -175,6 +187,7 @@ export function generateClusterInsights(
   const postBolusEvents: string[] = [];
   const preBolusEvents: string[] = [];
   let mealRelatedCount = 0;
+  let maxHyperLookback = 60; // Default
 
   cluster.events.forEach((event) => {
     const eventTime = new Date(event.startTime).getTime();
@@ -194,6 +207,10 @@ export function generateClusterInsights(
     let eventPreBolus = false;
 
     relevantMeals.forEach((meal) => {
+      // Track how far back the meal was
+      const mealDelta = Math.ceil((eventTime - meal.date) / 60000);
+      if (mealDelta > maxHyperLookback) maxHyperLookback = mealDelta;
+
       let closestBolus: Treatment | null = null;
       let minDelta = Infinity;
 
@@ -210,6 +227,10 @@ export function generateClusterInsights(
       if (!closestBolus) {
         eventUncovered = true;
       } else {
+        // Also track bolus if it's further back than the meal (pre-bolus)
+        const bolusDelta = Math.ceil((eventTime - closestBolus.date) / 60000);
+        if (bolusDelta > maxHyperLookback) maxHyperLookback = bolusDelta;
+
         const bolusVsMealDiff = closestBolus.date - meal.date;
         if (bolusVsMealDiff < -PREBOLUS_THRESHOLD_MS) {
           eventPreBolus = true;
@@ -234,6 +255,7 @@ export function generateClusterInsights(
     insights.push({
       priority: InsightPriority.IMPORTANT,
       note: `${percent}% of these high events (${mealRelatedCount} out of ${cluster.eventCount}) appear to be meal-related.`,
+      evidenceWindowMins: maxHyperLookback + 15,
     });
   }
 
@@ -241,6 +263,7 @@ export function generateClusterInsights(
     insights.push({
       priority: InsightPriority.IMPORTANT,
       note: `Potential uncovered meals detected in ${uncoveredEvents.length} event${uncoveredEvents.length > 1 ? 's' : ''} ${formatEventList(uncoveredEvents)}.`,
+      evidenceWindowMins: maxHyperLookback + 15,
     });
   }
 
@@ -248,6 +271,7 @@ export function generateClusterInsights(
     insights.push({
       priority: InsightPriority.IMPORTANT,
       note: `Post-meal hyperglycemia detected in ${postBolusEvents.length} event${postBolusEvents.length > 1 ? 's' : ''} ${formatEventList(postBolusEvents)} where insulin was given at or after eating (post-bolused).`,
+      evidenceWindowMins: maxHyperLookback + 15,
     });
   }
 
@@ -255,6 +279,7 @@ export function generateClusterInsights(
     insights.push({
       priority: InsightPriority.IMPORTANT,
       note: `Hyperglycemia occurred in ${preBolusEvents.length} event${preBolusEvents.length > 1 ? 's' : ''} ${formatEventList(preBolusEvents)} despite insulin being given before the meal.`,
+      evidenceWindowMins: maxHyperLookback + 15,
     });
   }
 
