@@ -1,16 +1,20 @@
 // backend/src/lib/ai/gemini.ts
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GlycemicCluster, Insight, GlucoseUnit } from '@goodnumbers/types';
+import {
+  GlycemicCluster,
+  Insight,
+  GlucoseUnit,
+  Highlight,
+} from '@goodnumbers/types';
 import {
   EXECUTIVE_SUMMARY_PROMPT,
   CLUSTER_AI_INSIGHT_PROMPT,
 } from './prompts.js';
+import { formatInfluencingFactors } from './utils.js';
 
-const API_KEY = process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'dummy-key');
 
-// Use Gemini 3.1 Pro for flagship reasoning and clinical assessment
 const proModel = genAI.getGenerativeModel({
   model: 'gemini-3.1-pro-preview',
   generationConfig: { responseMimeType: 'application/json' },
@@ -54,13 +58,17 @@ export async function generateClusterAIInsight(
   preferredUnits: GlucoseUnit,
   treatments: TreatmentContext[],
   timezone: string,
+  weeklyVibe: string | null | undefined,
+  influencingFactors: string[] | null | undefined,
 ): Promise<ClusterAIResult> {
   const defaultResult: ClusterAIResult = {
     assessment: 'AI assessment unavailable.',
     quickLogSuggestions: [],
   };
 
-  if (!API_KEY) {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
     console.warn('[Gemini] Missing API Key. Skipping AI insight generation.');
     return {
       ...defaultResult,
@@ -74,6 +82,10 @@ export async function generateClusterAIInsight(
     preferredUnits,
     treatments,
     timezone,
+    {
+      vibe: weeklyVibe || null,
+      factors: formatInfluencingFactors(influencingFactors),
+    },
   );
 
   console.log(
@@ -150,7 +162,8 @@ export async function generateExecutiveSummary(
   } | null,
   preferredUnits: GlucoseUnit,
 ): Promise<Highlight[]> {
-  if (!API_KEY) return [];
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return [];
 
   const prompt = EXECUTIVE_SUMMARY_PROMPT(
     currentStats,

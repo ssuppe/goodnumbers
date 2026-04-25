@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { ChartAnalysisCard } from "./ChartAnalysisCard";
 
@@ -12,6 +12,22 @@ vi.mock("./charts/AgpChart", () => ({
 vi.mock("../common/InfoTooltip", () => ({
   InfoTooltip: ({ content }: { content: React.ReactNode }) => (
     <div data-testid="info-tooltip">{content}</div>
+  ),
+}));
+
+// Mock UnifiedInsightRow
+vi.mock("./UnifiedInsightRow", () => ({
+  UnifiedInsightRow: ({
+    label,
+    insight,
+  }: {
+    label: string;
+    insight: string;
+  }) => (
+    <div data-testid={`insight-row-${label.toLowerCase().replace(/\s/g, "-")}`}>
+      <span>{label}</span>
+      <span>{insight}</span>
+    </div>
   ),
 }));
 
@@ -102,5 +118,41 @@ describe("ChartAnalysisCard", () => {
     );
 
     expect(screen.getByTestId("metric-value-gmi").textContent).toBe("--");
+  });
+
+  it("toggles the Detailed Analysis section when clicked", () => {
+    render(
+      <ChartAnalysisCard
+        title="Test"
+        data={MOCK_DATA}
+        units="MGDL"
+        insights={[
+          { priority: "INFO", note: "Avg Insight" },
+          { priority: "IMPORTANT", note: "TIR Insight" },
+        ]}
+        scoreCardData={MOCK_SCORECARD}
+      />,
+    );
+
+    // Should be hidden by default
+    expect(
+      screen.queryByText("Hide Detailed Analysis"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("insight-row-avg-glucose"),
+    ).not.toBeInTheDocument();
+
+    // Click to expand
+    const toggleButton = screen.getByText("View Detailed Analysis");
+    fireEvent.click(toggleButton);
+
+    expect(screen.getByText("Hide Detailed Analysis")).toBeInTheDocument();
+    expect(screen.getByTestId("insight-row-avg-glucose")).toBeInTheDocument();
+
+    // Click to collapse
+    fireEvent.click(screen.getByText("Hide Detailed Analysis"));
+    expect(
+      screen.queryByText("Hide Detailed Analysis"),
+    ).not.toBeInTheDocument();
   });
 });

@@ -344,6 +344,8 @@ export async function processJournalJob(job: Job) {
         journal.user.preferredUnits as GlucoseUnit,
         treatments, // Pass raw treatments for better context
         userTimezone, // Pass timezone for accurate evidence formatting
+        journal.weeklyVibe,
+        journal.influencingFactors as string[] | null,
       );
 
       // SECURITY: Validate deterministic insights before DB write
