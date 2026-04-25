@@ -70,6 +70,7 @@ vi.mock('../../../src/lib/analysis/HotspotDetector.js', () => ({
 // 5. Mock Gemini AI
 const MOCK_AI_ASSESSMENT = {
   assessment: 'Mocked AI Assessment: Dawn Phenomenon suspected.',
+  reflectionForDoctor: 'Check basal rates between 3 AM and 5 AM.',
   quickLogSuggestions: ['Late snack', 'Adjust basal', 'Dawn phenomenon'],
 };
 const MOCK_EXECUTIVE_SUMMARY = [
@@ -164,14 +165,8 @@ describe('Journal AI Insights Integration', () => {
     expect(clustersSaved).toHaveLength(2);
 
     // Verify AI assessment is present in the saved cluster data
-    expect(clustersSaved[0]).toHaveProperty(
-      'aiInsight',
-      MOCK_AI_ASSESSMENT.assessment,
-    );
-    expect(clustersSaved[1]).toHaveProperty(
-      'aiInsight',
-      MOCK_AI_ASSESSMENT.assessment,
-    );
+    expect(clustersSaved[0]).toHaveProperty('aiInsight', MOCK_AI_ASSESSMENT);
+    expect(clustersSaved[1]).toHaveProperty('aiInsight', MOCK_AI_ASSESSMENT);
     expect(clustersSaved[0]).toHaveProperty(
       'quickLogSuggestions',
       MOCK_AI_ASSESSMENT.quickLogSuggestions,

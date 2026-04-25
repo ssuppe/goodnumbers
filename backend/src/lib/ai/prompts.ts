@@ -24,7 +24,7 @@ function buildRawEvidence(
 
   eventsToProfile.forEach((event, idx) => {
     const eventStart = new Date(event.startTime).getTime();
-    const windowStart = eventStart - 60 * 60 * 1000; // 1h before
+    const windowStart = eventStart - 3 * 60 * 60 * 1000; // 3h before (essential for 4-pillar analysis)
     const windowEnd = eventStart + 3 * 60 * 60 * 1000; // 3h after
 
     const eventDate = DateTime.fromISO(event.startTime).setZone(timezone);
@@ -33,11 +33,19 @@ function buildRawEvidence(
     // 1. Get relevant treatments in this window
     const relevantTreatments = treatments
       .filter((t) => t.date >= windowStart && t.date <= windowEnd)
-      .map((t) => ({
-        time: t.date,
-        type: 'TREATMENT',
-        label: `${t.carbs ? `${t.carbs}g carbs` : ''}${t.carbs && t.insulin ? ', ' : ''}${t.insulin ? `${t.insulin}u insulin` : ''}`,
-      }));
+      .map((t) => {
+        // Refined SMB check: Insulin < 0.3u AND no carbs present
+        const isSMB = t.insulin && t.insulin > 0 && t.insulin < 0.3 && !t.carbs;
+        const insulinLabel = t.insulin
+          ? `${t.insulin}u insulin${isSMB ? ' (Automated Correction/SMB)' : ''}`
+          : '';
+
+        return {
+          time: t.date,
+          type: 'TREATMENT',
+          label: `${t.carbs ? `${t.carbs}g carbs` : ''}${t.carbs && t.insulin ? ', ' : ''}${insulinLabel}`,
+        };
+      });
 
     // 2. Get blood sugar readings for this specific event
     const relevantReadings = (event.readings || []).map((r) => ({
@@ -145,8 +153,7 @@ export const CLUSTER_AI_INSIGHT_PROMPT = (
   );
 
   return `
-You are a helpful diabetes coach reviewing a recurring pattern in a weekly health journal. 
-Your goal is to share what you see in the data using friendly, plain English.
+You are a specialist diabetes data analyst. Your goal is to identify the "Physiological Narrative" across this recurring cluster of glucose events.
 
 WEEKLY CONTEXT (User's subjective environmental factors):
 - Overall Vibe: ${weeklyContext.vibe || 'Not reported'}
@@ -157,27 +164,32 @@ CLUSTER SUMMARY:
 - Typical Time: ${Math.floor(cluster.avgStartMinute / 60)}:${(cluster.avgStartMinute % 60).toString().padStart(2, '0')}
 - Occurrences: Happened ${cluster.eventCount} times this week.
 
-DETERMINISTIC FINDINGS (Ground Truth):
+DETERMINISTIC FINDINGS (Ground Truth Heuristics):
 ${insightsList}
 
-RAW EVIDENCE (Timeline of select events - times are rounded to nearest 10m):
+RAW EVIDENCE (Timeline of select events - rounded to nearest 10m):
 ${rawEvidence}
 
-INSTRUCTIONS:
-Your response must be a JSON object with this structure:
+ANALYSIS FRAMEWORK:
+1. THE FLOOR (Basal/Dawn/Somogyi): If early morning, distinguish between "Dawn Phenomenon" (rise) and the "Somogyi Effect" (rebound from nighttime low).
+2. THE FUEL (Bolus/Timing/Composition): Analyze the shape of the curve. Sharp early spike (timing) or delayed rise (fat/protein)?
+3. THE VARIABLE (Resistance/Hormones): Correlate with stress, illness, or travel reported in the context.
+4. THE ENGINE (Activity/Automated Systems): Look for aerobic drops or anaerobic spikes. NOTE: Frequent, small insulin doses labeled as "(Automated Correction/SMB)" indicate an automated system is actively fighting a rise; this is a sign of system effort, not user error or "stacking."
+
+OUTPUT STRUCTURE:
 {
-  "assessment": "A single string containing the assessment with the following structure: \n\nKey takeaway or observation: ...\nRecommendation: ...\nIn detail: ...",
-  "quick_log_suggestions": ["up to 3 short, 2-4 word phrases the user might write in their journal (e.g., 'Underestimated carbs', 'Late dinner')"]
+  "assessment": "Synthesis of the physiological 'why'. Friendly, plain English for the patient.",
+  "reflection_for_doctor": "Discussion starters for the user's next clinic visit. Be specific about time blocks.",
+  "quick_log_suggestions": ["up to 3 short, 2-4 word phrases (e.g., 'Late dinner', 'Under-bolused')"]
 }
 
 CONSTRAINTS:
-- The 'assessment' text must follow the structure: 
-  Key takeaway or observation: [One short sentence summarizing the core issue]
-  Recommendation: [1-3 specific, punchy actions to discuss with a doctor]
-  In detail: [One short paragraph (3-4 sentences) explaining what's happening. Use everyday language like "insulin kicking in" instead of "insulin action." Be precise about the timing seen in the raw evidence.]
-- Audience is the patient. Be professional but colloquial and supportive.
+- TREND-FIRST: Prioritize synthesizing systemic trends across the entire week. Avoid day-by-day narration (e.g., "On Monday..."). Reference specific days ONLY if they serve as a clear illustration of the pattern or highlight a significant outlier.
+- TIME-BLOCK SPECIFICITY: In "reflection_for_doctor", ALWAYS specify the relevant time window (e.g., "between 2 AM and 5 AM" or "the 3 hours following lunch") to provide actionable context for clinical review.
+- SAFETY PERSONA: You are a "Specialist Data Analyst." Never use prescriptive language (e.g., "You should change your basal"). Instead, use observational language (e.g., "The data suggests a gap in basal coverage between...").
+- Audience is the patient. Be professional, colloquial, and supportive.
 - Use "blood sugar" instead of "glucose" or "glucose levels."
-- NEVER give medical prescriptions or direct instructions. Frame everything as "something to talk about with your doctor."
+- NEVER give medical prescriptions or direct instructions. Frame everything as patterns for reflection.
 - CRITICAL: Use ${unitsLabel} for ALL blood sugar values mentioned.
 - Do not use conversational filler (e.g., "I've analyzed," "Certainly").
 - Keep it very concise. Avoid "AI slop."

@@ -19,6 +19,12 @@ interface EventClusterCardProps {
   insights?: Insight[];
 }
 
+export interface AiInsight {
+  assessment: string;
+  reflectionForDoctor?: string;
+  quickLogSuggestions?: string[];
+}
+
 // Helper to format minutes into HH:MM using date-fns for consistency
 export function minutesToTimeString(minutes: number): string {
   // Round to nearest 15 minutes
@@ -45,48 +51,107 @@ export function getColloquialEventName(type: string): string {
 }
 
 // Sub-component to parse and render structured AI insights
-function AiAssessmentDisplay({ text }: { text: string }) {
-  // Split by the known headers, keeping the headers in the result
-  const parts = text.split(
-    /(Key takeaway or observation:|Recommendation:|In detail:)/gi,
-  );
+function AiAssessmentDisplay({
+  assessment,
+  reflectionForDoctor,
+}: {
+  assessment?: string;
+  reflectionForDoctor?: string;
+}) {
+  const [isCopied, setIsCopied] = useState(false);
 
-  const sections: React.ReactNode[] = [];
+  // Handle assessment text
+  const textContent = assessment || "";
 
-  for (let i = 1; i < parts.length; i += 2) {
-    const header = parts[i].trim();
-    const content = parts[i + 1]?.trim();
-
-    if (content) {
-      sections.push(
-        <div key={header} className="space-y-1">
-          <p className="font-bold text-blue-800 text-[10px] uppercase tracking-wider">
-            {header.replace(":", "")}
-          </p>
-          <div className="text-gray-900 leading-relaxed">
-            {header.includes("Recommendation") ? (
-              <ul className="list-disc ml-4 space-y-1">
-                {content.split("\n").map((line, idx) => {
-                  // Remove leading bullets/dashes if the AI added them
-                  const cleanLine = line.replace(/^[*-]\s*/, "").trim();
-                  return cleanLine ? <li key={idx}>{cleanLine}</li> : null;
-                })}
-              </ul>
-            ) : (
-              <p>{content}</p>
-            )}
-          </div>
-        </div>,
-      );
+  const handleCopyDoctorNote = async () => {
+    if (!reflectionForDoctor) return;
+    try {
+      await navigator.clipboard.writeText(reflectionForDoctor);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy doctor note", err);
     }
-  }
+  };
 
-  // Fallback to plain text if parsing fails to find sections
-  if (sections.length === 0) {
-    return <div className="whitespace-pre-wrap italic">{text}</div>;
-  }
+  // Split legacy/structured assessment text by the known headers
+  const renderStructuredText = (text: string) => {
+    const parts = text.split(
+      /(Key takeaway or observation:|Recommendation:|In detail:)/gi,
+    );
+    const sections: React.ReactNode[] = [];
 
-  return <div className="space-y-4">{sections}</div>;
+    for (let i = 1; i < parts.length; i += 2) {
+      const header = parts[i].trim();
+      const content = parts[i + 1]?.trim();
+
+      if (content) {
+        sections.push(
+          <div key={header} className="space-y-1">
+            <p className="font-bold text-blue-800 text-[10px] uppercase tracking-wider">
+              {header.replace(":", "")}
+            </p>
+            <div className="text-gray-900 leading-relaxed">
+              {header.includes("Recommendation") ? (
+                <ul className="list-disc ml-4 space-y-1">
+                  {content.split("\n").map((line, idx) => {
+                    const cleanLine = line.replace(/^[*-]\s*/, "").trim();
+                    return cleanLine ? <li key={idx}>{cleanLine}</li> : null;
+                  })}
+                </ul>
+              ) : (
+                <p>{content}</p>
+              )}
+            </div>
+          </div>,
+        );
+      }
+    }
+
+    if (sections.length === 0) {
+      return <div className="whitespace-pre-wrap">{text}</div>;
+    }
+    return <div className="space-y-4">{sections}</div>;
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Primary Assessment */}
+      <div className="assessment-body">{renderStructuredText(textContent)}</div>
+
+      {/* Doctor Reflection Section (Stage 2) */}
+      {reflectionForDoctor && (
+        <div className="mt-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm">
+          <div className="flex justify-between items-center mb-2">
+            <p className="font-bold text-blue-800 text-[10px] uppercase tracking-wider">
+              For your Doctor
+            </p>
+            <button
+              onClick={() => {
+                void handleCopyDoctorNote();
+              }}
+              className="flex items-center space-x-1 text-[10px] font-bold text-blue-600 hover:text-blue-800 transition-colors px-2 py-1 rounded hover:bg-blue-50"
+            >
+              {isCopied ? (
+                <>
+                  <Check className="w-3 h-3 text-green-500" />
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3" />
+                  <span>Copy for Doctor</span>
+                </>
+              )}
+            </button>
+          </div>
+          <p className="text-gray-700 italic border-l-2 border-blue-200 pl-3 py-1">
+            {reflectionForDoctor}
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function EventClusterCard({
@@ -114,6 +179,21 @@ export default function EventClusterCard({
     }
     return null;
   }, [cluster.clusterDataJson]);
+
+  // Safe parsing of AI Insight (Stage 2)
+  const parsedAiInsight = useMemo((): AiInsight | null => {
+    try {
+      if (!cluster.aiInsight) return null;
+      if (typeof cluster.aiInsight === "string") {
+        return { assessment: cluster.aiInsight, reflectionForDoctor: "" };
+      }
+      // Cast through unknown to the refined interface
+      return cluster.aiInsight as unknown as AiInsight;
+    } catch (e) {
+      console.error("Failed to parse aiInsight", e);
+      return null;
+    }
+  }, [cluster.aiInsight]);
 
   // Calculate time range if event data is available
   const timeRange = useMemo(() => {
@@ -347,7 +427,10 @@ export default function EventClusterCard({
 
               {isAiExpanded && (
                 <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-gray-800 leading-relaxed shadow-sm transition-all animate-in fade-in slide-in-from-top-1">
-                  <AiAssessmentDisplay text={cluster.aiInsight} />
+                  <AiAssessmentDisplay
+                    assessment={parsedAiInsight?.assessment}
+                    reflectionForDoctor={parsedAiInsight?.reflectionForDoctor}
+                  />
 
                   {quickLogSuggestions.length > 0 && (
                     <div className="mt-4 pt-4 border-t border-blue-100">

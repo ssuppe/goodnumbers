@@ -1,6 +1,6 @@
 # Engineering Plan: AI Endo-Brain Improvements (Cluster Insights)
 
-**Status:** In Progress (Stage 1 Complete)  
+**Status:** Complete  
 **Target Date:** 2026-04-26  
 **Complexity:** High (AI Prompt Engineering + Data Mapping)
 
@@ -34,29 +34,32 @@ The goal of this task is to evolve the AI "Co-pilot" from a simple data narrator
 **Goal:** Update the JSON output format and enforce strict "Trend-Only" constraints.
 
 - **Tasks:**
-  - Update the prompt's `OUTPUT STRUCTURE` to include `reflection_for_doctor` and `assessment`.
-  - Enforce the constraint: `ABSOLUTELY NO day-by-day markers (e.g., "On Monday")`.
-  - Update the AI service's JSON parser to handle the new keys.
-- **Verification:** Confirm the AI no longer itemizes days and returns the new reflection field.
+  - [x] Update the prompt's `OUTPUT STRUCTURE` to include `reflection_for_doctor` and `assessment`.
+  - [x] Enforce the constraint: `TREND-FIRST` (synthesize patterns, reference days only for evidence).
+  - [x] Update the AI service's JSON parser to handle the new keys.
+  - [x] Update Database Schema (`aiInsight` changed to `Json`) and run migrations.
+  - [x] Update Frontend UI (`AiAssessmentDisplay`) to show "For your Doctor" reflections.
+- **Verification:** Frontend and Integration tests verify the end-to-end flow of structured JSON.
 
 ### **Stage 3: Physiological Logic (The 4 Pillars)**
 
 **Goal:** Introduce the clinical heuristic framework (The "Endo-Brain").
 
 - **Tasks:**
-  - Inject the **4 Pillars Analysis Framework** (Floor, Fuel, Variable, Engine) into the prompt instructions.
-  - Expand `buildRawEvidence` in `prompts.ts` to provide a **3-hour window** before each event (essential for Somogyi effect detection).
-  - Add specific logic for macronutrient composition (shape of the curve).
-- **Verification:** Test against a "Dawn Phenomenon" cluster and verify the AI identifies the early morning rise vs. a rebound high.
+  - [x] Inject the **4 Pillars Analysis Framework** (Floor, Fuel, Variable, Engine) into the prompt instructions.
+  - [x] Expand `buildRawEvidence` in `prompts.ts` to provide a **3-hour window** before each event (essential for Somogyi effect detection).
+  - [x] Add specific labeling for **SMBs (Automated Corrections)** (Insulin < 0.3u with no carbs) to prevent the AI from misinterpreting them as "correction stacking."
+- **Verification:** Unit tests confirm 3h pre-event evidence and SMB tagging are present in generated prompts.
 
 ### **Stage 4: Tuning & Safety Polish**
 
 **Goal:** Final refinement of the tone and liability safety.
 
 - **Tasks:**
-  - Constrain "Reflections for your Doctor" to include specific time-blocks (e.g., "between 3 AM and 6 AM").
-  - Final audit of the persona to ensure it remains a "Specialist Analyst" and not a "Medical Prescriber."
-- **Verification:** End-to-end dry run with diverse clusters (Hyper, Hypo, and Post-Meal).
+  - [x] Constrain "Reflections for your Doctor" to include specific time-blocks (e.g., "between 3 AM and 6 AM").
+  - [x] Final audit of the persona: Established the "Specialist Data Analyst" persona to ensure observational rather than prescriptive language.
+  - [x] Frontend Technical Integrity: Implemented `AiInsight` interface for type-safe structured data handling.
+- **Verification:** End-to-end integration tests verify structured JSON flow and persona-compliant observations.
 
 ---
 

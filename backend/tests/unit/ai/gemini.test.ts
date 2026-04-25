@@ -58,6 +58,7 @@ describe('Gemini AI Service', () => {
           text: () =>
             JSON.stringify({
               assessment: 'Pro model assessment.',
+              reflection_for_doctor: 'Pro reflection.',
               quick_log_suggestions: ['Hint 1', 'Hint 2'],
             }),
         },
@@ -74,6 +75,7 @@ describe('Gemini AI Service', () => {
       );
 
       expect(result.assessment).toBe('Pro model assessment.');
+      expect(result.reflectionForDoctor).toBe('Pro reflection.');
       expect(result.quickLogSuggestions).toEqual(['Hint 1', 'Hint 2']);
       expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     });
@@ -87,6 +89,7 @@ describe('Gemini AI Service', () => {
             text: () =>
               JSON.stringify({
                 assessment: 'Flash model assessment.',
+                reflection_for_doctor: 'Flash reflection.',
                 quick_log_suggestions: ['Flash Hint'],
               }),
           },
@@ -104,6 +107,7 @@ describe('Gemini AI Service', () => {
 
       expect(result.assessment).toContain('Flash model assessment.');
       expect(result.assessment).toContain('fallback model');
+      expect(result.reflectionForDoctor).toBe('Flash reflection.');
       expect(mockGenerateContent).toHaveBeenCalledTimes(2);
     });
 
