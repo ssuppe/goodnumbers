@@ -131,6 +131,7 @@ export const CLUSTER_AI_INSIGHT_PROMPT = (
   preferredUnits: GlucoseUnit,
   treatments: TreatmentContext[],
   timezone: string,
+  weeklyContext: { vibe: string | null; factors: string },
 ) => {
   const insightsList = deterministicInsights
     .map((i) => `- ${i.note}`)
@@ -146,6 +147,10 @@ export const CLUSTER_AI_INSIGHT_PROMPT = (
   return `
 You are a helpful diabetes coach reviewing a recurring pattern in a weekly health journal. 
 Your goal is to share what you see in the data using friendly, plain English.
+
+WEEKLY CONTEXT (User's subjective environmental factors):
+- Overall Vibe: ${weeklyContext.vibe || 'Not reported'}
+- Influencing Factors: ${weeklyContext.factors}
 
 CLUSTER SUMMARY:
 - Pattern: ${cluster.type === 'hyper' ? 'High Blood Sugar' : 'Low Blood Sugar'}

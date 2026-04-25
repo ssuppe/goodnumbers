@@ -34,6 +34,8 @@ router.get('/', async (req, res, next) => {
         podcastDescription: true,
         weeklyVibe: true,
         status: true,
+        analysisInsights: true,
+        scoreCardData: true,
       },
     });
     res.status(200).json(journals);

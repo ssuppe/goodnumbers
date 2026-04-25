@@ -68,6 +68,45 @@ describe('/api/journals', () => {
     await new Promise<void>((resolve) => server.close(resolve));
   });
 
+  describe('GET /', () => {
+    it('should return 401 Unauthorized if no user is authenticated', async () => {
+      const res = await agent.get('/api/journals');
+      expect(res.status).toBe(401);
+    });
+
+    it('should return 200 OK with a list of user journals including analysisInsights', async () => {
+      // Create another journal for user1 to ensure multiple are returned
+      await prisma.journal.create({
+        data: {
+          userId: user1.id,
+          status: 'COMPLETE',
+          analysisInsights: [{ note: 'Test Insight', priority: 'INFO' }],
+        },
+      });
+
+      const res = await agent
+        .get('/api/journals')
+        .set('x-test-user-id', user1.id);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body.length).toBeGreaterThanOrEqual(2);
+      // Verify that analysisInsights and scoreCardData are included (even if null)
+      expect(res.body[0]).toHaveProperty('analysisInsights');
+      expect(res.body[0]).toHaveProperty('scoreCardData');
+    });
+
+    it('should not return journals from other users', async () => {
+      const res = await agent
+        .get('/api/journals')
+        .set('x-test-user-id', user2.id);
+
+      expect(res.status).toBe(200);
+      // User2 has no journals yet (journal1 is owned by user1)
+      expect(res.body.length).toBe(0);
+    });
+  });
+
   describe('POST /', () => {
     it('should return 401 Unauthorized if no user is authenticated', async () => {
       const res = await agent.post('/api/journals').send({ _csrf: csrfToken });
@@ -207,6 +246,74 @@ describe('/api/journals', () => {
       expect(res.body.status).toBe('PROCESSING');
       // Ensure clusters are included (even if empty array for now)
       expect(res.body.clusters).toBeDefined();
+    });
+  });
+
+  describe('PUT /:id', () => {
+    it('should return 401 Unauthorized if no user is authenticated', async () => {
+      const res = await agent
+        .put(`/api/journals/${journal1.id}`)
+        .send({ _csrf: csrfToken });
+      expect(res.status).toBe(401);
+    });
+
+    it('should return 403 Forbidden if the CSRF token is missing', async () => {
+      const res = await agent
+        .put(`/api/journals/${journal1.id}`)
+        .set('x-test-user-id', user1.id)
+        .send({});
+      expect(res.status).toBe(403);
+    });
+
+    it('should return 200 OK and update the journal for a valid request', async () => {
+      const updates = {
+        weeklyVibe: '🌻 Flourishing',
+        influencingFactors: ['Diet:FatProtein'],
+        goalsForNextWeek: 'Better pre-bolusing',
+        _csrf: csrfToken,
+      };
+
+      const res = await agent
+        .put(`/api/journals/${journal1.id}`)
+        .set('x-test-user-id', user1.id)
+        .send(updates);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+
+      const updatedJournal = await prisma.journal.findUnique({
+        where: { id: journal1.id },
+      });
+      expect(updatedJournal?.weeklyVibe).toBe('🌻 Flourishing');
+      expect(updatedJournal?.goalsForNextWeek).toBe('Better pre-bolusing');
+    });
+
+    it('should update cluster notes if provided', async () => {
+      const cluster = await prisma.glycemicEventCluster.create({
+        data: {
+          journalId: journal1.id,
+          eventType: 'hyper',
+          eventCount: 3,
+          meanTimeMinutes: 600,
+          clusterDataJson: {},
+        },
+      });
+
+      const updates = {
+        clusterNotes: { [cluster.id]: 'These were all after pizza.' },
+        _csrf: csrfToken,
+      };
+
+      const res = await agent
+        .put(`/api/journals/${journal1.id}`)
+        .set('x-test-user-id', user1.id)
+        .send(updates);
+
+      expect(res.status).toBe(200);
+      const updatedCluster = await prisma.glycemicEventCluster.findUnique({
+        where: { id: cluster.id },
+      });
+      expect(updatedCluster?.userNotes).toBe('These were all after pizza.');
     });
   });
 

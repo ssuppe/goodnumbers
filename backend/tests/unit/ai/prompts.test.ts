@@ -52,6 +52,7 @@ describe('AI Prompt Generation', () => {
       GlucoseUnit.MGDL,
       mockTreatments,
       'UTC',
+      { vibe: 'Sprouting', factors: 'Stress, Illness' },
     );
 
     // Reading at 07:10 (rounded)
@@ -69,6 +70,7 @@ describe('AI Prompt Generation', () => {
       GlucoseUnit.MMOL,
       mockTreatments,
       'UTC',
+      { vibe: 'Sprouting', factors: 'Stress, Illness' },
     );
 
     // 200 mg/dL / 18 = 11.1 mmol/L
@@ -84,6 +86,7 @@ describe('AI Prompt Generation', () => {
       GlucoseUnit.MGDL,
       mockTreatments,
       'America/New_York',
+      { vibe: 'Sprouting', factors: 'Stress, Illness' },
     );
 
     // 07:00 UTC is 02:00 EST
@@ -98,6 +101,7 @@ describe('AI Prompt Generation', () => {
       GlucoseUnit.MGDL,
       mockTreatments,
       'UTC',
+      { vibe: 'Sprouting', factors: 'Stress, Illness' },
     );
 
     expect(prompt).toContain('JSON object with this structure');
@@ -106,6 +110,25 @@ describe('AI Prompt Generation', () => {
     expect(prompt).toContain('Key takeaway or observation:');
     expect(prompt).toContain('Recommendation:');
     expect(prompt).toContain('In detail:');
+  });
+
+  it('includes the weekly context in the prompt', () => {
+    const prompt = CLUSTER_AI_INSIGHT_PROMPT(
+      mockCluster,
+      deterministicInsights,
+      GlucoseUnit.MGDL,
+      mockTreatments,
+      'UTC',
+      { vibe: '🌻 Flourishing', factors: 'Heavy exercise, Low stress' },
+    );
+
+    expect(prompt).toContain(
+      "WEEKLY CONTEXT (User's subjective environmental factors):",
+    );
+    expect(prompt).toContain('- Overall Vibe: 🌻 Flourishing');
+    expect(prompt).toContain(
+      '- Influencing Factors: Heavy exercise, Low stress',
+    );
   });
 
   describe('Executive Summary Prompt', () => {

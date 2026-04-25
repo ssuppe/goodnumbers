@@ -1,8 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { AgpChart, type AgpDataPoint } from "./charts/AgpChart";
 import { type GlucoseUnit } from "../../lib/agpUtils";
 import { InfoTooltip } from "../common/InfoTooltip";
 import type { ScoreCardData } from "@goodnumbers/schemas";
+import { ChevronDown } from "lucide-react";
+import { UnifiedInsightRow } from "./UnifiedInsightRow";
 
 export interface Insight {
   priority: string;
@@ -30,6 +32,7 @@ export function ChartAnalysisCard({
   patientLowGoal,
   patientHighGoal,
 }: ChartAnalysisCardProps) {
+  const [showInsights, setShowInsights] = useState(false);
   const tooltipContent = (
     <div className="space-y-2">
       <p className="font-bold border-b border-slate-700 pb-1 mb-2">
@@ -224,6 +227,76 @@ export function ChartAnalysisCard({
             patientHighGoal={patientHighGoal}
           />
         </div>
+
+        {/* --- Collapsible Analysis & Insights (The "Zippy") --- */}
+        {scoreCardData && (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <button
+              onClick={() => setShowInsights(!showInsights)}
+              className="flex items-center text-sm font-bold text-mesa-secondary hover:text-mesa-primary transition-colors group"
+            >
+              <ChevronDown
+                className={`w-4 h-4 mr-1.5 transition-transform duration-300 ${
+                  showInsights ? "rotate-180" : ""
+                }`}
+              />
+              {showInsights
+                ? "Hide Detailed Analysis"
+                : "View Detailed Analysis"}
+            </button>
+
+            {showInsights && (
+              <div className="mt-4 space-y-1 animate-in slide-in-from-top-2 duration-300">
+                <UnifiedInsightRow
+                  label="Avg Glucose"
+                  value={formatValue(scoreCardData.avgGlucose)}
+                  unit={formatUnit()}
+                  icon="🧭"
+                  iconColor="text-mesa-primary"
+                  insight={
+                    matchedInsights.avgGlucose?.note ||
+                    "Your average blood sugar over the last 7 days."
+                  }
+                />
+
+                <UnifiedInsightRow
+                  label="Stability"
+                  value={formatValue(scoreCardData.stability, true)}
+                  unit="%"
+                  icon="🌊"
+                  iconColor="text-mesa-secondary"
+                  insight={
+                    matchedInsights.hypo?.note ||
+                    "Measures how often your glucose levels were changing slowly."
+                  }
+                />
+
+                <UnifiedInsightRow
+                  label="Time In Range"
+                  value={formatValue(scoreCardData.timeInRange, true)}
+                  unit="%"
+                  icon="⛵"
+                  iconColor="text-emerald-600"
+                  insight={
+                    matchedInsights.tir?.note ||
+                    "Percentage of time spent in your target range (70-180 mg/dL)."
+                  }
+                />
+
+                {matchedInsights.gmi && (
+                  <UnifiedInsightRow
+                    label="GMI (Est. A1c)"
+                    value={gmiValue}
+                    unit="%"
+                    icon="📈"
+                    iconColor="text-purple-600"
+                    insight={matchedInsights.gmi.note}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
