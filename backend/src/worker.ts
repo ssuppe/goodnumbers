@@ -367,7 +367,7 @@ export async function processJournalJob(job: Job) {
         insights: safeInsights.success
           ? (safeInsights.data as unknown as Prisma.InputJsonValue)
           : [],
-        aiInsight: aiAssessment.assessment,
+        aiInsight: aiAssessment as unknown as Prisma.InputJsonValue,
         quickLogSuggestions:
           aiAssessment.quickLogSuggestions as unknown as Prisma.InputJsonValue,
         userNotes: preservedNote,

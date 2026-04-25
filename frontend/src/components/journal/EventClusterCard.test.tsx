@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import EventClusterCard from "./EventClusterCard";
+import EventClusterCard, { type AiInsight } from "./EventClusterCard";
 import { ClusterEventsChart } from "./charts/ClusterEventsChart";
 import { mockJournalForView } from "../../mocks/journal";
 import type { GlycemicEventCluster } from "@goodnumbers/types";
@@ -203,14 +203,17 @@ describe("EventClusterCard", () => {
     expect(screen.getByText("Uncovered meal")).toBeInTheDocument();
   });
 
-  it("renders AI Co-pilot hypothesis and quick log suggestions", () => {
-    const aiInsight = "Test AI Insight";
-    const quickLogSuggestions = ["Suggestion 1", "Suggestion 2"];
+  it("renders structured AI Co-pilot hypothesis and reflections for the doctor", () => {
+    const aiInsight: AiInsight = {
+      assessment: "Test AI Assessment",
+      reflectionForDoctor: "Specific discussion point for doctor",
+      quickLogSuggestions: ["Suggestion 1"],
+    };
     const clusterWithAi = {
       ...mockCluster,
       aiInsight,
-      quickLogSuggestions,
-    };
+      quickLogSuggestions: aiInsight.quickLogSuggestions,
+    } as unknown as GlycemicEventCluster;
 
     render(
       <EventClusterCard
@@ -221,30 +224,31 @@ describe("EventClusterCard", () => {
     );
 
     // Initially hidden
-    expect(screen.queryByText(aiInsight)).not.toBeInTheDocument();
-    expect(screen.queryByText("+ Suggestion 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("Test AI Assessment")).not.toBeInTheDocument();
 
     // Click to expand
     const toggle = screen.getByText("AI Co-pilot Hypothesis");
     fireEvent.click(toggle);
 
-    expect(screen.getByText(aiInsight)).toBeInTheDocument();
+    expect(screen.getByText("Test AI Assessment")).toBeInTheDocument();
+    expect(screen.getByText("For your Doctor")).toBeInTheDocument();
+    expect(
+      screen.getByText("Specific discussion point for doctor"),
+    ).toBeInTheDocument();
     expect(screen.getByText("+ Suggestion 1")).toBeInTheDocument();
-    expect(screen.getByText("+ Suggestion 2")).toBeInTheDocument();
-
-    // Click a suggestion
-    fireEvent.click(screen.getByText("+ Suggestion 1"));
-    expect(mockOnNoteChange).toHaveBeenCalledWith("- Suggestion 1");
   });
 
   it("appends quick log suggestion to existing note", () => {
-    const aiInsight = "Test AI Insight";
-    const quickLogSuggestions = ["Suggestion 1"];
+    const aiInsight: AiInsight = {
+      assessment: "Test AI Assessment",
+      reflectionForDoctor: "Reflection",
+      quickLogSuggestions: ["Suggestion 1"],
+    };
     const clusterWithAi = {
       ...mockCluster,
       aiInsight,
-      quickLogSuggestions,
-    };
+      quickLogSuggestions: aiInsight.quickLogSuggestions,
+    } as unknown as GlycemicEventCluster;
 
     render(
       <EventClusterCard

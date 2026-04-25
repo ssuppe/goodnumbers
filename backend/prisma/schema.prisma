@@ -57,7 +57,7 @@ model GlycemicEventCluster {
   clusterDataJson     Json
   userNotes           String?
   insights            Json?
-  aiInsight           String?
+  aiInsight           Json?
   quickLogSuggestions Json?
   journal             Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)
 }

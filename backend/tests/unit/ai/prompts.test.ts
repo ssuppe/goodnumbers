@@ -104,12 +104,12 @@ describe('AI Prompt Generation', () => {
       { vibe: 'Sprouting', factors: 'Stress, Illness' },
     );
 
-    expect(prompt).toContain('JSON object with this structure');
+    expect(prompt).toContain('OUTPUT STRUCTURE:');
     expect(prompt).toContain('"assessment":');
+    expect(prompt).toContain('"reflection_for_doctor":');
     expect(prompt).toContain('"quick_log_suggestions":');
-    expect(prompt).toContain('Key takeaway or observation:');
-    expect(prompt).toContain('Recommendation:');
-    expect(prompt).toContain('In detail:');
+    expect(prompt).toContain('ANALYSIS FRAMEWORK:');
+    expect(prompt).toContain('TREND-FIRST:');
   });
 
   it('includes the weekly context in the prompt', () => {
@@ -129,6 +129,60 @@ describe('AI Prompt Generation', () => {
     expect(prompt).toContain(
       '- Influencing Factors: Heavy exercise, Low stress',
     );
+  });
+
+  it('identifies small insulin doses as automated corrections/SMBs', () => {
+    const treatmentsWithSMB = [
+      {
+        date: new Date('2023-01-01T06:45:00Z').getTime(),
+        insulin: 0.1,
+      },
+      {
+        date: new Date('2023-01-01T06:55:00Z').getTime(),
+        insulin: 0.2,
+      },
+      {
+        date: new Date('2023-01-01T07:05:00Z').getTime(),
+        insulin: 8.0, // Bolus
+      },
+    ];
+
+    const prompt = CLUSTER_AI_INSIGHT_PROMPT(
+      mockCluster,
+      deterministicInsights,
+      GlucoseUnit.MGDL,
+      treatmentsWithSMB,
+      'UTC',
+      { vibe: 'Sprouting', factors: 'None' },
+    );
+
+    expect(prompt).toContain('0.1u insulin (Automated Correction/SMB)');
+    expect(prompt).toContain('0.2u insulin (Automated Correction/SMB)');
+    expect(prompt).toContain('8u insulin');
+    expect(prompt).not.toContain('8u insulin (Automated Correction/SMB)');
+  });
+
+  it('does NOT flag small insulin doses as SMB if carbs are present', () => {
+    const treatmentsWithSnack = [
+      {
+        date: new Date('2023-01-01T07:00:00Z').getTime(),
+        insulin: 0.2,
+        carbs: 5,
+      },
+    ];
+
+    const prompt = CLUSTER_AI_INSIGHT_PROMPT(
+      mockCluster,
+      deterministicInsights,
+      GlucoseUnit.MGDL,
+      treatmentsWithSnack,
+      'UTC',
+      { vibe: 'Sprouting', factors: 'None' },
+    );
+
+    expect(prompt).toContain('5g carbs, 0.2u insulin');
+    // Ensure the label is NOT present next to this specific treatment line
+    expect(prompt).not.toContain('0.2u insulin (Automated Correction/SMB)');
   });
 
   describe('Executive Summary Prompt', () => {

@@ -33,6 +33,7 @@ export interface TreatmentContext {
 
 export interface ClusterAIResult {
   assessment: string;
+  reflectionForDoctor: string;
   quickLogSuggestions: string[];
 }
 
@@ -63,6 +64,7 @@ export async function generateClusterAIInsight(
 ): Promise<ClusterAIResult> {
   const defaultResult: ClusterAIResult = {
     assessment: 'AI assessment unavailable.',
+    reflectionForDoctor: '',
     quickLogSuggestions: [],
   };
 
@@ -97,15 +99,18 @@ export async function generateClusterAIInsight(
     const text = result.response.text();
     const parsed = parseAIJson<{
       assessment: string;
+      reflection_for_doctor: string;
       quick_log_suggestions: string[];
     }>(text, {
       assessment: 'Failed to parse assessment.',
+      reflection_for_doctor: '',
       quick_log_suggestions: [],
     });
 
     console.log(`[Gemini] Pro model success for ${cluster.id}`);
     return {
       assessment: parsed.assessment,
+      reflectionForDoctor: parsed.reflection_for_doctor,
       quickLogSuggestions: parsed.quick_log_suggestions,
     };
   } catch (proError: unknown) {
@@ -123,15 +128,18 @@ export async function generateClusterAIInsight(
       const text = result.response.text();
       const parsed = parseAIJson<{
         assessment: string;
+        reflection_for_doctor: string;
         quick_log_suggestions: string[];
       }>(text, {
         assessment: 'Failed to parse assessment.',
+        reflection_for_doctor: '',
         quick_log_suggestions: [],
       });
 
       console.log(`[Gemini] Flash fallback success for ${cluster.id}`);
       return {
         assessment: `${parsed.assessment}\n\n(Note: Generated using fallback model)`,
+        reflectionForDoctor: parsed.reflection_for_doctor,
         quickLogSuggestions: parsed.quick_log_suggestions,
       };
     } catch (flashError: unknown) {
