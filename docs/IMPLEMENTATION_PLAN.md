@@ -71,13 +71,15 @@ This document tracks the phased implementation of the Goodnumbers project. It se
 - [ ] **Task 3: Production Logging:** Replace `console.log` with a structured logger (Winston/Pino).
 - [ ] **Task 4: E2E Testing:** Implement Playwright tests for critical user journeys.
 
-### **Phase 9: Infrastructure & Deployment** - IN PROGRESS
+### **Phase 9: Infrastructure & Deployment** - COMPLETE
 
 - [x] **Task 1: Dockerization**
   - Create optimized Dockerfiles for `backend` (with PM2) and `frontend` (with Nginx).
 - [x] **Task 2: Orchestration**
   - Implement `docker-compose.yml` and `Caddyfile` for automated reverse proxy and SSL.
-- [ ] **Task 3: VM Hardening**
+- [x] **Task 3: VM Hardening**
   - Configure swap space on GCP e2-micro to prevent OOM errors.
-- [ ] **Task 4: Automation**
+- [x] **Task 4: Automation**
   - Finalize `Justfile` commands for seamless production deployment (`just deploy`).
+- [x] **Task 5: Storage Management**
+  - Implement automated Docker image pruning and log rotation to prevent "out of space" errors.

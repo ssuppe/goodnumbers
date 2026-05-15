@@ -70,11 +70,11 @@ build-local: _host-setup _build-backend _build-frontend
 
 _package-backend:
     @echo "Packaging Backend..."
-    docker save goodnumbers-backend:latest | gzip > {{ARTIFACT_DIR}}/backend.tar.gz
+    docker save goodnumbers-backend:latest | gzip --rsyncable > {{ARTIFACT_DIR}}/backend.tar.gz
 
 _package-frontend:
     @echo "Packaging Frontend..."
-    docker save goodnumbers-frontend:latest | gzip > {{ARTIFACT_DIR}}/frontend.tar.gz
+    docker save goodnumbers-frontend:latest | gzip --rsyncable > {{ARTIFACT_DIR}}/frontend.tar.gz
 
 # Main package recipe using parallel dependencies
 [parallel]
@@ -105,11 +105,14 @@ deploy: build-local package-local push-all
     ssh -t ssuppe@{{SERVER_IP}} "cd app && \
         cp .env.production .env && \
         echo '--- Loading Backend Image ---' && \
-        (pv deploy-artifacts/backend.tar.gz 2>/dev/null || cat deploy-artifacts/backend.tar.gz) | docker load && \
+        ((pv deploy-artifacts/backend.tar.gz 2>/dev/null || cat deploy-artifacts/backend.tar.gz) | docker load) || (rm -rf deploy-artifacts/*.tar.gz && exit 1) && \
         echo '--- Loading Frontend Image ---' && \
-        (pv deploy-artifacts/frontend.tar.gz 2>/dev/null || cat deploy-artifacts/frontend.tar.gz) | docker load && \
+        ((pv deploy-artifacts/frontend.tar.gz 2>/dev/null || cat deploy-artifacts/frontend.tar.gz) | docker load) || (rm -rf deploy-artifacts/*.tar.gz && exit 1) && \
+        echo '--- Restarting Containers ---' && \
         docker compose up -d && \
-        rm -rf deploy-artifacts/*.tar.gz"
+        echo '--- Cleaning up artifacts and old images ---' && \
+        rm -rf deploy-artifacts/*.tar.gz && \
+        docker image prune -f"
 
 # View production logs remotely
 logs-prod:

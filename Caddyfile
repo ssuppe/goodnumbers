@@ -6,6 +6,9 @@ goodnumbers.net {
     reverse_proxy /api/* backend:4000
     reverse_proxy /auth/* backend:4000
 
-    # 2. Frontend: Proxy all other requests to the frontend container (Nginx)
+    # 2. Chess Tutor: Proxy /chess to the chess container
+    reverse_proxy /chess* chess:3050
+
+    # 3. Frontend: Proxy all other requests to the frontend container (Nginx)
     reverse_proxy * frontend:80
 }

@@ -6,12 +6,15 @@
 **Reference**: Based on the successful `mazelmessages` architecture.
 
 ## 1. Overview
+
 This plan outlines the migration from a manual "Tarball" deployment to a modern, automated "Git + Docker Compose" workflow. We will use **Caddy** as a reverse proxy to handle SSL and routing, and **PM2** to manage our backend processes (Server + Worker) within a single container to save resources on our GCP Free Tier VM.
 
 ---
 
 ## 2. Prerequisites (Checklist)
+
 Before starting, ensure the junior engineer has:
+
 - [ ] SSH access to the GCP VM (`ssh your-user@goodnumbers.net`).
 - [ ] A domain name (`goodnumbers.net`) pointing to the VM's static IP.
 - [ ] Docker and Docker Compose installed on the VM.
@@ -20,16 +23,20 @@ Before starting, ensure the junior engineer has:
 ---
 
 ## 3. Phase 1: Project Hygiene & Branching
+
 **Goal**: Establish a clean workspace and track progress.
 
 ### Step 1.1: Create the GitHub Issue
+
 Use the GitHub CLI to track this work:
+
 ```bash
 gh issue create --title "infra: Implement Modern Mazel Deployment" \
   --body "Restore GCP deployment using a modern Docker Compose + Caddy architecture. Closes the deployment restoration task."
 ```
 
 ### Step 1.2: Branch Setup
+
 ```bash
 git checkout main
 git pull origin main
@@ -39,10 +46,13 @@ git checkout -b feat/modern-mazel-deployment
 ---
 
 ## 4. Phase 2: Dockerization (The Monorepo Way)
+
 **Goal**: Create optimized Docker images that handle our shared packages.
 
 ### Step 2.1: Frontend Dockerfile
+
 Create `frontend/Dockerfile`. We use a multi-stage build to keep the final image small.
+
 - **Stage 1**: Build the React app.
 - **Stage 2**: Serve with Nginx.
 
@@ -72,6 +82,7 @@ EXPOSE 80
 ```
 
 ### Step 2.2: Backend Dockerfile
+
 Create `backend/Dockerfile`. This runs both the API and the Worker via PM2.
 
 ```dockerfile
@@ -95,24 +106,29 @@ CMD ["pm2-runtime", "start", "ecosystem.config.cjs", "--env", "production"]
 ---
 
 ## 5. Phase 3: Orchestration (Docker Compose & Caddy)
+
 **Goal**: Wire the services together.
 
 ### Step 3.1: The Caddyfile
+
 Create `Caddyfile` in the project root. This is our "Traffic Controller".
+
 ```caddy
 # Caddyfile
 goodnumbers.net {
     # Route API and Auth requests to the backend
     reverse_proxy /api/* backend:4000
     reverse_proxy /auth/* backend:4000
-    
+
     # Route everything else to the frontend
     reverse_proxy * frontend:80
 }
 ```
 
 ### Step 3.2: Production Docker Compose
+
 Create `docker-compose.yml` in the project root.
+
 ```yaml
 services:
   backend:
@@ -158,9 +174,11 @@ volumes:
 ---
 
 ## 6. Phase 4: VM Hardening (The "e2-micro" Fix)
+
 **Goal**: Prevent "Out of Memory" crashes.
 
 **Junior Task**: SSH into the VM and run these commands once.
+
 ```bash
 # Create a 2GB swap file
 sudo fallocate -l 2G /swapfile
@@ -174,9 +192,11 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ---
 
 ## 7. Phase 5: Automation (The Justfile)
+
 **Goal**: Make deployment easy and repeatable.
 
 Add these to the root `Justfile`:
+
 ```justfile
 SERVER_IP := "your-vm-ip"
 
@@ -195,6 +215,7 @@ deploy:
 ---
 
 ## 8. Verification & TDD
+
 **Goal**: Empirically prove the system works.
 
 1.  **Connectivity Test**: `curl -I https://goodnumbers.net/api/health` should return `200 OK`.
@@ -208,6 +229,60 @@ deploy:
 ---
 
 ## 9. Troubleshooting
+
 - **SIGKILL during build**: Increase swap file size or build locally and push the image (if swap fails).
 - **502 Bad Gateway**: Check `docker compose logs caddy`. Usually means the backend container is still starting up or crashed.
 - **OAuth Fail**: Check if the Redirect URI in Google Cloud Console matches `https://goodnumbers.net/api/auth/callback/google`.
+
+## 10. Storage Management (Free Tier Protection)
+
+**Goal**: Prevent "No space left on device" errors on limited 30GB disks.
+
+### Step 10.1: Automated Image Pruning
+
+Update the `deploy` recipe in your `Justfile` to clean up old images _after_ a successful deployment. This ensures that only the currently running images occupy space.
+
+```justfile
+deploy:
+    ssh -t ssuppe@{{SERVER_IP}} "cd app && \
+        echo '--- Loading Images ---' && \
+        (docker load < artifacts.tar.gz) && \
+        echo '--- Restarting Containers ---' && \
+        docker compose up -d && \
+        echo '--- Cleaning up ---' && \
+        docker image prune -f"
+```
+
+### Step 10.2: Log Rotation
+
+Ensure your `docker-compose.yml` has log rotation configured for all services. Without this, Docker logs will grow indefinitely until the disk is full.
+
+```yaml
+services:
+  backend:
+    ...
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+```
+
+### Step 10.3: Emergency Cleanup
+
+If the disk ever hits 100%, run this command to immediately reclaim space:
+
+```bash
+ssh ssuppe@{{SERVER_IP}} "docker system prune -af"
+```
+
+## 11. Transfer Optimization
+
+**Goal**: Speed up deployments and reduce bandwidth usage.
+
+### Step 11.1: Rsync-Friendly Compression
+
+The `Justfile` now uses `gzip --rsyncable`.
+
+- **Why**: Standard gzip changes the entire compressed output even for small changes in the input.
+- **Benefit**: `--rsyncable` ensures that only the changed parts of the Docker image layers are sent over the network, making subsequent `rsync` operations much faster.
