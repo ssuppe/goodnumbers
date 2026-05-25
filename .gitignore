@@ -56,3 +56,6 @@ repomix*
 .venv/
 .agent/dynamic_context/
 specs/drafts/
+
+# Compatibility symlink for CLI autocomplete
+.gemini
