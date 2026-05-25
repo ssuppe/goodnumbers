@@ -3,7 +3,6 @@ import axios from 'axios';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 vi.mock('axios');
-const mockedAxios = axios as any;
 
 describe('NightscoutClient', () => {
   let client: NightscoutClient;
@@ -19,20 +18,19 @@ describe('NightscoutClient', () => {
     it('should fetch treatments within exact date range', async () => {
       const startDate = new Date('2025-01-01T00:00:00Z');
       const endDate = new Date('2025-01-07T00:00:00Z');
-      
-      mockedAxios.get.mockResolvedValue({ data: [] });
 
-      // @ts-ignore - We are testing the new signature before implementation
+      vi.mocked(axios.get).mockResolvedValue({ data: [] });
+
       await client.fetchTreatments(startDate, endDate);
 
-      expect(mockedAxios.get).toHaveBeenCalledWith(
+      expect(axios.get).toHaveBeenCalledWith(
         `${baseUrl}/api/v1/treatments.json`,
         expect.objectContaining({
           params: expect.objectContaining({
             'find[created_at][$gte]': startDate.toISOString(),
             'find[created_at][$lte]': endDate.toISOString(),
           }),
-        })
+        }),
       );
     });
   });

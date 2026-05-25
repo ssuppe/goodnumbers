@@ -14,10 +14,10 @@ vi.mock("echarts-for-react", () => ({
 }));
 
 interface MockOption {
-  series: any[];
-  xAxis: any[];
-  yAxis: any[];
-  grid: any[];
+  series: unknown[];
+  xAxis: unknown[];
+  yAxis: unknown[];
+  grid: unknown[];
 }
 
 describe("ClusterEventsChart", () => {
@@ -86,7 +86,7 @@ describe("ClusterEventsChart", () => {
     // 15:00 is the latest point.
     // Padding is 30 mins.
     // So max should be 15:30.
-    
+
     // Note: We need to account for normalization to Year 2000.
     // 13:00 on Jan 1st 2000.
     const expectedMin = new Date("2000-01-01T13:00:00.000Z").getTime();

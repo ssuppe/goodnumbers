@@ -23,7 +23,7 @@ fi
 
 # --- Check for docs-only changes and other allowed skips ---
 # The logic here is: ONLY_SKIP_ALLOWED=true until we find a staged file
-# that is NOT in 'docs/', NOT a '.code-workspace' file, and NOT in '.gemini/'.
+# that is NOT in 'docs/', NOT a '.code-workspace' file, and NOT in '.antigravity/'.
 ONLY_SKIP_ALLOWED=true
 STAGED_FILES=$(git diff --cached --name-only)
 
@@ -46,8 +46,8 @@ for FILE in $STAGED_FILES; do
       # Skip allowed
       ;;
 
-    # 3. Matches files in the '.gemini/' subfolder
-    .gemini/*)
+    # 3. Matches files in the '.antigravity/' subfolder
+    .antigravity/*)
       # Skip allowed
       ;;
 
@@ -60,7 +60,7 @@ for FILE in $STAGED_FILES; do
 done
 
 if [ "$ONLY_SKIP_ALLOWED" = true ]; then
-  echo "› Only changes in 'docs/', '.code-workspace' files, or '.gemini/' folder detected. Skipping lint, build, and test checks."
+  echo "› Only changes in 'docs/', '.code-workspace' files, or '.antigravity/' folder detected. Skipping lint, build, and test checks."
   exit 0
 fi
 
