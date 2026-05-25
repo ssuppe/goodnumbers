@@ -137,7 +137,6 @@ logs-prod:
 db-reset-prod:
     ssh {{SERVER_USER}}@{{SERVER_IP}} "docker exec app-backend-1 npx prisma db push --force-reset"
 
-
 # --- TESTING WORKFLOWS ---
 # Runs all tests for all workspaces (backend and frontend).
 test:
@@ -145,8 +144,24 @@ test:
     @just test-backend
     @just test-frontend
 
+# Runs the full production-style stack locally in Docker
+dev-docker: build-local
+    @echo "🚀 Starting GoodNumbers in Docker (Production-style)..."
+    @GCP_KEY_PATH={{GCP_KEY_LOCAL}} docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+    @echo "✨ App is running at http://localhost:8100"
+    @echo "📝 Note: Ensure http://localhost:8100/api/auth/callback/google is in your Google Cloud Console."
+
+# Stops the local Docker stack
+dev-docker-down:
+    docker compose -f docker-compose.yml -f docker-compose.local.yml down
+
+# Views logs for the Docker stack
+dev-docker-logs:
+    docker compose -f docker-compose.yml -f docker-compose.local.yml logs -f
+
 # Runs the backend test suite.
 test-backend:
+...
     @echo "Running backend tests..."
     @npm test -w backend
 

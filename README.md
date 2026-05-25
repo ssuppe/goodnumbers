@@ -55,8 +55,14 @@ Setting up GoodNumbers for local development is easy with our `just` command run
     just dev          # Starts Backend, Worker, and Frontend
     ```
 
+    _Alternatively, run the full production-style stack in Docker:_
+
+    ```bash
+    just dev-docker   # Access at http://localhost:8100
+    ```
+
 4.  **Access**:
-    Open [http://localhost:5173](http://localhost:5173) in your browser.
+    Open [http://localhost:5173](http://localhost:5173) (local dev) or [http://localhost:8100](http://localhost:8100) (Docker preview) in your browser.
 
 ---
 

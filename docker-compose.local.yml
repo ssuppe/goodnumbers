@@ -1,0 +1,16 @@
+# docker-compose.local.yml
+# Use this to run the production cluster on your local machine
+services:
+  backend:
+    env_file: .env
+    volumes:
+      # Map your local GCP key to the container
+      - ${GCP_KEY_PATH}:/app/gcp-key.json:ro
+
+  # frontend:
+  #   env_file: .env
+
+  caddy:
+    ports:
+      - "8100:80"   # Access locally via http://localhost:8100
+      - "8443:443"

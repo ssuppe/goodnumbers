@@ -17,17 +17,17 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  chess:
-    image: chess-tutor:latest
-    restart: unless-stopped
-    expose:
-      - "3050"
-    env_file: .env.production
-    environment:
-      - PORT=3050
-    volumes:
-      - ./chess-wikipedia-cache:/app/public/wikipedia
-      - ./chess-fixtures-tactics:/app/fixtures/tactics
+  # chess:
+  #   image: chess-tutor:latest
+  #   restart: unless-stopped
+  #   expose:
+  #     - "3050"
+  #   env_file: .env.production
+  #   environment:
+  #     - PORT=3050
+  #   volumes:
+  #     - ./chess-wikipedia-cache:/app/public/wikipedia
+  #     - ./chess-fixtures-tactics:/app/fixtures/tactics
 
   frontend:
     image: goodnumbers-frontend:latest
@@ -50,7 +50,7 @@ services:
     depends_on:
       - backend
       - frontend
-      - chess
+      # - chess
     restart: unless-stopped
     logging:
       driver: "json-file"
