@@ -26,7 +26,37 @@ https://github.com/user-attachments/assets/4ec7fa7b-3743-47a6-aac8-22760a915135
 - **Frontend**: React (Vite), TypeScript, Tailwind CSS, Refine (v5)
 - **Backend**: Node.js, Express, Prisma, Auth.js (NextAuth for Express)
 - **Data**: SQLite (Development) / PostgreSQL (Production), Redis (for background jobs)
-- **AI**: Gemini 3.1 Pro (via Google AI Studio) for deep clinical reasoning
+- **AI**: Gemini 1.5 Pro (via Google AI Studio) for deep clinical reasoning
+
+---
+
+## 🚀 Quick Start
+
+Setting up GoodNumbers for local development is easy with our `just` command runner.
+
+1.  **Clone and Setup**:
+
+    ```bash
+    git clone https://github.com/ssuppe/goodnumbers.git
+    cd goodnumbers
+    just setup
+    ```
+
+2.  **Configure Environment**:
+    Edit the newly created `.env` file in the root and add your credentials:
+    - `AUTH_GOOGLE_ID` & `AUTH_GOOGLE_SECRET` (from Google Cloud Console)
+    - `GEMINI_API_KEY` (from Google AI Studio)
+    - `NIGHTSCOUT_URL` & `NIGHTSCOUT_TOKEN`
+
+3.  **Launch**:
+
+    ```bash
+    just services-up  # Starts Redis
+    just dev          # Starts Backend, Worker, and Frontend
+    ```
+
+4.  **Access**:
+    Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
@@ -46,76 +76,13 @@ The core of the report is built on robust statistical methods and deterministic 
   - **Pre-bolusing**: Insulin given significantly before a meal.
 - **Glycemic Hotspot Detection**: Automatically identifies recurring "clusters" of highs or lows at specific times of day.
 
-### 📝 The Weekly Report
+### 🧪 Testing
 
-Each journal entry generates a comprehensive summary:
+We take reliability seriously. Run the full suite with:
 
-- **Subjective Reflection**: Capture your "Weekly Vibe," influencing factors (like stress or illness), and goals for the coming week.
-- **Data Analysis**: Compact, collapsible breakdown of deterministic insights for every pattern found.
-- **Interactive Charts**: Patterns are visualized with both blood sugar and treatment (carbs/insulin) data on a single timeline.
-
-### 🎙️ AI-Driven Personalization (Gemini 3.1 Pro)
-
-Leveraging the state-of-the-art **Gemini 3.1 Pro** model for deep analysis:
-
-- **Clinical Assessment**: A structured, qualitative review of every recurring pattern. The AI uses **Hybrid Prompting**—it receives both the hard-coded heuristics ("Ground Truth") and a 4-hour raw data trace for every event in a pattern.
-- **Structured Insights**: Every AI assessment is parsed into a professional, patient-friendly report:
-  - **Key Takeaway**: A single-sentence summary of the core issue.
-  - **Recommendation**: 1-3 actionable items to discuss with a doctor.
-  - **In Detail**: A precise, colloquial explanation of the physiological cause-and-effect.
-- **Patient-First Language**: Insights use common T1D vernacular (e.g., "blood sugar," "insulin kicking in") instead of dense clinical terminology.
-
----
-
-## 🔌 Required Integrations
-
-To run your own instance of GoodNumbers, you will need account access to the following services:
-
-1.  **Nightscout**: GoodNumbers pulls your data from a Nightscout instance. You will need your Nightscout URL and an API Access Token.
-2.  **Google Cloud Console**: Required for **Google OAuth**. You must create a project and OAuth 2.0 credentials.
-3.  **Google AI Studio (Gemini)**: Required for the **AI features**. A Gemini API Key is needed (Free tier available).
-4.  **Database & Cache**: **SQLite** is used by default for local development. **Redis** is required for the background worker (run via Docker).
-
----
-
-## 🏁 Getting Started
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) (v18+)
-- [Docker](https://www.docker.com/) (for Redis)
-- [Just](https://github.com/casey/just) (Command runner - optional but recommended)
-
-### Installation
-
-1.  **Clone and Install**:
-
-    ```bash
-    git clone https://github.com/your-username/goodnumbers.git
-    cd goodnumbers
-    npm install
-    ```
-
-2.  **Environment Setup**:
-
-    ```bash
-    cp .env.example .env
-    cp backend/.env.example backend/.env
-    ```
-
-3.  **Local Network Access (Optional)**:
-    To access the app from other devices on your network, use a `nip.io` domain (e.g., `http://192.168.1.x.nip.io:5173`). This allows Google OAuth to function correctly on private IPs.
-
-### Start Development
-
-The easiest way to start is using the included **`just`** recipes:
-
-1.  **Start Services**: `just services-up` (Starts Redis)
-2.  **Reset DB**: `just db-reset-dev` (Initializes SQLite)
-3.  **Run App**:
-    - Backend: `just dev-backend`
-    - Worker: `just dev-worker` (Required for AI insights)
-    - Frontend: `just dev-frontend`
+```bash
+just test
+```
 
 ---
 
@@ -149,17 +116,19 @@ This project is a demonstration of how AI can assist in building complex health-
 
 ## 📅 TODO / Next Steps
 
-GoodNumbers is actively evolving. Our current focus is on **Simplification**:
-
-- **Client-Side Migration**: We are working to move the core logic to be entirely client-side. This will remove the need for a complex backend and database setup for individual users.
-- **Vastly Simpler Deployment**: Our goal is to make GoodNumbers a "Static Site" that can be run directly in the browser or hosted easily on services like GitHub Pages, making it much simpler for the community to run their own instances.
+- [ ] **Data Export**: Export your reflections as a PDF or Markdown file for sharing with healthcare teams.
+- [ ] **Multi-user Support**: Currently optimized for single-user self-hosting.
+- [ ] **More Heuristics**: Expand analysis to include exercise and overnight patterns.
 
 ---
 
-## ⚖️ License & Disclaimer
+## ⚖️ License
 
-- **License**: Distributed under the [AGPL-3.0 License](LICENSE).
-- **Medical Disclaimer**: This software is not intended for medical use. **Read the full [DISCLAIMER.md](DISCLAIMER.md) before use.**
+Distributed under the AGPL-3.0 License. See `LICENSE` for more information.
+
+---
+
+**Medical Disclaimer**: This software is not intended for medical use. **Read the full [DISCLAIMER.md](DISCLAIMER.md) before use.**
 
 ---
 

@@ -19,9 +19,9 @@ const proModel = genAI.getGenerativeModel({
   model: 'gemini-3.1-pro-preview',
   generationConfig: { responseMimeType: 'application/json' },
 });
-// Use Gemini 3.1 Flash for fast fallback with high intelligence
+// Use Gemini 3 Flash for fast fallback with high intelligence
 const flashModel = genAI.getGenerativeModel({
-  model: 'gemini-3.1-flash-preview',
+  model: 'gemini-3-flash-preview',
   generationConfig: { responseMimeType: 'application/json' },
 });
 

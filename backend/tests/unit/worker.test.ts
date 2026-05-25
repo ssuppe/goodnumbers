@@ -51,6 +51,18 @@ vi.mock('@src/lib/agp/calculateAgp.js', () => ({
   calculateAgp: vi.fn(() => [{ time: '00:00', median: 100 }]),
 }));
 
+// 5. Mock Gemini AI Service
+vi.mock('@src/lib/ai/gemini.js', () => ({
+  generateExecutiveSummary: vi
+    .fn()
+    .mockResolvedValue([{ title: 'Win', note: 'Good job!' }]),
+  generateClusterAIInsight: vi.fn().mockResolvedValue({
+    assessment: 'Lookin good',
+    reflectionForDoctor: 'Patient is stable',
+    quickLogSuggestions: ['Test Suggestion'],
+  }),
+}));
+
 // Dynamically import to ensure mocks are applied
 let processJournalJob: (job: MockJob) => Promise<{ status: string }>;
 

@@ -436,15 +436,24 @@ export async function processJournalJob(job: Job) {
 }
 
 // --- Worker Setup ---
-// This guard prevents the worker from starting during tests.
-if (process.env.NODE_ENV !== 'test') {
+// This guard prevents the worker from starting during tests unless explicitly requested.
+if (
+  process.env.NODE_ENV !== 'test' ||
+  process.env.RUN_WORKER_IN_TESTS === 'true'
+) {
   console.log('[Worker] Starting up...');
-  const connection = new Redis({
-    host: process.env.REDIS_HOST,
-    port: parseInt(process.env.REDIS_PORT!, 10),
-    password: process.env.REDIS_PASSWORD,
+
+  const redisOptions = {
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    password: process.env.REDIS_PASSWORD || undefined,
     maxRetriesPerRequest: null,
-  });
+  };
+
+  console.log(
+    `[Worker] Connecting to Redis at ${redisOptions.host}:${redisOptions.port}`,
+  );
+  const connection = new Redis(redisOptions);
 
   const worker = new Worker(JOURNAL_QUEUE_NAME, processJournalJob, {
     connection,

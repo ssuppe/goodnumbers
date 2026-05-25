@@ -2,6 +2,32 @@
 # This is the master command runner for the Goodnumbers monorepo.
 # All commands should be run from the project root.
 
+# --- DEPLOYMENT CONFIG (Override in .env or shell) ---
+SERVER_IP     := env_var_or_default("DEPLOY_SERVER_IP", "your-server-ip")
+SERVER_USER   := env_var_or_default("DEPLOY_SERVER_USER", "your-username")
+GCP_KEY_LOCAL := env_var_or_default("GCP_KEY_PATH", "~/.gcp/goodnumbers-key.json")
+ARTIFACT_DIR  := "./deploy-artifacts"
+
+# --- SETUP & INITIALIZATION ---
+# Initial project setup for new contributors
+setup:
+    @echo "🚀 Starting GoodNumbers setup..."
+    @if [ ! -f ".env" ]; then cp .env.example .env && echo "✅ Created .env from template"; fi
+    @echo "📦 Installing dependencies..."
+    @npm install --legacy-peer-deps
+    @echo "🏗️ Generating Prisma client & building packages..."
+    @just generate
+    @echo "✨ Setup complete! Run 'just services-up' then 'just dev' to start."
+
+# Unifies schema generation and DB push
+generate:
+    @echo "Generating Prisma client..."
+    @npx prisma generate --schema=./backend/prisma/schema.prisma
+    @echo "Pushing schema to database..."
+    @npx prisma db push --schema=./backend/prisma/schema.prisma --accept-data-loss
+    @echo "Building shared packages..."
+    @npx tsc -b --clean && npx tsc -b
+
 # --- SERVICE MANAGEMENT (for Development & Testing) ---
 # Starts the Redis container required by the backend.
 services-up:
@@ -45,16 +71,7 @@ dev:
     just dev-frontend & \
     wait
 
-# --- PRODUCTION DEPLOYMENT (BUILD ON N100) ---
-
-SERVER_IP := "34.46.45.86"
-ARTIFACT_DIR := "./deploy-artifacts"
-
-# Sequential host setup required before Docker builds
-_host-setup:
-    @echo "Generating Prisma client and building shared packages on host N100..."
-    npx prisma@6 generate --schema=./backend/prisma/schema.prisma
-    npx tsc -b --clean && npx tsc -b
+# --- PRODUCTION DEPLOYMENT ---
 
 _build-backend:
     @echo "Building Backend Docker image..."
@@ -66,7 +83,7 @@ _build-frontend:
 
 # Main build recipe using parallel dependencies
 [parallel]
-build-local: _host-setup _build-backend _build-frontend
+build-local: generate _build-backend _build-frontend
 
 _package-backend:
     @echo "Packaging Backend..."
@@ -87,22 +104,18 @@ push-all:
     @echo "Pushing secrets and image artifacts to {{SERVER_IP}}..."
     # Ensure .env.production exists
     @if [ ! -f ".env.production" ]; then echo "Error: .env.production not found."; exit 1; fi
-    ssh ssuppe@{{SERVER_IP}} "mkdir -p /home/ssuppe/app/deploy-artifacts /home/ssuppe/secrets"
-    scp .env.production ssuppe@{{SERVER_IP}}:/home/ssuppe/app/.env.production
-    @if [ ! -f "/home/clark/.gcp/goodnumbers-key.json" ]; then \
-        if [ -f "/home/clark/.gcp/gcp-key.json" ]; then \
-            scp /home/clark/.gcp/gcp-key.json ssuppe@{{SERVER_IP}}:/home/ssuppe/secrets/gcp-key.json; \
-        fi; \
-    else \
-        scp /home/clark/.gcp/goodnumbers-key.json ssuppe@{{SERVER_IP}}:/home/ssuppe/secrets/gcp-key.json; \
+    ssh {{SERVER_USER}}@{{SERVER_IP}} "mkdir -p /home/{{SERVER_USER}}/app/deploy-artifacts /home/{{SERVER_USER}}/secrets"
+    scp .env.production {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/app/.env.production
+    @if [ -f "{{GCP_KEY_LOCAL}}" ]; then \
+        scp {{GCP_KEY_LOCAL}} {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/secrets/gcp-key.json; \
     fi
-    rsync -avzhP {{ARTIFACT_DIR}}/ ssuppe@{{SERVER_IP}}:/home/ssuppe/app/deploy-artifacts/
-    scp docker-compose.yml Caddyfile ssuppe@{{SERVER_IP}}:/home/ssuppe/app/
+    rsync -avzhP {{ARTIFACT_DIR}}/ {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/app/deploy-artifacts/
+    scp docker-compose.yml Caddyfile {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/app/
 
 # The main deployment command (One-touch deploy)
 deploy: build-local package-local push-all
     @echo "Finalizing deployment on the VM..."
-    ssh -t ssuppe@{{SERVER_IP}} "cd app && \
+    ssh -t {{SERVER_USER}}@{{SERVER_IP}} "cd app && \
         cp .env.production .env && \
         echo '--- Loading Backend Image ---' && \
         ((pv deploy-artifacts/backend.tar.gz 2>/dev/null || cat deploy-artifacts/backend.tar.gz) | docker load) || (rm -rf deploy-artifacts/*.tar.gz && exit 1) && \
@@ -110,17 +123,19 @@ deploy: build-local package-local push-all
         ((pv deploy-artifacts/frontend.tar.gz 2>/dev/null || cat deploy-artifacts/frontend.tar.gz) | docker load) || (rm -rf deploy-artifacts/*.tar.gz && exit 1) && \
         echo '--- Restarting Containers ---' && \
         docker compose up -d && \
+        echo '--- Syncing Database Schema ---' && \
+        docker exec app-backend-1 npx prisma db push --schema=/app/backend/prisma/schema.prisma --accept-data-loss && \
         echo '--- Cleaning up artifacts and old images ---' && \
         rm -rf deploy-artifacts/*.tar.gz && \
         docker image prune -f"
 
 # View production logs remotely
 logs-prod:
-    ssh ssuppe@{{SERVER_IP}} "cd app && docker compose logs -f"
+    ssh {{SERVER_USER}}@{{SERVER_IP}} "cd app && docker compose logs -f"
 
 # Hard reset the production database (WIPES ALL DATA)
 db-reset-prod:
-    ssh ssuppe@{{SERVER_IP}} "docker exec app-backend-1 npx prisma db push --force-reset"
+    ssh {{SERVER_USER}}@{{SERVER_IP}} "docker exec app-backend-1 npx prisma db push --force-reset"
 
 
 # --- TESTING WORKFLOWS ---
@@ -154,24 +169,37 @@ tmux:
     
     # Window 0: Proxy
     tmux rename-window -t GN:0 'Proxy'
-    tmux send-keys -t GN:0 'cd ~/dev/goodnumbers-workspace && npx @srbhptl39/mcp-superassistant-proxy@latest --config ./mcp.json --host 0.0.0.0' C-m
+    tmux send-keys -t GN:0 "cd {{invocation_directory()}} && npx @srbhptl39/mcp-superassistant-proxy@latest --config ./mcp.json --host 0.0.0.0" C-m
 
     # Window 1: Workspace
     tmux has-session -t GN:1 2>/dev/null || tmux new-window -t GN:1 -n 'Workspace'
     
-    # --- THE FIX IS HERE ---
     sleep 0.2 
-    # -----------------------
 
     PANE_COUNT=$(tmux list-panes -t GN:1 | wc -l)
     if [ "$PANE_COUNT" -eq 1 ]; then
-        # Force the splits to happen on Window 1 specifically
         tmux split-window -h -t GN:1 -l 20
         sleep 0.1
-        #tmux split-window -v -t GN:1.1
         
         tmux send-keys -t GN:1.1 'export FORCE_COLOR=3; just dev' 
-        #tmux send-keys -t GN:1.2 'npx prisma studio'
+    fi
+
+    tmux select-window -t GN:1
+    tmux select-pane -t GN:1.0
+    
+    [ -z "$TMUX" ] && tmux attach-session -t GN || tmux switch-client -t GN
+
+    # Window 1: Workspace
+    tmux has-session -t GN:1 2>/dev/null || tmux new-window -t GN:1 -n 'Workspace'
+    
+    sleep 0.2 
+
+    PANE_COUNT=$(tmux list-panes -t GN:1 | wc -l)
+    if [ "$PANE_COUNT" -eq 1 ]; then
+        tmux split-window -h -t GN:1 -l 20
+        sleep 0.1
+        
+        tmux send-keys -t GN:1.1 'export FORCE_COLOR=3; just dev' 
     fi
 
     tmux select-window -t GN:1

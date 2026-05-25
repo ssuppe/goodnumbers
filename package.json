@@ -1,7 +1,13 @@
 {
   "name": "goodnumbers-monorepo",
   "version": "1.0.0",
-  "private": true,
+  "description": "A smart weekly journal for type 1 diabetics.",
+  "private": false,
+  "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ssuppe/goodnumbers.git"
+  },
   "workspaces": [
     "backend",
     "frontend",

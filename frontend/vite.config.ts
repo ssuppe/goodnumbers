@@ -30,7 +30,7 @@ export default defineConfig({
     allowedHosts: ["192.168.1.3.nip.io"],
     proxy: {
       "/api": {
-        target: "http://localhost:4001",
+        target: "http://localhost:4000",
         changeOrigin: false,
       },
     },

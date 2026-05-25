@@ -91,6 +91,7 @@ describe('/api/user', () => {
       });
       expect(updatedUser!.nightscoutUrl).toBe(payload.nightscoutUrl);
       expect(updatedUser!.preferredUnits).toBe('MMOL');
+      expect(updatedUser!.nightscoutTokenLast3).toBe('12345'.slice(-3));
       expect(decrypt(updatedUser!.nightscoutToken!)).toBe(
         payload.nightscoutToken,
       );

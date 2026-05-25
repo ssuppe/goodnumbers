@@ -2,29 +2,44 @@ import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 
-// Set NODE_ENV to 'development' if it's not already set by the execution environment.
-// This is a safe default for local development scripts like `nodemon`.
-process.env.NODE_ENV = process.env.NODE_ENV || 'development';
-const NODE_ENV = process.env.NODE_ENV;
+/**
+ * Standard Environment Loader
+ * Precedence:
+ * 1. Existing process.env (Docker/System) - HIGHEST
+ * 2. .env file (Local secrets)
+ * 3. .env.[NODE_ENV] (Environment defaults) - LOWEST
+ */
 
-// Define potential paths for the environment-specific .env file
-// We check the current directory (standard) and the parent directory (monorepo root)
-const localEnvPath = path.resolve(process.cwd(), `.env.${NODE_ENV}`);
-const rootEnvPath = path.resolve(process.cwd(), '..', `.env.${NODE_ENV}`);
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 
-let envPathToLoad = null;
+// Support running from root or within backend/
+const rootDir =
+  fs.existsSync(path.join(process.cwd(), 'package.json')) &&
+  !fs.existsSync(path.join(process.cwd(), 'src'))
+    ? process.cwd()
+    : path.resolve(process.cwd(), '..');
 
-if (fs.existsSync(localEnvPath)) {
-  envPathToLoad = localEnvPath;
-} else if (fs.existsSync(rootEnvPath)) {
-  envPathToLoad = rootEnvPath;
+const envFiles = [
+  path.join(rootDir, `.env.${NODE_ENV}`),
+  path.join(rootDir, '.env'),
+];
+
+envFiles.forEach((file) => {
+  if (fs.existsSync(file)) {
+    if (process.env.DEBUG_ENV || NODE_ENV === 'production') {
+      console.log(`[env] Loading defaults from: ${file}`);
+    }
+    // Set override to FALSE so existing system variables (Docker/PM2) win
+    dotenv.config({ path: file, override: false });
+  }
+});
+
+// CRITICAL: Ensure NODE_ENV stays consistent
+if (ORIGINAL_NODE_ENV === 'test') {
+  process.env.NODE_ENV = 'test';
 }
 
-if (envPathToLoad) {
-  console.log(`[env] Loading environment variables from ${envPathToLoad}`);
-  dotenv.config({ path: envPathToLoad, override: true });
-} else {
-  console.log(
-    `[env] No specific environment file found at ${localEnvPath} or ${rootEnvPath}. Using system variables.`,
-  );
+if (process.env.DEBUG_ENV) {
+  console.log(`[env] Environment ready. NODE_ENV: ${process.env.NODE_ENV}`);
 }

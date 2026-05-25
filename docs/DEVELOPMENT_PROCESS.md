@@ -107,9 +107,17 @@ The repository is configured with a CI/CD pipeline. You must run these checks lo
     - **Backend Only:** `npm run test:backend:ai`
     - **Frontend Only:** `npm run test:frontend:ai`
 
-**A PR must be blocked from merging if any of these checks fail.
+\*\*A PR must be blocked from merging if any of these checks fail.
 
-    **Environment Variables:** Ensure all necessary environment variables (e.g., `ENCRYPTION_KEY`, `COOKIE_SECRET`) are correctly configured and loaded (e.g., via `dotenv/config`) in the local `.env` file for tests to run successfully.**
+    **Environment Variables:**
+
+    GoodNumbers uses a **Cascading Root Environment Strategy**. All configuration lives in the project root:
+
+    1.  `.env` (Local secrets, ignored by git) - **Highest Precedence**
+    2.  `.env.[NODE_ENV]` (Environment defaults, tracked in git)
+    3.  System/Docker environment variables
+
+    To set up a fresh environment, run `just setup`. This will create your local `.env` from the template. For tests, the system automatically uses `.env.test`.**
 
 ### 4.4. Review and Merge Process
 
