@@ -32,7 +32,13 @@ export const authConfig: ExpressAuthConfig = {
         const password = credentials.password as string;
         const action = credentials.action as string | undefined;
 
-        // 1. Check Allowlist FIRST
+        // 1. Password Strength Check
+        if (password.length < 8) {
+          console.warn(`[Auth] Rejected weak password attempt for ${email.substring(0, 3)}...`);
+          return null;
+        }
+
+        // 2. Check Allowlist FIRST
         const isAllowed = await isEmailAllowed({ email });
         if (!isAllowed) {
           console.warn(

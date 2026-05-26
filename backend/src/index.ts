@@ -75,7 +75,7 @@ export function createApp() {
   const csrfProtection = csrf(
     safeCsrfSecret,
     ['POST', 'PUT', 'DELETE'],
-    ['/api/auth/callback/credentials'],
+    ['/api/auth/callback/credentials', '/api/auth/signout'],
   );
 
   // --- API Routes ---
