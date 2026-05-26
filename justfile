@@ -10,11 +10,11 @@ GCP_KEY_PATH_SERVER := env_var_or_default("GCP_KEY_PATH_SERVER", "/home/" + SERV
 ARTIFACT_DIR        := "./deploy-artifacts"
 
 # --- ENV 1: LOCAL DEVELOPMENT ---
-# Runs backend, worker, and frontend concurrently in the foreground using npm run dev.
-dev:
+# Starts Redis and then runs backend, worker, and frontend concurrently.
+dev: services-up
     #!/usr/bin/env bash
     trap 'kill 0' EXIT
-    echo "Starting all services (Backend, Worker, Frontend)..."
+    echo "Starting application services (Backend, Worker, Frontend)..."
     just dev-backend & \
     just dev-worker & \
     just dev-frontend & \

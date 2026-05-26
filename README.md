@@ -49,6 +49,8 @@ Setting up GoodNumbers for local development is easy with our `just` command run
     - `GEMINI_API_KEY` (from Google AI Studio)
     - `NIGHTSCOUT_URL` & `NIGHTSCOUT_TOKEN`
 
+    **Note on Registration**: This project uses a restricted sign-up flow. You must add your email to `backend/config/allowed_emails.txt` before you can register an account.
+
 3.  **Launch**:
 
     ```bash
@@ -101,7 +103,7 @@ We follow a strict **Test-Driven Development (TDD)** workflow.
 Run these commands before pushing:
 
 - **Linting**: `npm run lint`
-- **Tests**: `npm test` (Runs all 270+ backend and frontend tests)
+- **Tests**: `npm test` (Runs all 360+ backend and frontend tests)
 - **Reset Environment**: `just redis-flush` && `just db-reset-dev`
 
 For more details on contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -123,8 +125,8 @@ This project is a demonstration of how AI can assist in building complex health-
 ## 📅 TODO / Next Steps
 
 - [ ] **Data Export**: Export your reflections as a PDF or Markdown file for sharing with healthcare teams.
-- [ ] **Multi-user Support**: Currently optimized for single-user self-hosting.
 - [ ] **More Heuristics**: Expand analysis to include exercise and overnight patterns.
+- [ ] **Cloud Hosting**: Streamline the one-click deployment for non-technical users.
 
 ---
 
