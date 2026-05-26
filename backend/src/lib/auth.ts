@@ -1,12 +1,91 @@
 // Frontend/src/lib/auth.ts
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import Credentials from '@auth/express/providers/credentials';
-import { prisma } from './prisma.js';
+import { prisma } from '@src/lib/prisma.js';
 import { hashPassword, verifyPassword } from './passwords.js';
-import { isEmailAllowed } from './auth-utils.js';
+import { authUtils } from '@src/lib/auth-utils.js';
 import type { ExpressAuthConfig } from '@auth/express';
 import type { User as AuthUser } from '@auth/core/types';
 import { GlucoseUnit } from '@goodnumbers/types';
+
+/**
+ * Core authentication logic for the Credentials provider.
+ * Separated for direct testing and cleaner configuration.
+ */
+export async function authorize(
+  credentials: Record<string, unknown> | undefined,
+): Promise<AuthUser | null> {
+  if (!credentials?.email || !credentials?.password) return null;
+
+  const email = credentials.email as string;
+  const password = credentials.password as string;
+  const action = credentials.action as string | undefined;
+
+  // 1. Password Strength Check
+  if (password.length < 8) {
+    console.warn(
+      `[Auth] Rejected weak password attempt for ${email.substring(0, 3)}...`,
+    );
+    return null;
+  }
+
+  // 2. Check Allowlist FIRST
+  const isAllowed = await authUtils.isEmailAllowed({ email });
+  if (!isAllowed) {
+    console.warn(
+      `[Auth] Blocked login/register attempt for non-allowed email: ${email.substring(0, 3)}...`,
+    );
+    return null;
+  }
+
+  // 3. Check Database
+  let user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (action === 'register') {
+    if (user) {
+      console.warn(
+        `[Auth] Attempted to register existing user: ${email.substring(0, 3)}...`,
+      );
+      return null; // Or throw an error for a better UI message
+    }
+    console.log(`[Auth] Registering allowed user: ${email.substring(0, 3)}...`);
+    const hashedPassword = hashPassword(password);
+    user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+      },
+    });
+  } else {
+    // Login
+    if (!user) {
+      console.warn(
+        `[Auth] Login attempt for non-existent user: ${email.substring(0, 3)}...`,
+      );
+      return null;
+    }
+
+    if (!user.password) {
+      // This case might happen if we had legacy OAuth users without passwords
+      console.log(`[Auth] Setting password for existing user: ${user.id}`);
+      const hashedPassword = hashPassword(password);
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword },
+      });
+    } else {
+      const isValid = verifyPassword(password, user.password);
+      if (!isValid) {
+        console.warn(`[Auth] Invalid password for user: ${user.id}`);
+        return null;
+      }
+    }
+  }
+
+  return user as AuthUser;
+}
 
 // --- Auth.js v5 Configuration ---
 
@@ -25,80 +104,7 @@ export const authConfig: ExpressAuthConfig = {
         password: { label: 'Password', type: 'password' },
         action: { label: 'Action', type: 'text' },
       },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
-
-        const email = credentials.email as string;
-        const password = credentials.password as string;
-        const action = credentials.action as string | undefined;
-
-        // 1. Password Strength Check
-        if (password.length < 8) {
-          console.warn(`[Auth] Rejected weak password attempt for ${email.substring(0, 3)}...`);
-          return null;
-        }
-
-        // 2. Check Allowlist FIRST
-        const isAllowed = await isEmailAllowed({ email });
-        if (!isAllowed) {
-          console.warn(
-            `[Auth] Blocked login/register attempt for non-allowed email: ${email.substring(0, 3)}...`,
-          );
-          return null;
-        }
-
-        // 2. Check Database
-        let user = await prisma.user.findUnique({
-          where: { email },
-        });
-
-        if (action === 'register') {
-          if (user) {
-            console.warn(
-              `[Auth] Attempted to register existing user: ${email.substring(0, 3)}...`,
-            );
-            return null; // Or throw an error for a better UI message
-          }
-          console.log(
-            `[Auth] Registering allowed user: ${email.substring(0, 3)}...`,
-          );
-          const hashedPassword = hashPassword(password);
-          user = await prisma.user.create({
-            data: {
-              email,
-              password: hashedPassword,
-            },
-          });
-        } else {
-          // Login
-          if (!user) {
-            console.warn(
-              `[Auth] Login attempt for non-existent user: ${email.substring(0, 3)}...`,
-            );
-            return null;
-          }
-
-          if (!user.password) {
-            // This case might happen if we had legacy OAuth users without passwords
-            console.log(
-              `[Auth] Setting password for existing user: ${user.id}`,
-            );
-            const hashedPassword = hashPassword(password);
-            user = await prisma.user.update({
-              where: { id: user.id },
-              data: { password: hashedPassword },
-            });
-          } else {
-            const isValid = verifyPassword(password, user.password);
-            if (!isValid) {
-              console.warn(`[Auth] Invalid password for user: ${user.id}`);
-              return null;
-            }
-          }
-        }
-
-        return user as AuthUser;
-      },
+      authorize,
     }),
   ],
   secret: process.env.AUTH_SECRET,

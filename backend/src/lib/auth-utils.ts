@@ -16,7 +16,6 @@ export async function isEmailAllowed(
   user: Partial<AuthUser>,
 ): Promise<boolean> {
   const { email, id } = user;
-  console.log(`[DEBUG AUTH-UTILS] checking email: ${email}`);
   if (!email) {
     return false; // Cannot allow a user without an email.
   }
@@ -36,7 +35,6 @@ export async function isEmailAllowed(
           .filter((line) => line && !line.startsWith('#')),
       );
       cacheTimestamp = now;
-      console.log('[Auth] Refreshed email allowlist from file.');
     } catch (error) {
       console.error(
         '[CRITICAL AUTH ERROR] Could not read allowed_emails.txt. Defaulting to denying all new sign-ins.',
@@ -56,6 +54,12 @@ export async function isEmailAllowed(
   );
   return isAllowed;
 }
+
+// We also export as a default object to make spying easier in ESM if needed,
+// but the named export is preferred for the application code.
+export const authUtils = {
+  isEmailAllowed,
+};
 
 /**
  * ONLY FOR TESTING: Clears the in-memory allowlist cache.
