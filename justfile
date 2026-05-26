@@ -99,7 +99,7 @@ package-local: _package-backend _package-frontend
     @# This line runs after parallel deps finish
     @echo "All artifacts packaged."
 
-# Push local production secrets and images to the VM
+# Generalized push-all
 push-all:
     @echo "Pushing secrets and image artifacts to {{SERVER_IP}}..."
     # Ensure .env.production exists
@@ -110,7 +110,7 @@ push-all:
         scp {{GCP_KEY_LOCAL}} {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/secrets/gcp-key.json; \
     fi
     rsync -avzhP {{ARTIFACT_DIR}}/ {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/app/deploy-artifacts/
-    scp docker-compose.yml Caddyfile {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/app/
+    scp docker-compose.yml docker-compose.prod.yml Caddyfile {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/app/
 
 # The main deployment command (One-touch deploy)
 deploy: build-local package-local push-all
@@ -121,8 +121,8 @@ deploy: build-local package-local push-all
         ((pv deploy-artifacts/backend.tar.gz 2>/dev/null || cat deploy-artifacts/backend.tar.gz) | docker load) || (rm -rf deploy-artifacts/*.tar.gz && exit 1) && \
         echo '--- Loading Frontend Image ---' && \
         ((pv deploy-artifacts/frontend.tar.gz 2>/dev/null || cat deploy-artifacts/frontend.tar.gz) | docker load) || (rm -rf deploy-artifacts/*.tar.gz && exit 1) && \
-        echo '--- Restarting Containers ---' && \
-        docker compose up -d && \
+        echo '--- Restarting Containers (Production Mode) ---' && \
+        docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d && \
         echo '--- Syncing Database Schema ---' && \
         docker exec app-backend-1 npx prisma db push --schema=/app/backend/prisma/schema.prisma --accept-data-loss && \
         echo '--- Cleaning up artifacts and old images ---' && \
@@ -145,11 +145,13 @@ test:
     @just test-frontend
 
 # Runs the full production-style stack locally in Docker
-dev-docker: build-local
-    @echo "🚀 Starting GoodNumbers in Docker (Production-style)..."
-    @GCP_KEY_PATH={{GCP_KEY_LOCAL}} docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
-    @echo "✨ App is running at http://localhost:8100"
-    @echo "📝 Note: Ensure http://localhost:8100/api/auth/callback/google is in your Google Cloud Console."
+# Usage: just dev-docker [192.168.1.3.nip.io]
+dev-docker host="localhost": build-local
+    @echo "🚀 Starting GoodNumbers in Docker (Local Preview)..."
+    @echo "📡 Access mode: http://{{host}}:8100"
+    @GCP_KEY_PATH={{GCP_KEY_LOCAL}} GN_HOST={{host}} docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+    @echo "✨ App is running at http://{{host}}:8100"
+
 
 # Stops the local Docker stack
 dev-docker-down:
@@ -161,7 +163,6 @@ dev-docker-logs:
 
 # Runs the backend test suite.
 test-backend:
-...
     @echo "Running backend tests..."
     @npm test -w backend
 

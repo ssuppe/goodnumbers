@@ -1,13 +1,11 @@
-# Production Docker Compose for GoodNumbers
+# portable base configuration for GoodNumbers
 services:
   backend:
     image: goodnumbers-backend:latest
-    env_file: .env.production
+    env_file: .env
     volumes:
-      # Persist the SQLite database
+      # Persist the SQLite database relative to root
       - ./backend/prisma/dev.db:/app/backend/prisma/dev.db
-      # Mount the GCP Service Account key file securely
-      - /home/ssuppe/secrets/gcp-key.json:/app/gcp-key.json:ro
     restart: unless-stopped
     depends_on:
       - redis
@@ -16,18 +14,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
-  # chess:
-  #   image: chess-tutor:latest
-  #   restart: unless-stopped
-  #   expose:
-  #     - "3050"
-  #   env_file: .env.production
-  #   environment:
-  #     - PORT=3050
-  #   volumes:
-  #     - ./chess-wikipedia-cache:/app/public/wikipedia
-  #     - ./chess-fixtures-tactics:/app/fixtures/tactics
 
   frontend:
     image: goodnumbers-frontend:latest
@@ -40,9 +26,7 @@ services:
 
   caddy:
     image: caddy:2-alpine
-    ports:
-      - "80:80"
-      - "443:443"
+    # Ports are defined in overlays (local vs prod)
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
@@ -50,7 +34,6 @@ services:
     depends_on:
       - backend
       - frontend
-      # - chess
     restart: unless-stopped
     logging:
       driver: "json-file"

@@ -1,16 +1,24 @@
-# docker-compose.local.yml
-# Use this to run the production cluster on your local machine
+# Local Preview Overlay
+# Use this to run production-style images with local dev credentials
 services:
   backend:
-    env_file: .env
+    # Uses .env from docker-compose.yml (default)
+    environment:
+      - REDIS_HOST=redis
+      - BETTER_AUTH_URL=http://${GN_HOST:-localhost}:8100/api/auth
+      - AUTH_URL=http://${GN_HOST:-localhost}:8100/api/auth
+      - FRONTEND_URL=http://${GN_HOST:-localhost}:8100
+      # Force container-internal path for the SQLite database
+      - DATABASE_URL=file:/app/backend/prisma/dev.db
     volumes:
-      # Map your local GCP key to the container
+      # Map local GCP key path from your .env
       - ${GCP_KEY_PATH}:/app/gcp-key.json:ro
 
   # frontend:
   #   env_file: .env
 
   caddy:
+    environment:
+      DOMAIN: ":80"  # Disable automatic SSL for local preview
     ports:
-      - "8100:80"   # Access locally via http://localhost:8100
-      - "8443:443"
+      - "8100:80"   # Access at http://${GN_HOST}:8100

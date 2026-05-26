@@ -1,0 +1,14 @@
+# Production Overlay for GCP VM
+services:
+  backend:
+    env_file: .env.production
+    volumes:
+      # Use absolute server path for production GCP secrets
+      - /home/ssuppe/secrets/gcp-key.json:/app/gcp-key.json:ro
+
+  caddy:
+    ports:
+      - "80:80"
+      - "443:443"
+
+  # Add any other production-only overrides here (e.g. scale, healthchecks)
