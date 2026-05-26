@@ -44,21 +44,21 @@ Setting up GoodNumbers for local development is easy with our `just` command run
 
 2.  **Configure Environment**:
     Edit the newly created `.env` file in the root and add your credentials:
-    - `AUTH_GOOGLE_ID` & `AUTH_GOOGLE_SECRET` (from Google Cloud Console)
+    - `AUTH_SECRET` (A secure random string for signing cookies)
+    - `AUTH_URL` (Base URL of your frontend, e.g., `http://localhost:5173`)
     - `GEMINI_API_KEY` (from Google AI Studio)
     - `NIGHTSCOUT_URL` & `NIGHTSCOUT_TOKEN`
 
 3.  **Launch**:
 
     ```bash
-    just services-up  # Starts Redis
-    just dev          # Starts Backend, Worker, and Frontend
+    just dev          # Starts Redis, Backend, Worker, and Frontend
     ```
 
-    _Alternatively, run the full production-style stack in Docker:_
+    _Alternatively, run the production-ready Docker stack:_
 
     ```bash
-    just dev-docker   # Access at http://localhost:8100
+    just docker-prod   # Access at http://localhost:8100
     ```
 
 4.  **Access**:

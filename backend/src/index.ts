@@ -114,6 +114,7 @@ export function createApp() {
         session.user.preferredUnits = freshUser.preferredUnits as GlucoseUnit;
         session.user.nightscoutUrl = freshUser.nightscoutUrl;
         session.user.nightscoutTokenLast3 = freshUser.nightscoutTokenLast3;
+        session.user.rssToken = freshUser.rssToken;
       }
     }
     res.json(session);

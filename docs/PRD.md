@@ -89,22 +89,21 @@ This section defines the access control mechanism for the private beta/pre-relea
 1. Overview & Goal
 
 - Goal: To restrict access to the application to a pre-approved list of users.
-- Functionality: The system maintains a server-side list of allowed email addresses. Access is checked during the Google OAuth sign-in process.
+- Functionality: The system maintains a server-side list of allowed email addresses. Access is checked during the registration and login process.
 
 2. Interaction Flow
 
-1. User clicks "Sign in with Google".
-1. User authenticates with Google.
+1. User provides email and password on the Registration page.
 1. **Allowlist Check:** The system checks if the user's email is in the allowlist.
-1. **Allowed:** The user proceeds to the Agreements or Dashboard page.
+1. **Allowed:** The user account is created with the hashed password, and the user is logged in.
 1. **Denied:** The sign-in fails, and the user is denied access.
 
 ## Login page {#login-page}
 
 ### 2. Goals
 
-- **Enable Secure User Access:** Provide a robust and secure mechanism for users to log into their existing accounts.
-- **Facilitate Seamless Onboarding:** Allow new users to easily register and gain access to the application with minimal friction, leveraging Google's identity.
+- **Enable Secure User Access:** Provide a robust and secure mechanism for users to log into their existing accounts using a email/password combination.
+- **Facilitate Seamless Onboarding:** Allow new users on the allowlist to easily register and gain access to the application by creating a unique password.
 
 ### 3. User Stories
 
@@ -117,15 +116,15 @@ This section defines the access control mechanism for the private beta/pre-relea
 
 #### 4.1. Authentication Interface
 
-- The authentication interface MUST primarily leverage Auth.js's built-in pages or endpoints.
-- The UI MUST clearly indicate that Google is the primary (and only) sign-in method.
+- The authentication interface MUST consist of custom `/login` and `/register` pages.
+- The UI MUST clearly indicate that Email and Password is the primary (and only) sign-in method.
 
-#### 4.2. Google OAuth Integration (Primary Authentication)
+#### 4.2. Credentials Integration (Primary Authentication)
 
-- Users MUST be able to register and log in using their Google account.
+- Users MUST be able to register and log in using their email and a unique password.
 - **New User Flow:**
-  1. User signs in with Google.
-  2. If allowed, they are redirected to the **Agreements Page**.
+  1. User registers at `/register`.
+  2. If on allowlist, they are redirected to the **Agreements Page**.
   3. User MUST check boxes to agree to Terms and Privacy Policy.
   4. User clicks "Accept and Continue".
   5. User is redirected to the **Setup Page**.

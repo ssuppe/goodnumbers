@@ -27,6 +27,7 @@ model User {
   name            String?
   email           String?   @unique
   emailVerified   DateTime?
+  password        String?
   image           String?
   accounts        Account[]
   sessions        Session[]
@@ -101,6 +102,7 @@ model GlycemicEventCluster {
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `id` | `String` | Unique identifier (CUID). Primary Key. |
+| `password` | `String?` | Securely hashed password (scrypt). |
 | `agreementsSigned` | `Boolean` | Flag indicating if the user has signed the legal agreements. |
 | `nightscoutUrl` | `String?` | URL of the user's Nightscout instance. |
 | `nightscoutToken` | `String?` | Encrypted Nightscout API token. |

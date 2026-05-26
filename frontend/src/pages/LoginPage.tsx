@@ -53,6 +53,7 @@ export default function LoginPage() {
             name="password"
             id="password"
             required
+            minLength={8}
             className="w-full px-4 py-2 border border-mesa-border rounded-md focus:ring-2 focus:ring-mesa-primary focus:border-transparent"
             placeholder="••••••••"
           />

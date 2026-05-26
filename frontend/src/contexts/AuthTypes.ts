@@ -9,4 +9,5 @@ export interface SessionUser {
   nightscoutUrl?: string | null;
   preferredUnits?: GlucoseUnit;
   nightscoutTokenLast3?: string | null;
+  rssToken?: string;
 }

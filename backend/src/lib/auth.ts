@@ -118,6 +118,7 @@ export const authConfig: ExpressAuthConfig = {
         token.preferredUnits = user.preferredUnits;
         token.nightscoutUrl = user.nightscoutUrl;
         token.nightscoutTokenLast3 = user.nightscoutTokenLast3;
+        token.rssToken = user.rssToken;
       }
       return token;
     },
@@ -132,6 +133,7 @@ export const authConfig: ExpressAuthConfig = {
         session.user.nightscoutTokenLast3 = token.nightscoutTokenLast3 as
           | string
           | null;
+        session.user.rssToken = token.rssToken as string;
       }
       return session;
     },
@@ -148,11 +150,12 @@ export const authConfig: ExpressAuthConfig = {
 
 // Extend the Session User type to satisfy TypeScript in our application code.
 // This lets us access the custom properties we added in the session callback.
-declare module '@auth/express' {
+declare module "@auth/express" {
   interface User {
     agreementsSigned?: boolean;
     nightscoutUrl?: string | null;
     nightscoutTokenLast3?: string | null;
     preferredUnits?: GlucoseUnit;
+    rssToken?: string;
   }
 }

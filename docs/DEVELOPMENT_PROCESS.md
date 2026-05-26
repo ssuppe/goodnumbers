@@ -117,7 +117,13 @@ The repository is configured with a CI/CD pipeline. You must run these checks lo
     2.  `.env.[NODE_ENV]` (Environment defaults, tracked in git)
     3.  System/Docker environment variables
 
-    To set up a fresh environment, run `just setup`. This will create your local `.env` from the template. For tests, the system automatically uses `.env.test`.**
+    To set up a fresh environment, run `just setup`. This will create your local `.env` from the template. For tests, the system automatically uses `.env.test`.
+
+    The project is managed through three primary `just` command paths:
+    - `just dev`: Optimized for local development. Handles auto-rebuilding and hot-reloading.
+    - `just docker-prod`: Validates the full production stack locally using Docker Compose.
+    - `just deploy`: Automated deployment flow for pushing to a production VPS.
+**
 
 ### 4.4. Review and Merge Process
 

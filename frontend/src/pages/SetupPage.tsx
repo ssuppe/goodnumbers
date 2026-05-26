@@ -36,13 +36,14 @@ export default function SetupPage() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    let finalUrl = url.trim();
-    if (
-      finalUrl !== "" &&
-      !finalUrl.startsWith("http://") &&
-      !finalUrl.startsWith("https://")
-    ) {
-      finalUrl = "https://" + finalUrl;
+    let finalUrl = url.trim().toLowerCase();
+    if (finalUrl !== "") {
+      // If the user already provided a protocol (case-insensitive), don't touch it.
+      // Otherwise, add https://
+      const hasProtocol = /^[a-z]+:\/\//i.test(finalUrl);
+      if (!hasProtocol) {
+        finalUrl = "https://" + finalUrl;
+      }
     }
     const payload = {
       nightscoutUrl: finalUrl === "" ? null : finalUrl,
