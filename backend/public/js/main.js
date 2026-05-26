@@ -16,19 +16,9 @@ async function updateUI() {
       window.location.href = '/dashboard';
     } else {
       // If the user is logged out, show the sign-in options.
-      // We need a CSRF token to make the sign-in form work correctly.
-      const csrfRes = await fetch('/api/auth/csrf');
-      if (!csrfRes.ok) {
-        throw new Error(`Failed to fetch CSRF token: ${csrfRes.status}`);
-      }
-      const { csrfToken } = await csrfRes.json();
-
       authContainer.innerHTML = `
         <p><strong>Status:</strong> Logged out</p>
-        <form action="/api/auth/signin/google" method="POST">
-            <input type="hidden" name="csrfToken" value="${csrfToken}">
-            <button type="submit">Sign in with Google</button>
-        </form>
+        <a href="/api/auth/signin">Sign in with Credentials</a>
       `;
     }
   } catch (error) {

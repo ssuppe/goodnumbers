@@ -1,110 +1,137 @@
 // Frontend/src/lib/auth.ts
 import { PrismaAdapter } from '@auth/prisma-adapter';
-import Google from '@auth/express/providers/google';
-import { prisma } from './prisma.js';
+import Credentials from '@auth/express/providers/credentials';
+import { prisma } from '@src/lib/prisma.js';
+import { hashPassword, verifyPassword } from './passwords.js';
+import { isEmailAllowed } from '@src/lib/auth-utils.js';
 import type { ExpressAuthConfig } from '@auth/express';
-import * as fs from 'fs/promises';
 import type { User as AuthUser } from '@auth/core/types';
 import { GlucoseUnit } from '@goodnumbers/types';
-
-// --- Email Allowlist Logic ---
-
-// In-memory cache to avoid reading the file on every single login attempt.
-let allowedEmails: Set<string> | null = null;
-let cacheTimestamp = 0;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
-
-/**
- * Checks if a given user's email is in the allowlist.
- * It uses a simple in-memory, time-based cache to reduce file I/O.
- * @param user The user object from the Auth.js callback.
- * @returns {Promise<boolean>} True if the email is allowed, false otherwise.
- */
-async function isEmailAllowed(user: Partial<AuthUser>): Promise<boolean> {
-  const { email, id } = user;
-  if (!email) {
-    return false; // Cannot allow a user without an email.
-  }
-
-  const now = Date.now();
-  // Refresh cache if it's empty or expired
-  if (!allowedEmails || now - cacheTimestamp > CACHE_TTL) {
-    try {
-      const fileContent = await fs.readFile(
-        'config/allowed_emails.txt',
-        'utf-8',
-      );
-      allowedEmails = new Set(
-        fileContent
-          .split('\n')
-          .map((line) => line.trim().toLowerCase())
-          .filter((line) => line && !line.startsWith('#')),
-      );
-      cacheTimestamp = now;
-      console.log('[Auth] Refreshed email allowlist from file.');
-    } catch (error) {
-      console.error(
-        '[CRITICAL AUTH ERROR] Could not read allowed_emails.txt. Defaulting to denying all new sign-ins.',
-        error,
-      );
-      allowedEmails = new Set();
-    }
-  }
-
-  const isAllowed = allowedEmails.has(email.toLowerCase());
-
-  // SECURE LOGGING: Log the user's ID if available, otherwise log a generic message.
-  // NEVER log the email address.
-  const identifier = id ? `user with ID ${id}` : 'a new user';
-  console.log(
-    `[Auth] Login attempt for ${identifier}. Allowed: ${isAllowed ? 'YES' : 'NO'}.`,
-  );
-  return isAllowed;
-}
 
 // --- Auth.js v5 Configuration ---
 
 export const authConfig: ExpressAuthConfig = {
   adapter: PrismaAdapter(prisma),
-  // CRITICAL SECURITY NOTE:
-  // The Prisma adapter automatically enforces the "database" session strategy.
-  // This is essential for privacy and security. The session cookie will only contain
-  // a session token, and sensitive data (like nightscoutUrl) is only ever
-  // looked up on the server, never exposed to the client.
-  // DO NOT change this to a "jwt" strategy without a thorough security review.
-  session: { strategy: 'database' },
+  // REQUIRED for Credentials provider:
+  // When using the Credentials provider, Auth.js MUST use the "jwt" session strategy.
+  // The Prisma adapter will still be used to create/update users, but the session
+  // itself will be stored in a signed JWT cookie.
+  session: { strategy: 'jwt' },
 
   providers: [
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+    Credentials({
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+        action: { label: 'Action', type: 'text' },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
+        const email = credentials.email as string;
+        const password = credentials.password as string;
+        const action = credentials.action as string | undefined;
+
+        // 1. Check Allowlist FIRST
+        const isAllowed = await isEmailAllowed({ email });
+        if (!isAllowed) {
+          console.warn(
+            `[Auth] Blocked login/register attempt for non-allowed email: ${email.substring(0, 3)}...`,
+          );
+          return null;
+        }
+
+        // 2. Check Database
+        let user = await prisma.user.findUnique({
+          where: { email },
+        });
+
+        if (action === 'register') {
+          if (user) {
+            console.warn(
+              `[Auth] Attempted to register existing user: ${email.substring(0, 3)}...`,
+            );
+            return null; // Or throw an error for a better UI message
+          }
+          console.log(
+            `[Auth] Registering allowed user: ${email.substring(0, 3)}...`,
+          );
+          const hashedPassword = hashPassword(password);
+          user = await prisma.user.create({
+            data: {
+              email,
+              password: hashedPassword,
+            },
+          });
+        } else {
+          // Login
+          if (!user) {
+            console.warn(
+              `[Auth] Login attempt for non-existent user: ${email.substring(0, 3)}...`,
+            );
+            return null;
+          }
+
+          if (!user.password) {
+            // This case might happen if we had legacy OAuth users without passwords
+            console.log(
+              `[Auth] Setting password for existing user: ${user.id}`,
+            );
+            const hashedPassword = hashPassword(password);
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: { password: hashedPassword },
+            });
+          } else {
+            const isValid = verifyPassword(password, user.password);
+            if (!isValid) {
+              console.warn(`[Auth] Invalid password for user: ${user.id}`);
+              return null;
+            }
+          }
+        }
+
+        return user as AuthUser;
+      },
     }),
   ],
   secret: process.env.AUTH_SECRET,
   trustHost: true,
   callbacks: {
-    async signIn({ user }) {
-      return await isEmailAllowed(user);
+    // With JWT strategy, we must encode custom properties into the token first
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.agreementsSigned = user.agreementsSigned;
+        token.preferredUnits = user.preferredUnits;
+        token.nightscoutUrl = user.nightscoutUrl;
+        token.nightscoutTokenLast3 = user.nightscoutTokenLast3;
+      }
+      return token;
     },
     // This callback runs on the server and enriches the session object
-    // to make user data available to our middleware without extra DB calls.
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
-        session.user.agreementsSigned = user.agreementsSigned;
-        session.user.preferredUnits = user.preferredUnits;
-        // NEW: Add the required fields for the setup/settings page
-        session.user.nightscoutUrl = user.nightscoutUrl;
-        // SECURE: Read the pre-calculated, non-sensitive hint directly.
-        session.user.nightscoutTokenLast3 = user.nightscoutTokenLast3;
+    // to make user data available to our middleware and frontend.
+    async session({ session, token }) {
+      if (session.user && token) {
+        session.user.id = token.id as string;
+        session.user.agreementsSigned = token.agreementsSigned as boolean;
+        session.user.preferredUnits = token.preferredUnits as GlucoseUnit;
+        session.user.nightscoutUrl = token.nightscoutUrl as string | null;
+        session.user.nightscoutTokenLast3 = token.nightscoutTokenLast3 as
+          | string
+          | null;
       }
       return session;
     },
     async redirect({ url, baseUrl }) {
-      if (url.startsWith(process.env.FRONTEND_URL as string)) {
-        return url;
-      }
-      return process.env.FRONTEND_URL as string;
+      // Allows relative callback URLs
+      if (url.startsWith('/')) return `${baseUrl}${url}`;
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url;
+      // Fallback to the base URL
+      return baseUrl;
     },
   },
 };

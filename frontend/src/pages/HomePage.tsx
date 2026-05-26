@@ -35,20 +35,27 @@ export default function HomePage() {
         self-reflection, to find your blind spots in your diabetes management,
         and to continuously improve.
       </p>
-      <div className="mt-10 flex flex-col sm:flex-row justify-center gap-2">
+      <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
         <Link
           to="/demo"
           className="inline-block px-8 py-3 rounded-lg text-base font-medium bg-white v3-primary-text border-2 v3-border-primary hover:bg-mesa-bg transition-colors"
         >
           See a demo
         </Link>
-        <a
-          href="/api/auth/signin"
-          rel="noopener noreferrer"
-          className="inline-block px-8 py-3 rounded-lg text-base font-medium text-white v3-bg-primary border border-transparent v3-hover-bg-primary-hover hover:scale-[1.01] transition"
-        >
-          Login / Register
-        </a>
+        <div className="flex gap-2">
+          <Link
+            to="/login"
+            className="inline-block px-8 py-3 rounded-lg text-base font-medium text-mesa-primary bg-white border border-mesa-primary hover:bg-mesa-bg transition-colors"
+          >
+            Login
+          </Link>
+          <Link
+            to="/register"
+            className="inline-block px-8 py-3 rounded-lg text-base font-medium text-white bg-mesa-primary border border-transparent hover:bg-orange-700 transition-colors"
+          >
+            Register
+          </Link>
+        </div>
       </div>
     </div>
   );

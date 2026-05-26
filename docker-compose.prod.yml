@@ -3,8 +3,8 @@ services:
   backend:
     env_file: .env.production
     volumes:
-      # Use absolute server path for production GCP secrets
-      - /home/ssuppe/secrets/gcp-key.json:/app/gcp-key.json:ro
+      # Use server-side path for production GCP secrets (configurable)
+      - ${GCP_KEY_PATH_SERVER:-/home/ssuppe/secrets/gcp-key.json}:/app/gcp-key.json:ro
 
   caddy:
     ports:

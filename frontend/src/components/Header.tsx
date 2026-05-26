@@ -32,14 +32,20 @@ export default function Header() {
               </a>
             </div>
           ) : (
-            /* Updated: Using Mesa Primary (Terracotta) for the Login Action */
-            <a
-              href="/api/auth/signin"
-              rel="noopener noreferrer"
-              className="text-sm font-medium text-mesa-primary hover:text-orange-700 transition-colors"
-            >
-              Login / Register
-            </a>
+            <div className="flex items-center gap-4">
+              <Link
+                to="/login"
+                className="text-sm font-medium text-mesa-primary hover:text-orange-700 transition-colors"
+              >
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className="text-sm font-medium px-4 py-2 rounded bg-mesa-primary text-white hover:bg-orange-700 transition-colors"
+              >
+                Register
+              </Link>
+            </div>
           )}
         </nav>
       </div>

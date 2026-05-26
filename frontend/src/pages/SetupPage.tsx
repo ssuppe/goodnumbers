@@ -36,8 +36,16 @@ export default function SetupPage() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    let finalUrl = url.trim();
+    if (
+      finalUrl !== "" &&
+      !finalUrl.startsWith("http://") &&
+      !finalUrl.startsWith("https://")
+    ) {
+      finalUrl = "https://" + finalUrl;
+    }
     const payload = {
-      nightscoutUrl: url.trim() === "" ? null : url.trim(),
+      nightscoutUrl: finalUrl === "" ? null : finalUrl,
       nightscoutToken: token.trim() === "" ? null : token.trim(),
       preferredUnits,
     };

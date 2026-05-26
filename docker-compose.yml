@@ -2,7 +2,7 @@
 services:
   backend:
     image: goodnumbers-backend:latest
-    env_file: .env
+    env_file: ${ENV_FILE:-.env}
     volumes:
       # Persist the SQLite database relative to root
       - ./backend/prisma/dev.db:/app/backend/prisma/dev.db

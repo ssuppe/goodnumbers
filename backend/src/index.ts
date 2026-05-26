@@ -10,6 +10,8 @@ import cookieParser from 'cookie-parser';
 import csrf from 'tiny-csrf';
 
 import { escapeHtml } from './lib/utils.js';
+import { prisma } from './lib/prisma.js';
+import type { GlucoseUnit } from '@goodnumbers/types';
 import journalRoutes from './routes/journal.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import userRoutes from './routes/user.js';
@@ -22,12 +24,6 @@ export function createApp() {
   // --- Fatal Error Checks ---
   if (!process.env.AUTH_SECRET)
     throw new Error('FATAL: Environment variable AUTH_SECRET is not set.');
-  if (!process.env.AUTH_GOOGLE_ID)
-    throw new Error('FATAL: Environment variable AUTH_GOOGLE_ID is not set.');
-  if (!process.env.AUTH_GOOGLE_SECRET)
-    throw new Error(
-      'FATAL: Environment variable AUTH_GOOGLE_SECRET is not set.',
-    );
   const csrfSecret = process.env.CSRF_SECRET;
   if (
     !csrfSecret ||
@@ -79,7 +75,7 @@ export function createApp() {
   const csrfProtection = csrf(
     safeCsrfSecret,
     ['POST', 'PUT', 'DELETE'],
-    ['/api/auth/callback/google'],
+    ['/api/auth/callback/credentials'],
   );
 
   // --- API Routes ---
@@ -105,9 +101,23 @@ export function createApp() {
 
   // --- Health Check and other routes ---
   app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok' }));
-  app.get('/api/session', async (req, res) =>
-    res.json(await getSession(req, authConfig)),
-  );
+  app.get('/api/session', async (req, res) => {
+    const session = await getSession(req, authConfig);
+    if (session?.user?.email) {
+      // Fetch fresh data from the database so the frontend stays in sync
+      const freshUser = await prisma.user.findUnique({
+        where: { email: session.user.email },
+      });
+      if (freshUser) {
+        session.user.id = freshUser.id;
+        session.user.agreementsSigned = freshUser.agreementsSigned;
+        session.user.preferredUnits = freshUser.preferredUnits as GlucoseUnit;
+        session.user.nightscoutUrl = freshUser.nightscoutUrl;
+        session.user.nightscoutTokenLast3 = freshUser.nightscoutTokenLast3;
+      }
+    }
+    res.json(session);
+  });
   app.get('/agreements', protect, (req, res) => {
     res.send(`<h1>Agreements Page</h1><p>User: ${escapeHtml(req.user?.email)}</p><p>Please sign the agreements.</p>
       <form id="agreement-form">

@@ -6,7 +6,7 @@ import fs from 'fs';
  * Standard Environment Loader
  * Precedence:
  * 1. Existing process.env (Docker/System) - HIGHEST
- * 2. .env file (Local secrets)
+ * 2. .env file (Local secrets/overrides)
  * 3. .env.[NODE_ENV] (Environment defaults) - LOWEST
  */
 
@@ -20,17 +20,20 @@ const rootDir =
     ? process.cwd()
     : path.resolve(process.cwd(), '..');
 
+// Load in order of increasing priority (if using override: true)
+// OR load in order of decreasing priority (if using override: false)
 const envFiles = [
-  path.join(rootDir, `.env.${NODE_ENV}`),
-  path.join(rootDir, '.env'),
+  path.join(rootDir, '.env'), // Local secrets (Highest priority)
+  path.join(rootDir, `.env.${NODE_ENV}`), // Env defaults
 ];
 
 envFiles.forEach((file) => {
   if (fs.existsSync(file)) {
     if (process.env.DEBUG_ENV || NODE_ENV === 'production') {
-      console.log(`[env] Loading defaults from: ${file}`);
+      console.log(`[env] Loading from: ${file}`);
     }
-    // Set override to FALSE so existing system variables (Docker/PM2) win
+    // Using override: false means the FIRST file to define a variable wins.
+    // So we put .env (secrets) first in the array.
     dotenv.config({ path: file, override: false });
   }
 });
@@ -42,4 +45,5 @@ if (ORIGINAL_NODE_ENV === 'test') {
 
 if (process.env.DEBUG_ENV) {
   console.log(`[env] Environment ready. NODE_ENV: ${process.env.NODE_ENV}`);
+  console.log(`[env] DB_URL: ${process.env.DATABASE_URL}`);
 }

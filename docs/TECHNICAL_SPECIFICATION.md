@@ -14,11 +14,12 @@ This document provides a comprehensive technical specification for the Goodnumbe
 
 #### 2.1.1. User Authentication (Auth.js)
 
-- **Access Control:** Access is restricted via an **email allowlist**. Only users whose Google account email is on a server-side list can successfully sign in.
-- **Provider:** Google OAuth is the sole authentication method.
-- **UI:** Auth.js built-in pages are used.
+- **Access Control:** Access is restricted via an **email allowlist**. Only users whose email is on a server-side list can successfully register or sign in.
+- **Provider:** Credentials (Username/Password). Google OAuth has been removed in favor of a self-hosted, simplified approach.
+- **Password Hashing:** Passwords are securely hashed using Node.js native `crypto.scryptSync` with hardened parameters (N: 16384, r: 8, p: 1, maxmem: 32MB) to prevent hardware-accelerated brute forcing.
+- **UI:** Custom Frontend pages (`/login` and `/register`) provide the authentication interface.
 - **Onboarding Flow:**
-  1.  User signs in with Google.
+  1.  User registers with an allowed email and a password.
   2.  **Agreements:** User must sign terms and privacy policy (`agreementsSigned` flag).
   3.  **Setup:** User must provide Nightscout credentials (`nightscoutUrl`).
 

@@ -84,17 +84,23 @@ This document tracks the phased implementation of the Goodnumbers project. It se
 - [x] **Task 5: Storage Management**
   - Implement automated Docker image pruning and log rotation to prevent "out of space" errors.
 
-### **Phase 10: Open Source Readiness** - COMPLETE
+### **Phase 10: Open Source Readiness & Local Auth** - COMPLETE
 
 - [x] **Task 1: Repository Purification**
   - Purged git history of all AI agent configurations and personal detritus.
   - Removed hardcoded IP addresses, usernames, and local file paths.
 - [x] **Task 2: Environment Consolidation**
   - Implemented a unified, cascading root `.env` system.
+  - Defined three distinct deployment environments in `justfile`: `dev`, `docker-prod`, and `deploy`.
   - Standardized on absolute SQLite pathing for monorepo robustness.
-- [x] **Task 3: The Golden Path**
+- [x] **Task 3: Local Credentials Authentication**
+  - Replaced Google OAuth with Auth.js Credentials provider to simplify setup for new users.
+  - Maintained email allowlist requirement for secure registrations.
+  - Implemented robust `scrypt` password hashing and migrated database schema.
+  - Built custom `/login` and `/register` frontend pages.
+- [x] **Task 4: The Golden Path**
   - Created `just setup` for one-command project initialization.
   - Overhauled README with clear prerequisites and quick-start guides.
-- [x] **Task 4: Quality Automation**
+- [x] **Task 5: Quality Automation**
   - Integrated GitHub Actions CI for automated test verification.
-  - Restored 100% pass rate for 300+ tests.
+  - Restored 100% pass rate for 300+ tests (including updated auth logic).
