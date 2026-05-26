@@ -1,9 +1,9 @@
 // Frontend/src/lib/auth.ts
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import Credentials from '@auth/express/providers/credentials';
-import { prisma } from '@src/lib/prisma.js';
+import { prisma } from './prisma.js';
 import { hashPassword, verifyPassword } from './passwords.js';
-import { authUtils } from '@src/lib/auth-utils.js';
+import { authUtils } from './auth-utils.js';
 import type { ExpressAuthConfig } from '@auth/express';
 import type { User as AuthUser } from '@auth/core/types';
 import { GlucoseUnit } from '@goodnumbers/types';
