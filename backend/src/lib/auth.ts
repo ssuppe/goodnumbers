@@ -1,9 +1,9 @@
 // Frontend/src/lib/auth.ts
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import Credentials from '@auth/express/providers/credentials';
-import { prisma } from '@src/lib/prisma.js';
+import { prisma } from './prisma.js';
 import { hashPassword, verifyPassword } from './passwords.js';
-import { isEmailAllowed } from '@src/lib/auth-utils.js';
+import { isEmailAllowed } from './auth-utils.js';
 import type { ExpressAuthConfig } from '@auth/express';
 import type { User as AuthUser } from '@auth/core/types';
 import { GlucoseUnit } from '@goodnumbers/types';
@@ -26,9 +26,7 @@ export const authConfig: ExpressAuthConfig = {
         action: { label: 'Action', type: 'text' },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         const email = credentials.email as string;
         const password = credentials.password as string;

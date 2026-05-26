@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // 1. Setup mocks BEFORE any imports
-vi.mock('@src/lib/prisma.js', () => ({
+// We use absolute paths to ensure Vitest correctly intercepts the modules
+// regardless of how they are imported (relative vs aliased).
+
+vi.mock('/home/clark/dev/goodnumbers-clean/backend/src/lib/prisma.js', () => ({
   prisma: {
     user: {
       findUnique: vi.fn(),
@@ -11,15 +14,15 @@ vi.mock('@src/lib/prisma.js', () => ({
   },
 }));
 
-vi.mock('@src/lib/auth-utils.js', () => ({
+vi.mock('/home/clark/dev/goodnumbers-clean/backend/src/lib/auth-utils.js', () => ({
   isEmailAllowed: vi.fn(),
 }));
 
 // 2. Now import what we need
-import { prisma as prismaMock } from '@src/lib/prisma.js';
-import { isEmailAllowed } from '@src/lib/auth-utils.js';
-import { hashPassword } from '@src/lib/passwords.js';
-import { authConfig } from '@src/lib/auth.js';
+import { prisma as prismaMock } from '../../src/lib/prisma.js';
+import { isEmailAllowed } from '../../src/lib/auth-utils.js';
+import { hashPassword } from '../../src/lib/passwords.js';
+import { authConfig } from '../../src/lib/auth.js';
 import type { User as AuthUser } from '@auth/core/types';
 
 describe('Auth.js authorize Callback', () => {
