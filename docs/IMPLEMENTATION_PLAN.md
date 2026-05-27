@@ -81,6 +81,7 @@ This document tracks the phased implementation of the Goodnumbers project. It se
   - Configure swap space on GCP e2-micro to prevent OOM errors.
 - [x] **Task 4: Automation**
   - Finalize `Justfile` commands for seamless production deployment (`just deploy`).
+  - Implement interactive database handling (keep/copy/reset) for local Docker and production VPS.
 - [x] **Task 5: Storage Management**
   - Implement automated Docker image pruning and log rotation to prevent "out of space" errors.
 

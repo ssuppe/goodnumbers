@@ -33,11 +33,24 @@ services-down:
 # --- ENV 2: LOCAL DOCKER PRODUCTION ---
 # Runs the full production-style stack locally in Docker for testing.
 # Usage: just docker-prod [192.168.1.3.nip.io]
-docker-prod host="localhost": build-local
+docker-prod host="localhost": build-local _db-docker-prompt
     @echo "🚀 Starting GoodNumbers in Docker (Local Production Mode)..."
     @echo "📡 Access mode: http://{{host}}:8100"
     @GCP_KEY_PATH={{GCP_KEY_LOCAL}} GN_HOST={{host}} docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
     @echo "✨ App is running at http://{{host}}:8100"
+
+_db-docker-prompt:
+    #!/usr/bin/env bash
+    if [ -t 0 ]; then
+        echo "📊 Local Docker Database handling:"
+        echo "1) Keep current local dev.db (default)"
+        echo "2) Reset local dev.db (WIPES ALL DATA)"
+        read -p "Select [1-2]: " choice
+        case $choice in
+            2) just db-reset-dev ;;
+            *) echo "Keeping current DB." ;;
+        esac
+    fi
 
 # Stops the local Docker stack
 docker-prod-down:
@@ -49,21 +62,54 @@ docker-prod-logs:
 
 # --- ENV 3: VPS DEPLOYMENT ---
 # The main deployment command (One-touch deploy to VPS via SSH)
-deploy: build-local package-local push-all
+deploy: build-local _db-deploy-prompt package-local push-all
     @echo "Finalizing deployment on the VM..."
     ssh -t {{SERVER_USER}}@{{SERVER_IP}} "cd app && \
         cp .env.production .env && \
+        if [ -f \"deploy-artifacts/dev.db\" ]; then \
+            echo '--- Overwriting Production Database with Local Copy ---' && \
+            mv deploy-artifacts/dev.db backend/prisma/dev.db; \
+        fi && \
         echo '--- Loading Backend Image ---' && \
         ((pv deploy-artifacts/backend.tar.gz 2>/dev/null || cat deploy-artifacts/backend.tar.gz) | docker load) || (rm -rf deploy-artifacts/*.tar.gz && exit 1) && \
         echo '--- Loading Frontend Image ---' && \
         ((pv deploy-artifacts/frontend.tar.gz 2>/dev/null || cat deploy-artifacts/frontend.tar.gz) | docker load) || (rm -rf deploy-artifacts/*.tar.gz && exit 1) && \
         echo '--- Restarting Containers (Production Mode) ---' && \
         GCP_KEY_PATH_SERVER={{GCP_KEY_PATH_SERVER}} docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d && \
-        echo '--- Syncing Database Schema ---' && \
-        docker exec app-backend-1 npx prisma db push --schema=/app/backend/prisma/schema.prisma --accept-data-loss && \
+        if [ -f \"deploy-artifacts/.reset_db\" ]; then \
+            echo '--- Resetting Production Database ---' && \
+            docker exec app-backend-1 npx prisma db push --schema=/app/backend/prisma/schema.prisma --force-reset --accept-data-loss; \
+            rm deploy-artifacts/.reset_db; \
+        else \
+            echo '--- Syncing Database Schema ---' && \
+            docker exec app-backend-1 npx prisma db push --schema=/app/backend/prisma/schema.prisma --accept-data-loss; \
+        fi && \
         echo '--- Cleaning up artifacts and old images ---' && \
         rm -rf deploy-artifacts/*.tar.gz && \
         docker image prune -f"
+
+_db-deploy-prompt:
+    #!/usr/bin/env bash
+    mkdir -p {{ARTIFACT_DIR}}
+    rm -f {{ARTIFACT_DIR}}/.reset_db
+    if [ -t 0 ]; then
+        echo "🚀 Production Database handling:"
+        echo "1) Keep current production DB (default)"
+        echo "2) Copy local dev.db to production (OVERWRITES PROD)"
+        echo "3) Reset production DB (WIPES PROD DATA)"
+        read -p "Select [1-3]: " choice
+        case $choice in
+            2) 
+                echo "Queuing database copy..."
+                cp backend/prisma/dev.db {{ARTIFACT_DIR}}/dev.db
+                ;;
+            3) 
+                echo "Queuing production database reset..."
+                touch {{ARTIFACT_DIR}}/.reset_db
+                ;;
+            *) echo "Keeping current production DB." ;;
+        esac
+    fi
 
 # --- SETUP & INITIALIZATION ---
 setup:

@@ -46,9 +46,17 @@ This document provides a comprehensive technical specification for the Goodnumbe
   - `@goodnumbers/schemas`: Zod validation definitions (Depends on `types`).
   - `@goodnumbers/common`: Shared logic and utilities (Depends on `schemas` and `types`).
 
-## 4. Data Handling
+### 4. Data Handling
 
-### 4.1. Prisma Schema
+### 4.1. Database Architecture
+
+The project uses **SQLite** for all environments (Local Dev, Docker, and Production). This choice simplifies deployment and allows for seamless data portability.
+
+- **Storage**: The database file is located at `backend/prisma/dev.db`.
+- **Syncing**: The `justfile` includes interactive prompts to allow syncing the local development database to the production VPS during deployment (`just deploy`) or resetting it during local Docker testing (`just docker-prod`).
+- **ORM**: Prisma is used for schema management and type-safe database access.
+
+### 4.2. Prisma Schema
 
 ```prisma
 model User {

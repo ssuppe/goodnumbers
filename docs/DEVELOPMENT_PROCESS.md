@@ -121,9 +121,10 @@ The repository is configured with a CI/CD pipeline. You must run these checks lo
 
     The project is managed through three primary `just` command paths:
     - `just dev`: Optimized for local development. Handles auto-rebuilding and hot-reloading.
-    - `just docker-prod`: Validates the full production stack locally using Docker Compose.
-    - `just deploy`: Automated deployment flow for pushing to a production VPS.
-**
+    - `just docker-prod`: Validates the full production stack locally using Docker Compose. Includes interactive prompts to keep or reset the local database.
+    - `just deploy`: Automated deployment flow for pushing to a production VPS. Includes interactive prompts to keep the production DB, copy your local dev DB to production, or reset the production DB.
+
+\*\*
 
 ### 4.4. Review and Merge Process
 
