@@ -107,6 +107,11 @@ export const authConfig: ExpressAuthConfig = {
       authorize,
     }),
   ],
+  pages: {
+    signIn: '/login',
+    newUser: '/register',
+    error: '/login', // Redirect errors back to login
+  },
   secret: process.env.AUTH_SECRET,
   trustHost: true,
   callbacks: {

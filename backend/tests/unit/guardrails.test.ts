@@ -64,11 +64,11 @@ describe('Defensive Auth Guardrails', () => {
     expect(result).toBeNull();
   });
 
-  it('GUARDRAIL: should migrating legacy users without passwords correctly', async () => {
+  it('GUARDRAIL: should migrate legacy users without passwords correctly', async () => {
     const email = 'legacy@example.com';
     const password = 'new-password-123';
 
-    // Mock a user that exists but has no password (legacy Google user)
+    // Mock a user that exists but has no password (e.g. legacy account migration)
     vi.mocked(authUtils.isEmailAllowed).mockResolvedValue(true);
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       id: 'legacy-id',

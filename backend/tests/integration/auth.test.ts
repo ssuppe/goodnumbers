@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import session from "supertest-session";
-import { createApp } from "@src/index";
-import * as http from "http";
-import type { Express } from "express";
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import session from 'supertest-session';
+import { createApp } from '@src/index';
+import * as http from 'http';
+import type { Express } from 'express';
 
 describe('API Contract: Auth.js Endpoints', () => {
   let app: Express;
@@ -25,10 +25,10 @@ describe('API Contract: Auth.js Endpoints', () => {
 
       expect(response.status).toBe(302);
       const redirectUrl = new URL(
-        response.headers['location'],
+        response.header.location as string,
         'http://127.0.0.1',
       );
-      expect(redirectUrl.pathname).toBe('/api/auth/signin');
+      expect(redirectUrl.pathname).toBe('/login');
     });
   });
 });

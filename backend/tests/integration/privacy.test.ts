@@ -14,9 +14,9 @@ describe('User Data Privacy', () => {
         email: `test-privacy-${Date.now()}@example.com`,
         accounts: {
           create: {
-            type: 'oauth',
-            provider: 'google',
-            providerAccountId: `google-id-${Date.now()}`,
+            type: 'credentials',
+            provider: 'credentials',
+            providerAccountId: `creds-id-${Date.now()}`,
           },
         },
         sessions: {
