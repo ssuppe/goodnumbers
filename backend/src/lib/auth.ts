@@ -4,7 +4,6 @@ import Credentials from '@auth/express/providers/credentials';
 import { prisma } from './prisma.js';
 import { hashPassword, verifyPassword } from './passwords.js';
 import { authUtils } from './auth-utils.js';
-import { encrypt } from './encryption.js';
 import type { ExpressAuthConfig } from '@auth/express';
 import type { User as AuthUser } from '@auth/core/types';
 import { GlucoseUnit } from '@goodnumbers/types';
@@ -52,22 +51,11 @@ export async function authorize(
       return null; // Or throw an error for a better UI message
     }
     console.log(`[Auth] Registering allowed user: ${email.substring(0, 3)}...`);
-
-    // --- Optional Initial Setup from .env ---
-    // If NIGHTSCOUT_URL/TOKEN are in .env, we pre-populate them for the user.
-    const initialUrl = process.env.NIGHTSCOUT_URL;
-    const initialToken = process.env.NIGHTSCOUT_TOKEN;
-
     const hashedPassword = hashPassword(password);
     user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
-        ...(initialUrl && { nightscoutUrl: initialUrl }),
-        ...(initialToken && {
-          nightscoutToken: encrypt(initialToken),
-          nightscoutTokenLast3: initialToken.slice(-3),
-        }),
       },
     });
   } else {
