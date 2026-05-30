@@ -26,7 +26,7 @@ https://github.com/user-attachments/assets/4ec7fa7b-3743-47a6-aac8-22760a915135
 - **Frontend**: React (Vite), TypeScript, Tailwind CSS, Refine (v5)
 - **Backend**: Node.js, Express, Prisma, Auth.js (NextAuth for Express)
 - **Data**: SQLite (Standardized on absolute pathing for both Dev and Production), Redis (for background jobs)
-- **AI**: Gemini 1.5 Pro (via Google AI Studio) for deep clinical reasoning
+- **AI**: Gemini 3.1 Pro (via Google AI Studio) for deep clinical reasoning
 
 ---
 

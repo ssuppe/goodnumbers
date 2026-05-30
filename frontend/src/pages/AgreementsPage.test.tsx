@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import AgreementsPage from "./AgreementsPage";
@@ -50,13 +50,16 @@ describe("AgreementsPage", () => {
     mockNavigate.mockClear();
   });
 
-  it("renders all required text, checkboxes, and a disabled button", () => {
+  it("renders all required text, checkboxes, and a disabled button", async () => {
     renderWithProviders(<AgreementsPage />);
 
     // Check for V3 spec content
-    expect(
-      screen.getByRole("heading", { name: /Welcome to GoodNumbers/i }),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /Welcome to GoodNumbers/i }),
+      ).toBeInTheDocument();
+    });
+
     expect(
       screen.getByText(/Before we can create your account/i),
     ).toBeInTheDocument();
@@ -81,8 +84,15 @@ describe("AgreementsPage", () => {
     expect(continueButton).toBeDisabled();
   });
 
-  it("enables the continue button only when both checkboxes are checked", () => {
+  it("enables the continue button only when both checkboxes are checked", async () => {
     renderWithProviders(<AgreementsPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /Welcome to GoodNumbers/i }),
+      ).toBeInTheDocument();
+    });
+
     const termsCheckbox = screen.getByLabelText(
       /i accept the terms and conditions/i,
     );
@@ -111,7 +121,7 @@ describe("AgreementsPage", () => {
     expect(continueButton).toBeDisabled();
   });
 
-  it("calls the api submission hook with correct data when submitted", () => {
+  it("calls the api submission hook with correct data when submitted", async () => {
     // This function is the one we want to track for this specific test
     const mockHandleSubmit = vi.fn();
 
@@ -119,6 +129,12 @@ describe("AgreementsPage", () => {
     mockedUseApiForm.mockReturnValue([mockHandleSubmit, false, null]);
 
     renderWithProviders(<AgreementsPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: /Welcome to GoodNumbers/i }),
+      ).toBeInTheDocument();
+    });
 
     // Enable the button
     fireEvent.click(

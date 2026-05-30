@@ -154,5 +154,5 @@ All endpoints require authentication (`protect`) and CSRF protection.
 
 ## 7. Future Work / Known Limitations
 
-- **AI/Podcast:** The schema supports AI-generated content, but the backend integration with Gemini/TTS is currently pending. Deterministic statistical insights are fully implemented.
+- **AI/Insights:** Gemini 3.1 Pro and Flash are fully integrated into the backend worker to provide clinical reasoning and executive summaries.
 - **RSS Token:** The regeneration endpoint is not yet implemented.
