@@ -216,8 +216,7 @@ describe('Worker Job Processing (Real Logic)', () => {
     await processJournalJob(fakeJob);
 
     // Assert: calculateAgp should be called with the derived timezone
-    // Currently this will fail because it defaults to 'Europe/London'
-    expect(calculateAgp).toHaveBeenCalledWith(expect.anything(), 'UTC-5');
+    expect(calculateAgp).toHaveBeenCalledWith(expect.anything(), 'Etc/GMT+5');
   });
 
   it('should fail with a clear error if timezone cannot be determined', async () => {

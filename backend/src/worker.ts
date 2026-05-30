@@ -158,11 +158,16 @@ export async function processJournalJob(job: Job) {
     ) {
       const offsetMinutes = entries[0].utcOffset;
       const offsetHours = offsetMinutes / 60;
-      // Format as 'UTC+X' or 'UTC-X'
-      const sign = offsetHours >= 0 ? '+' : '';
-      userTimezone = `UTC${sign}${offsetHours}`;
+
+      // Etc/GMT offsets are sign-reversed relative to UTC.
+      // UTC-4 (New York) is Etc/GMT+4
+      // UTC+8 (Singapore) is Etc/GMT-8
+      const gmtOffset = -offsetHours;
+      const sign = gmtOffset >= 0 ? '+' : '';
+      userTimezone = `Etc/GMT${sign}${gmtOffset}`;
+
       console.log(
-        `[Worker] Inferred timezone from data: ${userTimezone} (offset: ${offsetMinutes})`,
+        `[Worker] Inferred valid IANA timezone from data: ${userTimezone} (original offset: ${offsetMinutes} mins)`,
       );
     }
 

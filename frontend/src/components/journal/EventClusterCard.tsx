@@ -204,12 +204,26 @@ export default function EventClusterCard({
     const min = Math.min(...startTimes);
     const max = Math.max(...startTimes);
 
-    // Check for wraparound (e.g. 23:00 and 01:00)
-    // If the spread is > 12 hours (720 mins), we assume it wraps around midnight
+    // Spread check: If the spread is > 12 hours (720 mins), we definitely have a midnight wraparound
     const isWraparound = max - min > 720;
 
-    const earliestStr = minutesToTimeString(isWraparound ? max : min);
-    const latestStr = minutesToTimeString(isWraparound ? min : max);
+    let earliest, latest;
+
+    if (isWraparound) {
+      // In a wraparound, the "earliest" events are actually the ones with the largest minute values
+      // (e.g., 23:30 is "earlier" in the cluster than 00:30)
+      const afterMidnight = startTimes.filter((t) => t < 720);
+      const beforeMidnight = startTimes.filter((t) => t >= 720);
+
+      earliest = Math.min(...beforeMidnight);
+      latest = Math.max(...afterMidnight);
+    } else {
+      earliest = min;
+      latest = max;
+    }
+
+    const earliestStr = minutesToTimeString(earliest);
+    const latestStr = minutesToTimeString(latest);
 
     // If the rounded times are identical, don't show a range
     if (earliestStr === latestStr) return null;

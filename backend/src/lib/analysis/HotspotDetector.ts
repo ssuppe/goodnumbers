@@ -16,6 +16,7 @@ export class HotspotDetector {
   constructor(timezone: string) {
     if (Info.isValidIANAZone(timezone)) {
       this.timezone = timezone;
+      console.log(`[HotspotDetector] Initialized with zone: ${this.timezone}`);
     } else {
       console.warn(
         `[HotspotDetector] Invalid timezone '${timezone}' provided. Defaulting to UTC.`,
