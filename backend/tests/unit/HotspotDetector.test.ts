@@ -240,6 +240,40 @@ describe('HotspotDetector - Clustering', () => {
     // Avg start: (840 + 855 + 850) / 3 = 848.33
     expect(clusters[0].avgStartMinute).toBeCloseTo(848, 0);
   });
+
+  it('groups clusters correctly when traveling (mixed timezones)', () => {
+    // Scenario: User had lunch highs at ~13:00
+    // Mon/Tue: NYC (UTC-4) -> 13:00 is 17:00 UTC
+    // Wed/Thu: London (UTC+1) -> 13:00 is 12:00 UTC
+
+    const makeEvent = (
+      id: string,
+      iso: string,
+      startMin: number,
+    ): GlycemicEvent => ({
+      id,
+      type: 'hyper',
+      startTime: iso,
+      endTime: iso, // Dummy
+      startMinuteOfDay: startMin,
+      durationMinutes: 60,
+      readings: [],
+    });
+
+    // All events are 1:00 PM (13:00 = 780 minutes) local wall-clock
+    const e1 = makeEvent('1', '2023-01-02T13:00:00-04:00', 780); // Mon (NYC)
+    const e2 = makeEvent('2', '2023-01-03T13:05:00-04:00', 785); // Tue (NYC)
+    const e3 = makeEvent('3', '2023-01-04T13:00:00+01:00', 780); // Wed (London)
+    const e4 = makeEvent('4', '2023-01-05T13:10:00+01:00', 790); // Thu (London)
+
+    const clusters = detector.findClusters([e1, e2, e3, e4]);
+
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0].events).toHaveLength(4);
+    // The mean should be around 784 minutes (13:04)
+    expect(clusters[0].avgStartMinute).toBeGreaterThanOrEqual(780);
+    expect(clusters[0].avgStartMinute).toBeLessThanOrEqual(790);
+  });
 });
 
 describe('HotspotDetector - Initialization', () => {

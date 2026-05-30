@@ -22,6 +22,11 @@ describe("EventClusterCard Utils", () => {
       expect(minutesToTimeString(1439)).toBe("00:00"); // 23:59 -> 00:00 (next day)
       expect(minutesToTimeString(0)).toBe("00:00");
     });
+
+    it("handles overflow beyond 24 hours correctly", () => {
+      expect(minutesToTimeString(1445)).toBe("00:00"); // 00:05 -> rounded to 00:00
+      expect(minutesToTimeString(1450)).toBe("00:15"); // 00:10 -> rounded to 00:15
+    });
   });
 
   describe("getColloquialEventName", () => {
