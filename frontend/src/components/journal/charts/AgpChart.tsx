@@ -41,8 +41,6 @@ export interface AgpDataPoint {
 interface AgpChartProps {
   data: AgpDataPoint[];
   units: GlucoseUnit;
-  patientLowGoal?: number;
-  patientHighGoal?: number;
 }
 
 interface RenderItemParams {
@@ -57,12 +55,7 @@ interface RenderItemApi {
   style: (style: object) => object;
 }
 
-export function AgpChart({
-  data,
-  units,
-  patientLowGoal,
-  patientHighGoal,
-}: AgpChartProps) {
+export function AgpChart({ data, units }: AgpChartProps) {
   const chartRef = useRef<ReactECharts>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -347,7 +340,7 @@ export function AgpChart({
         },
       ],
     };
-  }, [data, units, patientLowGoal, patientHighGoal]);
+  }, [data, units]);
 
   if (!data || data.length === 0) {
     return (

@@ -82,7 +82,7 @@ Implement the backend logic to securely fetch 7 days of Nightscout data (entries
 - [ ] Did you decrypt the token using `lib/encryption.ts` before passing it to the client?
 - [ ] Did you use numeric timestamps (milliseconds) for the `$gte` query parameter?
 - [ ] Did you ensure the `token` is **NOT** appended to the URL query string?
-- [ ] Did you add `TEST_NIGHTSCOUT_URL` and `TEST_NIGHTSCOUT_TOKEN` to your local `.env` file for the live test?
+- [ ] Did you add `TEST_NIGHTSCOUT_URL` and `TEST_NIGHTSCOUT_TOKEN` to your local `.env` file for the live test? (Note: These are only for testing; real app settings are entered in the UI).
 
 ## Project hygiene prep
 

@@ -195,21 +195,15 @@ echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 
 **Goal**: Make deployment easy and repeatable.
 
-Add these to the root `Justfile`:
+The project uses a `just deploy` command that packages images locally as tarballs and pushes them to the server to save build resources on the VM.
 
 ```justfile
-SERVER_IP := "your-vm-ip"
-
-# Push local production secrets to the VM
-push-secrets:
-    @echo "Pushing production env and keys..."
-    scp .env.production root@{{SERVER_IP}}:/root/app/.env.production
-    ssh root@{{SERVER_IP}} "mkdir -p /etc/goodnumbers/secrets"
-    scp path/to/your/gcp-key.json root@{{SERVER_IP}}:/etc/goodnumbers/secrets/gcp-key.json
-
 # The main deployment command
-deploy:
-    ssh root@{{SERVER_IP}} "cd app && git pull origin main && docker compose up -d --build"
+deploy: build-local _db-deploy-prompt package-local push-all
+    @echo "Finalizing deployment on the VM..."
+    ssh -t {{SERVER_USER}}@{{SERVER_IP}} "cd app && \
+        cp .env.production .env && \
+        ... (rest of the deployment script) ..."
 ```
 
 ---
@@ -232,7 +226,7 @@ deploy:
 
 - **SIGKILL during build**: Increase swap file size or build locally and push the image (if swap fails).
 - **502 Bad Gateway**: Check `docker compose logs caddy`. Usually means the backend container is still starting up or crashed.
-- **OAuth Fail**: Check if the Redirect URI in Google Cloud Console matches `https://goodnumbers.net/api/auth/callback/google`.
+- **Login Failures**: Ensure `AUTH_SECRET` and `AUTH_URL` are correctly set in `.env.production`.
 
 ## 10. Storage Management (Free Tier Protection)
 

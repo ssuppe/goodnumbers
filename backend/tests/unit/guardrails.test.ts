@@ -1,8 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi } from 'vitest';
 import { authorize } from '../../src/lib/auth.js';
 import { prisma } from '../../src/lib/prisma.js';
 import { authUtils } from '../../src/lib/auth-utils.js';
-import { hashPassword } from '../../src/lib/passwords.js';
 
 // We mock the database and utils to isolate the logic
 vi.mock('../../src/lib/prisma.js', () => ({
@@ -27,9 +27,11 @@ describe('Defensive Auth Guardrails', () => {
     const lowerCaseEmail = 'user@example.com';
 
     // Setup: Allowlist contains lowercase, user provides MixedCase
-    vi.mocked(authUtils.isEmailAllowed).mockImplementation(async ({ email }) => {
-      return email.toLowerCase() === lowerCaseEmail;
-    });
+    vi.mocked(authUtils.isEmailAllowed).mockImplementation(
+      async ({ email }) => {
+        return email.toLowerCase() === lowerCaseEmail;
+      },
+    );
 
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null); // New user
     vi.mocked(prisma.user.create).mockResolvedValue({
@@ -45,7 +47,9 @@ describe('Defensive Auth Guardrails', () => {
     });
 
     expect(result).not.toBeNull();
-    expect(authUtils.isEmailAllowed).toHaveBeenCalledWith({ email: mixedCaseEmail });
+    expect(authUtils.isEmailAllowed).toHaveBeenCalledWith({
+      email: mixedCaseEmail,
+    });
   });
 
   it('GUARDRAIL: should reject passwords shorter than 8 characters on the backend', async () => {
@@ -90,7 +94,7 @@ describe('Defensive Auth Guardrails', () => {
         data: expect.objectContaining({
           password: expect.any(String),
         }),
-      })
+      }),
     );
     expect(result).not.toBeNull();
   });

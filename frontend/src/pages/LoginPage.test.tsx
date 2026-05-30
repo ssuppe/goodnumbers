@@ -1,58 +1,65 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import LoginPage from './LoginPage';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import LoginPage from "./LoginPage";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock fetch for CSRF token
 global.fetch = vi.fn();
 
-describe('LoginPage', () => {
+describe("LoginPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (global.fetch as any).mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ csrfToken: 'test-token' }),
+      json: () => Promise.resolve({ csrfToken: "test-token" }),
     });
   });
 
-  it('renders the login form correctly', async () => {
+  it("renders the login form correctly", async () => {
     render(
       <MemoryRouter>
         <LoginPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText(/Log In/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sign In/i })).toBeInTheDocument();
-    
+    expect(
+      screen.getByRole("button", { name: /Sign In/i }),
+    ).toBeInTheDocument();
+
     // Wait for CSRF token fetch
     await waitFor(() => {
-      const csrfInput = document.querySelector('input[name="csrfToken"]') as HTMLInputElement;
-      expect(csrfInput.value).toBe('test-token');
+      const csrfInput = document.querySelector(
+        'input[name="csrfToken"]',
+      ) as HTMLInputElement;
+      expect(csrfInput.value).toBe("test-token");
     });
   });
 
-  it('contains the correct hidden fields for Auth.js', () => {
+  it("contains the correct hidden fields for Auth.js", () => {
     render(
       <MemoryRouter>
         <LoginPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
-    const actionInput = document.querySelector('input[name="action"]') as HTMLInputElement;
-    expect(actionInput.value).toBe('login');
+    const actionInput = document.querySelector(
+      'input[name="action"]',
+    ) as HTMLInputElement;
+    expect(actionInput.value).toBe("login");
   });
 
-  it('links to the registration page', () => {
+  it("links to the registration page", () => {
     render(
       <MemoryRouter>
         <LoginPage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
-    const registerLink = screen.getByRole('link', { name: /Register here/i });
-    expect(registerLink).toHaveAttribute('href', '/register');
+    const registerLink = screen.getByRole("link", { name: /Register here/i });
+    expect(registerLink).toHaveAttribute("href", "/register");
   });
 });

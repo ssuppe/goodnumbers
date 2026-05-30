@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // 1. Setup mocks using ALIASES
@@ -23,16 +24,16 @@ import { authUtils as authUtilsMock } from '@src/lib/auth-utils.js';
 import * as passwords from '@src/lib/passwords.js';
 
 describe('Auth.js authorize Callback Logic', () => {
-  let authorize: any;
+  let authorize: (credentials: Record<string, unknown>) => Promise<any>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.resetModules();
-    
+
     // 3. Dynamically import the standalone authorize function
     const authModule = await import('@src/lib/auth.js');
     authorize = authModule.authorize;
-    
+
     // Default mock behavior
     vi.mocked(authUtilsMock.isEmailAllowed).mockResolvedValue(true);
   });

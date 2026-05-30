@@ -109,7 +109,7 @@ This section defines the access control mechanism for the private beta/pre-relea
 
 #### New User Registration
 
-- As a **new user**, I want to register quickly using my existing Google account.
+- As a **new user**, I want to register quickly using my email and a secure password.
 - As a **new user**, I want to understand and explicitly agree to the terms, privacy policy, and software disclaimer before I register.
 
 ### 4. Functional Requirements

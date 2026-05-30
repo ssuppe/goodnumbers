@@ -18,8 +18,6 @@ interface ChartAnalysisCardProps {
   units: GlucoseUnit;
   insights: Insight[];
   scoreCardData?: ScoreCardData | null;
-  patientLowGoal?: number;
-  patientHighGoal?: number;
 }
 
 export function ChartAnalysisCard({
@@ -29,8 +27,6 @@ export function ChartAnalysisCard({
   units,
   insights,
   scoreCardData,
-  patientLowGoal,
-  patientHighGoal,
 }: ChartAnalysisCardProps) {
   const [showInsights, setShowInsights] = useState(false);
   const tooltipContent = (
@@ -220,12 +216,7 @@ export function ChartAnalysisCard({
         )}
 
         <div className="mb-2">
-          <AgpChart
-            data={data}
-            units={units}
-            patientLowGoal={patientLowGoal}
-            patientHighGoal={patientHighGoal}
-          />
+          <AgpChart data={data} units={units} />
         </div>
 
         {/* --- Collapsible Analysis & Insights (The "Zippy") --- */}
