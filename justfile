@@ -74,6 +74,12 @@ deploy: build-local _db-deploy-prompt package-local push-all
         ((pv deploy-artifacts/backend.tar.gz 2>/dev/null || cat deploy-artifacts/backend.tar.gz) | docker load) || (rm -rf deploy-artifacts/*.tar.gz && exit 1) && \
         echo '--- Loading Frontend Image ---' && \
         ((pv deploy-artifacts/frontend.tar.gz 2>/dev/null || cat deploy-artifacts/frontend.tar.gz) | docker load) || (rm -rf deploy-artifacts/*.tar.gz && exit 1) && \
+        echo '--- Stopping Stack for Update ---' && \
+        GCP_KEY_PATH_SERVER={{GCP_KEY_PATH_SERVER}} docker compose -f docker-compose.yml -f docker-compose.prod.yml down && \
+        if [ -f \"deploy-artifacts/dev.db\" ]; then \
+            echo '--- Overwriting Production Database with Local Copy ---' && \
+            mv deploy-artifacts/dev.db backend/prisma/dev.db; \
+        fi && \
         echo '--- Restarting Containers (Production Mode) ---' && \
         GCP_KEY_PATH_SERVER={{GCP_KEY_PATH_SERVER}} docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d && \
         if [ -f \"deploy-artifacts/.reset_db\" ]; then \

@@ -136,8 +136,10 @@ export class HotspotDetector {
     const firstDate = first.dateString || new Date(first.date).toISOString();
     const lastDate = last.dateString || new Date(last.date).toISOString();
 
-    const startTime = DateTime.fromISO(firstDate).setZone(this.timezone);
-    const endTime = DateTime.fromISO(lastDate).setZone(this.timezone);
+    // LUXON PARSING: If the string has an offset (-04:00), Luxon respects it.
+    // This allows us to use "Wall Clock Time" even if the user traveled.
+    const startTime = DateTime.fromISO(firstDate);
+    const endTime = DateTime.fromISO(lastDate);
 
     // Calculate duration in minutes
     const duration = endTime.diff(startTime, 'minutes').minutes;
@@ -226,9 +228,7 @@ export class HotspotDetector {
 
       // Filter: Must have >= 3 distinct days
       const distinctDays = new Set(
-        component.map(
-          (e) => DateTime.fromISO(e.startTime).setZone(this.timezone).weekday,
-        ),
+        component.map((e) => DateTime.fromISO(e.startTime).weekday),
       );
 
       if (distinctDays.size >= 2) {

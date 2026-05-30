@@ -6,7 +6,6 @@ import type {
 } from "@goodnumbers/types";
 import { ClusterEventsChart } from "./charts/ClusterEventsChart";
 import CollapsingNoteArea from "./CollapsingNoteArea";
-import { format } from "date-fns";
 import { type GlucoseUnit, type Treatment } from "../../lib/agpUtils";
 import { ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
 
@@ -25,15 +24,14 @@ export interface AiInsight {
   quickLogSuggestions?: string[];
 }
 
-// Helper to format minutes into HH:MM using date-fns for consistency
+// Helper to format minutes into HH:MM using robust string padding.
+// Immune to local computer DST transitions or timezone settings.
 export function minutesToTimeString(minutes: number): string {
   // Round to nearest 15 minutes
   const roundedMinutes = Math.round(minutes / 15) * 15;
-  const h = Math.floor(roundedMinutes / 60);
+  const h = Math.floor(roundedMinutes / 60) % 24;
   const m = roundedMinutes % 60;
-  const date = new Date();
-  date.setHours(h, m, 0, 0);
-  return format(date, "HH:mm");
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
 }
 
 // Helper to get colloquial event name
