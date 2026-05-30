@@ -47,6 +47,7 @@ Setting up GoodNumbers for local development is easy with our `just` command run
     - `AUTH_SECRET` (A secure random string for signing cookies)
     - `AUTH_URL` (Base URL of your frontend, e.g., `http://localhost:5173`)
     - `GEMINI_API_KEY` (from Google AI Studio)
+    - `NIGHTSCOUT_URL` & `NIGHTSCOUT_TOKEN` (Optional: If provided, the first registered user will be auto-initialized with these settings)
 
     **Note on Registration**: This project uses a restricted sign-up flow. You must add your email to `backend/config/allowed_emails.txt` before you can register an account.
 
