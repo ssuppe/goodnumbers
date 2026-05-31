@@ -1,14 +1,10 @@
 import { DateTime, Info } from 'luxon';
 import { v4 as uuidv4 } from 'uuid';
 import {
+  GlucoseEntry,
   GlycemicEvent,
   GlycemicCluster,
-  GlucoseEntry,
 } from '@goodnumbers/types';
-
-const MIN_DURATION_MINUTES = 20;
-const MAX_ENTRIES = 5000;
-export const BUFFER_MINUTES = 180;
 
 export class HotspotDetector {
   private timezone: string;
@@ -31,213 +27,134 @@ export class HotspotDetector {
     threshold: number,
   ): GlycemicEvent[] {
     const events: GlycemicEvent[] = [];
-    let startIndex = -1;
-    let localPeak = type === 'hyper' ? -Infinity : Infinity;
-    const VALLEY_SPLIT_MARGIN = 35; // mg/dL
+    let currentSequence: GlucoseEntry[] = [];
 
-    // 0. Security: Limit input size to prevent DoS
-    const limitedEntries = entries.slice(0, MAX_ENTRIES);
+    const safeEntries = entries.slice(0, 5000);
 
-    // 1. Sort chronologically by timestamp
-    const sorted = [...limitedEntries].sort((a, b) => a.date - b.date);
-
-    for (let i = 0; i < sorted.length; i++) {
-      const entry = sorted[i];
-      const isTrigger =
+    for (let i = 0; i < safeEntries.length; i++) {
+      const entry = safeEntries[i];
+      const isOut =
         type === 'hyper' ? entry.sgv >= threshold : entry.sgv <= threshold;
 
-      if (isTrigger) {
-        if (startIndex === -1) {
-          startIndex = i;
-          localPeak = entry.sgv;
-        } else {
-          // Check for significant valley to split
-          if (type === 'hyper') {
-            if (entry.sgv > localPeak) {
-              localPeak = entry.sgv;
-            } else if (entry.sgv < localPeak - VALLEY_SPLIT_MARGIN) {
-              // We hit a significant dip. If it starts rising again, we split.
-              // Look ahead to see if it recovers
-              const next = sorted[i + 1];
-              if (next && next.sgv > entry.sgv + 5) {
-                // Split point found
-                this.processSequence(
-                  sorted,
-                  startIndex,
-                  i + 1,
-                  events,
-                  type,
-                  threshold,
-                );
-                startIndex = i + 1;
-                localPeak = next.sgv;
-              }
-            }
-          } else {
-            // Hypo valley splitting (less common but same logic)
-            if (entry.sgv < localPeak) {
-              localPeak = entry.sgv;
-            } else if (entry.sgv > localPeak + VALLEY_SPLIT_MARGIN) {
-              const next = sorted[i + 1];
-              if (next && next.sgv < entry.sgv - 5) {
-                this.processSequence(
-                  sorted,
-                  startIndex,
-                  i + 1,
-                  events,
-                  type,
-                  threshold,
-                );
-                startIndex = i + 1;
-                localPeak = next.sgv;
-              }
-            }
-          }
-        }
+      if (isOut) {
+        currentSequence.push(entry);
       } else {
-        if (startIndex !== -1) {
-          // Sequence ended at i - 1
-          this.processSequence(sorted, startIndex, i, events, type, threshold);
-          startIndex = -1;
+        if (currentSequence.length > 0) {
+          this.processSequence(currentSequence, type, threshold, events);
+          currentSequence = [];
+        }
+      }
+      if (type === 'hyper' && currentSequence.length > 2) {
+        const last = currentSequence[currentSequence.length - 1];
+        // Look ahead to see if it recovers after a significant drop
+        const next = safeEntries[i + 1];
+        if (next && next.sgv > last.sgv + 5 && last.sgv < threshold + 35) {
+          const maxBefore = Math.max(...currentSequence.map((e) => e.sgv));
+          if (maxBefore > last.sgv + 35) {
+            this.processSequence(currentSequence, type, threshold, events);
+            currentSequence = [];
+          }
         }
       }
     }
-    // Check tail
-    if (startIndex !== -1) {
-      this.processSequence(
-        sorted,
-        startIndex,
-        sorted.length,
-        events,
-        type,
-        threshold,
-      );
+
+    if (currentSequence.length > 0) {
+      this.processSequence(currentSequence, type, threshold, events);
     }
 
     return events;
   }
 
   private processSequence(
-    allEntries: GlucoseEntry[],
-    startIndex: number,
-    endIndex: number,
-    events: GlycemicEvent[],
+    seq: GlucoseEntry[],
     type: 'hyper' | 'hypo',
     threshold: number,
+    events: GlycemicEvent[],
   ) {
-    // Core event entries (exclusive of endIndex)
-    const seq = allEntries.slice(startIndex, endIndex);
     if (seq.length === 0) return;
 
     const first = seq[0];
     const last = seq[seq.length - 1];
 
-    // Use dateString if available, otherwise convert timestamp
     const firstDate = first.dateString || new Date(first.date).toISOString();
     const lastDate = last.dateString || new Date(last.date).toISOString();
 
-    // LUXON PARSING: If the string has an offset (-04:00), Luxon respects it.
-    // This allows us to use "Wall Clock Time" even if the user traveled.
     const startTime = DateTime.fromISO(firstDate);
     const endTime = DateTime.fromISO(lastDate);
-
-    // Calculate duration in minutes
     const duration = endTime.diff(startTime, 'minutes').minutes;
 
-    // --- Intensity Calculation (Magnitude) ---
-    // Magnitude is the maximum distance from the threshold during the event
     let magnitude = 0;
     seq.forEach((e) => {
       const diff = Math.abs(e.sgv - threshold);
       if (diff > magnitude) magnitude = diff;
     });
 
-    const MIN_MAGNITUDE_MGDL = 20;
+    const MIN_DURATION = 20;
+    const MIN_MAGNITUDE = 20;
 
-    // Filter: Keep if it's long enough OR intense enough
-    if (duration >= MIN_DURATION_MINUTES || magnitude >= MIN_MAGNITUDE_MGDL) {
-      // --- Calculate Buffer Indices ---
-      const bufferStartTime = startTime.minus({ minutes: BUFFER_MINUTES });
-      const bufferEndTime = endTime.plus({ minutes: BUFFER_MINUTES });
-
-      // Scan backwards for start buffer
-      let bufferStartIndex = startIndex;
-      while (bufferStartIndex > 0) {
-        const prevEntry = allEntries[bufferStartIndex - 1];
-        const prevTime = DateTime.fromMillis(prevEntry.date).setZone(
-          this.timezone,
-        );
-        if (prevTime < bufferStartTime) break;
-        bufferStartIndex--;
-      }
-
-      // Scan forwards for end buffer
-      let bufferEndIndex = endIndex;
-      while (bufferEndIndex < allEntries.length) {
-        const nextEntry = allEntries[bufferEndIndex];
-        const nextTime = DateTime.fromMillis(nextEntry.date).setZone(
-          this.timezone,
-        );
-        if (nextTime > bufferEndTime) break;
-        bufferEndIndex++;
-      }
-
-      // Extract extended readings
-      const extendedReadings = allEntries
-        .slice(bufferStartIndex, bufferEndIndex)
-        .map((e) => ({
-          timestamp: e.dateString || new Date(e.date).toISOString(),
-          value: e.sgv,
-        }));
-
+    if (duration >= MIN_DURATION || magnitude >= MIN_MAGNITUDE) {
       events.push({
         id: uuidv4(),
         type,
-        startTime: startTime.toISO()!,
-        endTime: endTime.toISO()!,
+        startTime: firstDate,
+        endTime: lastDate,
         startMinuteOfDay: startTime.hour * 60 + startTime.minute,
         durationMinutes: duration,
-        readings: extendedReadings,
+        readings: seq.map((s) => ({
+          timestamp: s.dateString || new Date(s.date).toISOString(),
+          value: s.sgv,
+        })),
       });
     }
   }
 
   public findClusters(events: GlycemicEvent[]): GlycemicCluster[] {
-    const visited = new Set<string>();
     const clusters: GlycemicCluster[] = [];
+    const visited = new Set<string>();
+    const sorted = [...events].sort(
+      (a, b) => a.startMinuteOfDay - b.startMinuteOfDay,
+    );
 
-    for (const event of events) {
-      if (visited.has(event.id)) continue;
+    for (let i = 0; i < sorted.length; i++) {
+      const seed = sorted[i];
+      if (visited.has(seed.id)) continue;
 
-      // DFS to find connected component
-      const component: GlycemicEvent[] = [];
-      const stack = [event];
-      visited.add(event.id);
+      const candidate: GlycemicEvent[] = [seed];
+      for (let j = 0; j < sorted.length; j++) {
+        const other = sorted[j];
+        if (seed.id === other.id || visited.has(other.id)) continue;
 
-      while (stack.length > 0) {
-        const current = stack.pop()!;
-        component.push(current);
-
-        for (const other of events) {
-          if (!visited.has(other.id) && this.doEventsOverlap(current, other)) {
-            visited.add(other.id);
-            stack.push(other);
-          }
+        const dist = this.getCircularDistance(
+          seed.startMinuteOfDay,
+          other.startMinuteOfDay,
+        );
+        if (dist <= 90) {
+          candidate.push(other);
         }
       }
 
-      // Filter: Must have >= 3 distinct days
+      // SECURITY/STABILITY: Use the detector's configured timezone for day calculation
+      // to ensure consistency across travel.
       const distinctDays = new Set(
-        component.map((e) => DateTime.fromISO(e.startTime).weekday),
+        candidate.map(
+          (e) => DateTime.fromISO(e.startTime, { setZone: true }).weekday,
+        ),
       );
 
-      if (distinctDays.size >= 2) {
+      if (distinctDays.size >= 3) {
+        candidate.forEach((e) => visited.add(e.id));
         clusters.push(
-          this.buildClusterObject(component, Array.from(distinctDays)),
+          this.buildClusterObject(candidate, Array.from(distinctDays)),
         );
       }
     }
+
     return clusters;
+  }
+
+  private getCircularDistance(a: number, b: number): number {
+    const diff = Math.abs(a - b);
+    return Math.min(diff, 1440 - diff);
   }
 
   private buildClusterObject(
@@ -248,7 +165,6 @@ export class HotspotDetector {
     const avgDuration =
       events.reduce((sum, e) => sum + e.durationMinutes, 0) / events.length;
 
-    // Circular Mean for start times
     let sinSum = 0;
     let cosSum = 0;
     for (const e of events) {
@@ -272,14 +188,13 @@ export class HotspotDetector {
   }
 
   private doEventsOverlap(a: GlycemicEvent, b: GlycemicEvent): boolean {
-    const buffer = 15; // minutes
+    const buffer = 15;
     const aIntervals = this.getNormalizedIntervals(a);
     const bIntervals = this.getNormalizedIntervals(b);
 
     return aIntervals.some((intA) =>
       bIntervals.some(
         (intB) =>
-          // Check overlap with buffer
           Math.max(intA.start, intB.start) <
           Math.min(intA.end, intB.end) + buffer,
       ),
@@ -292,9 +207,6 @@ export class HotspotDetector {
     const start = e.startMinuteOfDay;
     const end = (start + e.durationMinutes) % 1440;
 
-    // If the event wraps around midnight (start + duration >= 1440)
-    // Or if it ends exactly at midnight (which is 0 in modulo but 1440 in continuous time)
-    // We treat it as two intervals: [start, 1440] and [0, end]
     if (start + e.durationMinutes >= 1440) {
       return [
         { start, end: 1440 },

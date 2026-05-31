@@ -3,6 +3,7 @@
 import './lib/env.js';
 import { Worker, Job } from 'bullmq';
 import { Redis } from 'ioredis';
+import { DateTime } from 'luxon';
 import { JOURNAL_QUEUE_NAME } from './lib/queue.js';
 import { prisma, Prisma } from './lib/prisma.js';
 import { NightscoutClient } from './lib/nightscout/client.js';
@@ -266,11 +267,20 @@ export async function processJournalJob(job: Job) {
     const detector = new HotspotDetector(userTimezone);
 
     // 2. Map Nightscout entries to GlucoseEntry format
-    const glucoseEntries = entries.map((e) => ({
-      sgv: e.sgv,
-      date: e.date,
-      dateString: new Date(e.date).toISOString(),
-    }));
+    const glucoseEntries = entries.map((e) => {
+      // Reconstruct the LOCAL wall-clock time using the offset provided by Nightscout.
+      // This ensures we analyze patterns based on the time the user actually saw on their device.
+      // Note: Etc/GMT is sign-reversed in IANA (UTC-4 is Etc/GMT+4).
+      const gmtOffset = -(e.utcOffset / 60);
+      const zone = `Etc/GMT${gmtOffset >= 0 ? '+' : ''}${gmtOffset}`;
+      const localDate = DateTime.fromMillis(e.date).setZone(zone);
+
+      return {
+        sgv: e.sgv,
+        date: e.date,
+        dateString: localDate.toISO() || new Date(e.date).toISOString(),
+      };
+    });
 
     // 3. Detect Events
     const hyperEvents = detector.detectEvents(glucoseEntries, 'hyper', 180);

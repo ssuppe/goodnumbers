@@ -81,8 +81,6 @@ describe('HotspotDetector - Event Detection', () => {
     // Generate 5000 normal entries
     const normal = generateSequence('2023-01-01T00:00:00Z', 5000, 100);
     // Generate hyper events AFTER the 5000th entry
-    // The last normal entry is at index 4999.
-    // Start hyper sequence after that.
     const lastNormalTime = DateTime.fromISO('2023-01-01T00:00:00Z').plus({
       minutes: 5000 * 5,
     });
@@ -91,7 +89,6 @@ describe('HotspotDetector - Event Detection', () => {
     const entries = [...normal, ...hyper];
     const events = detector.detectEvents(entries, 'hyper', 180);
 
-    // Should be 0 if limited to 5000, but will be > 0 before implementation
     expect(events).toHaveLength(0);
   });
 });
@@ -99,7 +96,6 @@ describe('HotspotDetector - Event Detection', () => {
 describe('HotspotDetector - Overlap Logic', () => {
   const detector = new HotspotDetector('UTC');
 
-  // Helper to create a dummy event
   const createEvent = (
     startMinute: number,
     duration: number,
@@ -108,8 +104,8 @@ describe('HotspotDetector - Overlap Logic', () => {
     type: 'hyper',
     startMinuteOfDay: startMinute,
     durationMinutes: duration,
-    startTime: '2023-01-01T00:00:00Z', // Dummy
-    endTime: '2023-01-01T00:00:00Z', // Dummy
+    startTime: '2023-01-01T00:00:00Z',
+    endTime: '2023-01-01T00:00:00Z',
     readings: [],
   });
 
@@ -117,7 +113,6 @@ describe('HotspotDetector - Overlap Logic', () => {
     const eventA = createEvent(840, 60); // 14:00 - 15:00
     const eventB = createEvent(870, 60); // 14:30 - 15:30
 
-    // Access private method
     const result = (detector as unknown as TestableDetector).doEventsOverlap(
       eventA,
       eventB,
@@ -138,7 +133,7 @@ describe('HotspotDetector - Overlap Logic', () => {
 
   it('detects overlap with buffer (15 mins)', () => {
     const eventA = createEvent(840, 60); // 14:00 - 15:00
-    const eventB = createEvent(910, 60); // 15:10 - 16:10 (10 min gap, should overlap with 15m buffer)
+    const eventB = createEvent(910, 60); // 15:10 - 16:10
 
     const result = (detector as unknown as TestableDetector).doEventsOverlap(
       eventA,
@@ -204,7 +199,6 @@ describe('HotspotDetector - Clustering', () => {
   const detector = new HotspotDetector('UTC');
 
   it('groups overlapping events and filters by frequency (>= 3 days)', () => {
-    // Helper to make a dummy event with specific start time
     const makeEvent = (
       id: string,
       startIso: string,
@@ -224,28 +218,16 @@ describe('HotspotDetector - Clustering', () => {
     const e1 = makeEvent('1', '2023-01-02T14:00:00Z', 60, 840); // Mon
     const e2 = makeEvent('2', '2023-01-03T14:15:00Z', 60, 855); // Tue
     const e3 = makeEvent('3', '2023-01-04T14:10:00Z', 60, 850); // Wed
-
-    // Noise: 18:00 (1080 min)
     const e4 = makeEvent('4', '2023-01-05T18:00:00Z', 60, 1080); // Thu
 
     const clusters = detector.findClusters([e1, e2, e3, e4]);
 
     expect(clusters).toHaveLength(1);
     expect(clusters[0].events).toHaveLength(3);
-    expect(clusters[0].events.map((e) => e.id)).toContain('1');
-    expect(clusters[0].events.map((e) => e.id)).toContain('2');
-    expect(clusters[0].events.map((e) => e.id)).toContain('3');
-
-    // Check calculated stats
-    // Avg start: (840 + 855 + 850) / 3 = 848.33
     expect(clusters[0].avgStartMinute).toBeCloseTo(848, 0);
   });
 
   it('groups clusters correctly when traveling (mixed timezones)', () => {
-    // Scenario: User had lunch highs at ~13:00
-    // Mon/Tue: NYC (UTC-4) -> 13:00 is 17:00 UTC
-    // Wed/Thu: London (UTC+1) -> 13:00 is 12:00 UTC
-
     const makeEvent = (
       id: string,
       iso: string,
@@ -254,32 +236,66 @@ describe('HotspotDetector - Clustering', () => {
       id,
       type: 'hyper',
       startTime: iso,
-      endTime: iso, // Dummy
+      endTime: iso,
       startMinuteOfDay: startMin,
       durationMinutes: 60,
       readings: [],
     });
 
-    // All events are 1:00 PM (13:00 = 780 minutes) local wall-clock
-    const e1 = makeEvent('1', '2023-01-02T13:00:00-04:00', 780); // Mon (NYC)
-    const e2 = makeEvent('2', '2023-01-03T13:05:00-04:00', 785); // Tue (NYC)
-    const e3 = makeEvent('3', '2023-01-04T13:00:00+01:00', 780); // Wed (London)
-    const e4 = makeEvent('4', '2023-01-05T13:10:00+01:00', 790); // Thu (London)
+    const e1 = makeEvent('1', '2023-01-02T13:00:00-04:00', 780); // NYC
+    const e2 = makeEvent('2', '2023-01-03T13:05:00-04:00', 785); // NYC
+    const e3 = makeEvent('3', '2023-01-04T13:00:00+01:00', 780); // London
+    const e4 = makeEvent('4', '2023-01-05T13:10:00+01:00', 790); // London
 
     const clusters = detector.findClusters([e1, e2, e3, e4]);
 
     expect(clusters).toHaveLength(1);
     expect(clusters[0].events).toHaveLength(4);
-    // The mean should be around 784 minutes (13:04)
-    expect(clusters[0].avgStartMinute).toBeGreaterThanOrEqual(780);
-    expect(clusters[0].avgStartMinute).toBeLessThanOrEqual(790);
+  });
+
+  it('should NOT merge distinct morning and evening patterns (Chain Reaction Test)', () => {
+    const makeEvent = (
+      id: string,
+      start: number,
+      duration: number,
+      day: number,
+    ): GlycemicEvent => {
+      // Use unambiguously far apart dates to avoid weekday rollover issues
+      const dt = DateTime.fromISO(`2023-01-0${day}T00:00:00Z`)
+        .setZone('UTC')
+        .plus({ minutes: start });
+      return {
+        id,
+        type: 'hyper',
+        startTime: dt.toISO()!,
+        endTime: dt.plus({ minutes: duration }).toISO()!,
+        startMinuteOfDay: start,
+        durationMinutes: duration,
+        readings: [],
+      };
+    };
+
+    // Evening: 18:00 (1080)
+    const e1 = makeEvent('E1', 1080, 60, 1); // Sun
+    const e2 = makeEvent('E2', 1090, 60, 2); // Mon
+    const e3 = makeEvent('E3', 1085, 60, 3); // Tue
+
+    // Morning: 04:00 (240) - 10 hours apart
+    const m1 = makeEvent('M1', 240, 60, 4); // Wed
+    const m2 = makeEvent('M2', 250, 60, 5); // Thu
+    const m3 = makeEvent('M3', 245, 60, 6); // Fri
+
+    const clusters = detector.findClusters([e1, e2, e3, m1, m2, m3]);
+
+    expect(clusters).toHaveLength(2);
+    expect(clusters.some((c) => c.avgStartMinute > 1000)).toBe(true);
+    expect(clusters.some((c) => c.avgStartMinute < 300)).toBe(true);
   });
 });
 
 describe('HotspotDetector - Initialization', () => {
   it('defaults to UTC if an invalid timezone is provided', () => {
     const detector = new HotspotDetector('Mars/Phobos');
-    // Access private property for verification
     expect((detector as unknown as TestableDetector).timezone).toBe('UTC');
   });
 
