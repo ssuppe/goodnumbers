@@ -298,4 +298,36 @@ describe("ClusterEventsChart", () => {
     // The mock data has 180 mg/dL. In mmol/L it should be ~10.0
     expect(point.value[1]).toBeCloseTo(10.0, 1);
   });
+
+  it("filters out events with fewer than 2 readings to prevent crashes", () => {
+    const clusterWithBadEvent: GlycemicCluster = {
+      ...mockCluster,
+      events: [
+        mockCluster.events[0], // Valid event
+        {
+          id: "bad-evt",
+          type: "hyper",
+          startTime: "2023-01-03T10:00:00Z",
+          endTime: "2023-01-03T10:05:00Z",
+          startMinuteOfDay: 600,
+          durationMinutes: 5,
+          readings: [{ timestamp: "2023-01-03T10:00:00Z", value: 200 }], // Only 1 reading
+        },
+      ],
+    };
+
+    render(<ClusterEventsChart cluster={clusterWithBadEvent} units="MGDL" />);
+
+    const options = mockReactECharts.mock.calls[0][0].option as MockOption;
+    const dataSeries = options.series.filter(
+      (s) =>
+        s.type === "line" &&
+        (!s.markLine ||
+          !s.markLine.data.some((d: { yAxis?: number }) => d.yAxis)),
+    );
+
+    // Only the valid event should be present
+    expect(dataSeries).toHaveLength(1);
+    expect(dataSeries[0].name).toContain("Jan 1");
+  });
 });

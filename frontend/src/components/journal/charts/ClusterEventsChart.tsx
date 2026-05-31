@@ -158,10 +158,14 @@ export function ClusterEventsChart({
     const normalizedUnits = (isMmol ? "MMOL" : "MGDL") as GlucoseUnit;
     const thresholds = getClinicalThresholds(normalizedUnits);
 
-    const sortedEvents = [...cluster.events].sort(
-      (a, b) =>
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
-    );
+    const sortedEvents = [...cluster.events]
+      .filter((e) => e.readings && e.readings.length >= 2) // Defensive: ECharts crashes on 1-point gradients
+      .sort(
+        (a, b) =>
+          new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+      );
+
+    if (sortedEvents.length === 0) return null;
 
     // Calculate global normalized bounds for the entire cluster
     let globalMinNormalized = Infinity;
@@ -170,9 +174,13 @@ export function ClusterEventsChart({
     sortedEvents.forEach((event) => {
       const nStart = normalizeTime(event.startTime, boundaryHour);
       const nEnd = normalizeTime(event.endTime, boundaryHour);
+      if (isNaN(nStart) || isNaN(nEnd)) return; // Skip invalid dates
+
       if (nStart < globalMinNormalized) globalMinNormalized = nStart;
       if (nEnd > globalMaxNormalized) globalMaxNormalized = nEnd;
     });
+
+    if (globalMinNormalized === Infinity) return null;
 
     const globalSearchStart =
       globalMinNormalized - TREATMENT_BUFFER_MINUTES * 60000;
@@ -200,6 +208,15 @@ export function ClusterEventsChart({
       const durationMillis =
         new Date(event.endTime).getTime() - new Date(event.startTime).getTime();
       const normalizedEndTime = normalizedStartTime + durationMillis;
+
+      // Defensive: Fallback to simple color if math fails
+      if (isNaN(normalizedStartTime) || isNaN(normalizedEndTime)) {
+        return {
+          show: false,
+          seriesIndex: index,
+          color: visuals.color,
+        };
+      }
 
       return {
         show: false,
@@ -280,17 +297,22 @@ export function ClusterEventsChart({
             },
           ],
         },
-        data: event.readings.map((r) => {
-          const originalReadingTime = new Date(r.timestamp).getTime();
-          const offset = originalReadingTime - originalStartTimeMillis;
-          return {
-            value: [
-              normalizedStartTime + offset,
-              convertGlucose(r.value, normalizedUnits),
-            ],
-            originalDate: r.timestamp,
-          };
-        }),
+        data: event.readings
+          .map((r) => {
+            const originalReadingTime = new Date(r.timestamp).getTime();
+            const offset = originalReadingTime - originalStartTimeMillis;
+            const glucoseValue = convertGlucose(r.value, normalizedUnits);
+
+            if (isNaN(originalReadingTime) || isNaN(glucoseValue)) return null;
+
+            return {
+              value: [normalizedStartTime + offset, glucoseValue],
+              originalDate: r.timestamp,
+            };
+          })
+          .filter((d): d is { value: [number, number]; originalDate: string } =>
+            Boolean(d),
+          ),
       };
     });
 
