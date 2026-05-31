@@ -193,17 +193,6 @@ export function AgpChart({ data, units }: AgpChartProps) {
         bottom: 0,
       },
       series: [
-        // Target Range Background (Success Zone)
-        {
-          type: "line",
-          markArea: {
-            silent: true,
-            itemStyle: {
-              color: "rgba(76, 175, 80, 0.2)", // Hardcoded soft green for success zone
-            },
-            data: [[{ yAxis: thresholds.low }, { yAxis: thresholds.high }]],
-          },
-        },
         // 5th-95th Percentile Band (Lightest)
         {
           name: "5th-95th Percentile",
@@ -213,10 +202,13 @@ export function AgpChart({ data, units }: AgpChartProps) {
             const lower = api.value(1);
             const upper = api.value(2);
 
-            if (lower == null || upper == null) return;
+            if (lower == null || upper == null || xValue == null) return;
 
             const start = api.coord([xValue, lower]);
             const end = api.coord([xValue, upper]);
+
+            // Defensive: ensure coord lookups didn't fail
+            if (!start || !end || isNaN(start[0]) || isNaN(start[1])) return;
 
             // Calculate width and padding
             const size = api.size([1, 0], [xValue, lower]);
@@ -257,10 +249,12 @@ export function AgpChart({ data, units }: AgpChartProps) {
             const xValue = api.value(0);
             const lower = api.value(1);
             const upper = api.value(2);
-            if (lower == null || upper == null) return;
+            if (lower == null || upper == null || xValue == null) return;
 
             const start = api.coord([xValue, lower]);
             const end = api.coord([xValue, upper]);
+
+            if (!start || !end || isNaN(start[0]) || isNaN(start[1])) return;
 
             // Calculate width and padding
             const size = api.size([1, 0], [xValue, lower]);
@@ -305,22 +299,7 @@ export function AgpChart({ data, units }: AgpChartProps) {
             width: 2,
           },
           z: 2,
-        },
-        // Median Line
-        {
-          name: "Median",
-          type: "line",
-          data: medianData,
-          showSymbol: false,
-          lineStyle: {
-            color: CHART_THEME.medianLine,
-            width: 3,
-          },
-          z: 3,
-        },
-        // Threshold Lines (Clinical)
-        {
-          type: "line",
+          // Threshold Lines (Clinical)
           markLine: {
             silent: true,
             symbol: "none",
@@ -336,6 +315,26 @@ export function AgpChart({ data, units }: AgpChartProps) {
                 label: { formatter: "Low", position: "end" },
               },
             ],
+          },
+        },
+        // Median Line
+        {
+          name: "Median",
+          type: "line",
+          data: medianData,
+          showSymbol: false,
+          lineStyle: {
+            color: CHART_THEME.medianLine,
+            width: 3,
+          },
+          z: 3,
+          // Target Range Background (Success Zone)
+          markArea: {
+            silent: true,
+            itemStyle: {
+              color: "rgba(76, 175, 80, 0.2)",
+            },
+            data: [[{ yAxis: thresholds.low }, { yAxis: thresholds.high }]],
           },
         },
       ],

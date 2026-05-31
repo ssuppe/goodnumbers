@@ -577,26 +577,33 @@ export function ClusterEventsChart({
       xAxis: xAxis,
       yAxis: yAxis,
       series: [
-        ...lineSeries,
-        {
-          type: "line",
-          markLine: {
-            silent: true,
-            symbol: "none",
-            data: [
-              {
-                yAxis: thresholds.high,
-                lineStyle: { color: CHART_THEME.clinicalHigh },
+        ...lineSeries.map((s, idx) => {
+          // Attach clinical thresholds to the very first line series
+          if (idx === 0) {
+            return {
+              ...s,
+              markLine: {
+                silent: true,
+                symbol: "none",
+                data: [
+                  ...((s.markLine?.data as {
+                    yAxis?: number;
+                    lineStyle?: object;
+                  }[]) || []),
+                  {
+                    yAxis: thresholds.high,
+                    lineStyle: { color: CHART_THEME.clinicalHigh },
+                  },
+                  {
+                    yAxis: thresholds.low,
+                    lineStyle: { color: CHART_THEME.clinicalLow },
+                  },
+                ],
               },
-              {
-                yAxis: thresholds.low,
-                lineStyle: { color: CHART_THEME.clinicalLow },
-              },
-            ],
-          },
-          xAxisIndex: 0,
-          yAxisIndex: 0,
-        },
+            };
+          }
+          return s;
+        }),
         ...carbSeries,
         ...insulinSeries,
       ],
