@@ -106,22 +106,43 @@ export async function processJournalJob(job: Job) {
     });
 
     // Calculate windows
-    const now = new Date();
-    const FETCH_DAYS = 7;
     const TREATMENT_BUFFER_HOURS = 3;
+    let fetchStart: Date;
+    let fetchEnd: Date;
+    let lookbackDays: number;
 
-    // Fetch start: 7 days ago - 3 hours
-    const fetchStart = new Date(now);
-    fetchStart.setDate(fetchStart.getDate() - FETCH_DAYS);
-    fetchStart.setHours(fetchStart.getHours() - TREATMENT_BUFFER_HOURS);
+    if (journal.startDate && journal.endDate) {
+      // Custom range: use provided dates
+      fetchStart = new Date(journal.startDate);
+      fetchEnd = new Date(journal.endDate);
+      
+      // Calculate lookbackDays for the fetchEntries call
+      const diffTime = Math.abs(fetchEnd.getTime() - fetchStart.getTime());
+      lookbackDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    // Fetch end: now + 3 hours
-    const fetchEnd = new Date(now);
-    fetchEnd.setHours(fetchEnd.getHours() + TREATMENT_BUFFER_HOURS);
+      // Apply buffer to fetchTreatments only
+      fetchStart.setHours(fetchStart.getHours() - TREATMENT_BUFFER_HOURS);
+      fetchEnd.setHours(fetchEnd.getHours() + TREATMENT_BUFFER_HOURS);
+      
+      console.log(`[Worker] Using custom range: ${journal.startDate.toISOString()} to ${journal.endDate.toISOString()} (${lookbackDays} days)`);
+    } else {
+      // Default: Last 7 days
+      const now = new Date();
+      lookbackDays = 7;
+      
+      fetchStart = new Date(now);
+      fetchStart.setDate(fetchStart.getDate() - lookbackDays);
+      fetchStart.setHours(fetchStart.getHours() - TREATMENT_BUFFER_HOURS);
+
+      fetchEnd = new Date(now);
+      fetchEnd.setHours(fetchEnd.getHours() + TREATMENT_BUFFER_HOURS);
+      
+      console.log(`[Worker] Using default 7-day lookback.`);
+    }
 
     // Fetch all data in parallel for efficiency
     const [entries, rawTreatments, profiles] = await Promise.all([
-      client.fetchEntries(FETCH_DAYS),
+      client.fetchEntries(lookbackDays), // Note: fetchEntries still takes 'days'
       client.fetchTreatments(fetchStart, fetchEnd),
       client.fetchProfile(),
     ]);

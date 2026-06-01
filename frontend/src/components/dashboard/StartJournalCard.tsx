@@ -1,18 +1,30 @@
-import { Loader2, Sprout } from "lucide-react";
+import React, { useState } from "react";
+import { Loader2, Sprout, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 
 interface StartJournalCardProps {
   isProcessing: boolean;
   isSubmitting: boolean;
   error: string | null;
-  onClick: () => void;
+  onStart: (data: { startDate?: string; endDate?: string }) => void;
 }
 
 export default function StartJournalCard({
   isProcessing,
   isSubmitting,
   error,
-  onClick,
+  onStart,
 }: StartJournalCardProps) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const handleStart = () => {
+    const data: { startDate?: string; endDate?: string } = {};
+    if (showAdvanced && startDate) data.startDate = new Date(startDate).toISOString();
+    if (showAdvanced && endDate) data.endDate = new Date(endDate).toISOString();
+    void onStart(data);
+  };
+
   // 1. Processing State
   if (isProcessing) {
     return (
@@ -50,14 +62,30 @@ export default function StartJournalCard({
           <div className="w-24 h-24 bg-mesa-bg rounded-lg flex items-center justify-center flex-shrink-0 mr-4">
             <Sprout className="w-12 h-12 text-mesa-primary" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Reflect on your week
-          </h2>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Reflect on your week
+            </h2>
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="text-mesa-primary text-sm font-medium hover:underline flex items-center mt-1"
+            >
+              {showAdvanced ? (
+                <>
+                  <ChevronUp className="w-4 h-4 mr-1" /> Hide custom range
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4 mr-1" /> Custom analysis range
+                </>
+              )}
+            </button>
+          </div>
         </div>
         <button
-          onClick={onClick}
+          onClick={handleStart}
           disabled={isSubmitting}
-          className="w-full sm:w-auto px-4 py-3 bg-mesa-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          className="w-full sm:w-auto px-6 py-3 bg-mesa-primary text-white font-semibold rounded-lg shadow-md hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[160px]"
         >
           {isSubmitting && (
             <Loader2
@@ -68,6 +96,44 @@ export default function StartJournalCard({
           {isSubmitting ? "Starting..." : "Start Journal"}
         </button>
       </div>
+
+      {showAdvanced && (
+        <div className="mt-6 pt-6 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Start Date
+            </label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mesa-primary focus:border-mesa-primary"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              End Date
+            </label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mesa-primary focus:border-mesa-primary"
+              />
+            </div>
+          </div>
+          <p className="sm:col-span-2 text-xs text-gray-500 italic">
+            Analyze a specific window of time. If left blank, the last 7 days
+            will be analyzed.
+          </p>
+        </div>
+      )}
+
       {error && (
         <p className="text-red-500 text-sm mt-4 text-center sm:text-left">
           {error}

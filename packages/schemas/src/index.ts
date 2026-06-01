@@ -13,6 +13,11 @@ export const journalIdParamSchema = z.object({
   id: z.string().cuid({ message: "Invalid journal ID format." }),
 });
 
+export const journalCreateSchema = z.object({
+  startDate: z.string().datetime().optional().nullable(),
+  endDate: z.string().datetime().optional().nullable(),
+});
+
 export const journalUpdateSchema = z.object({
   weeklyVibe: z.string().optional().nullable(),
   influencingFactors: z.array(z.string()).optional().nullable(),

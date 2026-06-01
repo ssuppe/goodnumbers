@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma, Prisma } from '../lib/prisma.js';
 import { getJournalQueue } from '../lib/queue.js';
 import {
+  journalCreateSchema,
   journalIdParamSchema,
   journalUpdateSchema,
 } from '@goodnumbers/schemas'; // Import the new schema
@@ -49,9 +50,16 @@ router.post('/', async (req, res, next) => {
   let journal;
 
   try {
-    // 1. Create the journal with PENDING status.
+    const { startDate, endDate } = journalCreateSchema.parse(req.body);
+
+    // 1. Create the journal with PENDING status and optional custom range.
     journal = await prisma.journal.create({
-      data: { userId, status: 'PENDING' },
+      data: {
+        userId,
+        status: 'PENDING',
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+      },
     });
 
     // 2. Enqueue the job for the worker.
@@ -60,6 +68,9 @@ router.post('/', async (req, res, next) => {
 
     res.status(201).json({ journal });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ errors: error.issues });
+    }
     // 3. CRITICAL ROLLBACK LOGIC: If enqueueing fails, delete the orphaned journal.
     if (journal) {
       console.error(

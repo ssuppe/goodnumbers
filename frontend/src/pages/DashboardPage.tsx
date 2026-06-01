@@ -43,8 +43,11 @@ export default function DashboardPage() {
   );
 
   const [handleStartJournal, isSubmitting, creationError] = useApiForm(
-    async () => {
-      const response = await api.post<{ journal: { id: string } }>("/journals");
+    async (data: { startDate?: string; endDate?: string }) => {
+      const response = await api.post<{ journal: { id: string } }>(
+        "/journals",
+        data,
+      );
       const newJournalId = response.data.journal.id;
       navigate(`/journal/${newJournalId}/loading`);
     },
@@ -92,9 +95,7 @@ export default function DashboardPage() {
         isProcessing={!!pendingJournal}
         isSubmitting={isSubmitting}
         error={creationError}
-        onClick={() => {
-          void handleStartJournal({});
-        }}
+        onStart={handleStartJournal}
       />
       <PastJournalsList
         journals={historyJournals}

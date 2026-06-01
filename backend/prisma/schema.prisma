@@ -31,6 +31,11 @@ model Journal {
   createdAt          DateTime               @default(now())
   updatedAt          DateTime               @updatedAt
   userId             String
+
+  // Custom analysis range
+  startDate          DateTime?
+  endDate            DateTime?
+
   status             String                 @default("PENDING")
   progress           Int                    @default(0)
   statusMessage      String?
