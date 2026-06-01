@@ -46,7 +46,6 @@ export class HotspotDetector {
       }
       if (type === 'hyper' && currentSequence.length > 2) {
         const last = currentSequence[currentSequence.length - 1];
-        // Look ahead to see if it recovers after a significant drop
         const next = safeEntries[i + 1];
         if (next && next.sgv > last.sgv + 5 && last.sgv < threshold + 35) {
           const maxBefore = Math.max(...currentSequence.map((e) => e.sgv));
@@ -109,47 +108,59 @@ export class HotspotDetector {
   }
 
   public findClusters(events: GlycemicEvent[]): GlycemicCluster[] {
-    const clusters: GlycemicCluster[] = [];
-    const visited = new Set<string>();
-    const sorted = [...events].sort(
-      (a, b) => a.startMinuteOfDay - b.startMinuteOfDay,
-    );
+    // 1. Partition events by timezone offset
+    // This ensures that different locations are analyzed independently
+    const partitions = new Map<number, GlycemicEvent[]>();
 
-    for (let i = 0; i < sorted.length; i++) {
-      const seed = sorted[i];
-      if (visited.has(seed.id)) continue;
+    events.forEach((e) => {
+      const offset = DateTime.fromISO(e.startTime, { setZone: true }).offset;
+      if (!partitions.has(offset)) partitions.set(offset, []);
+      partitions.get(offset)!.push(e);
+    });
 
-      const candidate: GlycemicEvent[] = [seed];
-      for (let j = 0; j < sorted.length; j++) {
-        const other = sorted[j];
-        if (seed.id === other.id || visited.has(other.id)) continue;
+    const allClusters: GlycemicCluster[] = [];
 
-        const dist = this.getCircularDistance(
-          seed.startMinuteOfDay,
-          other.startMinuteOfDay,
-        );
-        if (dist <= 90) {
-          candidate.push(other);
-        }
-      }
-
-      // SECURITY/STABILITY: Use the detector's configured timezone for day calculation
-      // to ensure consistency across travel.
-      const distinctDays = new Set(
-        candidate.map(
-          (e) => DateTime.fromISO(e.startTime, { setZone: true }).weekday,
-        ),
+    // 2. Cluster each partition independently
+    partitions.forEach((partitionEvents) => {
+      const visited = new Set<string>();
+      const sorted = [...partitionEvents].sort(
+        (a, b) => a.startMinuteOfDay - b.startMinuteOfDay,
       );
 
-      if (distinctDays.size >= 3) {
-        candidate.forEach((e) => visited.add(e.id));
-        clusters.push(
-          this.buildClusterObject(candidate, Array.from(distinctDays)),
-        );
-      }
-    }
+      for (let i = 0; i < sorted.length; i++) {
+        const seed = sorted[i];
+        if (visited.has(seed.id)) continue;
 
-    return clusters;
+        const candidate: GlycemicEvent[] = [seed];
+        for (let j = 0; j < sorted.length; j++) {
+          const other = sorted[j];
+          if (seed.id === other.id || visited.has(other.id)) continue;
+
+          const dist = this.getCircularDistance(
+            seed.startMinuteOfDay,
+            other.startMinuteOfDay,
+          );
+          if (dist <= 90) {
+            candidate.push(other);
+          }
+        }
+
+        const distinctDays = new Set(
+          candidate.map(
+            (e) => DateTime.fromISO(e.startTime, { setZone: true }).weekday,
+          ),
+        );
+
+        if (distinctDays.size >= 3) {
+          candidate.forEach((e) => visited.add(e.id));
+          allClusters.push(
+            this.buildClusterObject(candidate, Array.from(distinctDays)),
+          );
+        }
+      }
+    });
+
+    return allClusters;
   }
 
   private getCircularDistance(a: number, b: number): number {

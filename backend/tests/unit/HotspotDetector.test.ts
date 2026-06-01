@@ -227,7 +227,12 @@ describe('HotspotDetector - Clustering', () => {
     expect(clusters[0].avgStartMinute).toBeCloseTo(848, 0);
   });
 
-  it('groups clusters correctly when traveling (mixed timezones)', () => {
+  it('splits clusters by timezone offset even if wall-clock time matches', () => {
+    // Scenario: User has lunch highs at ~13:00 (780 mins)
+    // Mon/Tue/Wed: NYC (UTC-4)
+    // Thu/Fri/Sat: London (UTC+1)
+    // Even though they happen at the same local time, they represent different locations/behaviors.
+
     const makeEvent = (
       id: string,
       iso: string,
@@ -242,15 +247,31 @@ describe('HotspotDetector - Clustering', () => {
       readings: [],
     });
 
-    const e1 = makeEvent('1', '2023-01-02T13:00:00-04:00', 780); // NYC
-    const e2 = makeEvent('2', '2023-01-03T13:05:00-04:00', 785); // NYC
-    const e3 = makeEvent('3', '2023-01-04T13:00:00+01:00', 780); // London
-    const e4 = makeEvent('4', '2023-01-05T13:10:00+01:00', 790); // London
+    const e1 = makeEvent('NYC1', '2023-01-02T13:00:00-04:00', 780);
+    const e2 = makeEvent('NYC2', '2023-01-03T13:05:00-04:00', 785);
+    const e3 = makeEvent('NYC3', '2023-01-04T13:00:00-04:00', 780);
+    const e4 = makeEvent('LON1', '2023-01-05T13:00:00+01:00', 780);
+    const e5 = makeEvent('LON2', '2023-01-06T13:10:00+01:00', 790);
+    const e6 = makeEvent('LON3', '2023-01-07T13:00:00+01:00', 780);
 
-    const clusters = detector.findClusters([e1, e2, e3, e4]);
+    const clusters = detector.findClusters([e1, e2, e3, e4, e5, e6]);
 
-    expect(clusters).toHaveLength(1);
-    expect(clusters[0].events).toHaveLength(4);
+    // We expect 2 distinct clusters because the offsets are different (-240 vs +60)
+    expect(clusters).toHaveLength(2);
+    expect(
+      clusters.some(
+        (c) =>
+          DateTime.fromISO(c.events[0].startTime, { setZone: true }).offset ===
+          -240,
+      ),
+    ).toBe(true);
+    expect(
+      clusters.some(
+        (c) =>
+          DateTime.fromISO(c.events[0].startTime, { setZone: true }).offset ===
+          60,
+      ),
+    ).toBe(true);
   });
 
   it('should NOT merge distinct morning and evening patterns (Chain Reaction Test)', () => {
