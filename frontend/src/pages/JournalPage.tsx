@@ -222,25 +222,47 @@ export default function JournalPage() {
         }
       />
 
-      {journal.clusters.map((cluster) => (
-        <ChartErrorBoundary key={cluster.id}>
-          <EventClusterCard
-            cluster={cluster}
-            userNote={formData.clusterNotes[cluster.id]}
-            onNoteChange={(note) =>
-              setFormData((prev) => ({
-                ...prev!,
-                clusterNotes: {
-                  ...prev!.clusterNotes,
-                  [cluster.id]: note,
-                },
-              }))
+      {journal.clusters.map((cluster) => {
+        // Determine if this journal spans multiple timezones
+        const uniqueOffsets = new Set(
+          journal.clusters.map((c) => {
+            try {
+              const data = (
+                typeof c.clusterDataJson === "string"
+                  ? JSON.parse(c.clusterDataJson)
+                  : c.clusterDataJson
+              ) as GlycemicCluster;
+              return data?.utcOffset;
+            } catch {
+              return null;
             }
-            units={user?.preferredUnits || "MGDL"}
-            treatments={journal.treatments}
-          />
-        </ChartErrorBoundary>
-      ))}
+          }),
+        );
+        const hasMultipleTimezones =
+          uniqueOffsets.size > 1 &&
+          Array.from(uniqueOffsets).filter((o) => o !== null).length > 1;
+
+        return (
+          <ChartErrorBoundary key={cluster.id}>
+            <EventClusterCard
+              cluster={cluster}
+              userNote={formData.clusterNotes[cluster.id]}
+              onNoteChange={(note) =>
+                setFormData((prev) => ({
+                  ...prev!,
+                  clusterNotes: {
+                    ...prev!.clusterNotes,
+                    [cluster.id]: note,
+                  },
+                }))
+              }
+              units={user?.preferredUnits || "MGDL"}
+              treatments={journal.treatments}
+              showTimezone={hasMultipleTimezones}
+            />
+          </ChartErrorBoundary>
+        );
+      })}
 
       <section className="space-y-3">
         <h3 className="text-xl font-bold text-gray-800 flex items-center">

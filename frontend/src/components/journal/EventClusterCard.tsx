@@ -16,6 +16,7 @@ interface EventClusterCardProps {
   units?: string;
   treatments?: Treatment[];
   insights?: Insight[];
+  showTimezone?: boolean;
 }
 
 export interface AiInsight {
@@ -236,21 +237,32 @@ export default function EventClusterCard({
   const meanTimeStr = minutesToTimeString(cluster.meanTimeMinutes);
   const colloquialType = getColloquialEventName(cluster.eventType);
 
-  // Timezone formatting for travelers
-  const tzContext = useMemo(() => {
-    if (!clusterData?.timezone) return "";
+  const summaryText = useMemo(() => {
+    const timeRangeStr = timeRange
+      ? `(between ${timeRange.earliest} and ${timeRange.latest})`
+      : "";
+    const baseSummary = `${cluster.eventCount} ${colloquialType} events occurred around ${meanTimeStr} ${timeRangeStr}`;
+
+    if (!showTimezone || !clusterData?.timezone) {
+      return baseSummary;
+    }
+
     const offset = clusterData.utcOffset ?? 0;
     const hours = Math.abs(offset) / 60;
     const sign = offset >= 0 ? "+" : "-";
-    // Human-friendly offset string (e.g., GMT-4)
     const offsetStr = `GMT${sign}${hours}`;
-    // Human-friendly timezone name (e.g., America/New_York)
-    return ` in ${clusterData.timezone.replace(/_/g, " ")} (${offsetStr})`;
-  }, [clusterData]);
+    const tzName = clusterData.timezone.replace(/_/g, " ");
 
-  const summaryText = timeRange
-    ? `${cluster.eventCount} ${colloquialType} events occurred around ${meanTimeStr} (between ${timeRange.earliest} and ${timeRange.latest})${tzContext}`
-    : `${cluster.eventCount} ${colloquialType} events occurred around ${meanTimeStr}${tzContext}`;
+    return `${baseSummary} in ${tzName} (${offsetStr})`;
+  }, [
+    cluster.eventCount,
+    colloquialType,
+    meanTimeStr,
+    timeRange,
+    showTimezone,
+    clusterData?.timezone,
+    clusterData?.utcOffset,
+  ]);
 
   // Generate dynamic title using the full summary structure as requested
   const title = summaryText;
