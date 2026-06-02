@@ -1,5 +1,11 @@
 import React, { useState } from "react";
-import { Loader2, Sprout, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Loader2,
+  Sprout,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
 interface StartJournalCardProps {
   isProcessing: boolean;
@@ -17,11 +23,32 @@ export default function StartJournalCard({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [localError, setLocalError] = useState<string | null>(null);
 
   const handleStart = () => {
+    setLocalError(null);
     const data: { startDate?: string; endDate?: string } = {};
-    if (showAdvanced && startDate) data.startDate = new Date(startDate).toISOString();
-    if (showAdvanced && endDate) data.endDate = new Date(endDate).toISOString();
+
+    if (showAdvanced) {
+      if (!startDate || !endDate) {
+        setLocalError("Please select both a start and end date.");
+        return;
+      }
+      if (startDate > endDate) {
+        setLocalError("Start date cannot be after end date.");
+        return;
+      }
+
+      // Parse YYYY-MM-DD as LOCAL time, not UTC midnight
+      const [sYear, sMonth, sDay] = startDate.split("-").map(Number);
+      const sDate = new Date(sYear, sMonth - 1, sDay, 0, 0, 0);
+      data.startDate = sDate.toISOString();
+
+      const [eYear, eMonth, eDay] = endDate.split("-").map(Number);
+      const eDate = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
+      data.endDate = eDate.toISOString();
+    }
+
     void onStart(data);
   };
 
@@ -134,9 +161,9 @@ export default function StartJournalCard({
         </div>
       )}
 
-      {error && (
+      {(localError || error) && (
         <p className="text-red-500 text-sm mt-4 text-center sm:text-left">
-          {error}
+          {localError || error}
         </p>
       )}
     </section>

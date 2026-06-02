@@ -21,7 +21,9 @@ runLiveTests('NightscoutClient Live Integration', { timeout: 30000 }, () => {
 
   it('should fetch real entries from the server', async () => {
     // Fetch just 1 day of data to be quick
-    const entries = await client.fetchEntries(1);
+    const to = new Date();
+    const from = new Date(to.getTime() - 24 * 60 * 60 * 1000);
+    const entries = await client.fetchEntries(from, to);
 
     console.log(`[Live Test] Fetched ${entries.length} entries.`);
 

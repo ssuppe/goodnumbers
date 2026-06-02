@@ -78,8 +78,8 @@ export class HotspotDetector {
     const firstDate = first.dateString || new Date(first.date).toISOString();
     const lastDate = last.dateString || new Date(last.date).toISOString();
 
-    const startTime = DateTime.fromISO(firstDate);
-    const endTime = DateTime.fromISO(lastDate);
+    const startTime = DateTime.fromISO(firstDate, { setZone: true });
+    const endTime = DateTime.fromISO(lastDate, { setZone: true });
     const duration = endTime.diff(startTime, 'minutes').minutes;
 
     let magnitude = 0;

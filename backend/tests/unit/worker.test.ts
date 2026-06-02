@@ -130,7 +130,10 @@ describe('Worker Job Processing (Real Logic)', () => {
     });
 
     // Assert: Client interaction
-    expect(mockFetchEntries).toHaveBeenCalledWith(7);
+    expect(mockFetchEntries).toHaveBeenCalledWith(
+      expect.any(Date),
+      expect.any(Date),
+    );
     // We expect date objects now
     expect(mockFetchTreatments).toHaveBeenCalledWith(
       expect.any(Date),

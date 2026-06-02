@@ -115,7 +115,7 @@ export async function processJournalJob(job: Job) {
       // Custom range: use provided dates
       fetchStart = new Date(journal.startDate);
       fetchEnd = new Date(journal.endDate);
-      
+
       // Calculate lookbackDays for the fetchEntries call
       const diffTime = Math.abs(fetchEnd.getTime() - fetchStart.getTime());
       lookbackDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -123,20 +123,22 @@ export async function processJournalJob(job: Job) {
       // Apply buffer to fetchTreatments only
       fetchStart.setHours(fetchStart.getHours() - TREATMENT_BUFFER_HOURS);
       fetchEnd.setHours(fetchEnd.getHours() + TREATMENT_BUFFER_HOURS);
-      
-      console.log(`[Worker] Using custom range: ${journal.startDate.toISOString()} to ${journal.endDate.toISOString()} (${lookbackDays} days)`);
+
+      console.log(
+        `[Worker] Using custom range: ${journal.startDate.toISOString()} to ${journal.endDate.toISOString()} (${lookbackDays} days)`,
+      );
     } else {
       // Default: Last 7 days
       const now = new Date();
       lookbackDays = 7;
-      
+
       fetchStart = new Date(now);
       fetchStart.setDate(fetchStart.getDate() - lookbackDays);
       fetchStart.setHours(fetchStart.getHours() - TREATMENT_BUFFER_HOURS);
 
       fetchEnd = new Date(now);
       fetchEnd.setHours(fetchEnd.getHours() + TREATMENT_BUFFER_HOURS);
-      
+
       console.log(`[Worker] Using default 7-day lookback.`);
     }
 
@@ -288,20 +290,22 @@ export async function processJournalJob(job: Job) {
     const detector = new HotspotDetector(userTimezone);
 
     // 2. Map Nightscout entries to GlucoseEntry format
-    const glucoseEntries = entries.map((e) => {
-      // Reconstruct the LOCAL wall-clock time using the offset provided by Nightscout.
-      // This ensures we analyze patterns based on the time the user actually saw on their device.
-      // Note: Etc/GMT is sign-reversed in IANA (UTC-4 is Etc/GMT+4).
-      const gmtOffset = -(e.utcOffset / 60);
-      const zone = `Etc/GMT${gmtOffset >= 0 ? '+' : ''}${gmtOffset}`;
-      const localDate = DateTime.fromMillis(e.date).setZone(zone);
+    const glucoseEntries = entries
+      .map((e) => {
+        // Reconstruct the LOCAL wall-clock time using the offset provided by Nightscout.
+        // This ensures we analyze patterns based on the time the user actually saw on their device.
+        // Note: Etc/GMT is sign-reversed in IANA (UTC-4 is Etc/GMT+4).
+        const gmtOffset = -(e.utcOffset / 60);
+        const zone = `Etc/GMT${gmtOffset >= 0 ? '+' : ''}${gmtOffset}`;
+        const localDate = DateTime.fromMillis(e.date).setZone(zone);
 
-      return {
-        sgv: e.sgv,
-        date: e.date,
-        dateString: localDate.toISO() || new Date(e.date).toISOString(),
-      };
-    });
+        return {
+          sgv: e.sgv,
+          date: e.date,
+          dateString: localDate.toISO() || new Date(e.date).toISOString(),
+        };
+      })
+      .sort((a, b) => a.date - b.date); // Sort chronologically (ascending)
 
     // 3. Detect Events
     const hyperEvents = detector.detectEvents(glucoseEntries, 'hyper', 180);
