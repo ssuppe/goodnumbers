@@ -299,7 +299,7 @@ export function ClusterEventsChart({
         if (mergedRanges.length > 0) {
           // Lead-in faded
           pieces.push({
-            gte: -2e18,
+            gte: -1e15,
             lte: mergedRanges[0].start,
             color: `${color}33`,
           });
@@ -318,12 +318,12 @@ export function ClusterEventsChart({
           // Tail-out faded
           pieces.push({
             gte: mergedRanges[mergedRanges.length - 1].end,
-            lte: 2e18,
+            lte: 1e15,
             color: `${color}33`,
           });
         } else {
           // Catch-all faded
-          pieces.push({ gte: -2e18, lte: 2e18, color: `${color}33` });
+          pieces.push({ gte: -1e15, lte: 1e15, color: `${color}33` });
         }
 
         // IMPORTANT: Pieces MUST be sorted by their mapping values (Dimension 0 / time)
@@ -621,9 +621,6 @@ export function ClusterEventsChart({
         series,
       };
 
-      // @ts-expect-error global debug
-      window.__GOODNUMBERS_CHART__ = finalOptions;
-
       return finalOptions;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -638,11 +635,6 @@ export function ClusterEventsChart({
         Unable to generate visualization.
       </div>
     );
-
-  console.log(
-    "[ClusterEventsChart] Rendering series count:",
-    options.series.length,
-  );
 
   return (
     <div ref={containerRef} className="w-full h-96 min-h-[400px]">

@@ -77,6 +77,40 @@ describe('HotspotDetector - Event Detection', () => {
     expect(events[1].startTime).toContain('11:00');
   });
 
+  it('restores a 180-minute context window around events', () => {
+    // Sequence: 2 hours of normal, 30 mins hyper, 2 hours of normal
+    // Total 4.5 hours (270 mins)
+    // 54 entries at 5-min intervals
+    const leading = generateSequence('2023-01-01T08:00:00Z', 24, 100); // 8:00 - 10:00 (120 mins)
+    const hyper = generateSequence('2023-01-01T10:00:00Z', 7, 200);   // 10:00 - 10:30 (30 mins)
+    const trailing = generateSequence('2023-01-01T10:35:00Z', 24, 100); // 10:35 - 12:35 (120 mins)
+
+    const entries = [...leading, ...hyper, ...trailing];
+    const events = detector.detectEvents(entries, 'hyper', 180);
+
+    expect(events).toHaveLength(1);
+    const event = events[0];
+    
+    // The event should cover 10:00 to 10:30
+    expect(event.startTime).toContain('10:00');
+    expect(event.endTime).toContain('10:30');
+
+    // The readings should include the buffer (180 mins)
+    // 10:00 - 180 mins = 07:00 (But we only have data starting at 08:00)
+    // 10:30 + 180 mins = 13:30 (But we only have data ending at 12:35)
+    
+    const firstReading = event.readings[0].timestamp;
+    const lastReading = event.readings[event.readings.length - 1].timestamp;
+
+    // It should have captured all available leading/trailing data
+    expect(firstReading).toContain('08:00');
+    expect(lastReading).toContain('12:30');
+    
+    // Total readings: 24 (leading) + 7 (hyper) + 24 (trailing) = 55 (index 0 to 54)
+    // Wait, generateSequence(10:35, 24) ends at 10:35 + 23*5 = 10:35 + 115m = 12:30.
+    expect(event.readings).toHaveLength(entries.length);
+  });
+
   it('Security: limits input to 5000 entries', () => {
     // Generate 5000 normal entries
     const normal = generateSequence('2023-01-01T00:00:00Z', 5000, 100);
