@@ -236,9 +236,21 @@ export default function EventClusterCard({
   const meanTimeStr = minutesToTimeString(cluster.meanTimeMinutes);
   const colloquialType = getColloquialEventName(cluster.eventType);
 
+  // Timezone formatting for travelers
+  const tzContext = useMemo(() => {
+    if (!clusterData?.timezone) return "";
+    const offset = clusterData.utcOffset ?? 0;
+    const hours = Math.abs(offset) / 60;
+    const sign = offset >= 0 ? "+" : "-";
+    // Human-friendly offset string (e.g., GMT-4)
+    const offsetStr = `GMT${sign}${hours}`;
+    // Human-friendly timezone name (e.g., America/New_York)
+    return ` in ${clusterData.timezone.replace(/_/g, " ")} (${offsetStr})`;
+  }, [clusterData]);
+
   const summaryText = timeRange
-    ? `${cluster.eventCount} ${colloquialType} events occurred around ${meanTimeStr} (between ${timeRange.earliest} and ${timeRange.latest})`
-    : `${cluster.eventCount} ${colloquialType} events occurred around ${meanTimeStr}`;
+    ? `${cluster.eventCount} ${colloquialType} events occurred around ${meanTimeStr} (between ${timeRange.earliest} and ${timeRange.latest})${tzContext}`
+    : `${cluster.eventCount} ${colloquialType} events occurred around ${meanTimeStr}${tzContext}`;
 
   // Generate dynamic title using the full summary structure as requested
   const title = summaryText;

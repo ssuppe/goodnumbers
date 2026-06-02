@@ -40,6 +40,8 @@ export interface GlycemicCluster {
   eventCount: number;
   activeDays: number[]; // 1=Mon, 7=Sun
   events: GlycemicEvent[];
+  timezone?: string; // e.g. "America/New_York"
+  utcOffset?: number; // e.g. -240
 }
 
 // --- Insights Types ---

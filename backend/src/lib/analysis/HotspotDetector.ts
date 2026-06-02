@@ -247,6 +247,11 @@ export class HotspotDetector {
     let avgStartMinute = (avgAngle / (2 * Math.PI)) * 1440;
     if (avgStartMinute < 0) avgStartMinute += 1440;
 
+    // Capture timezone metadata from the first event in the cluster
+    const firstEventDate = DateTime.fromISO(events[0].startTime, {
+      setZone: true,
+    });
+
     return {
       id: uuidv4(),
       type,
@@ -255,6 +260,8 @@ export class HotspotDetector {
       eventCount: events.length,
       activeDays: activeDays.sort((a, b) => a - b),
       events,
+      timezone: firstEventDate.zoneName ?? undefined,
+      utcOffset: firstEventDate.offset,
     };
   }
 
