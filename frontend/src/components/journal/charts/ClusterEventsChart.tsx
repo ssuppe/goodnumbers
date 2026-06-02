@@ -199,8 +199,7 @@ export function ClusterEventsChart({
           number,
           { value: [number, number]; originalDate: string }
         > = {};
-        const highlightPieces: { gte: number; lte: number; color: string }[] =
-          [];
+        const highlightRanges: { start: number; end: number }[] = [];
 
         events.forEach((event) => {
           const normalizedStartTime = normalizeTime(
@@ -215,15 +214,14 @@ export function ClusterEventsChart({
             new Date(event.endTime).getTime() - originalStartTimeMillis;
           const normalizedEndTime = normalizedStartTime + durationMillis;
 
-          // Add highlight piece - Only if valid
+          // Add highlight range - Only if valid
           if (
             !isNaN(normalizedEndTime) &&
             normalizedEndTime > normalizedStartTime
           ) {
-            highlightPieces.push({
-              gte: normalizedStartTime,
-              lte: normalizedEndTime,
-              color,
+            highlightRanges.push({
+              start: normalizedStartTime,
+              end: normalizedEndTime,
             });
           }
 
@@ -254,19 +252,62 @@ export function ClusterEventsChart({
         // STABILITY: ECharts visualMap crashes if series has < 2 points
         if (seriesData.length < 2) return;
 
-        // Define visualMap for this day - Only if we have something to highlight
-        if (highlightPieces.length > 0) {
-          visualMaps.push({
-            show: false,
-            dimension: 0,
-            seriesIndex: seriesCounter,
-            gridIndex: 0, // Explicitly link to main grid
-            pieces: [
-              ...highlightPieces,
-              { gt: -1e18, color: `${color}33` }, // finite lower bound
-            ],
-          });
+        // --- GAP FILLING: Create strictly non-overlapping pieces ---
+        const sortedRanges = highlightRanges.sort((a, b) => a.start - b.start);
+        const mergedRanges: { start: number; end: number }[] = [];
+        if (sortedRanges.length > 0) {
+          let current = sortedRanges[0];
+          for (let i = 1; i < sortedRanges.length; i++) {
+            if (sortedRanges[i].start <= current.end) {
+              current.end = Math.max(current.end, sortedRanges[i].end);
+            } else {
+              mergedRanges.push(current);
+              current = sortedRanges[i];
+            }
+          }
+          mergedRanges.push(current);
         }
+
+        const pieces: {
+          gt?: number;
+          lt?: number;
+          gte?: number;
+          lte?: number;
+          color: string;
+        }[] = [];
+        if (mergedRanges.length > 0) {
+          // Lead-in faded
+          pieces.push({ lt: mergedRanges[0].start, color: `${color}33` });
+          // Alternate full and faded
+          mergedRanges.forEach((range, i) => {
+            pieces.push({ gte: range.start, lte: range.end, color: color });
+            const next = mergedRanges[i + 1];
+            if (next) {
+              pieces.push({
+                gt: range.end,
+                lt: next.start,
+                color: `${color}33`,
+              });
+            }
+          });
+          // Tail-out faded
+          pieces.push({
+            gt: mergedRanges[mergedRanges.length - 1].end,
+            color: `${color}33`,
+          });
+        } else {
+          // Catch-all faded if no events found for this day (unlikely but safe)
+          pieces.push({ gt: -1e18, color: `${color}33` });
+        }
+
+        // Push visualMap ONLY IF the series is also added
+        visualMaps.push({
+          show: false,
+          dimension: 0,
+          seriesIndex: seriesCounter,
+          gridIndex: 0,
+          pieces,
+        });
 
         series.push({
           name: dayName,
@@ -414,7 +455,7 @@ export function ClusterEventsChart({
       const grid: object[] = [
         {
           top: "8%",
-          left: 90,
+          left: 90, // Slightly increased for consistency
           right: 40,
           height: hasCarbData || hasInsulinData ? "50%" : "75%",
           containLabel: true,
@@ -550,12 +591,8 @@ export function ClusterEventsChart({
         series,
       };
 
-      console.log("[ClusterEventsChart] Final series/visualMap config:", {
-        seriesCount: finalOptions.series.length,
-        visualMapCount: finalOptions.visualMap.length,
-        seriesNames: finalOptions.series.map((s: any) => s.name),
-        vMapIndices: finalOptions.visualMap.map((v: any) => v.seriesIndex),
-      });
+      // @ts-expect-error global debug
+      window.__GOODNUMBERS_CHART__ = finalOptions;
 
       return finalOptions;
     } catch (err) {
