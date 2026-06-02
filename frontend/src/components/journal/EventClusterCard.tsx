@@ -160,6 +160,7 @@ export default function EventClusterCard({
   units = "MGDL",
   treatments,
   insights,
+  showTimezone,
 }: EventClusterCardProps) {
   // Safe parsing of the JSON blob
   const clusterData = useMemo(() => {
