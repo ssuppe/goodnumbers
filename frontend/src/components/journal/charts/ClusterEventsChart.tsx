@@ -245,30 +245,50 @@ export function ClusterEventsChart({
         });
       });
 
-      // 4. Add Bar Series (Treatments) - Split by day for linked highlighting
-      const buildTreatmentSeries = (
-        event: (typeof validEvents)[0],
-        color: string,
-      ) => {
-        const eventStart = new Date(event.startTime).getTime();
-        const eventEnd = new Date(event.endTime).getTime();
-        const normalizedStartTime = normalizeTime(event.startTime, boundaryHour);
+      // 4. Group and Add Bar Series (Treatments) - Split by day for linked highlighting
+      const dayTreatmentsMap: Record<
+        string,
+        { carbs: object[]; insulin: object[]; color: string }
+      > = {};
+
+      validEvents.forEach((event) => {
         const dayName = format(
           getLocalWallClockDate(event.startTime),
           "EEE, MMM d",
         );
+        const dayIndex = uniqueDays.indexOf(dayName);
+        const visuals = getEventVisuals(dayIndex);
+
+        if (!dayTreatmentsMap[dayName]) {
+          dayTreatmentsMap[dayName] = {
+            carbs: [],
+            insulin: [],
+            color: visuals.color,
+          };
+        }
+
+        const eventStart = new Date(event.startTime).getTime();
+        const eventEnd = new Date(event.endTime).getTime();
+        const normalizedStartTime = normalizeTime(event.startTime, boundaryHour);
         const searchStart = eventStart - TREATMENT_BUFFER_MINUTES * 60000;
         const searchEnd = eventEnd + TREATMENT_BUFFER_MINUTES * 60000;
-
-        const dayCarbs: object[] = [];
-        const dayInsulin: object[] = [];
 
         treatments.forEach((t) => {
           const tTime = new Date(t.date).getTime();
           if (tTime >= searchStart && tTime <= searchEnd) {
             const offset = tTime - eventStart;
-            if (t.carbs && t.carbs > 0) {
-              dayCarbs.push({
+            // Check for duplicates within this day (multiple events can share treatments)
+            const isDuplicateCarb = dayTreatmentsMap[dayName].carbs.some(
+              (prev: any) =>
+                (prev as { originalDate: string }).originalDate === t.date,
+            );
+            const isDuplicateInsulin = dayTreatmentsMap[dayName].insulin.some(
+              (prev: any) =>
+                (prev as { originalDate: string }).originalDate === t.date,
+            );
+
+            if (t.carbs && t.carbs > 0 && !isDuplicateCarb) {
+              dayTreatmentsMap[dayName].carbs.push({
                 name: dayName,
                 value: [normalizedStartTime + offset, t.carbs],
                 originalDate: t.date,
@@ -276,8 +296,8 @@ export function ClusterEventsChart({
                 treatmentType: "carbs",
               });
             }
-            if (t.insulin && t.insulin > 0) {
-              dayInsulin.push({
+            if (t.insulin && t.insulin > 0 && !isDuplicateInsulin) {
+              dayTreatmentsMap[dayName].insulin.push({
                 name: dayName,
                 value: [normalizedStartTime + offset, t.insulin],
                 originalDate: t.date,
@@ -287,61 +307,49 @@ export function ClusterEventsChart({
             }
           }
         });
-
-        const daySeries: object[] = [];
-        if (dayCarbs.length > 0) {
-          daySeries.push({
-            name: dayName,
-            type: "bar",
-            xAxisIndex: 1,
-            yAxisIndex: 1,
-            data: dayCarbs,
-            itemStyle: { color, opacity: 0.8 }, // Use day color
-            barWidth: 8,
-            emphasis: { focus: "series" },
-            blur: { itemStyle: { opacity: 0.15 } },
-          });
-        }
-        if (dayInsulin.length > 0) {
-          daySeries.push({
-            name: dayName,
-            type: "bar",
-            xAxisIndex: hasCarbData ? 2 : 1,
-            yAxisIndex: hasCarbData ? 2 : 1,
-            data: dayInsulin,
-            itemStyle: { color, opacity: 0.8 }, // Use day color
-            barWidth: 8,
-            emphasis: { focus: "series" },
-            blur: { itemStyle: { opacity: 0.15 } },
-          });
-        }
-        return daySeries;
-      };
+      });
 
       const hasCarbData = treatments.some((t) => t.carbs && t.carbs > 0);
       const hasInsulinData = treatments.some((t) => t.insulin && t.insulin > 0);
 
-      validEvents.forEach((event) => {
-        const dayName = format(
-          getLocalWallClockDate(event.startTime),
-          "EEE, MMM d",
-        );
-        const dayIndex = uniqueDays.indexOf(dayName);
-        const visuals = getEventVisuals(dayIndex);
-        const daySeries = buildTreatmentSeries(event, visuals.color);
-        series.push(...daySeries);
+      Object.entries(dayTreatmentsMap).forEach(([dayName, data]) => {
+        if (data.carbs.length > 0) {
+          series.push({
+            name: dayName,
+            type: "bar",
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            data: data.carbs,
+            itemStyle: { color: data.color, opacity: 0.8 },
+            barWidth: 8,
+            emphasis: { focus: "series" },
+            blur: { itemStyle: { opacity: 0.15 } },
+          });
+        }
+        if (data.insulin.length > 0) {
+          series.push({
+            name: dayName,
+            type: "bar",
+            xAxisIndex: hasCarbData ? 2 : 1,
+            yAxisIndex: hasCarbData ? 2 : 1,
+            data: data.insulin,
+            itemStyle: { color: data.color, opacity: 0.8 },
+            barWidth: 8,
+            emphasis: { focus: "series" },
+            blur: { itemStyle: { opacity: 0.15 } },
+          });
+        }
       });
 
       // --- Precise Vertical Layout ---
-
       const commonDomain = calculateCommonDomain(
         series as { data: { value: (number | string)[] }[] }[],
-        30, // Tighter padding since data already has 3h context buffer
+        30,
       );
       const grid: object[] = [
         {
           top: "8%",
-          left: 80,
+          left: 90, // Slightly increased for consistency
           right: 40,
           height: hasCarbData || hasInsulinData ? "50%" : "75%",
           containLabel: true,
@@ -364,7 +372,7 @@ export function ClusterEventsChart({
           name: `Glucose (${isMmol ? "mmol/L" : "mg/dL"})`,
           nameLocation: "middle",
           nameRotate: 90,
-          nameGap: 45,
+          nameGap: 55,
           min: (v: { min: number }) => Math.floor(v.min * 0.9),
           max: (v: { max: number }) => Math.ceil(v.max * 1.1),
         },
@@ -372,7 +380,7 @@ export function ClusterEventsChart({
 
       if (hasCarbData) {
         grid.push({
-          left: 80,
+          left: 90,
           right: 40,
           top: "65%",
           height: hasInsulinData ? "12%" : "25%",
@@ -390,13 +398,13 @@ export function ClusterEventsChart({
           gridIndex: grid.length - 1,
           name: "Carbs (g)",
           nameLocation: "middle",
-          nameGap: 45,
+          nameGap: 55,
           splitLine: { show: false },
         });
       }
       if (hasInsulinData) {
         grid.push({
-          left: 80,
+          left: 90,
           right: 40,
           top: hasCarbData ? "82%" : "65%",
           height: hasCarbData ? "12%" : "25%",
@@ -414,7 +422,7 @@ export function ClusterEventsChart({
           gridIndex: grid.length - 1,
           name: "Insulin (u)",
           nameLocation: "middle",
-          nameGap: 45,
+          nameGap: 55,
           splitLine: { show: false },
         });
       }
