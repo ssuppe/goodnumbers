@@ -253,13 +253,14 @@ export function ClusterEventsChart({
         if (seriesData.length < 2) return;
 
         // CRITICAL: Push visualMap ONLY IF the series is also added
+        // Define visualMap for this day
         visualMaps.push({
           show: false,
           dimension: 0,
           seriesIndex: seriesCounter,
           pieces: [
             ...highlightPieces,
-            { gt: -1e18, color: `${color}33` }, // Default faded piece with explicit lower bound
+            { gt: -Infinity, color: `${color}33` }, // Restore -Infinity
           ],
         });
 
@@ -553,6 +554,15 @@ export function ClusterEventsChart({
         Unable to generate visualization.
       </div>
     );
+
+  console.log("[ClusterEventsChart] Rendering with options:", {
+    seriesCount: options.series.length,
+    visualMapCount: options.visualMap.length,
+    gridCount: options.grid.length,
+    commonDomain,
+    firstSeriesData: options.series[0]?.data?.slice(0, 5),
+    firstVisualMapPieces: options.visualMap[0]?.pieces,
+  });
 
   return (
     <div ref={containerRef} className="w-full h-96 min-h-[400px]">
