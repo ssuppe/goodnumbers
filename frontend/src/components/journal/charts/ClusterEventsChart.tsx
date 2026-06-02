@@ -252,6 +252,29 @@ export function ClusterEventsChart({
         // STABILITY: ECharts visualMap crashes if series has < 2 points
         if (seriesData.length < 2) return;
 
+        // --- VALUE SCAN: Identify every dot above High or below Low ---
+        const thresholds = getClinicalThresholds(normalizedUnits);
+        let excursionStart: number | null = null;
+        
+        seriesData.forEach((point, i) => {
+          const val = point.value[1];
+          const time = point.value[0];
+          const isOut = val >= thresholds.high || val <= thresholds.low;
+          
+          if (isOut) {
+            if (excursionStart === null) excursionStart = time;
+          } else {
+            if (excursionStart !== null) {
+              highlightRanges.push({ start: excursionStart, end: time });
+              excursionStart = null;
+            }
+          }
+          // Handle end of series
+          if (i === seriesData.length - 1 && excursionStart !== null) {
+            highlightRanges.push({ start: excursionStart, end: time });
+          }
+        });
+
         // --- GAP FILLING: Create strictly non-overlapping pieces ---
         const sortedRanges = highlightRanges.sort((a, b) => a.start - b.start);
         const mergedRanges: { start: number; end: number }[] = [];
