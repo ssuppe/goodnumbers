@@ -11,4 +11,6 @@ export const CHART_THEME = {
     outer: "rgba(44, 76, 91, 0.1)", // Mesa Secondary at 10%
     inner: "rgba(44, 76, 91, 0.2)", // Mesa Secondary at 20%
   },
+  treatmentCarbs: "#d9775b", // Example: Terracotta
+  treatmentInsulin: "#6b9ac4", // Example: Light Blue
 };

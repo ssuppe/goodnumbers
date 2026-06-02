@@ -81,7 +81,7 @@ describe("getBoundaryHour", () => {
       "2023-01-01T09:00:00Z",
       "2023-01-01T15:00:00Z",
     ]);
-    const treatmentTime = new Date("2023-01-01T23:00:00Z").getTime();
+    const treatmentTime = "2023-01-01T23:00:00Z";
 
     const boundary = getBoundaryHour(cluster, [treatmentTime]);
     expect(boundary).toBe(0);
