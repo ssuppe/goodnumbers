@@ -142,7 +142,7 @@ export async function processJournalJob(job: Job) {
 
     // Fetch all data in parallel for efficiency
     const [entries, rawTreatments, profiles] = await Promise.all([
-      client.fetchEntries(lookbackDays), // Note: fetchEntries still takes 'days'
+      client.fetchEntries(fetchStart, fetchEnd),
       client.fetchTreatments(fetchStart, fetchEnd),
       client.fetchProfile(),
     ]);

@@ -104,9 +104,11 @@ describe('NightscoutClient', () => {
       client = new NightscoutClient(validUrl, token);
     });
 
-    it('fetchEntries should call correct endpoint with numeric timestamp query params', async () => {
+    it("fetchEntries should call correct endpoint with numeric timestamp query params", async () => {
       vi.mocked(axios.get).mockResolvedValue({ data: [] });
-      await client.fetchEntries(7);
+      const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const to = new Date();
+      await client.fetchEntries(from, to);
 
       const expectedUrl = `${validUrl}/api/v1/entries/sgv.json`;
       // Check the first argument (URL)
@@ -120,13 +122,14 @@ describe('NightscoutClient', () => {
       const config = callArgs[1];
 
       expect(config?.params).toBeDefined();
-      expect(config?.params['count']).toBe(20000);
+      expect(config?.params["count"]).toBe(50000);
 
-      const timestamp = config?.params['find[date][$gte]'];
-      expect(timestamp).toBeDefined();
-      expect(typeof timestamp).toBe('number');
-      expect(timestamp).toBeGreaterThan(0);
-      expect(timestamp).toBeLessThan(Date.now());
+      const timestampGte = config?.params["find[date][$gte]"];
+      const timestampLte = config?.params["find[date][$lte]"];
+      expect(timestampGte).toBeDefined();
+      expect(timestampLte).toBeDefined();
+      expect(typeof timestampGte).toBe("number");
+      expect(timestampGte).toBe(from.getTime());
     });
 
     it('fetchTreatments should call correct endpoint with ISO string query params', async () => {
@@ -149,8 +152,11 @@ describe('NightscoutClient', () => {
       expect(config?.params['find[created_at][$gte]']).toBeDefined();
     });
 
-    it('should filter returned data based on date', async () => {
+    it("should filter returned data based on date", async () => {
       const now = Date.now();
+      const from = new Date(now - 7 * 24 * 60 * 60 * 1000);
+      const to = new Date(now);
+
       const eightDaysAgo = now - 8 * 24 * 60 * 60 * 1000;
       const sixDaysAgo = now - 6 * 24 * 60 * 60 * 1000;
 
@@ -161,7 +167,7 @@ describe('NightscoutClient', () => {
 
       vi.mocked(axios.get).mockResolvedValue({ data: mockData });
 
-      const result = await client.fetchEntries(7);
+      const result = await client.fetchEntries(from, to);
       expect(result).toHaveLength(1);
       expect(result[0].sgv).toBe(120);
     });

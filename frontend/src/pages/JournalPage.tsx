@@ -25,6 +25,8 @@ import ExecutiveSummary from "../components/journal/ExecutiveSummary";
 import { type Highlight } from "@goodnumbers/types";
 import { PencilLine } from "lucide-react";
 
+import { format } from "date-fns";
+
 type JournalResponse = Journal & {
   clusters: GlycemicEventCluster[];
   treatments?: Treatment[];
@@ -137,6 +139,19 @@ export default function JournalPage() {
     [journal?.agpChartData, user?.preferredUnits],
   );
 
+  const getRangeLabel = () => {
+    if (journal?.startDate && journal?.endDate) {
+      return `${format(new Date(journal.startDate), "MMM d")} - ${format(
+        new Date(journal.endDate),
+        "MMM d, yyyy",
+      )}`;
+    }
+    // Fallback for older journals: assume 7 days ending at createdAt
+    const end = new Date(journal!.createdAt);
+    const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return `${format(start, "MMM d")} - ${format(end, "MMM d, yyyy")}`;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[80vh] p-8">
@@ -163,6 +178,12 @@ export default function JournalPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-4 lg:p-8 space-y-3 pb-20">
+      <div className="mb-4">
+        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+          Analysis for {getRangeLabel()}
+        </h1>
+      </div>
+
       <PodcastPlayer
         title={journal.podcastTitle}
         description={journal.podcastDescription}

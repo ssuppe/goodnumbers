@@ -31,6 +31,8 @@ router.get('/', async (req, res, next) => {
       select: {
         id: true,
         createdAt: true,
+        startDate: true,
+        endDate: true,
         podcastTitle: true,
         podcastDescription: true,
         weeklyVibe: true,

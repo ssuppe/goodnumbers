@@ -78,21 +78,22 @@ export class NightscoutClient {
     }
   }
 
-  public async fetchEntries(days: number = 7): Promise<NightscoutEntry[]> {
-    const now = Date.now();
-    const daysAgoTimestamp = now - days * 24 * 60 * 60 * 1000;
+  public async fetchEntries(from: Date, to: Date): Promise<NightscoutEntry[]> {
+    const fromTime = from.getTime();
+    const toTime = to.getTime();
 
     // Using numeric timestamp for compatibility as per PoC
     const entries = await this.fetch<NightscoutEntry[]>(
       '/api/v1/entries/sgv.json',
       {
-        'find[date][$gte]': daysAgoTimestamp,
-        count: 20000, // Fetch plenty to ensure coverage
+        'find[date][$gte]': fromTime,
+        'find[date][$lte]': toTime,
+        count: 50000, // Increased count for potentially longer custom ranges
       },
     );
 
     // Client-side filtering to ensure strict adherence to the time window
-    return entries.filter((entry) => entry.date >= daysAgoTimestamp);
+    return entries.filter((entry) => entry.date >= fromTime && entry.date <= toTime);
   }
 
   public async fetchTreatments(

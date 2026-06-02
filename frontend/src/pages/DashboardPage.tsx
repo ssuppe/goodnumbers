@@ -95,7 +95,9 @@ export default function DashboardPage() {
         isProcessing={!!pendingJournal}
         isSubmitting={isSubmitting}
         error={creationError}
-        onStart={handleStartJournal}
+        onStart={(data) => {
+          void handleStartJournal(data);
+        }}
       />
       <PastJournalsList
         journals={historyJournals}

@@ -21,6 +21,19 @@ export default function PastJournalsList({
     return null;
   }
 
+  const getRangeLabel = (journal: JournalSummary) => {
+    if (journal.startDate && journal.endDate) {
+      return `${format(new Date(journal.startDate), "MMM d")} - ${format(
+        new Date(journal.endDate),
+        "MMM d, yyyy",
+      )}`;
+    }
+    // Fallback for older journals: assume 7 days ending at createdAt
+    const end = new Date(journal.createdAt);
+    const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return `${format(start, "MMM d")} - ${format(end, "MMM d, yyyy")}`;
+  };
+
   return (
     <section>
       <h2 className="text-xl font-bold mb-4 text-gray-800">Past weeks</h2>
@@ -36,7 +49,7 @@ export default function PastJournalsList({
             <div className="flex-grow flex flex-col sm:flex-row justify-between items-start sm:items-center overflow-hidden">
               <div className="flex-grow overflow-hidden w-full sm:w-auto mb-2 sm:mb-0">
                 <p className="text-xs font-semibold text-gray-500">
-                  {format(new Date(journal.createdAt), "MMMM d, yyyy")}
+                  Analysis for {getRangeLabel(journal)}
                 </p>
                 <h3 className="font-bold truncate text-gray-900 leading-snug">
                   {journal.podcastTitle || "Untitled Journal"}
