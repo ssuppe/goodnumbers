@@ -24,6 +24,7 @@ import {
   normalizeTime,
   formatAxisLabel,
   getLocalWallClockDate,
+  calculateCommonDomain,
 } from "./chartUtils";
 
 // Register components
@@ -46,7 +47,6 @@ interface ClusterEventsChartProps {
   evidenceWindowMins?: number;
 }
 
-// Buffer in minutes to search for treatments around an event
 const TREATMENT_BUFFER_MINUTES = 180;
 
 interface EChartsEventParams {
@@ -148,17 +148,17 @@ export function ClusterEventsChart({
 
       if (validEvents.length === 0) return null;
 
-      let globalMinNormalized = Infinity;
-      let globalMaxNormalized = -Infinity;
-      validEvents.forEach((event) => {
-        const nStart = normalizeTime(event.startTime, boundaryHour);
-        const nEnd = normalizeTime(event.endTime, boundaryHour);
-        if (nStart < globalMinNormalized) globalMinNormalized = nStart;
-        if (nEnd > globalMaxNormalized) globalMaxNormalized = nEnd;
-      });
-
       const series: object[] = [];
       const visualMaps: object[] = [];
+
+      // Link by Day to allow shared naming/highlighting
+      const uniqueDays = Array.from(
+        new Set(
+          validEvents.map((e) =>
+            format(getLocalWallClockDate(e.startTime), "EEE, MMM d"),
+          ),
+        ),
+      );
 
       validEvents.forEach((event, index) => {
         const normalizedStartTime = normalizeTime(
@@ -166,7 +166,12 @@ export function ClusterEventsChart({
           boundaryHour,
         );
         const originalStartTimeMillis = new Date(event.startTime).getTime();
-        const visuals = getEventVisuals(index);
+        const dayName = format(
+          getLocalWallClockDate(event.startTime),
+          "EEE, MMM d",
+        );
+        const dayIndex = uniqueDays.indexOf(dayName);
+        const visuals = getEventVisuals(dayIndex);
         const durationMillis =
           new Date(event.endTime).getTime() - originalStartTimeMillis;
         const normalizedEndTime = normalizedStartTime + durationMillis;
@@ -185,20 +190,16 @@ export function ClusterEventsChart({
           .filter((d): d is { value: [number, number]; originalDate: string } =>
             Boolean(d),
           );
-        // Add Line Series
+
         series.push({
-          name: format(
-            getLocalWallClockDate(event.startTime),
-            "EEE, MMM d @ p",
-          ),
+          name: dayName,
           type: "line",
           data: seriesData,
           showSymbol: false,
           smooth: true,
           lineStyle: { width: 3 },
-
           emphasis: { focus: "series", lineStyle: { width: 5 } },
-          blur: { lineStyle: { opacity: 0.2 } },
+          blur: { lineStyle: { opacity: 0.15 } },
           markLine:
             index === 0
               ? {
@@ -207,11 +208,17 @@ export function ClusterEventsChart({
                   data: [
                     {
                       yAxis: thresholds.high,
-                      lineStyle: { color: CHART_THEME.clinicalHigh },
+                      lineStyle: {
+                        color: CHART_THEME.clinicalHigh,
+                        type: "dashed",
+                      },
                     },
                     {
                       yAxis: thresholds.low,
-                      lineStyle: { color: CHART_THEME.clinicalLow },
+                      lineStyle: {
+                        color: CHART_THEME.clinicalLow,
+                        type: "dashed",
+                      },
                     },
                   ],
                 }
@@ -238,6 +245,9 @@ export function ClusterEventsChart({
         });
       });
 
+      const hasCarbData = treatments.some((t) => t.carbs && t.carbs > 0);
+      const hasInsulinData = treatments.some((t) => t.insulin && t.insulin > 0);
+
       const buildBarSeries = (
         type: "carbs" | "insulin",
         color: string,
@@ -250,16 +260,21 @@ export function ClusterEventsChart({
             event.startTime,
             boundaryHour,
           );
-          const eventEndTime = new Date(event.endTime).getTime();
+          const dayName = format(
+            getLocalWallClockDate(event.startTime),
+            "EEE, MMM d",
+          );
           const searchStart = eventStart - TREATMENT_BUFFER_MINUTES * 60000;
-          const searchEnd = eventEndTime + TREATMENT_BUFFER_MINUTES * 60000;
+          const searchEnd =
+            new Date(event.endTime).getTime() +
+            TREATMENT_BUFFER_MINUTES * 60000;
 
           treatments.forEach((t) => {
             const tTime = new Date(t.date).getTime();
             const val = type === "carbs" ? t.carbs : t.insulin;
             if (val && val > 0 && tTime >= searchStart && tTime <= searchEnd) {
               data.push({
-                name: format(tTime, "p"),
+                name: dayName, // Shared name for highlighting
                 value: [normalizedStartTime + (tTime - eventStart), val],
                 originalDate: t.date,
                 originalValue: val,
@@ -270,18 +285,16 @@ export function ClusterEventsChart({
         });
         if (data.length === 0) return null;
         return {
-          name: type === "carbs" ? "Carbs" : "Insulin",
+          name: "Treatments",
           type: "bar",
           xAxisIndex: axisIndex,
           yAxisIndex: axisIndex,
           data,
-          itemStyle: { color },
-          barWidth: 10,
+          itemStyle: { color, opacity: 0.8 },
+          barWidth: 8,
         };
       };
 
-      const hasCarbData = treatments.some((t) => t.carbs && t.carbs > 0);
-      const hasInsulinData = treatments.some((t) => t.insulin && t.insulin > 0);
       const carbSeries = buildBarSeries("carbs", CHART_THEME.treatmentCarbs, 1);
       const insulinSeries = buildBarSeries(
         "insulin",
@@ -292,85 +305,90 @@ export function ClusterEventsChart({
       if (carbSeries) series.push(carbSeries);
       if (insulinSeries) series.push(insulinSeries);
 
-      const grid: object[] = [];
-      const xAxis: object[] = [];
-      const yAxis: object[] = [];
-
-      const mainGridHeight = hasCarbData || hasInsulinData ? "55%" : "75%";
-
-      grid.push({ top: "5%", left: 60, right: 20, height: mainGridHeight });
-      xAxis.push({
-        type: "value",
-        gridIndex: 0,
-        min: globalMinNormalized - 60 * 60000,
-        max: globalMaxNormalized + 60 * 60000,
-        axisLabel: {
-          formatter: (v: number) => formatAxisLabel(v, boundaryHour),
+      // --- Precise Vertical Layout ---
+      const commonDomain = calculateCommonDomain(
+        series as { data: { value: (number | string)[] }[] }[],
+        180,
+      ); // 3-hour buffer
+      const grid: object[] = [
+        {
+          top: "8%",
+          left: "8%",
+          right: "4%",
+          height: hasCarbData || hasInsulinData ? "50%" : "75%",
+          containLabel: true,
         },
-      });
-      yAxis.push({
-        type: "value",
-        gridIndex: 0,
-        name: `Glucose (${isMmol ? "mmol/L" : "mg/dL"})`,
-        nameLocation: "middle",
-        nameRotate: 90,
-        nameGap: 40,
-        min: (v: { min: number }) => Math.floor(v.min * 0.9),
-        max: (v: { max: number }) => Math.ceil(v.max * 1.1),
-      });
+      ];
+      const xAxis: object[] = [
+        {
+          type: "value",
+          gridIndex: 0,
+          min: commonDomain?.min,
+          max: commonDomain?.max,
+          axisLabel: { formatter: (v: number) => formatAxisLabel(v) },
+          splitLine: { show: false },
+        },
+      ];
+      const yAxis: object[] = [
+        {
+          type: "value",
+          gridIndex: 0,
+          name: `Glucose (${isMmol ? "mmol/L" : "mg/dL"})`,
+          nameLocation: "middle",
+          nameRotate: 90,
+          nameGap: 45,
+          min: (v: { min: number }) => Math.floor(v.min * 0.9),
+          max: (v: { max: number }) => Math.ceil(v.max * 1.1),
+        },
+      ];
 
-      let currentTop = 65; // percentage
-
-      if (hasCarbData || hasInsulinData) {
-        const subGridHeight = hasCarbData && hasInsulinData ? "12%" : "25%";
-
-        if (hasCarbData) {
-          grid.push({
-            left: 60,
-            right: 20,
-            top: `${currentTop}%`,
-            height: subGridHeight,
-          });
-          xAxis.push({
-            type: "value",
-            gridIndex: grid.length - 1,
-            show: false,
-            min: globalMinNormalized - 60 * 60000,
-            max: globalMaxNormalized + 60 * 60000,
-          });
-          yAxis.push({
-            type: "value",
-            gridIndex: grid.length - 1,
-            name: "Carbs (g)",
-            splitLine: { show: false },
-            nameLocation: "middle",
-            nameGap: 40,
-          });
-          currentTop += 17;
-        }
-        if (hasInsulinData) {
-          grid.push({
-            left: 60,
-            right: 20,
-            top: `${currentTop}%`,
-            height: subGridHeight,
-          });
-          xAxis.push({
-            type: "value",
-            gridIndex: grid.length - 1,
-            show: false,
-            min: globalMinNormalized - 60 * 60000,
-            max: globalMaxNormalized + 60 * 60000,
-          });
-          yAxis.push({
-            type: "value",
-            gridIndex: grid.length - 1,
-            name: "Insulin (u)",
-            splitLine: { show: false },
-            nameLocation: "middle",
-            nameGap: 40,
-          });
-        }
+      if (hasCarbData) {
+        grid.push({
+          left: "8%",
+          right: "4%",
+          top: "65%",
+          height: hasInsulinData ? "12%" : "25%",
+          containLabel: true,
+        });
+        xAxis.push({
+          type: "value",
+          gridIndex: grid.length - 1,
+          show: false,
+          min: commonDomain?.min,
+          max: commonDomain?.max,
+        });
+        yAxis.push({
+          type: "value",
+          gridIndex: grid.length - 1,
+          name: "Carbs (g)",
+          nameLocation: "middle",
+          nameGap: 45,
+          splitLine: { show: false },
+        });
+      }
+      if (hasInsulinData) {
+        grid.push({
+          left: "8%",
+          right: "4%",
+          top: hasCarbData ? "82%" : "65%",
+          height: hasCarbData ? "12%" : "25%",
+          containLabel: true,
+        });
+        xAxis.push({
+          type: "value",
+          gridIndex: grid.length - 1,
+          show: false,
+          min: commonDomain?.min,
+          max: commonDomain?.max,
+        });
+        yAxis.push({
+          type: "value",
+          gridIndex: grid.length - 1,
+          name: "Insulin (u)",
+          nameLocation: "middle",
+          nameGap: 45,
+          splitLine: { show: false },
+        });
       }
 
       return {
@@ -382,21 +400,15 @@ export function ClusterEventsChart({
             const dateSource = (p.data.originalDate || p.data.value[0]) as
               | string
               | number;
-
-            let timeStr = "";
-            if (typeof dateSource === "string") {
-              timeStr = format(getLocalWallClockDate(dateSource), "h:mm a");
-            } else {
-              timeStr = formatAxisLabel(dateSource);
-            }
-
+            const timeStr =
+              typeof dateSource === "string"
+                ? format(getLocalWallClockDate(dateSource), "h:mm a")
+                : formatAxisLabel(Number(dateSource));
             let content = `<div><span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color:${p.color};"></span>${p.seriesName}</div>`;
             content += `<div>${timeStr}</div>`;
-
             if (p.seriesType === "line") {
-              const unitLabel = isMmol ? "mmol/L" : "mg/dL";
-              content += `<div>Glucose: <strong>${p.data.value[1]}</strong> ${unitLabel}</div>`;
-            } else if (p.seriesType === "bar") {
+              content += `<div>Glucose: <strong>${p.data.value[1]}</strong> ${isMmol ? "mmol/L" : "mg/dL"}</div>`;
+            } else {
               const label =
                 p.data.treatmentType === "carbs" ? "Carbs" : "Insulin";
               const unit = p.data.treatmentType === "carbs" ? "g" : "u";
@@ -413,18 +425,18 @@ export function ClusterEventsChart({
         series,
       };
     } catch (err) {
-      console.error("[ClusterEventsChart] Critical error in useMemo:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[ClusterEventsChart] Critical error:", msg);
       return null;
     }
   }, [cluster, units, treatments, boundaryHour]);
 
-  if (!options) {
+  if (!options)
     return (
       <div className="flex items-center justify-center h-64 bg-slate-50 border rounded-lg text-slate-400 italic">
         Unable to generate visualization.
       </div>
     );
-  }
 
   return (
     <div ref={containerRef} className="w-full h-96 min-h-[400px]">
