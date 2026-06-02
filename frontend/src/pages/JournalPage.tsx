@@ -1,3 +1,4 @@
+import { ChartErrorBoundary } from "../components/journal/charts/ChartErrorBoundary";
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, updateJournal, deleteJournal } from "../lib/api";
@@ -196,14 +197,16 @@ export default function JournalPage() {
         </section>
       )}
 
-      <ChartAnalysisCard
-        title="Ambulatory Glucose Profile (AGP)"
-        subtitle="Your 7-day glucose trends"
-        data={normalizedAgpData}
-        units={user?.preferredUnits || "MGDL"}
-        insights={(journal.analysisInsights as unknown as Insight[]) || []}
-        scoreCardData={journal.scoreCardData as unknown as ScoreCardData}
-      />
+      <ChartErrorBoundary>
+        <ChartAnalysisCard
+          title="Ambulatory Glucose Profile (AGP)"
+          subtitle="Your 7-day glucose trends"
+          data={normalizedAgpData}
+          units={user?.preferredUnits || "MGDL"}
+          insights={(journal.analysisInsights as unknown as Insight[]) || []}
+          scoreCardData={journal.scoreCardData as unknown as ScoreCardData}
+        />
+      </ChartErrorBoundary>
 
       <WeeklyVibe
         selectedVibe={formData.weeklyVibe}
@@ -220,22 +223,23 @@ export default function JournalPage() {
       />
 
       {journal.clusters.map((cluster) => (
-        <EventClusterCard
-          key={cluster.id}
-          cluster={cluster}
-          userNote={formData.clusterNotes[cluster.id]}
-          onNoteChange={(note) =>
-            setFormData((prev) => ({
-              ...prev!,
-              clusterNotes: {
-                ...prev!.clusterNotes,
-                [cluster.id]: note,
-              },
-            }))
-          }
-          units={user?.preferredUnits || "MGDL"}
-          treatments={journal.treatments}
-        />
+        <ChartErrorBoundary key={cluster.id}>
+          <EventClusterCard
+            cluster={cluster}
+            userNote={formData.clusterNotes[cluster.id]}
+            onNoteChange={(note) =>
+              setFormData((prev) => ({
+                ...prev!,
+                clusterNotes: {
+                  ...prev!.clusterNotes,
+                  [cluster.id]: note,
+                },
+              }))
+            }
+            units={user?.preferredUnits || "MGDL"}
+            treatments={journal.treatments}
+          />
+        </ChartErrorBoundary>
       ))}
 
       <section className="space-y-3">

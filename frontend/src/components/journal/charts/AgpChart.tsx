@@ -202,13 +202,23 @@ export function AgpChart({ data, units }: AgpChartProps) {
             const lower = api.value(1);
             const upper = api.value(2);
 
-            if (lower == null || upper == null || xValue == null) return;
+            // HARDENING: Critical check for coordinate system existence
+            if (lower == null || upper == null || xValue == null || isNaN(xValue))
+              return;
 
             const start = api.coord([xValue, lower]);
             const end = api.coord([xValue, upper]);
 
-            // Defensive: ensure coord lookups didn't fail
-            if (!start || !end || isNaN(start[0]) || isNaN(start[1])) return;
+            // HARDENING: ensure coord lookups didn't fail
+            if (
+              !start ||
+              !end ||
+              isNaN(start[0]) ||
+              isNaN(start[1]) ||
+              isNaN(end[0]) ||
+              isNaN(end[1])
+            )
+              return;
 
             // Calculate width and padding
             const size = api.size([1, 0], [xValue, lower]);
@@ -232,13 +242,13 @@ export function AgpChart({ data, units }: AgpChartProps) {
                 height: height,
                 r: [2, 2, 2, 2], // Rounded corners
               },
-              style: api.style({
+              style: {
                 fill: CHART_THEME.bands.outer,
                 stroke: "none",
-              }),
+              },
             };
           },
-          data: p5_95Data,
+          data: p5_95Data.filter((d) => d[1] != null && d[2] != null),
           z: 0,
         },
         // 25th-75th Percentile Band (Darker)
@@ -249,12 +259,21 @@ export function AgpChart({ data, units }: AgpChartProps) {
             const xValue = api.value(0);
             const lower = api.value(1);
             const upper = api.value(2);
-            if (lower == null || upper == null || xValue == null) return;
+            if (lower == null || upper == null || xValue == null || isNaN(xValue))
+              return;
 
             const start = api.coord([xValue, lower]);
             const end = api.coord([xValue, upper]);
 
-            if (!start || !end || isNaN(start[0]) || isNaN(start[1])) return;
+            if (
+              !start ||
+              !end ||
+              isNaN(start[0]) ||
+              isNaN(start[1]) ||
+              isNaN(end[0]) ||
+              isNaN(end[1])
+            )
+              return;
 
             // Calculate width and padding
             const size = api.size([1, 0], [xValue, lower]);
@@ -278,13 +297,13 @@ export function AgpChart({ data, units }: AgpChartProps) {
                 height: height,
                 r: [2, 2, 2, 2], // Rounded corners
               },
-              style: api.style({
+              style: {
                 fill: CHART_THEME.bands.inner,
                 stroke: "none",
-              }),
+              },
             };
           },
-          data: p25_75Data,
+          data: p25_75Data.filter((d) => d[1] != null && d[2] != null),
           z: 1,
         },
         // Mean Line

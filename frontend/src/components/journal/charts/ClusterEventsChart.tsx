@@ -205,6 +205,9 @@ export function ClusterEventsChart({
             event.startTime,
             boundaryHour,
           );
+
+          if (isNaN(normalizedStartTime)) return;
+
           const originalStartTimeMillis = new Date(event.startTime).getTime();
           const durationMillis =
             new Date(event.endTime).getTime() - originalStartTimeMillis;
@@ -212,7 +215,6 @@ export function ClusterEventsChart({
 
           // Add highlight piece - Only if valid
           if (
-            !isNaN(normalizedStartTime) &&
             !isNaN(normalizedEndTime) &&
             normalizedEndTime > normalizedStartTime
           ) {
@@ -230,6 +232,10 @@ export function ClusterEventsChart({
             if (isNaN(originalReadingTime) || isNaN(glucoseValue)) return;
 
             const normalizedTime = normalizedStartTime + offset;
+
+            // HARDENING: Critical guard against NaN coordinates
+            if (isNaN(normalizedTime)) return;
+
             if (!allReadingsMap[normalizedTime]) {
               allReadingsMap[normalizedTime] = {
                 value: [normalizedTime, glucoseValue],
@@ -253,7 +259,7 @@ export function ClusterEventsChart({
           seriesIndex: seriesCounter,
           pieces: [
             ...highlightPieces,
-            { gt: -Infinity, color: `${color}33` }, // Default faded piece
+            { gt: -1e18, color: `${color}33` }, // Default faded piece with explicit lower bound
           ],
         });
 
