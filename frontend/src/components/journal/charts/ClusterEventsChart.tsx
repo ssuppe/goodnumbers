@@ -485,9 +485,9 @@ export function ClusterEventsChart({
       const grid: object[] = [
         {
           top: "8%",
-          left: 90, // Slightly increased for consistency
+          left: 90,
           right: 40,
-          height: hasCarbData || hasInsulinData ? "50%" : "75%",
+          height: hasCarbData || hasInsulinData ? "45%" : "75%",
           containLabel: true,
         },
       ];
@@ -518,8 +518,8 @@ export function ClusterEventsChart({
         grid.push({
           left: 90,
           right: 40,
-          top: "65%",
-          height: hasInsulinData ? "12%" : "25%",
+          top: "58%", // Reduced gap from main chart
+          height: hasInsulinData ? "18%" : "30%", // Increased height
           containLabel: true,
         });
         xAxis.push({
@@ -542,8 +542,8 @@ export function ClusterEventsChart({
         grid.push({
           left: 90,
           right: 40,
-          top: hasCarbData ? "82%" : "65%",
-          height: hasCarbData ? "12%" : "25%",
+          top: hasCarbData ? "78%" : "58%", // Tightened gap between bars
+          height: hasCarbData ? "18%" : "30%", // Increased height
           containLabel: true,
         });
         xAxis.push({
