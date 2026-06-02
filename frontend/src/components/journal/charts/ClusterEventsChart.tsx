@@ -415,29 +415,53 @@ export function ClusterEventsChart({
 
       return {
         tooltip: {
-          trigger: "item",
+          trigger: "axis",
+          axisPointer: {
+            type: "line",
+            link: { xAxisIndex: "all" },
+            label: { backgroundColor: "#777" },
+          },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           formatter: (params: any) => {
-            const p = params;
-            const dateSource = (p.data.originalDate || p.data.value[0]) as
-              | string
-              | number;
-            const timeStr =
-              typeof dateSource === "string"
-                ? format(getLocalWallClockDate(dateSource), "h:mm a")
-                : formatAxisLabel(Number(dateSource));
-            let content = `<div><span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color:${p.color};"></span>${p.seriesName}</div>`;
-            content += `<div>${timeStr}</div>`;
-            if (p.seriesType === "line") {
-              content += `<div>Glucose: <strong>${p.data.value[1]}</strong> ${isMmol ? "mmol/L" : "mg/dL"}</div>`;
+            const pArray = Array.isArray(params) ? params : [params];
+            if (pArray.length === 0) return "";
+
+            const firstPoint = pArray[0];
+            const dateSource = (firstPoint.data?.originalDate ||
+              firstPoint.data?.value?.[0] ||
+              firstPoint.value?.[0]) as string | number;
+
+            let timeStr = "";
+            if (typeof dateSource === "string") {
+              timeStr = format(getLocalWallClockDate(dateSource), "h:mm a");
             } else {
-              const label =
-                p.data.treatmentType === "carbs" ? "Carbs" : "Insulin";
-              const unit = p.data.treatmentType === "carbs" ? "g" : "u";
-              content += `<div>${label}: <strong>${p.data.originalValue}${unit}</strong></div>`;
+              timeStr = formatAxisLabel(Number(dateSource));
             }
+
+            let content = `<div style="font-weight: bold; border-bottom: 1px solid #eee; margin-bottom: 5px; padding-bottom: 2px;">${timeStr}</div>`;
+
+            pArray.forEach((p: any) => {
+              if (!p.data) return;
+              const color = p.color;
+              content += `<div style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">`;
+              content += `<span><span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color:${color};"></span>${p.seriesName}</span>`;
+
+              if (p.seriesType === "line") {
+                const val = p.data.value[1];
+                content += `<strong>${val}</strong>`;
+              } else {
+                const label =
+                  p.data.treatmentType === "carbs" ? "Carbs" : "Insulin";
+                const unit = p.data.treatmentType === "carbs" ? "g" : "u";
+                content += `<span>${label}: <strong>${p.data.originalValue}${unit}</strong></span>`;
+              }
+              content += `</div>`;
+            });
             return content;
           },
+        },
+        axisPointer: {
+          link: { xAxisIndex: "all" },
         },
         visualMap: visualMaps,
         legend: { show: true, bottom: 0, type: "scroll" },
