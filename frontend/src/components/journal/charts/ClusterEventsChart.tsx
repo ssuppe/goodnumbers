@@ -9,6 +9,7 @@ import {
   TitleComponent,
   LegendComponent,
   MarkLineComponent,
+  VisualMapComponent,
 } from "echarts/components";
 import { CHART_THEME } from "../../../lib/chartTheme";
 import {
@@ -38,6 +39,7 @@ echarts.use([
   TitleComponent,
   LegendComponent,
   MarkLineComponent,
+  VisualMapComponent,
 ]);
 
 interface ClusterEventsChartProps {
@@ -187,7 +189,7 @@ export function ClusterEventsChart({
         dayEventsMap[dayName].events.push(event);
       });
 
-      // 2. Generate Line Series and corresponding visualMaps in ONE synchronized pass
+      // 2. Generate ONE Line Series and ONE visualMap per day
       let seriesCounter = 0;
       Object.entries(dayEventsMap).forEach(([dayName, dayData]) => {
         const { events, color } = dayData;
@@ -261,7 +263,7 @@ export function ClusterEventsChart({
             gridIndex: 0, // Explicitly link to main grid
             pieces: [
               ...highlightPieces,
-              { gt: -Infinity, color: `${color}33` },
+              { gt: -1e18, color: `${color}33` }, // finite lower bound
             ],
           });
         }
@@ -269,11 +271,11 @@ export function ClusterEventsChart({
         series.push({
           name: dayName,
           type: "line",
-          xAxisIndex: 0, // Explicitly link to main grid
+          xAxisIndex: 0,
           yAxisIndex: 0,
           data: seriesData,
           showSymbol: false,
-          smooth: false, // Disable smoothing to prevent coordinate calculation crashes in SVG renderer
+          smooth: false, // Disable smoothing for coordinate safety
           lineStyle: { width: 3 },
           emphasis: { focus: "series", lineStyle: { width: 5 } },
           blur: { lineStyle: { opacity: 0.15 } },
@@ -340,10 +342,12 @@ export function ClusterEventsChart({
             const offset = tTime - eventStart;
             // Check for duplicates within this day (multiple events can share treatments)
             const isDuplicateCarb = dayTreatmentsMap[dayName].carbs.some(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (prev: any) =>
                 (prev as { originalDate: string }).originalDate === t.date,
             );
             const isDuplicateInsulin = dayTreatmentsMap[dayName].insulin.some(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (prev: any) =>
                 (prev as { originalDate: string }).originalDate === t.date,
             );
@@ -410,7 +414,7 @@ export function ClusterEventsChart({
       const grid: object[] = [
         {
           top: "8%",
-          left: 90, // Slightly increased for consistency
+          left: 90,
           right: 40,
           height: hasCarbData || hasInsulinData ? "50%" : "75%",
           containLabel: true,
@@ -488,7 +492,7 @@ export function ClusterEventsChart({
         });
       }
 
-      return {
+      const finalOptions = {
         tooltip: {
           trigger: "axis",
           axisPointer: {
@@ -545,6 +549,15 @@ export function ClusterEventsChart({
         yAxis,
         series,
       };
+
+      console.log("[ClusterEventsChart] Final series/visualMap config:", {
+        seriesCount: finalOptions.series.length,
+        visualMapCount: finalOptions.visualMap.length,
+        seriesNames: finalOptions.series.map((s: any) => s.name),
+        vMapIndices: finalOptions.visualMap.map((v: any) => v.seriesIndex),
+      });
+
+      return finalOptions;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[ClusterEventsChart] Critical error:", msg);
@@ -559,14 +572,10 @@ export function ClusterEventsChart({
       </div>
     );
 
-  console.log("[ClusterEventsChart] Rendering with options:", {
-    seriesCount: options.series.length,
-    visualMapCount: options.visualMap.length,
-    gridCount: options.grid.length,
-    commonDomain,
-    firstSeriesData: options.series[0]?.data?.slice(0, 5),
-    firstVisualMapPieces: options.visualMap[0]?.pieces,
-  });
+  console.log(
+    "[ClusterEventsChart] Rendering series count:",
+    options.series.length,
+  );
 
   return (
     <div ref={containerRef} className="w-full h-96 min-h-[400px]">
