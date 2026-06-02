@@ -188,7 +188,8 @@ export function ClusterEventsChart({
       });
 
       // 2. Generate ONE Line Series and ONE visualMap per day
-      Object.entries(dayEventsMap).forEach(([dayName, dayData], dayIdx) => {
+      let seriesCounter = 0;
+      Object.entries(dayEventsMap).forEach(([dayName, dayData]) => {
         const { events, color } = dayData;
 
         // Collect and sort all readings for this day
@@ -196,7 +197,8 @@ export function ClusterEventsChart({
           number,
           { value: [number, number]; originalDate: string }
         > = {};
-        const highlightPieces: { gte: number; lte: number; color: string }[] = [];
+        const highlightPieces: { gte: number; lte: number; color: string }[] =
+          [];
 
         events.forEach((event) => {
           const normalizedStartTime = normalizeTime(
@@ -208,12 +210,18 @@ export function ClusterEventsChart({
             new Date(event.endTime).getTime() - originalStartTimeMillis;
           const normalizedEndTime = normalizedStartTime + durationMillis;
 
-          // Add highlight piece for this specific event
-          highlightPieces.push({
-            gte: normalizedStartTime,
-            lte: normalizedEndTime,
-            color,
-          });
+          // Add highlight piece for this specific event - Ensure valid numbers
+          if (
+            !isNaN(normalizedStartTime) &&
+            !isNaN(normalizedEndTime) &&
+            normalizedEndTime > normalizedStartTime
+          ) {
+            highlightPieces.push({
+              gte: normalizedStartTime,
+              lte: normalizedEndTime,
+              color,
+            });
+          }
 
           event.readings.forEach((r) => {
             const originalReadingTime = new Date(r.timestamp).getTime();
@@ -236,11 +244,14 @@ export function ClusterEventsChart({
           (a, b) => a.value[0] - b.value[0],
         );
 
+        // HARDENING: ECharts visualMap crashes if series has < 2 points
+        if (seriesData.length < 2) return;
+
         // Define visualMap for this day
         visualMaps.push({
           show: false,
           dimension: 0,
-          seriesIndex: dayIdx, // Matches line series index
+          seriesIndex: seriesCounter, // Explicit sync
           pieces: [
             ...highlightPieces,
             { gt: -Infinity, color: `${color}33` }, // Default: faded
@@ -258,7 +269,7 @@ export function ClusterEventsChart({
           blur: { lineStyle: { opacity: 0.15 } },
           // Attach markLine to the VERY FIRST series only
           markLine:
-            dayIdx === 0
+            seriesCounter === 0
               ? {
                   silent: true,
                   symbol: "none",
@@ -281,6 +292,8 @@ export function ClusterEventsChart({
                 }
               : undefined,
         });
+
+        seriesCounter++;
       });
 
       // 4. Group and Add Bar Series (Treatments) - Split by day for linked highlighting
