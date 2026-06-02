@@ -482,13 +482,17 @@ export function ClusterEventsChart({
         series as { data: { value: (number | string)[] }[] }[],
         30,
       );
+
+      const LEFT_MARGIN = 90;
+      const TITLE_GAP = 65;
+
       const grid: object[] = [
         {
-          top: "8%",
-          left: 90,
+          top: "5%",
+          left: LEFT_MARGIN,
           right: 40,
-          height: hasCarbData || hasInsulinData ? "45%" : "75%",
-          containLabel: true,
+          height: hasCarbData || hasInsulinData ? "48%" : "80%",
+          containLabel: false, // Force alignment
         },
       ];
       const xAxis: object[] = [
@@ -505,10 +509,10 @@ export function ClusterEventsChart({
         {
           type: "value",
           gridIndex: 0,
-          name: `Glucose (${isMmol ? "mmol/L" : "mg/dL"})`,
+          name: `Glucose (${isMmol ? "mmol" : "mg/dL"})`,
           nameLocation: "middle",
           nameRotate: 90,
-          nameGap: 55,
+          nameGap: TITLE_GAP,
           min: (v: { min: number }) => Math.floor(v.min * 0.9),
           max: (v: { max: number }) => Math.ceil(v.max * 1.1),
         },
@@ -516,11 +520,11 @@ export function ClusterEventsChart({
 
       if (hasCarbData) {
         grid.push({
-          left: 90,
+          left: LEFT_MARGIN,
           right: 40,
-          top: "58%", // Reduced gap from main chart
-          height: hasInsulinData ? "18%" : "30%", // Increased height
-          containLabel: true,
+          top: "60%", // Tight gap from main chart
+          height: hasInsulinData ? "16%" : "30%",
+          containLabel: false,
         });
         xAxis.push({
           type: "value",
@@ -534,17 +538,17 @@ export function ClusterEventsChart({
           gridIndex: grid.length - 1,
           name: "Carbs (g)",
           nameLocation: "middle",
-          nameGap: 55,
+          nameGap: TITLE_GAP,
           splitLine: { show: false },
         });
       }
       if (hasInsulinData) {
         grid.push({
-          left: 90,
+          left: LEFT_MARGIN,
           right: 40,
-          top: hasCarbData ? "78%" : "58%", // Tightened gap between bars
-          height: hasCarbData ? "18%" : "30%", // Increased height
-          containLabel: true,
+          top: hasCarbData ? "79%" : "60%", // Very tight gap between bars
+          height: hasCarbData ? "16%" : "30%",
+          containLabel: false,
         });
         xAxis.push({
           type: "value",
@@ -558,7 +562,7 @@ export function ClusterEventsChart({
           gridIndex: grid.length - 1,
           name: "Insulin (u)",
           nameLocation: "middle",
-          nameGap: 55,
+          nameGap: TITLE_GAP,
           splitLine: { show: false },
         });
       }
