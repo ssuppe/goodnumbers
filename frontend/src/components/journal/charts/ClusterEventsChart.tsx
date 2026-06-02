@@ -187,7 +187,7 @@ export function ClusterEventsChart({
         dayEventsMap[dayName].events.push(event);
       });
 
-      // 2. Generate ONE Line Series and ONE visualMap per day
+      // 2. Generate Line Series and corresponding visualMaps in ONE synchronized pass
       let seriesCounter = 0;
       Object.entries(dayEventsMap).forEach(([dayName, dayData]) => {
         const { events, color } = dayData;
@@ -210,7 +210,7 @@ export function ClusterEventsChart({
             new Date(event.endTime).getTime() - originalStartTimeMillis;
           const normalizedEndTime = normalizedStartTime + durationMillis;
 
-          // Add highlight piece for this specific event - Ensure valid numbers
+          // Add highlight piece - Only if valid
           if (
             !isNaN(normalizedStartTime) &&
             !isNaN(normalizedEndTime) &&
@@ -230,7 +230,6 @@ export function ClusterEventsChart({
             if (isNaN(originalReadingTime) || isNaN(glucoseValue)) return;
 
             const normalizedTime = normalizedStartTime + offset;
-            // Deduplicate readings (common in overlapping context windows)
             if (!allReadingsMap[normalizedTime]) {
               allReadingsMap[normalizedTime] = {
                 value: [normalizedTime, glucoseValue],
@@ -244,17 +243,17 @@ export function ClusterEventsChart({
           (a, b) => a.value[0] - b.value[0],
         );
 
-        // HARDENING: ECharts visualMap crashes if series has < 2 points
+        // STABILITY: ECharts visualMap crashes if series has < 2 points
         if (seriesData.length < 2) return;
 
-        // Define visualMap for this day
+        // CRITICAL: Push visualMap ONLY IF the series is also added
         visualMaps.push({
           show: false,
           dimension: 0,
-          seriesIndex: seriesCounter, // Explicit sync
+          seriesIndex: seriesCounter,
           pieces: [
             ...highlightPieces,
-            { gt: -Infinity, color: `${color}33` }, // Default: faded
+            { gt: -Infinity, color: `${color}33` }, // Default faded piece
           ],
         });
 
@@ -267,7 +266,7 @@ export function ClusterEventsChart({
           lineStyle: { width: 3 },
           emphasis: { focus: "series", lineStyle: { width: 5 } },
           blur: { lineStyle: { opacity: 0.15 } },
-          // Attach markLine to the VERY FIRST series only
+          // markLine only on the first actual series
           markLine:
             seriesCounter === 0
               ? {
