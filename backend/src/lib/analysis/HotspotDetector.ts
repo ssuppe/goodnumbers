@@ -6,6 +6,8 @@ import {
   GlycemicCluster,
 } from '@goodnumbers/types';
 
+const BUFFER_MINUTES = 180;
+
 export class HotspotDetector {
   private timezone: string;
 
@@ -27,8 +29,9 @@ export class HotspotDetector {
     threshold: number,
   ): GlycemicEvent[] {
     const events: GlycemicEvent[] = [];
-    let currentSequence: GlucoseEntry[] = [];
+    let startIndex = -1;
 
+    // Security: Limit processing to prevent OOM on huge datasets
     const safeEntries = entries.slice(0, 5000);
 
     for (let i = 0; i < safeEntries.length; i++) {
@@ -37,39 +40,69 @@ export class HotspotDetector {
         type === 'hyper' ? entry.sgv >= threshold : entry.sgv <= threshold;
 
       if (isOut) {
-        currentSequence.push(entry);
+        if (startIndex === -1) {
+          startIndex = i;
+        }
       } else {
-        if (currentSequence.length > 0) {
-          this.processSequence(currentSequence, type, threshold, events);
-          currentSequence = [];
+        if (startIndex !== -1) {
+          this.processSequence(
+            safeEntries,
+            startIndex,
+            i,
+            type,
+            threshold,
+            events,
+          );
+          startIndex = -1;
         }
       }
-      if (type === 'hyper' && currentSequence.length > 2) {
-        const last = currentSequence[currentSequence.length - 1];
+
+      // INTEGRATED SPIKE SPLITTING:
+      if (type === 'hyper' && startIndex !== -1 && i - startIndex > 2) {
+        const last = safeEntries[i];
         const next = safeEntries[i + 1];
         if (next && next.sgv > last.sgv + 5 && last.sgv < threshold + 35) {
-          const maxBefore = Math.max(...currentSequence.map((e) => e.sgv));
+          const subSeq = safeEntries.slice(startIndex, i + 1);
+          const maxBefore = Math.max(...subSeq.map((e) => e.sgv));
           if (maxBefore > last.sgv + 35) {
-            this.processSequence(currentSequence, type, threshold, events);
-            currentSequence = [];
+            this.processSequence(
+              safeEntries,
+              startIndex,
+              i + 1,
+              type,
+              threshold,
+              events,
+            );
+            startIndex = i + 1;
           }
         }
       }
     }
 
-    if (currentSequence.length > 0) {
-      this.processSequence(currentSequence, type, threshold, events);
+    // Handle trailing sequence
+    if (startIndex !== -1) {
+      this.processSequence(
+        safeEntries,
+        startIndex,
+        safeEntries.length,
+        type,
+        threshold,
+        events,
+      );
     }
 
     return events;
   }
 
   private processSequence(
-    seq: GlucoseEntry[],
+    allEntries: GlucoseEntry[],
+    startIndex: number,
+    endIndex: number,
     type: 'hyper' | 'hypo',
     threshold: number,
     events: GlycemicEvent[],
   ) {
+    const seq = allEntries.slice(startIndex, endIndex);
     if (seq.length === 0) return;
 
     const first = seq[0];
@@ -92,6 +125,36 @@ export class HotspotDetector {
     const MIN_MAGNITUDE = 20;
 
     if (duration >= MIN_DURATION || magnitude >= MIN_MAGNITUDE) {
+      // --- Calculate Buffer Indices ---
+      const bufferStartTime = startTime.minus({ minutes: BUFFER_MINUTES });
+      const bufferEndTime = endTime.plus({ minutes: BUFFER_MINUTES });
+
+      // Scan backwards for start buffer
+      let bufferStartIndex = startIndex;
+      while (bufferStartIndex > 0) {
+        const prevEntry = allEntries[bufferStartIndex - 1];
+        const prevTime = DateTime.fromMillis(prevEntry.date); // Absolute comparison
+        if (prevTime < bufferStartTime) break;
+        bufferStartIndex--;
+      }
+
+      // Scan forwards for end buffer
+      let bufferEndIndex = endIndex;
+      while (bufferEndIndex < allEntries.length) {
+        const nextEntry = allEntries[bufferEndIndex];
+        const nextTime = DateTime.fromMillis(nextEntry.date); // Absolute comparison
+        if (nextTime > bufferEndTime) break;
+        bufferEndIndex++;
+      }
+
+      // Extract extended readings
+      const extendedReadings = allEntries
+        .slice(bufferStartIndex, bufferEndIndex)
+        .map((e) => ({
+          timestamp: e.dateString || new Date(e.date).toISOString(),
+          value: e.sgv,
+        }));
+
       events.push({
         id: uuidv4(),
         type,
@@ -99,10 +162,7 @@ export class HotspotDetector {
         endTime: lastDate,
         startMinuteOfDay: startTime.hour * 60 + startTime.minute,
         durationMinutes: duration,
-        readings: seq.map((s) => ({
-          timestamp: s.dateString || new Date(s.date).toISOString(),
-          value: s.sgv,
-        })),
+        readings: extendedReadings,
       });
     }
   }

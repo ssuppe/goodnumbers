@@ -192,7 +192,7 @@ export function ClusterEventsChart({
           );
 
         series.push({
-          name: dayName,
+          name: dayName, // LINK: Used for highlighting treatment bars on same day
           type: "line",
           data: seriesData,
           showSymbol: false,
@@ -245,9 +245,6 @@ export function ClusterEventsChart({
         });
       });
 
-      const hasCarbData = treatments.some((t) => t.carbs && t.carbs > 0);
-      const hasInsulinData = treatments.some((t) => t.insulin && t.insulin > 0);
-
       const buildBarSeries = (
         type: "carbs" | "insulin",
         color: string,
@@ -264,17 +261,17 @@ export function ClusterEventsChart({
             getLocalWallClockDate(event.startTime),
             "EEE, MMM d",
           );
-          const searchStart = eventStart - TREATMENT_BUFFER_MINUTES * 60000;
-          const searchEnd =
-            new Date(event.endTime).getTime() +
-            TREATMENT_BUFFER_MINUTES * 60000;
+          const eventStartTime = new Date(event.startTime).getTime();
+          const eventEndTime = new Date(event.endTime).getTime();
+          const searchStart = eventStartTime - TREATMENT_BUFFER_MINUTES * 60000;
+          const searchEnd = eventEndTime + TREATMENT_BUFFER_MINUTES * 60000;
 
           treatments.forEach((t) => {
             const tTime = new Date(t.date).getTime();
             const val = type === "carbs" ? t.carbs : t.insulin;
             if (val && val > 0 && tTime >= searchStart && tTime <= searchEnd) {
               data.push({
-                name: dayName, // Shared name for highlighting
+                name: dayName, // LINK: Same name for linked highlight interaction
                 value: [normalizedStartTime + (tTime - eventStart), val],
                 originalDate: t.date,
                 originalValue: val,
@@ -285,7 +282,7 @@ export function ClusterEventsChart({
         });
         if (data.length === 0) return null;
         return {
-          name: "Treatments",
+          name: type === "carbs" ? "Carbs" : "Insulin",
           type: "bar",
           xAxisIndex: axisIndex,
           yAxisIndex: axisIndex,
@@ -295,6 +292,8 @@ export function ClusterEventsChart({
         };
       };
 
+      const hasCarbData = treatments.some((t) => t.carbs && t.carbs > 0);
+      const hasInsulinData = treatments.some((t) => t.insulin && t.insulin > 0);
       const carbSeries = buildBarSeries("carbs", CHART_THEME.treatmentCarbs, 1);
       const insulinSeries = buildBarSeries(
         "insulin",
@@ -308,13 +307,13 @@ export function ClusterEventsChart({
       // --- Precise Vertical Layout ---
       const commonDomain = calculateCommonDomain(
         series as { data: { value: (number | string)[] }[] }[],
-        180,
-      ); // 3-hour buffer
+        30, // Tighter padding since data already has 3h context buffer
+      );
       const grid: object[] = [
         {
           top: "8%",
-          left: "8%",
-          right: "4%",
+          left: 80,
+          right: 40,
           height: hasCarbData || hasInsulinData ? "50%" : "75%",
           containLabel: true,
         },
@@ -344,8 +343,8 @@ export function ClusterEventsChart({
 
       if (hasCarbData) {
         grid.push({
-          left: "8%",
-          right: "4%",
+          left: 80,
+          right: 40,
           top: "65%",
           height: hasInsulinData ? "12%" : "25%",
           containLabel: true,
@@ -368,8 +367,8 @@ export function ClusterEventsChart({
       }
       if (hasInsulinData) {
         grid.push({
-          left: "8%",
-          right: "4%",
+          left: 80,
+          right: 40,
           top: hasCarbData ? "82%" : "65%",
           height: hasCarbData ? "12%" : "25%",
           containLabel: true,
