@@ -374,7 +374,7 @@ export function AgpChart({ data, units }: AgpChartProps) {
         ref={chartRef}
         option={options}
         style={{ height: "100%", width: "100%" }}
-        opts={{ renderer: "svg" }}
+        opts={{ renderer: "canvas" }}
       />
     </div>
   );

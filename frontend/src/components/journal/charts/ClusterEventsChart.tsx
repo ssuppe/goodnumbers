@@ -252,24 +252,28 @@ export function ClusterEventsChart({
         // STABILITY: ECharts visualMap crashes if series has < 2 points
         if (seriesData.length < 2) return;
 
-        // CRITICAL: Push visualMap ONLY IF the series is also added
-        // Define visualMap for this day
-        visualMaps.push({
-          show: false,
-          dimension: 0,
-          seriesIndex: seriesCounter,
-          pieces: [
-            ...highlightPieces,
-            { gt: -Infinity, color: `${color}33` }, // Restore -Infinity
-          ],
-        });
+        // Define visualMap for this day - Only if we have something to highlight
+        if (highlightPieces.length > 0) {
+          visualMaps.push({
+            show: false,
+            dimension: 0,
+            seriesIndex: seriesCounter,
+            gridIndex: 0, // Explicitly link to main grid
+            pieces: [
+              ...highlightPieces,
+              { gt: -Infinity, color: `${color}33` },
+            ],
+          });
+        }
 
         series.push({
           name: dayName,
           type: "line",
+          xAxisIndex: 0, // Explicitly link to main grid
+          yAxisIndex: 0,
           data: seriesData,
           showSymbol: false,
-          smooth: true,
+          smooth: false, // Disable smoothing to prevent coordinate calculation crashes in SVG renderer
           lineStyle: { width: 3 },
           emphasis: { focus: "series", lineStyle: { width: 5 } },
           blur: { lineStyle: { opacity: 0.15 } },
@@ -570,7 +574,7 @@ export function ClusterEventsChart({
         ref={chartRef}
         option={options}
         style={{ height: "100%", width: "100%" }}
-        opts={{ renderer: "svg" }}
+        opts={{ renderer: "canvas" }}
         notMerge={true}
         onEvents={onEvents}
       />
