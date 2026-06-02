@@ -245,66 +245,89 @@ export function ClusterEventsChart({
         });
       });
 
-      const buildBarSeries = (
-        type: "carbs" | "insulin",
-        color: string,
-        axisIndex: number,
-      ) => {
-        const data: object[] = [];
-        validEvents.forEach((event) => {
-          const eventStart = new Date(event.startTime).getTime();
-          const normalizedStartTime = normalizeTime(
-            event.startTime,
-            boundaryHour,
-          );
-          const dayName = format(
-            getLocalWallClockDate(event.startTime),
-            "EEE, MMM d",
-          );
-          const eventStartTime = new Date(event.startTime).getTime();
-          const eventEndTime = new Date(event.endTime).getTime();
-          const searchStart = eventStartTime - TREATMENT_BUFFER_MINUTES * 60000;
-          const searchEnd = eventEndTime + TREATMENT_BUFFER_MINUTES * 60000;
+      // 4. Add Bar Series (Treatments) - Split by day for linked highlighting
+      const buildTreatmentSeries = (event: (typeof validEvents)[0]) => {
+        const eventStart = new Date(event.startTime).getTime();
+        const eventEnd = new Date(event.endTime).getTime();
+        const normalizedStartTime = normalizeTime(
+          event.startTime,
+          boundaryHour,
+        );
+        const dayName = format(
+          getLocalWallClockDate(event.startTime),
+          "EEE, MMM d",
+        );
+        const searchStart = eventStart - TREATMENT_BUFFER_MINUTES * 60000;
+        const searchEnd = eventEnd + TREATMENT_BUFFER_MINUTES * 60000;
 
-          treatments.forEach((t) => {
-            const tTime = new Date(t.date).getTime();
-            const val = type === "carbs" ? t.carbs : t.insulin;
-            if (val && val > 0 && tTime >= searchStart && tTime <= searchEnd) {
-              data.push({
-                name: dayName, // LINK: Same name for linked highlight interaction
-                value: [normalizedStartTime + (tTime - eventStart), val],
+        const dayCarbs: object[] = [];
+        const dayInsulin: object[] = [];
+
+        treatments.forEach((t) => {
+          const tTime = new Date(t.date).getTime();
+          if (tTime >= searchStart && tTime <= searchEnd) {
+            const offset = tTime - eventStart;
+            if (t.carbs && t.carbs > 0) {
+              dayCarbs.push({
+                name: dayName,
+                value: [normalizedStartTime + offset, t.carbs],
                 originalDate: t.date,
-                originalValue: val,
-                treatmentType: type,
+                originalValue: t.carbs,
+                treatmentType: "carbs",
               });
             }
-          });
+            if (t.insulin && t.insulin > 0) {
+              dayInsulin.push({
+                name: dayName,
+                value: [normalizedStartTime + offset, t.insulin],
+                originalDate: t.date,
+                originalValue: t.insulin,
+                treatmentType: "insulin",
+              });
+            }
+          }
         });
-        if (data.length === 0) return null;
-        return {
-          name: type === "carbs" ? "Carbs" : "Insulin",
-          type: "bar",
-          xAxisIndex: axisIndex,
-          yAxisIndex: axisIndex,
-          data,
-          itemStyle: { color, opacity: 0.8 },
-          barWidth: 8,
-        };
+
+        const daySeries: object[] = [];
+        if (dayCarbs.length > 0) {
+          daySeries.push({
+            name: dayName,
+            type: "bar",
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            data: dayCarbs,
+            itemStyle: { color: CHART_THEME.treatmentCarbs, opacity: 0.8 },
+            barWidth: 8,
+            emphasis: { focus: "series" },
+            blur: { itemStyle: { opacity: 0.15 } },
+          });
+        }
+        if (dayInsulin.length > 0) {
+          daySeries.push({
+            name: dayName,
+            type: "bar",
+            xAxisIndex: hasCarbData ? 2 : 1,
+            yAxisIndex: hasCarbData ? 2 : 1,
+            data: dayInsulin,
+            itemStyle: { color: CHART_THEME.treatmentInsulin, opacity: 0.8 },
+            barWidth: 8,
+            emphasis: { focus: "series" },
+            blur: { itemStyle: { opacity: 0.15 } },
+          });
+        }
+        return daySeries;
       };
 
       const hasCarbData = treatments.some((t) => t.carbs && t.carbs > 0);
       const hasInsulinData = treatments.some((t) => t.insulin && t.insulin > 0);
-      const carbSeries = buildBarSeries("carbs", CHART_THEME.treatmentCarbs, 1);
-      const insulinSeries = buildBarSeries(
-        "insulin",
-        CHART_THEME.treatmentInsulin,
-        hasCarbData ? 2 : 1,
-      );
 
-      if (carbSeries) series.push(carbSeries);
-      if (insulinSeries) series.push(insulinSeries);
+      validEvents.forEach((event) => {
+        const daySeries = buildTreatmentSeries(event);
+        series.push(...daySeries);
+      });
 
       // --- Precise Vertical Layout ---
+
       const commonDomain = calculateCommonDomain(
         series as { data: { value: (number | string)[] }[] }[],
         30, // Tighter padding since data already has 3h context buffer
