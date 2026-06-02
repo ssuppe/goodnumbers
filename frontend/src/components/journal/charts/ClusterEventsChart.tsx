@@ -151,7 +151,16 @@ export function ClusterEventsChart({
       const series: object[] = [];
       const visualMaps: object[] = [];
 
-      // Link by Day to allow shared naming/highlighting
+      // 1. Group Events by Day to eliminate 'ghosting' and fix highlighting
+      const dayEventsMap: Record<
+        string,
+        {
+          events: typeof validEvents;
+          color: string;
+          dayIndex: number;
+        }
+      > = {};
+
       const uniqueDays = Array.from(
         new Set(
           validEvents.map((e) =>
@@ -160,39 +169,86 @@ export function ClusterEventsChart({
         ),
       );
 
-      validEvents.forEach((event, index) => {
-        const normalizedStartTime = normalizeTime(
-          event.startTime,
-          boundaryHour,
-        );
-        const originalStartTimeMillis = new Date(event.startTime).getTime();
+      validEvents.forEach((event) => {
         const dayName = format(
           getLocalWallClockDate(event.startTime),
           "EEE, MMM d",
         );
         const dayIndex = uniqueDays.indexOf(dayName);
         const visuals = getEventVisuals(dayIndex);
-        const durationMillis =
-          new Date(event.endTime).getTime() - originalStartTimeMillis;
-        const normalizedEndTime = normalizedStartTime + durationMillis;
 
-        const seriesData = event.readings
-          .map((r) => {
+        if (!dayEventsMap[dayName]) {
+          dayEventsMap[dayName] = {
+            events: [],
+            color: visuals.color,
+            dayIndex,
+          };
+        }
+        dayEventsMap[dayName].events.push(event);
+      });
+
+      // 2. Generate ONE Line Series and ONE visualMap per day
+      Object.entries(dayEventsMap).forEach(([dayName, dayData], dayIdx) => {
+        const { events, color } = dayData;
+
+        // Collect and sort all readings for this day
+        const allReadingsMap: Record<
+          number,
+          { value: [number, number]; originalDate: string }
+        > = {};
+        const highlightPieces: { gte: number; lte: number; color: string }[] = [];
+
+        events.forEach((event) => {
+          const normalizedStartTime = normalizeTime(
+            event.startTime,
+            boundaryHour,
+          );
+          const originalStartTimeMillis = new Date(event.startTime).getTime();
+          const durationMillis =
+            new Date(event.endTime).getTime() - originalStartTimeMillis;
+          const normalizedEndTime = normalizedStartTime + durationMillis;
+
+          // Add highlight piece for this specific event
+          highlightPieces.push({
+            gte: normalizedStartTime,
+            lte: normalizedEndTime,
+            color,
+          });
+
+          event.readings.forEach((r) => {
             const originalReadingTime = new Date(r.timestamp).getTime();
             const offset = originalReadingTime - originalStartTimeMillis;
             const glucoseValue = convertGlucose(r.value, normalizedUnits);
-            if (isNaN(originalReadingTime) || isNaN(glucoseValue)) return null;
-            return {
-              value: [normalizedStartTime + offset, glucoseValue],
-              originalDate: r.timestamp,
-            };
-          })
-          .filter((d): d is { value: [number, number]; originalDate: string } =>
-            Boolean(d),
-          );
+            if (isNaN(originalReadingTime) || isNaN(glucoseValue)) return;
+
+            const normalizedTime = normalizedStartTime + offset;
+            // Deduplicate readings (common in overlapping context windows)
+            if (!allReadingsMap[normalizedTime]) {
+              allReadingsMap[normalizedTime] = {
+                value: [normalizedTime, glucoseValue],
+                originalDate: r.timestamp,
+              };
+            }
+          });
+        });
+
+        const seriesData = Object.values(allReadingsMap).sort(
+          (a, b) => a.value[0] - b.value[0],
+        );
+
+        // Define visualMap for this day
+        visualMaps.push({
+          show: false,
+          dimension: 0,
+          seriesIndex: dayIdx, // Matches line series index
+          pieces: [
+            ...highlightPieces,
+            { gt: -Infinity, color: `${color}33` }, // Default: faded
+          ],
+        });
 
         series.push({
-          name: dayName, // LINK: Used for highlighting treatment bars on same day
+          name: dayName,
           type: "line",
           data: seriesData,
           showSymbol: false,
@@ -200,8 +256,9 @@ export function ClusterEventsChart({
           lineStyle: { width: 3 },
           emphasis: { focus: "series", lineStyle: { width: 5 } },
           blur: { lineStyle: { opacity: 0.15 } },
+          // Attach markLine to the VERY FIRST series only
           markLine:
-            index === 0
+            dayIdx === 0
               ? {
                   silent: true,
                   symbol: "none",
@@ -223,25 +280,6 @@ export function ClusterEventsChart({
                   ],
                 }
               : undefined,
-        });
-
-        visualMaps.push({
-          show: false,
-          dimension: 0,
-          seriesIndex: index,
-          pieces: [
-            {
-              gt: -Infinity,
-              lt: normalizedStartTime,
-              color: `${visuals.color}33`,
-            },
-            {
-              gte: normalizedStartTime,
-              lte: normalizedEndTime,
-              color: visuals.color,
-            },
-            { gt: normalizedEndTime, color: `${visuals.color}33` },
-          ],
         });
       });
 
