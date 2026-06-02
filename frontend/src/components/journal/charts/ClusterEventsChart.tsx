@@ -269,36 +269,43 @@ export function ClusterEventsChart({
         }
 
         const pieces: {
-          gt?: number;
-          lt?: number;
           gte?: number;
           lte?: number;
           color: string;
         }[] = [];
         if (mergedRanges.length > 0) {
           // Lead-in faded
-          pieces.push({ lt: mergedRanges[0].start, color: `${color}33` });
+          pieces.push({
+            gte: -2e18,
+            lte: mergedRanges[0].start,
+            color: `${color}33`,
+          });
           // Alternate full and faded
           mergedRanges.forEach((range, i) => {
             pieces.push({ gte: range.start, lte: range.end, color: color });
             const next = mergedRanges[i + 1];
             if (next) {
               pieces.push({
-                gt: range.end,
-                lt: next.start,
+                gte: range.end,
+                lte: next.start,
                 color: `${color}33`,
               });
             }
           });
           // Tail-out faded
           pieces.push({
-            gt: mergedRanges[mergedRanges.length - 1].end,
+            gte: mergedRanges[mergedRanges.length - 1].end,
+            lte: 2e18,
             color: `${color}33`,
           });
         } else {
-          // Catch-all faded if no events found for this day (unlikely but safe)
-          pieces.push({ gt: -1e18, color: `${color}33` });
+          // Catch-all faded
+          pieces.push({ gte: -2e18, lte: 2e18, color: `${color}33` });
         }
+
+        // IMPORTANT: Pieces MUST be sorted by their mapping values (Dimension 0 / time)
+        // for ECharts to render multiple segments correctly.
+        const sortedPieces = pieces.sort((a, b) => (a.lte ?? 0) - (b.lte ?? 0));
 
         // Push visualMap ONLY IF the series is also added
         visualMaps.push({
@@ -306,7 +313,7 @@ export function ClusterEventsChart({
           dimension: 0,
           seriesIndex: seriesCounter,
           gridIndex: 0,
-          pieces,
+          pieces: sortedPieces,
         });
 
         series.push({
