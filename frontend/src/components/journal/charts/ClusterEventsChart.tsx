@@ -182,7 +182,7 @@ export function ClusterEventsChart({
         });
       });
 
-      const buildBarSeries = (type: "carbs" | "insulin", color: string, yAxisIndex: number) => {
+      const buildBarSeries = (type: "carbs" | "insulin", color: string, axisIndex: number) => {
         const data: any[] = [];
         validEvents.forEach((event) => {
           const eventStart = new Date(event.startTime).getTime();
@@ -206,7 +206,7 @@ export function ClusterEventsChart({
           });
         });
         if (data.length === 0) return null;
-        return { name: type === "carbs" ? "Carbs" : "Insulin", type: "bar", xAxisIndex: 0, yAxisIndex, data, itemStyle: { color }, barWidth: 10 };
+        return { name: type === "carbs" ? "Carbs" : "Insulin", type: "bar", xAxisIndex: axisIndex, yAxisIndex: axisIndex, data, itemStyle: { color }, barWidth: 10 };
       };
 
       const hasCarbData = treatments.some((t) => t.carbs && t.carbs > 0);
