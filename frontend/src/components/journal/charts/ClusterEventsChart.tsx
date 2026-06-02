@@ -246,13 +246,13 @@ export function ClusterEventsChart({
       });
 
       // 4. Add Bar Series (Treatments) - Split by day for linked highlighting
-      const buildTreatmentSeries = (event: (typeof validEvents)[0]) => {
+      const buildTreatmentSeries = (
+        event: (typeof validEvents)[0],
+        color: string,
+      ) => {
         const eventStart = new Date(event.startTime).getTime();
         const eventEnd = new Date(event.endTime).getTime();
-        const normalizedStartTime = normalizeTime(
-          event.startTime,
-          boundaryHour,
-        );
+        const normalizedStartTime = normalizeTime(event.startTime, boundaryHour);
         const dayName = format(
           getLocalWallClockDate(event.startTime),
           "EEE, MMM d",
@@ -296,7 +296,7 @@ export function ClusterEventsChart({
             xAxisIndex: 1,
             yAxisIndex: 1,
             data: dayCarbs,
-            itemStyle: { color: CHART_THEME.treatmentCarbs, opacity: 0.8 },
+            itemStyle: { color, opacity: 0.8 }, // Use day color
             barWidth: 8,
             emphasis: { focus: "series" },
             blur: { itemStyle: { opacity: 0.15 } },
@@ -309,7 +309,7 @@ export function ClusterEventsChart({
             xAxisIndex: hasCarbData ? 2 : 1,
             yAxisIndex: hasCarbData ? 2 : 1,
             data: dayInsulin,
-            itemStyle: { color: CHART_THEME.treatmentInsulin, opacity: 0.8 },
+            itemStyle: { color, opacity: 0.8 }, // Use day color
             barWidth: 8,
             emphasis: { focus: "series" },
             blur: { itemStyle: { opacity: 0.15 } },
@@ -322,7 +322,13 @@ export function ClusterEventsChart({
       const hasInsulinData = treatments.some((t) => t.insulin && t.insulin > 0);
 
       validEvents.forEach((event) => {
-        const daySeries = buildTreatmentSeries(event);
+        const dayName = format(
+          getLocalWallClockDate(event.startTime),
+          "EEE, MMM d",
+        );
+        const dayIndex = uniqueDays.indexOf(dayName);
+        const visuals = getEventVisuals(dayIndex);
+        const daySeries = buildTreatmentSeries(event, visuals.color);
         series.push(...daySeries);
       });
 
