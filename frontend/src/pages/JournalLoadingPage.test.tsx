@@ -21,11 +21,11 @@ vi.mock("react-router-dom", async (importOriginal) => {
 });
 
 describe("JournalLoadingPage", () => {
-  it("displays the progress and status message from the hook", () => {
+  it("displays the progress, status message, and step indicators from the hook", () => {
     mockedUseJournalStatus.mockReturnValue({
       status: "ANALYZING_DATA",
-      progress: 50,
-      statusMessage: "Analyzing your data...",
+      progress: 45,
+      statusMessage: "Running non-AI, old-fashioned statistical analysis...",
       error: null,
     });
 
@@ -36,10 +36,43 @@ describe("JournalLoadingPage", () => {
     );
 
     expect(screen.getByText("Generating Your Journal...")).toBeInTheDocument();
-    expect(screen.getByText("Analyzing your data...")).toBeInTheDocument();
+    expect(
+      screen.getByText("Running non-AI, old-fashioned statistical analysis..."),
+    ).toBeInTheDocument();
+
     const progressBar = screen.getByRole("progressbar");
-    // More robust test: check the ARIA value instead of the visual style.
-    expect(progressBar).toHaveAttribute("aria-valuenow", "50");
+    expect(progressBar).toHaveAttribute("aria-valuenow", "45");
+
+    // Verify Step Indicators (DATA, STATS, AI)
+    expect(screen.getByText("DATA")).toBeInTheDocument();
+    expect(screen.getByText("STATS")).toBeInTheDocument();
+    expect(screen.getByText("AI")).toBeInTheDocument();
+
+    // Verify Step 2 is active (bg-mesa-primary) and Step 1 is completed (green-500 or checkmark)
+    // At 45%, Step 1 should be completed (✓), Step 2 should be active (2)
+    expect(screen.getByText("✓")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
+
+  it("marks Step 3 as completed only when progress is 100", () => {
+    mockedUseJournalStatus.mockReturnValue({
+      status: "COMPLETE",
+      progress: 100,
+      statusMessage: "Your journal is ready.",
+      error: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <JournalLoadingPage />
+      </MemoryRouter>,
+    );
+
+    // At 100%, all steps should be completed (✓)
+    // We expect multiple checkmarks
+    const checkmarks = screen.getAllByText("✓");
+    expect(checkmarks.length).toBe(3);
   });
 
   it("navigates to the journal page when status is COMPLETE", async () => {

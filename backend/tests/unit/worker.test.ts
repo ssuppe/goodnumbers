@@ -150,6 +150,20 @@ describe('Worker Job Processing (Real Logic)', () => {
     expect(lastCallArgs.data.agpChartData).toEqual([
       { time: '00:00', median: 100 },
     ]);
+
+    // Assert: Sequence of status messages (Granular Progress)
+    const statusMessages = mockPrismaUpdate.mock.calls.map(
+      (call) => call[0].data.statusMessage,
+    );
+    expect(statusMessages).toContain(
+      'Collecting Nightscout blood sugar levels, insulin, and mealtime data',
+    );
+    expect(statusMessages).toContain(
+      'Running non-AI, old-fashioned statistical analysis to identify problem areas and find trends',
+    );
+    expect(statusMessages).toContain(
+      'Using AI for better insights and explanations',
+    );
   });
 
   it('should handle missing credentials gracefully', async () => {

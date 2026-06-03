@@ -99,9 +99,9 @@ export async function processJournalJob(job: Job) {
       where: { id: journalId },
       data: {
         status: 'ANALYZING_DATA',
-        progress: 20,
+        progress: 15,
         statusMessage:
-          'Gathering your blood glucose, insulin, and meal data from Nightscout...',
+          'Collecting Nightscout blood sugar levels, insulin, and mealtime data',
       },
     });
 
@@ -158,14 +158,14 @@ export async function processJournalJob(job: Job) {
       `[Worker] Fetched ${entries.length} entries, ${rawTreatments.length} raw treatments (${treatments.length} valid), and ${profiles.length} profiles.`,
     );
 
-    // Stage 2: AGP Chart Data Generation
+    // Stage 2: Statistical Analysis
     await prisma.journal.update({
       where: { id: journalId },
       data: {
         status: 'CALCULATING_AGP',
-        progress: 50,
+        progress: 45,
         statusMessage:
-          'Calculating Ambulatory Glucose Profile (AGP) percentiles...',
+          'Running non-AI, old-fashioned statistical analysis to identify problem areas and find trends',
       },
     });
 
@@ -267,6 +267,15 @@ export async function processJournalJob(job: Job) {
     console.log(
       `[Worker] Generating Executive Summary for Journal ${journalId}...`,
     );
+
+    await prisma.journal.update({
+      where: { id: journalId },
+      data: {
+        progress: 55,
+        statusMessage: 'Using AI for better insights and explanations',
+      },
+    });
+
     const executiveSummary = await generateExecutiveSummary(
       {
         avgGlucose: scoreCardMetrics.avgGlucose,
@@ -358,7 +367,7 @@ export async function processJournalJob(job: Job) {
     for (const c of allClusters) {
       currentIdx++;
       const progress = Math.min(
-        60 + (currentIdx / allClusters.length) * 30,
+        60 + (currentIdx / allClusters.length) * 35,
         95,
       );
 
@@ -366,7 +375,7 @@ export async function processJournalJob(job: Job) {
         where: { id: journalId },
         data: {
           progress: Math.floor(progress),
-          statusMessage: `AI Analysis: Deep-diving into pattern ${currentIdx} of ${allClusters.length}...`,
+          statusMessage: `Using AI for better insights and explanations (${currentIdx} out of ${allClusters.length})`,
         },
       });
 
