@@ -153,6 +153,74 @@ function AiAssessmentDisplay({
   );
 }
 
+// Human-friendly mapping for common offsets when IANA names are unavailable.
+// We prioritize major global hubs and handle common DST shifts.
+const OFFSET_CITY_MAP: Record<number, string> = {
+  [-600]: "Hawaii",
+  [-540]: "Alaska",
+  [-480]: "Los Angeles",
+  [-420]: "Los Angeles / Denver",
+  [-360]: "Chicago",
+  [-300]: "New York / Chicago",
+  [-240]: "New York",
+  [-180]: "Buenos Aires",
+  [-120]: "Mid-Atlantic",
+  [-60]: "Azores",
+  [0]: "London",
+  [60]: "London / Paris", // Handles London Summer or Paris Winter
+  [120]: "Paris / Athens", // Handles Paris Summer or Athens Winter
+  [180]: "Moscow / Dubai",
+  [240]: "Dubai",
+  [300]: "Karachi",
+  [330]: "Mumbai",
+  [420]: "Bangkok",
+  [480]: "Singapore / Hong Kong",
+  [540]: "Tokyo",
+  [600]: "Sydney",
+  [660]: "Noumea",
+  [720]: "Auckland",
+};
+
+/**
+ * Converts IANA zone or offset string into a human-friendly location name.
+ * e.g. "America/New_York" -> "New York"
+ * e.g. "Etc/GMT+4" -> "New York" (via mapping)
+ */
+function getFriendlyLocationName(
+  zoneName: string | undefined,
+  offsetMinutes: number,
+): string {
+  // If we have a standard IANA name (America/New_York), extract the city
+  if (zoneName && zoneName.includes("/") && !zoneName.startsWith("Etc/")) {
+    const parts = zoneName.split("/");
+    return parts[parts.length - 1].replace(/_/g, " ");
+  }
+
+  // Fallback to our curated offset map for common travel locations
+  if (OFFSET_CITY_MAP[offsetMinutes]) {
+    return OFFSET_CITY_MAP[offsetMinutes];
+  }
+
+  // Final fallback: Use Intl API to try and find a localized name for the offset
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZoneName: "long",
+      timeZone: zoneName,
+    });
+    const parts = formatter.formatToParts(new Date());
+    const tzPart = parts.find((p) => p.type === "timeZoneName");
+    if (tzPart && !tzPart.value.includes("GMT") && !tzPart.value.includes("UTC")) {
+      return tzPart.value;
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  // Absolute fallback
+  const hours = Math.abs(offsetMinutes) / 60;
+  return `GMT${offsetMinutes >= 0 ? "+" : "-"}${hours}`;
+}
+
 export default function EventClusterCard({
   cluster,
   userNote,
@@ -248,13 +316,16 @@ export default function EventClusterCard({
       return baseSummary;
     }
 
+    const locationName = getFriendlyLocationName(
+      clusterData.timezone,
+      clusterData.utcOffset ?? 0,
+    );
     const offset = clusterData.utcOffset ?? 0;
     const hours = Math.abs(offset) / 60;
     const sign = offset >= 0 ? "+" : "-";
     const offsetStr = `GMT${sign}${hours}`;
-    const tzName = clusterData.timezone.replace(/_/g, " ");
 
-    return `${baseSummary} in ${tzName} (${offsetStr})`;
+    return `${baseSummary} in ${locationName} (${offsetStr})`;
   }, [
     cluster.eventCount,
     colloquialType,
