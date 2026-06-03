@@ -87,7 +87,7 @@ model GlycemicEventCluster {
   meanTimeMinutes     Int
 
   // Detailed data and user notes
-  clusterDataJson     Json
+  clusterDataJson     Json      // Includes timezone (string) and utcOffset (Int)
   userNotes           String?
 
   // Validated via Zod in app layer

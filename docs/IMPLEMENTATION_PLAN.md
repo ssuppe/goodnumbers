@@ -63,6 +63,11 @@ This document tracks the phased implementation of the Goodnumbers project. It se
 - [x] **Task 4: Data Resilience**
   - Updated worker to preserve `userNotes` when recreating clusters.
   - Standardized `Highlight` and other types in the mono-repo.
+- [x] **Task 5: High-Fidelity Traveler-Aware Charts**
+  - **Goal:** Stabilize multi-grid charts and provide location context for travelers.
+  - **Status:** **COMPLETE**. Transitioned to ECharts Canvas renderer to eliminate coordinate crashes.
+  - **Status:** **COMPLETE**. Implemented Value-Based Scanning for solid peak highlighting.
+  - **Status:** **COMPLETE**. Implemented Timezone-Aware cluster splitting and human-friendly city mapping (e.g., "London / Paris").
 
 ### **Phase 8: Future Work & Polish**
 

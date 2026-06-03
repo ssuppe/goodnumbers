@@ -198,7 +198,9 @@ This page displays the generated report and serves as the primary interface for 
 - **Weekly Vibe:** Subjective tracking with emoji options (🥀 Wilted, 🌱 Sprouting, 🌿 Growing, 🌻 Flourishing).
 - **Influencing Factors:** Multi-select chips organized by category (Food, Movement, Body & Meds, Mind & Mood, Life & Tech).
 - **Event Cluster Cards:** Detailed view of detected glycemic patterns.
-  - **Interactive Chart:** Visualizes both glucose and treatment (carb/insulin) data.
+  - **Interactive Chart:** Visualizes both glucose and treatment (carb/insulin) data using a multi-grid layout with perfect vertical alignment.
+  - **Travel Context:** Automatically surfaces human-friendly city names and GMT offsets (e.g., "London / Paris (GMT+1)") if the journal spans multiple timezones.
+  - **High-Fidelity Highlighting:** Every out-of-bounds peak (above 10 mmol/L or below 3.9 mmol/L) is rendered solid/opaque using a value-based scanner.
   - **AI Co-pilot Hypothesis:** A progressively disclosed section (hidden by default under a toggle) where the AI provides a clinical hypothesis and reasoning for the pattern.
   - **Quick Log Chips:** Interactive, one-tap buttons that allow users to quickly append AI-suggested reflections (e.g., "Late dinner", "Underestimated carbs") to their personal notes.
 - **Goals:** Text area for next week's goals.

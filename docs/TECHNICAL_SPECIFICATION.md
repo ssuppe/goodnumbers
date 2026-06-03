@@ -32,6 +32,8 @@ This document provides a comprehensive technical specification for the Goodnumbe
   2.  **AGP Generation:** Calculate AGP metrics (Median, Percentiles) for the chart.
   3.  **Scorecard Metrics:** Calculate Voyager Scorecard metrics (Avg Glucose, Stability, Time in Range, Time in Tight Range) and compare with previous weeks for trends.
   4.  **Hotspot Detection:** Detect "Hotspots" (clusters of glycemic events) using the `HotspotDetector` engine.
+      - **Timezone Awareness:** Clusters are automatically split if they span different UTC offsets, ensuring travelers see patterns grouped by location.
+      - **Metadata Capture:** Each cluster captures its local IANA timezone name and UTC offset for high-fidelity title generation.
   5.  **Statistical Insights:** Execute the deterministic `Insights Engine` to generate aggregate insights (GMI, TIR warnings) and cluster-specific insights (e.g., uncovered meal detection).
   6.  **Persistence:** Persist all results, including normalized treatments, to the database.
 
@@ -41,6 +43,7 @@ This document provides a comprehensive technical specification for the Goodnumbe
 - **Background Worker:** Node.js process managed by BullMQ.
 - **Queue:** Redis.
 - **Database:** SQLite with Prisma ORM.
+- **Visualization Engine:** **Apache ECharts** using the **Canvas renderer** for industrial-grade stability and complex piecewise highlighting.
 - **Shared Packages:** Strictly layered unidirectional flow:
   - `@goodnumbers/types`: Pure TS interfaces/enums (Zero dependencies).
   - `@goodnumbers/schemas`: Zod validation definitions (Depends on `types`).
@@ -116,11 +119,17 @@ model GlycemicEventCluster {
   eventType           String
   eventCount          Int
   meanTimeMinutes     Int
-  clusterDataJson     Json      // Full cluster data for charts
+  clusterDataJson     Json      // Full cluster data + Timezone/Offset metadata
   userNotes           String?
   insights            Json?     // Statistical insights (Zod validated)
 }
 ```
+
+### 4.3. Visualization & Analysis Strategy
+
+- **ECharts Canvas Renderer**: Switched from SVG to Canvas to eliminate coordinate calculation crashes during complex multi-segment rendering.
+- **Value-Based Scanner**: Frontend performs a high-fidelity "Value Scan" on every reading. Any point above 10 mmol/L or below 3.9 mmol/L is rendered solid/opaque, even if it falls outside an "official" behavioral event window.
+- **Sequential Piecewise Gradients**: `visualMap` is implemented with strictly non-overlapping pieces and explicit gap-filling to ensure stable coordinate lookup and perfect chronological sorting.
 
 ### 4.2. Flexible JSON Fields
 
