@@ -509,7 +509,7 @@ export function ClusterEventsChart({
         {
           type: "value",
           gridIndex: 0,
-          name: `Glucose (${isMmol ? "mmol" : "mg/dL"})`,
+          name: `Glucose (${isMmol ? "mmol/L" : "mg/dL"})`,
           nameLocation: "middle",
           nameRotate: 90,
           nameGap: TITLE_GAP,
