@@ -45,7 +45,11 @@ describe('generateAggregateInsights', () => {
     // TIR = 75%
     // TBR = 2%
 
-    const insights = generateAggregateInsights(entries, GlucoseUnit.MGDL);
+    const insights = generateAggregateInsights(
+      entries,
+      GlucoseUnit.MGDL,
+      'Europe/London',
+    );
 
     // We expect:
     // 1. GMI/Legacy insight (always first)
@@ -74,7 +78,7 @@ describe('generateAggregateInsights', () => {
   });
 
   it('should handle empty entries', () => {
-    const insights = generateAggregateInsights([], GlucoseUnit.MGDL);
+    const insights = generateAggregateInsights([], GlucoseUnit.MGDL, 'UTC');
     expect(insights).toEqual([]);
   });
 });

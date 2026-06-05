@@ -99,6 +99,13 @@ export function ChartAnalysisCard({
           i.note.includes("Goal Reached") ||
           i.note.includes("Outstanding Results"),
       ),
+      overnight: list.find(
+        (i) =>
+          i.note.includes("Mastery Achieved") ||
+          i.note.includes("Tight Range Success") ||
+          i.note.includes("Building Stability") ||
+          i.note.includes("Overnight Action Required"),
+      ),
     };
   }, [insights]);
 
@@ -108,6 +115,25 @@ export function ChartAnalysisCard({
     const match = matchedInsights.gmi.note.match(/(\d+(?:\.\d+)?)%/);
     return match ? match[1] : "--";
   }, [matchedInsights.gmi]);
+
+  const overnightData = useMemo(() => {
+    if (!matchedInsights.overnight) return { value: "--", subtext: "" };
+
+    // Extract percentage
+    const pctMatch = matchedInsights.overnight.note.match(/\*\*(\d+)%\*\*/);
+    const value = pctMatch ? pctMatch[1] : "--";
+
+    // Determine subtext based on the bold header (Tier)
+    let subtext = "In Range";
+    const note = matchedInsights.overnight.note;
+    if (note.includes("Mastery Achieved")) subtext = "Normal Range";
+    else if (note.includes("Tight Range Success")) subtext = "Tight Range";
+    else if (note.includes("Building Stability")) subtext = "Standard Range";
+    else if (note.includes("Overnight Action Required"))
+      subtext = "Standard Range";
+
+    return { value, subtext };
+  }, [matchedInsights.overnight]);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -273,6 +299,18 @@ export function ChartAnalysisCard({
                     "Percentage of time spent in your target range (70-180 mg/dL)."
                   }
                 />
+
+                {matchedInsights.overnight && (
+                  <UnifiedInsightRow
+                    label="Overnight Control"
+                    value={overnightData.value}
+                    unit="%"
+                    subtext={overnightData.subtext}
+                    icon="🌙"
+                    iconColor="text-indigo-900"
+                    insight={matchedInsights.overnight.note}
+                  />
+                )}
 
                 {matchedInsights.gmi && (
                   <UnifiedInsightRow

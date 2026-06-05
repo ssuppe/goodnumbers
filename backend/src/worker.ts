@@ -339,6 +339,7 @@ export async function processJournalJob(job: Job) {
     const rawAnalysisInsights = generateAggregateInsights(
       glucoseEntries,
       journal.user.preferredUnits as GlucoseUnit,
+      userTimezone,
     );
     // SECURITY: Validate
     const analysisInsights = InsightArraySchema.parse(rawAnalysisInsights);

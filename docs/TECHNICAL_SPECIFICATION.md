@@ -34,8 +34,21 @@ This document provides a comprehensive technical specification for the Goodnumbe
   4.  **Hotspot Detection:** Detect "Hotspots" (clusters of glycemic events) using the `HotspotDetector` engine.
       - **Timezone Awareness:** Clusters are automatically split if they span different UTC offsets, ensuring travelers see patterns grouped by location.
       - **Metadata Capture:** Each cluster captures its local IANA timezone name and UTC offset for high-fidelity title generation.
-  5.  **Statistical Insights:** Execute the deterministic `Insights Engine` to generate aggregate insights (GMI, TIR warnings) and cluster-specific insights (e.g., uncovered meal detection).
+  5.  **Statistical Insights:** Execute the deterministic `Insights Engine` to generate aggregate insights:
+      - **GMI & TIR:** Standard glycemic metrics.
+      - **Overnight Glucose Control:** A specialized heuristic analyzing the 11 PM to 7 AM window against Normal, Tight, and Standard clinical ranges.
   6.  **Persistence:** Persist all results, including normalized treatments, to the database.
+
+#### 2.1.3. Overnight Glucose Control Insight
+
+- **Window:** 11:00 PM to 07:00 AM local time.
+- **Minimum Data:** 12 readings (approx. 1 hour) required for generation.
+- **Metric Buckets:**
+  - **Normal:** 81 - 99 mg/dL (4.5 - 5.5 mmol/L).
+  - **Tight:** 70 - 140 mg/dL (3.9 - 7.8 mmol/L).
+  - **Standard:** 70 - 180 mg/dL (3.9 - 10.0 mmol/L).
+- **Majority Logic:** A tier is achieved if $\ge$ 70% of overnight readings fall within the range.
+- **Copy:** Includes a multi-metric transparency string `(X% Normal, Y% Tight, Z% Standard)` and actionable targets for the next level of stability.
 
 ## 3. Architecture
 

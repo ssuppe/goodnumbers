@@ -7,11 +7,13 @@ import {
 import { createAvgGlucoseInsight } from './average-glucose.js';
 import { createHypoglycemiaInsight } from './hypoglycemia.js';
 import { createTimeInRangeInsight } from './time-in-range.js';
+import { createOvernightInsight } from './overnight.js';
 import { AnalysisResult } from './interfaces.js';
 
 export function generateAggregateInsights(
   entries: GlucoseEntry[],
   units: GlucoseUnit,
+  timezone: string,
 ): Insight[] {
   if (!entries.length) return [];
   const insights: Insight[] = [];
@@ -119,6 +121,12 @@ export function generateAggregateInsights(
   // --- New Time In Range Insight ---
   const tirInsight = createTimeInRangeInsight(tir * 100).generate();
   insights.push(tirInsight);
+
+  // --- New Overnight Insight ---
+  const overnightGenerator = createOvernightInsight(entries, timezone, units);
+  if (overnightGenerator) {
+    insights.push(overnightGenerator.generate());
+  }
 
   return insights;
 }

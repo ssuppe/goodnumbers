@@ -4,6 +4,7 @@ interface UnifiedInsightRowProps {
   label: string;
   value: string | number;
   unit: string;
+  subtext?: string;
   insight: string; // Changed to string to ensure we can parse it
   icon: string;
   iconColor?: string; // Tailwind text color class, e.g., "text-mesa-primary"
@@ -13,6 +14,7 @@ export function UnifiedInsightRow({
   label,
   value,
   unit,
+  subtext,
   insight,
   icon,
   iconColor = "text-gray-900",
@@ -50,6 +52,11 @@ export function UnifiedInsightRow({
             <span className="text-xl font-bold text-gray-900">{value}</span>
             <span className="text-xs font-medium text-gray-500">{unit}</span>
           </div>
+          {subtext && (
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide leading-tight mt-0.5">
+              {subtext}
+            </span>
+          )}
         </div>
         <div className="insight-text text-sm leading-relaxed text-gray-700">
           {renderInsight(insight)}

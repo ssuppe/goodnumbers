@@ -44,6 +44,9 @@ This document tracks the phased implementation of the Goodnumbers project. It se
   - **Goal:** Implement loop-aware hypoglycemia heuristics using velocity (ROC) and treatment presence.
   - **Status:** **COMPLETE**. Categorizes lows into Compression, Over-Announced, Aggressive Loop, or Background Drift.
   - **Status:** **COMPLETE**. Implemented "Smart Zoom" for hotspot charts to automatically expand to show relevant evidence.
+- [x] **Task 1.2: Overnight Glucose Control Insight**
+  - **Goal:** Implement specialized analysis of the 11 PM to 7 AM window against Normal, Tight, and Standard clinical ranges.
+  - **Status:** **COMPLETE**. Features timezone-aware filtering, cascading majority logic, and dynamic unit formatting.
 
 - [x] **Task 2: AI & TTS Pipeline**
   - **Goal:** Integrate Gemini for insights and TTS for podcast audio.

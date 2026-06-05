@@ -77,6 +77,7 @@ The core of the report is built on robust statistical methods and deterministic 
 
 - **Ambulatory Glucose Profile (AGP)**: A standardized chart showing your blood sugar patterns and percentiles (5th, 25th, 50th, 75th, 95th) over a 24-hour period.
 - **Voyager Scorecards**: Key performance metrics including Average Glucose, Stability (Rate of Change), and Time in Range (Standard and Tight).
+- **Overnight Glucose Control**: A specialized analysis of the 11 PM to 7 AM window, evaluating stability against Normal, Tight, and Standard clinical ranges.
 - **Bolus Timing Heuristics**: A deterministic engine that identifies:
   - **Uncovered Meals**: Meals detected without matching insulin.
   - **Post-bolusing**: Insulin given at or after the start of a meal.
@@ -102,7 +103,7 @@ We follow a strict **Test-Driven Development (TDD)** workflow.
 Run these commands before pushing:
 
 - **Linting**: `npm run lint`
-- **Tests**: `npm test` (Runs all 360+ backend and frontend tests)
+- **Tests**: `npm test` (Runs all 350+ backend and frontend tests)
 - **Reset Environment**: `just redis-flush` && `just db-reset-dev`
 
 For more details on contributing, see [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -124,7 +125,7 @@ This project is a demonstration of how AI can assist in building complex health-
 ## 📅 TODO / Next Steps
 
 - [ ] **Data Export**: Export your reflections as a PDF or Markdown file for sharing with healthcare teams.
-- [ ] **More Heuristics**: Expand analysis to include exercise and overnight patterns.
+- [ ] **More Heuristics**: Expand analysis to include exercise patterns and stress markers.
 - [ ] **Cloud Hosting**: Streamline the one-click deployment for non-technical users.
 
 ---

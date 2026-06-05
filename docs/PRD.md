@@ -203,5 +203,7 @@ This page displays the generated report and serves as the primary interface for 
   - **High-Fidelity Highlighting:** Every out-of-bounds peak (above 10 mmol/L or below 3.9 mmol/L) is rendered solid/opaque using a value-based scanner.
   - **AI Co-pilot Hypothesis:** A progressively disclosed section (hidden by default under a toggle) where the AI provides a clinical hypothesis and reasoning for the pattern.
   - **Quick Log Chips:** Interactive, one-tap buttons that allow users to quickly append AI-suggested reflections (e.g., "Late dinner", "Underestimated carbs") to their personal notes.
-- **Goals:** Text area for next week's goals.
+  - **Overnight Glucose Control Analysis:** A specialized heuristic analyzing the critical 11 PM to 7 AM window to identify stability levels (Mastery, Success, Stability) and providing actionable clinical framing.
+  - **Goals:** Text area for next week's goals.
+
 - **Sticky Action Bar:** For saving or discarding changes.
