@@ -8,6 +8,15 @@ import {
 } from '@goodnumbers/schemas'; // Import the new schema
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit'; // 1. Import rate-limit
+import {
+  generateChatResponse,
+  synthesizeChatInsight,
+} from '../lib/ai/gemini.js';
+import {
+  GlucoseUnit,
+  type Insight,
+  type GlycemicCluster,
+} from '@goodnumbers/types';
 
 const router = Router();
 
@@ -208,6 +217,112 @@ router.delete('/:id', async (req, res, next) => {
     });
 
     res.status(200).json({ success: true });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ errors: error.issues });
+    }
+    next(error);
+  }
+});
+
+// --- Chat & Reflection Envelopes ---
+
+const clusterRouteParamSchema = z.object({
+  id: z.string().cuid({ message: 'Invalid journal ID format.' }),
+  clusterId: z.string().cuid({ message: 'Invalid cluster ID format.' }),
+});
+
+const chatHistoryMessageSchema = z.object({
+  role: z.enum(['user', 'model']),
+  content: z.string().min(1),
+});
+
+const chatRequestBodySchema = z.object({
+  message: z.string().min(1),
+  chatHistory: z.array(chatHistoryMessageSchema),
+});
+
+const saveInsightRequestBodySchema = z.object({
+  chatHistory: z.array(chatHistoryMessageSchema),
+});
+
+router.post('/:id/clusters/:clusterId/chat', async (req, res, next) => {
+  try {
+    const { id: journalId, clusterId } = clusterRouteParamSchema.parse(
+      req.params,
+    );
+    const { message, chatHistory } = chatRequestBodySchema.parse(req.body);
+    const userId = req.user!.id;
+
+    const journal = await prisma.journal.findFirst({
+      where: { id: journalId, userId: userId },
+      include: {
+        clusters: {
+          where: { id: clusterId },
+        },
+      },
+    });
+
+    if (!journal || journal.clusters.length === 0) {
+      return res.status(404).json({ error: 'Cluster or Journal not found.' });
+    }
+
+    const cluster = journal.clusters[0];
+
+    const vibe = journal.weeklyVibe;
+    const factors = Array.isArray(journal.influencingFactors)
+      ? (journal.influencingFactors as string[]).join(', ')
+      : '';
+
+    const reply = await generateChatResponse(
+      cluster.clusterDataJson as unknown as GlycemicCluster,
+      (cluster.insights as unknown as Insight[]) || [],
+      req.user!.preferredUnits as GlucoseUnit,
+      { vibe, factors },
+      chatHistory,
+      message,
+    );
+
+    res.status(200).json({ reply });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ errors: error.issues });
+    }
+    next(error);
+  }
+});
+
+router.post('/:id/clusters/:clusterId/save-insight', async (req, res, next) => {
+  try {
+    const { id: journalId, clusterId } = clusterRouteParamSchema.parse(
+      req.params,
+    );
+    const { chatHistory } = saveInsightRequestBodySchema.parse(req.body);
+    const userId = req.user!.id;
+
+    const journal = await prisma.journal.findFirst({
+      where: { id: journalId, userId: userId },
+      include: {
+        clusters: {
+          where: { id: clusterId },
+        },
+      },
+    });
+
+    if (!journal || journal.clusters.length === 0) {
+      return res.status(404).json({ error: 'Cluster or Journal not found.' });
+    }
+
+    const cluster = journal.clusters[0];
+
+    const synthesizedInsight = await synthesizeChatInsight(
+      cluster.clusterDataJson as unknown as GlycemicCluster,
+      (cluster.insights as unknown as Insight[]) || [],
+      req.user!.preferredUnits as GlucoseUnit,
+      chatHistory,
+    );
+
+    res.status(200).json({ synthesizedInsight });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ errors: error.issues });

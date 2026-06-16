@@ -6,8 +6,9 @@ import type {
 } from "@goodnumbers/types";
 import { ClusterEventsChart } from "./charts/ClusterEventsChart";
 import CollapsingNoteArea from "./CollapsingNoteArea";
+import ClusterChatInterface from "./ClusterChatInterface";
 import { type GlucoseUnit, type Treatment } from "../../lib/agpUtils";
-import { ChevronDown, ChevronRight, Copy, Check } from "lucide-react";
+import { ChevronDown, ChevronRight, Copy, Check, Sparkles } from "lucide-react";
 
 interface EventClusterCardProps {
   cluster: GlycemicEventCluster;
@@ -23,6 +24,7 @@ export interface AiInsight {
   assessment: string;
   reflectionForDoctor?: string;
   quickLogSuggestions?: string[];
+  initialPrompt?: string;
 }
 
 // Helper to format minutes into HH:MM using robust string padding.
@@ -209,7 +211,11 @@ function getFriendlyLocationName(
     });
     const parts = formatter.formatToParts(new Date());
     const tzPart = parts.find((p) => p.type === "timeZoneName");
-    if (tzPart && !tzPart.value.includes("GMT") && !tzPart.value.includes("UTC")) {
+    if (
+      tzPart &&
+      !tzPart.value.includes("GMT") &&
+      !tzPart.value.includes("UTC")
+    ) {
       return tzPart.value;
     }
   } catch {
@@ -342,6 +348,7 @@ export default function EventClusterCard({
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
   const [isAiExpanded, setIsAiExpanded] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isChatActive, setIsChatActive] = useState(false);
 
   // Use insights prop if provided, otherwise fallback to cluster.insights if it matches the shape
   const displayInsights =
@@ -569,19 +576,45 @@ export default function EventClusterCard({
       {onNoteChange && (
         <div className="px-4 pb-6 pt-2">
           <div className="mt-2 pt-4 border-t border-gray-100">
-            <label
-              htmlFor={`cluster-note-${cluster.id}`}
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Your Notes
-            </label>
-            <CollapsingNoteArea
-              value={userNote || ""}
-              onChange={onNoteChange}
-              placeholder="Why do you think this happened? Leave some notes on what you think the issue is, or how you can improve next week. If you don’t know, that's ok! Leave it blank."
-              maxLength={1000}
-              rows={3}
-            />
+            {isChatActive ? (
+              <ClusterChatInterface
+                journalId={cluster.journalId}
+                clusterId={cluster.id}
+                initialPrompt={
+                  parsedAiInsight?.initialPrompt ||
+                  "Hi! I'm your AI Reflection Coach. How do you think we can improve this in the future?"
+                }
+                onSaveInsight={(synthesizedText) => {
+                  onNoteChange(synthesizedText);
+                  setIsChatActive(false);
+                }}
+                onClose={() => setIsChatActive(false)}
+              />
+            ) : (
+              <>
+                <label
+                  htmlFor={`cluster-note-${cluster.id}`}
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Your Notes
+                </label>
+                <CollapsingNoteArea
+                  value={userNote || ""}
+                  onChange={onNoteChange}
+                  placeholder="Why do you think this happened? Leave some notes on what you think the issue is, or how you can improve next week. If you don’t know, that's ok! Leave it blank."
+                  maxLength={1000}
+                  rows={3}
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsChatActive(true)}
+                  className="flex items-center space-x-1.5 px-3 py-1.5 mt-2 bg-transparent text-brand border border-mesa-primary hover:bg-primary-hover hover:text-white rounded-lg transition-colors text-xs font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Help me reflect</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

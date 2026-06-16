@@ -180,7 +180,8 @@ OUTPUT STRUCTURE:
 {
   "assessment": "Synthesis of the physiological 'why'. Friendly, plain English for the patient.",
   "reflection_for_doctor": "Discussion starters for the user's next clinic visit. Be specific about time blocks.",
-  "quick_log_suggestions": ["up to 3 short, 2-4 word phrases (e.g., 'Late dinner', 'Under-bolused')"]
+  "quick_log_suggestions": ["up to 3 short, 2-4 word phrases (e.g., 'Late dinner', 'Under-bolused')"],
+  "initial_prompt": "A specific, engaging, and supportive question to prompt the user to start a collaborative reflection on this cluster, referencing clues from the data or context (e.g., 'I notice your blood sugar spiked after breakfast on Tuesday and Thursday. Were there any factors like missing insulin boluses or incorrect carb counts that might have contributed?')."
 }
 
 CONSTRAINTS:
@@ -194,5 +195,96 @@ CONSTRAINTS:
 - Do not use conversational filler (e.g., "I've analyzed," "Certainly").
 - Keep it very concise. Avoid "AI slop."
 - Ensure the output is valid JSON.
+`;
+};
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  content: string;
+}
+
+export const CLUSTER_AI_CHAT_PROMPT = (
+  cluster: GlycemicCluster,
+  deterministicInsights: Insight[],
+  preferredUnits: GlucoseUnit,
+  weeklyContext: { vibe: string | null; factors: string },
+  chatHistory: ChatMessage[],
+  newMessage: string,
+) => {
+  const insightsList = deterministicInsights
+    .map((i) => `- ${i.note}`)
+    .join('\n');
+  const unitsLabel = preferredUnits === GlucoseUnit.MMOL ? 'mmol/L' : 'mg/dL';
+  const historyText = chatHistory
+    .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+    .join('\n');
+
+  return `
+You are an empathetic, supportive diabetes data coach/analyst. Your goal is to guide the user in a collaborative reflection to figure out why this recurring cluster of glucose events happened.
+
+WEEKLY CONTEXT:
+- Overall Vibe: ${weeklyContext.vibe || 'Not reported'}
+- Influencing Factors: ${weeklyContext.factors}
+
+CLUSTER DETAILS:
+- Pattern: ${cluster.type === 'hyper' ? 'High Blood Sugar' : 'Low Blood Sugar'}
+- Typical Time: ${Math.floor(cluster.avgStartMinute / 60)}:${(cluster.avgStartMinute % 60).toString().padStart(2, '0')}
+- Occurrences: Happened ${cluster.eventCount} times this week.
+
+DETERMINISTIC HEURISTICS:
+${insightsList}
+
+CONVERSATION TRANSCRIPT SO FAR:
+${historyText}
+
+USER'S LATEST MESSAGE:
+${newMessage}
+
+INSTRUCTIONS:
+1. Respond to the user's latest message in a supportive, encouraging, and colloquial tone.
+2. Ask exactly one simple, targeted clarifying question to help them reflect on their habits, meals, exercise, bolus timing, or stress levels.
+3. Be concise (max 3 sentences).
+4. Never prescribe dosages or instruct them to change their medical settings. Frame options as possibilities to investigate or consult with their doctor about.
+5. Use "blood sugar" instead of "glucose" or "glucose levels." Mention values in ${unitsLabel}.
+6. Output ONLY your direct conversational reply to the user. Do not wrap in JSON, markdown code blocks, or include any preamble.
+`;
+};
+
+export const CLUSTER_AI_SYNTHESIS_PROMPT = (
+  cluster: GlycemicCluster,
+  deterministicInsights: Insight[],
+  preferredUnits: GlucoseUnit,
+  chatHistory: ChatMessage[],
+) => {
+  const historyText = chatHistory
+    .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+    .join('\n');
+  const unitsLabel = preferredUnits === GlucoseUnit.MMOL ? 'mmol/L' : 'mg/dL';
+
+  return `
+You are a diabetes reflection coordinator. Take this event cluster metadata and the user's chat conversation with the AI coach, and synthesize it into a clean, final reflection written in the first person ("I") from the patient's POV, accompanied by 1-3 actionable resolutions.
+
+CLUSTER DETAILS:
+- Pattern: ${cluster.type === 'hyper' ? 'High Blood Sugar' : 'Low Blood Sugar'}
+- Typical Time: ${Math.floor(cluster.avgStartMinute / 60)}:${(cluster.avgStartMinute % 60).toString().padStart(2, '0')}
+
+CHAT HISTORY:
+${historyText}
+
+INSTRUCTIONS:
+Generate a synthesized insight containing:
+1. A POV Summary: 1-2 sentences in the first person ("I realized that...") summarizing the physiological core cause.
+2. Action Items: 1-3 bullet points outlining resolutions or changes for next week.
+
+Format the output EXACTLY like this markdown structure:
+> "I realized that [physiological core cause and context from the chat]."
+* **Resolution:** [Action item 1]
+* **Resolution:** [Action item 2]
+
+CONSTRAINTS:
+- Do not add any JSON formatting, markdown code blocks, or conversational wrapper text (e.g. "Here is your summary").
+- Write the summary strictly from the patient's POV ("I").
+- Keep it highly practical and medically safe.
+- Mention blood sugar values in ${unitsLabel} if any are referenced.
 `;
 };

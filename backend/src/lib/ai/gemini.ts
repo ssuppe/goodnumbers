@@ -10,6 +10,9 @@ import {
 import {
   EXECUTIVE_SUMMARY_PROMPT,
   CLUSTER_AI_INSIGHT_PROMPT,
+  CLUSTER_AI_CHAT_PROMPT,
+  CLUSTER_AI_SYNTHESIS_PROMPT,
+  type ChatMessage,
 } from './prompts.js';
 import { formatInfluencingFactors } from './utils.js';
 
@@ -35,6 +38,7 @@ export interface ClusterAIResult {
   assessment: string;
   reflectionForDoctor: string;
   quickLogSuggestions: string[];
+  initialPrompt?: string;
 }
 
 /**
@@ -66,6 +70,7 @@ export async function generateClusterAIInsight(
     assessment: 'AI assessment unavailable.',
     reflectionForDoctor: '',
     quickLogSuggestions: [],
+    initialPrompt: '',
   };
 
   const apiKey = process.env.GEMINI_API_KEY;
@@ -101,10 +106,12 @@ export async function generateClusterAIInsight(
       assessment: string;
       reflection_for_doctor: string;
       quick_log_suggestions: string[];
+      initial_prompt?: string;
     }>(text, {
       assessment: 'Failed to parse assessment.',
       reflection_for_doctor: '',
       quick_log_suggestions: [],
+      initial_prompt: '',
     });
 
     console.log(`[Gemini] Pro model success for ${cluster.id}`);
@@ -112,6 +119,7 @@ export async function generateClusterAIInsight(
       assessment: parsed.assessment,
       reflectionForDoctor: parsed.reflection_for_doctor,
       quickLogSuggestions: parsed.quick_log_suggestions,
+      initialPrompt: parsed.initial_prompt || '',
     };
   } catch (proError: unknown) {
     const proErrorMessage =
@@ -130,10 +138,12 @@ export async function generateClusterAIInsight(
         assessment: string;
         reflection_for_doctor: string;
         quick_log_suggestions: string[];
+        initial_prompt?: string;
       }>(text, {
         assessment: 'Failed to parse assessment.',
         reflection_for_doctor: '',
         quick_log_suggestions: [],
+        initial_prompt: '',
       });
 
       console.log(`[Gemini] Flash fallback success for ${cluster.id}`);
@@ -141,6 +151,7 @@ export async function generateClusterAIInsight(
         assessment: `${parsed.assessment}\n\n(Note: Generated using fallback model)`,
         reflectionForDoctor: parsed.reflection_for_doctor,
         quickLogSuggestions: parsed.quick_log_suggestions,
+        initialPrompt: parsed.initial_prompt || '',
       };
     } catch (flashError: unknown) {
       const flashErrorMessage =
@@ -189,5 +200,65 @@ export async function generateExecutiveSummary(
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[Gemini] Executive Summary failed: ${errorMessage}`);
     return [];
+  }
+}
+
+export async function generateChatResponse(
+  cluster: GlycemicCluster,
+  deterministicInsights: Insight[],
+  preferredUnits: GlucoseUnit,
+  weeklyContext: { vibe: string | null; factors: string },
+  chatHistory: ChatMessage[],
+  newMessage: string,
+): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return "I'm sorry, my AI features are currently offline (API key missing).";
+  }
+
+  const prompt = CLUSTER_AI_CHAT_PROMPT(
+    cluster,
+    deterministicInsights,
+    preferredUnits,
+    weeklyContext,
+    chatHistory,
+    newMessage,
+  );
+
+  try {
+    const result = await flashModel.generateContent(prompt);
+    return result.response.text().trim();
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[Gemini] Chat response generation failed: ${errorMessage}`);
+    return "I'm sorry, I encountered an error while processing that. Please try again.";
+  }
+}
+
+export async function synthesizeChatInsight(
+  cluster: GlycemicCluster,
+  deterministicInsights: Insight[],
+  preferredUnits: GlucoseUnit,
+  chatHistory: ChatMessage[],
+): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return 'AI synthesis unavailable (API key missing).';
+  }
+
+  const prompt = CLUSTER_AI_SYNTHESIS_PROMPT(
+    cluster,
+    deterministicInsights,
+    preferredUnits,
+    chatHistory,
+  );
+
+  try {
+    const result = await flashModel.generateContent(prompt);
+    return result.response.text().trim();
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[Gemini] Chat synthesis failed: ${errorMessage}`);
+    return "I'm sorry, I was unable to synthesize the notes at this time.";
   }
 }

@@ -12,6 +12,23 @@ vi.mock("./charts/ClusterEventsChart", () => ({
   ClusterEventsChart: vi.fn(() => <div data-testid="mock-cluster-chart" />),
 }));
 
+// Mock ClusterChatInterface to isolate hybrid flow integration
+vi.mock("./ClusterChatInterface", () => ({
+  default: vi.fn(({ onSaveInsight, onClose }) => (
+    <div data-testid="mock-chat-interface">
+      <button
+        onClick={() => onSaveInsight("synthesized note")}
+        data-testid="mock-save-insight"
+      >
+        Mock Save
+      </button>
+      <button onClick={onClose} data-testid="mock-close-chat">
+        Mock Close
+      </button>
+    </div>
+  )),
+}));
+
 describe("EventClusterCard", () => {
   const mockCluster = mockJournalForView.clusters[0];
   const mockOnNoteChange = vi.fn();
@@ -266,5 +283,78 @@ describe("EventClusterCard", () => {
     expect(mockOnNoteChange).toHaveBeenCalledWith(
       "Existing note\n- Suggestion 1",
     );
+  });
+
+  describe("Hybrid Notes / AI Coach Flow", () => {
+    it("renders the 'Help me reflect' button by default", () => {
+      render(
+        <EventClusterCard
+          cluster={mockCluster}
+          userNote=""
+          onNoteChange={mockOnNoteChange}
+        />,
+      );
+      expect(
+        screen.getByRole("button", { name: /help me reflect/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("mock-chat-interface"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("toggles to the AI Coach chat interface when 'Help me reflect' is clicked, and back on close", () => {
+      render(
+        <EventClusterCard
+          cluster={mockCluster}
+          userNote=""
+          onNoteChange={mockOnNoteChange}
+        />,
+      );
+
+      // Verify notes label is visible initially
+      expect(screen.getByText("Your Notes")).toBeInTheDocument();
+
+      // Click "Help me reflect"
+      fireEvent.click(screen.getByRole("button", { name: /help me reflect/i }));
+
+      // Notes label should be replaced by the chat interface
+      expect(screen.queryByText("Your Notes")).not.toBeInTheDocument();
+      expect(screen.getByTestId("mock-chat-interface")).toBeInTheDocument();
+
+      // Click mock close button inside the chat interface
+      fireEvent.click(screen.getByTestId("mock-close-chat"));
+
+      // Standard notes view should return
+      expect(screen.getByText("Your Notes")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("mock-chat-interface"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("saves the synthesized insight and returns to manual note view on save", () => {
+      const onNoteChangeMock = vi.fn();
+      render(
+        <EventClusterCard
+          cluster={mockCluster}
+          userNote=""
+          onNoteChange={onNoteChangeMock}
+        />,
+      );
+
+      // Open coach chat
+      fireEvent.click(screen.getByRole("button", { name: /help me reflect/i }));
+
+      // Click mock save button inside chat interface
+      fireEvent.click(screen.getByTestId("mock-save-insight"));
+
+      // Verify callback was triggered with the synthesized text
+      expect(onNoteChangeMock).toHaveBeenCalledWith("synthesized note");
+
+      // Verify the chat interface closed and returned to notes view
+      expect(screen.getByText("Your Notes")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("mock-chat-interface"),
+      ).not.toBeInTheDocument();
+    });
   });
 });

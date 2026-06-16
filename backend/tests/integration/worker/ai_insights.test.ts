@@ -72,6 +72,7 @@ const MOCK_AI_ASSESSMENT = {
   assessment: 'Mocked AI Assessment: Dawn Phenomenon suspected.',
   reflectionForDoctor: 'Check basal rates between 3 AM and 5 AM.',
   quickLogSuggestions: ['Late snack', 'Adjust basal', 'Dawn phenomenon'],
+  initialPrompt: 'Mocked initial prompt?',
 };
 const MOCK_EXECUTIVE_SUMMARY = [
   {

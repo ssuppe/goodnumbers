@@ -60,6 +60,8 @@ describe('Gemini AI Service', () => {
               assessment: 'Pro model assessment.',
               reflection_for_doctor: 'Pro reflection.',
               quick_log_suggestions: ['Hint 1', 'Hint 2'],
+              initial_prompt:
+                'How do you think you can improve this in the future?',
             }),
         },
       });
@@ -77,6 +79,9 @@ describe('Gemini AI Service', () => {
       expect(result.assessment).toBe('Pro model assessment.');
       expect(result.reflectionForDoctor).toBe('Pro reflection.');
       expect(result.quickLogSuggestions).toEqual(['Hint 1', 'Hint 2']);
+      expect(result.initialPrompt).toBe(
+        'How do you think you can improve this in the future?',
+      );
       expect(mockGenerateContent).toHaveBeenCalledTimes(1);
     });
 
@@ -91,6 +96,7 @@ describe('Gemini AI Service', () => {
                 assessment: 'Flash model assessment.',
                 reflection_for_doctor: 'Flash reflection.',
                 quick_log_suggestions: ['Flash Hint'],
+                initial_prompt: 'Flash initial question?',
               }),
           },
         });
@@ -108,6 +114,7 @@ describe('Gemini AI Service', () => {
       expect(result.assessment).toContain('Flash model assessment.');
       expect(result.assessment).toContain('fallback model');
       expect(result.reflectionForDoctor).toBe('Flash reflection.');
+      expect(result.initialPrompt).toBe('Flash initial question?');
       expect(mockGenerateContent).toHaveBeenCalledTimes(2);
     });
 

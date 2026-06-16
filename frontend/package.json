@@ -9,9 +9,9 @@
     "build": "tsc && vite build",
     "lint": "cross-env ESLINT_USE_FLAT_CONFIG=true eslint .",
     "preview": "vite preview",
-    "test": "vitest run",
-    "coverage": "vitest run --coverage",
-    "test:ai": "vitest run --reporter=dot --bail 1 --no-color"
+    "test": "vitest run --silent",
+    "coverage": "vitest run --silent --coverage",
+    "test:ai": "vitest run --silent --reporter=dot --bail 1 --no-color"
   },
   "dependencies": {
     "@goodnumbers/common": "file:../packages/common",

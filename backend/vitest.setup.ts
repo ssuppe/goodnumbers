@@ -1,5 +1,9 @@
-// file: backend/vitest.setup.ts
 import { vi } from 'vitest';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load test environment variables without overriding already defined variables
+dotenv.config({ path: path.resolve(__dirname, '../.env.test') });
 
 vi.mock('ioredis', async () => {
   const { EventEmitter } = await import('events');
