@@ -20,6 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isMounted = useRef(true);
 
   useEffect(() => {
+    isMounted.current = true;
     return () => {
       isMounted.current = false;
     };
