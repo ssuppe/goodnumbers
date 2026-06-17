@@ -27,6 +27,10 @@ const flashModel = genAI.getGenerativeModel({
   model: 'gemini-3-flash-preview',
   generationConfig: { responseMimeType: 'application/json' },
 });
+// For plain-text generation (e.g. chat dialogues and text summaries)
+const textFlashModel = genAI.getGenerativeModel({
+  model: 'gemini-3-flash-preview',
+});
 
 export interface TreatmentContext {
   date: number;
@@ -226,7 +230,7 @@ export async function generateChatResponse(
   );
 
   try {
-    const result = await flashModel.generateContent(prompt);
+    const result = await textFlashModel.generateContent(prompt);
     return result.response.text().trim();
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -254,7 +258,7 @@ export async function synthesizeChatInsight(
   );
 
   try {
-    const result = await flashModel.generateContent(prompt);
+    const result = await textFlashModel.generateContent(prompt);
     return result.response.text().trim();
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
