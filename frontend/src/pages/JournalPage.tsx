@@ -6,7 +6,6 @@ import { type Journal, type GlycemicEventCluster } from "@goodnumbers/types";
 import { type ScoreCardData } from "@goodnumbers/schemas";
 import { Loader2, AlertTriangle, Trash2 } from "lucide-react";
 
-import PodcastPlayer from "../components/journal/PodcastPlayer";
 import {
   ChartAnalysisCard,
   type Insight,
@@ -205,12 +204,6 @@ export default function JournalPage() {
           Analysis for {getRangeLabel()}
         </h1>
       </div>
-
-      <PodcastPlayer
-        title={journal.podcastTitle}
-        description={journal.podcastDescription}
-        audioUrl={journal.podcastAudioUrl}
-      />
 
       {journal.executiveSummary && (
         <section className="animate-in fade-in slide-in-from-top-2 duration-500">

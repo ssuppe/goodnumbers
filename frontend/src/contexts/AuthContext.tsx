@@ -2,6 +2,7 @@
 import {
   useState,
   useEffect,
+  useRef,
   useMemo,
   useCallback,
   useContext,
@@ -16,18 +17,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const refetchSession = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await api.get<{ user: SessionUser } | null>("/session");
-      setUser(response.data?.user ?? null);
+      if (isMounted.current) {
+        setUser(response.data?.user ?? null);
+      }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An unknown error occurred",
-      );
+      if (isMounted.current) {
+        setError(
+          err instanceof Error ? err.message : "An unknown error occurred",
+        );
+      }
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
   }, []);
 

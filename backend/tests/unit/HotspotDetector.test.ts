@@ -82,7 +82,7 @@ describe('HotspotDetector - Event Detection', () => {
     // Total 4.5 hours (270 mins)
     // 54 entries at 5-min intervals
     const leading = generateSequence('2023-01-01T08:00:00Z', 24, 100); // 8:00 - 10:00 (120 mins)
-    const hyper = generateSequence('2023-01-01T10:00:00Z', 7, 200);   // 10:00 - 10:30 (30 mins)
+    const hyper = generateSequence('2023-01-01T10:00:00Z', 7, 200); // 10:00 - 10:30 (30 mins)
     const trailing = generateSequence('2023-01-01T10:35:00Z', 24, 100); // 10:35 - 12:35 (120 mins)
 
     const entries = [...leading, ...hyper, ...trailing];
@@ -90,7 +90,7 @@ describe('HotspotDetector - Event Detection', () => {
 
     expect(events).toHaveLength(1);
     const event = events[0];
-    
+
     // The event should cover 10:00 to 10:30
     expect(event.startTime).toContain('10:00');
     expect(event.endTime).toContain('10:30');
@@ -98,14 +98,14 @@ describe('HotspotDetector - Event Detection', () => {
     // The readings should include the buffer (180 mins)
     // 10:00 - 180 mins = 07:00 (But we only have data starting at 08:00)
     // 10:30 + 180 mins = 13:30 (But we only have data ending at 12:35)
-    
+
     const firstReading = event.readings[0].timestamp;
     const lastReading = event.readings[event.readings.length - 1].timestamp;
 
     // It should have captured all available leading/trailing data
     expect(firstReading).toContain('08:00');
     expect(lastReading).toContain('12:30');
-    
+
     // Total readings: 24 (leading) + 7 (hyper) + 24 (trailing) = 55 (index 0 to 54)
     // Wait, generateSequence(10:35, 24) ends at 10:35 + 23*5 = 10:35 + 115m = 12:30.
     expect(event.readings).toHaveLength(entries.length);
@@ -232,7 +232,7 @@ describe('HotspotDetector - Property Tests', () => {
 describe('HotspotDetector - Clustering', () => {
   const detector = new HotspotDetector('UTC');
 
-  it('groups overlapping events and filters by frequency (>= 3 days)', () => {
+  it('groups overlapping events and filters by frequency (>= 2 days)', () => {
     const makeEvent = (
       id: string,
       startIso: string,
@@ -248,17 +248,18 @@ describe('HotspotDetector - Clustering', () => {
       readings: [],
     });
 
-    // Cluster 1: ~14:00 (840 min)
+    // Cluster 1: ~14:00 (840 min) - Mon, Tue (2 distinct days)
     const e1 = makeEvent('1', '2023-01-02T14:00:00Z', 60, 840); // Mon
     const e2 = makeEvent('2', '2023-01-03T14:15:00Z', 60, 855); // Tue
-    const e3 = makeEvent('3', '2023-01-04T14:10:00Z', 60, 850); // Wed
-    const e4 = makeEvent('4', '2023-01-05T18:00:00Z', 60, 1080); // Thu
 
-    const clusters = detector.findClusters([e1, e2, e3, e4]);
+    // Distant event: 18:00 (1080 min) on Thu (1 event -> 1 distinct day)
+    const e3 = makeEvent('3', '2023-01-05T18:00:00Z', 60, 1080); // Thu
+
+    const clusters = detector.findClusters([e1, e2, e3]);
 
     expect(clusters).toHaveLength(1);
-    expect(clusters[0].events).toHaveLength(3);
-    expect(clusters[0].avgStartMinute).toBeCloseTo(848, 0);
+    expect(clusters[0].events).toHaveLength(2);
+    expect(clusters[0].avgStartMinute).toBe(847);
   });
 
   it('splits clusters by timezone offset even if wall-clock time matches', () => {

@@ -211,7 +211,7 @@ export class HotspotDetector {
           ),
         );
 
-        if (distinctDays.size >= 3) {
+        if (distinctDays.size >= 2) {
           candidate.forEach((e) => visited.add(e.id));
           allClusters.push(
             this.buildClusterObject(candidate, Array.from(distinctDays)),

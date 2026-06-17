@@ -22,9 +22,6 @@ vi.mock("../contexts/AuthContext", () => ({
 vi.mock("../lib/api");
 
 // Mock child components
-vi.mock("../components/journal/PodcastPlayer", () => ({
-  default: () => <div data-testid="podcast-player" />,
-}));
 
 vi.mock("../components/journal/ChartAnalysisCard", () => ({
   ChartAnalysisCard: () => <div data-testid="chart-analysis-card" />,
@@ -175,7 +172,6 @@ describe("JournalPage", () => {
       expect(api.get).toHaveBeenCalledWith(
         `/journals/${mockJournalForView.id}`,
       );
-      expect(screen.getByTestId("podcast-player")).toBeInTheDocument();
       expect(screen.getByTestId("weekly-vibe")).toBeInTheDocument();
       expect(screen.getByTestId("influencing-factors")).toBeInTheDocument();
       expect(screen.getByTestId("cluster-card-cluster-1")).toBeInTheDocument();
