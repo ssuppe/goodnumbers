@@ -18,8 +18,7 @@ export class ChartErrorBoundary extends Component<Props, State> {
     hasError: false,
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public static getDerivedStateFromError(_error: Error): State {
+  public static getDerivedStateFromError(): State {
     return { hasError: true };
   }
 

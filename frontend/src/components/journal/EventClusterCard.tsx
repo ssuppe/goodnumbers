@@ -272,10 +272,10 @@ export default function EventClusterCard({
           reflectionForDoctor: "",
         };
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const raw = cluster.aiInsight as any;
+      const raw = cluster.aiInsight as unknown as Record<string, unknown>;
       // Adaptation logic for legacy journals (assessment string)
       if (
+        raw &&
         raw.assessment &&
         typeof raw.assessment === "string" &&
         !raw.observation
@@ -284,13 +284,13 @@ export default function EventClusterCard({
           observation: raw.assessment,
           probableDriver: "",
           systemImpact: "",
-          lifestyleExperiment: raw.lifestyleExperiment || "",
-          reflectionForDoctor: raw.reflectionForDoctor || "",
-          quickLogSuggestions: raw.quickLogSuggestions || [],
-          initialPrompt: raw.initialPrompt || "",
+          lifestyleExperiment: (raw.lifestyleExperiment as string) || "",
+          reflectionForDoctor: (raw.reflectionForDoctor as string) || "",
+          quickLogSuggestions: (raw.quickLogSuggestions as string[]) || [],
+          initialPrompt: (raw.initialPrompt as string) || "",
         };
       }
-      return raw as AiInsight;
+      return raw as unknown as AiInsight;
     } catch (e) {
       console.error("Failed to parse aiInsight", e);
       return null;
