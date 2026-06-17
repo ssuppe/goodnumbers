@@ -35,12 +35,14 @@ export const ScoreCardDataSchema = z.object({
   stability: z.number(),
   timeInRange: z.number(),
   timeInTightRange: z.number(),
+  timeBelowRange: z.number().default(0),
   trends: z
     .object({
       avgGlucose: z.number(), // Signed delta
       stability: z.number(),
       timeInRange: z.number(),
       timeInTightRange: z.number(),
+      timeBelowRange: z.number().default(0),
     })
     .nullable()
     .optional(),

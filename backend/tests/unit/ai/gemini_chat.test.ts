@@ -30,6 +30,14 @@ vi.mock('@google/generative-ai', () => ({
       generateContent: mockGenerateContent,
     }),
   })),
+  SchemaType: {
+    STRING: 'string',
+    NUMBER: 'number',
+    INTEGER: 'integer',
+    BOOLEAN: 'boolean',
+    ARRAY: 'array',
+    OBJECT: 'object',
+  },
 }));
 
 describe('Gemini AI Chat and Synthesis Services', () => {

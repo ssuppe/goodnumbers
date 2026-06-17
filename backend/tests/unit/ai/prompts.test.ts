@@ -230,5 +230,27 @@ describe('AI Prompt Generation', () => {
 
       expect(prompt).toContain('No previous week data available');
     });
+
+    it('includes patterns and clinical override rules', () => {
+      const currentStats = {
+        avgGlucose: 140,
+        timeInRange: 75,
+        stability: 80,
+        lowPercentage: 2,
+      };
+
+      const prompt = EXECUTIVE_SUMMARY_PROMPT(
+        currentStats,
+        null,
+        GlucoseUnit.MGDL,
+        ['Largest positive variance: Afternoon (11:00 AM - 5:00 PM)'],
+      );
+
+      expect(prompt).toContain('DETECTED PATTERNS & HOTSPOTS');
+      expect(prompt).toContain(
+        'Largest positive variance: Afternoon (11:00 AM - 5:00 PM)',
+      );
+      expect(prompt).toContain('CLINICAL HYPO OVERRIDE');
+    });
   });
 });

@@ -29,6 +29,14 @@ vi.mock('@google/generative-ai', () => ({
       generateContent: mockGenerateContent,
     }),
   })),
+  SchemaType: {
+    STRING: 'string',
+    NUMBER: 'number',
+    INTEGER: 'integer',
+    BOOLEAN: 'boolean',
+    ARRAY: 'array',
+    OBJECT: 'object',
+  },
 }));
 
 describe('Gemini AI Service', () => {
@@ -174,6 +182,88 @@ describe('Gemini AI Service', () => {
       );
 
       expect(result).toEqual(mockHighlights);
+    });
+
+    it('passes patterns to the prompt generator', async () => {
+      const mockHighlights = [
+        {
+          type: 'win',
+          icon: '✅',
+          title: 'Good Job',
+          short_description: 'TIR is up.',
+        },
+      ];
+      mockGenerateContent.mockResolvedValueOnce({
+        response: {
+          text: () => JSON.stringify(mockHighlights),
+        },
+      });
+
+      const result = await generateExecutiveSummary(
+        { avgGlucose: 120, timeInRange: 80, stability: 90, lowPercentage: 1 },
+        null,
+        GlucoseUnit.MGDL,
+        ['Largest positive variance: Afternoon (11:00 AM - 5:00 PM)'],
+      );
+
+      expect(result).toEqual(mockHighlights);
+    });
+
+    it('enforces the clinical hypo rule override by swapping the hypo card to first position if lowPercentage > 4', async () => {
+      const mockHighlights = [
+        {
+          type: 'win',
+          icon: '🎉',
+          title: 'Averages Look Good',
+          short_description: 'Celebrate your nice average blood sugar.',
+        },
+        {
+          type: 'opportunity',
+          icon: '⚠️',
+          title: 'Low Blood Sugar Opportunity',
+          short_description: 'You had a few lows this week.',
+        },
+      ];
+      mockGenerateContent.mockResolvedValueOnce({
+        response: {
+          text: () => JSON.stringify(mockHighlights),
+        },
+      });
+
+      const result = await generateExecutiveSummary(
+        { avgGlucose: 120, timeInRange: 80, stability: 90, lowPercentage: 5 },
+        null,
+        GlucoseUnit.MGDL,
+      );
+
+      expect(result[0].type).toBe('opportunity');
+      expect(result[0].title).toBe('Low Blood Sugar Opportunity');
+      expect(result[1].type).toBe('win');
+    });
+
+    it('enforces the clinical hypo rule override by creating a new hypo card if lowPercentage > 4 and none exists', async () => {
+      const mockHighlights = [
+        {
+          type: 'win',
+          icon: '🎉',
+          title: 'Averages Look Good',
+          short_description: 'Celebrate your nice average blood sugar.',
+        },
+      ];
+      mockGenerateContent.mockResolvedValueOnce({
+        response: {
+          text: () => JSON.stringify(mockHighlights),
+        },
+      });
+
+      const result = await generateExecutiveSummary(
+        { avgGlucose: 120, timeInRange: 80, stability: 90, lowPercentage: 5 },
+        null,
+        GlucoseUnit.MGDL,
+      );
+
+      expect(result[0].type).toBe('opportunity');
+      expect(result[0].title).toBe('Lows Focus Opportunity');
     });
 
     it('returns an empty array if generation fails', async () => {

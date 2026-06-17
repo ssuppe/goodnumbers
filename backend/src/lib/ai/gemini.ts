@@ -1,6 +1,4 @@
-// backend/src/lib/ai/gemini.ts
-
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType, Schema } from '@google/generative-ai';
 import {
   GlycemicCluster,
   Insight,
@@ -18,15 +16,69 @@ import { formatInfluencingFactors } from './utils.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'dummy-key');
 
-const proModel = genAI.getGenerativeModel({
+const insightSchema: Schema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    assessment: { type: SchemaType.STRING },
+    reflection_for_doctor: { type: SchemaType.STRING },
+    quick_log_suggestions: {
+      type: SchemaType.ARRAY,
+      items: { type: SchemaType.STRING },
+    },
+    initial_prompt: { type: SchemaType.STRING },
+  },
+  required: [
+    'assessment',
+    'reflection_for_doctor',
+    'quick_log_suggestions',
+    'initial_prompt',
+  ],
+};
+
+const highlightSchema: Schema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    type: {
+      type: SchemaType.STRING,
+      format: 'enum',
+      enum: ['win', 'warn', 'focus', 'opportunity', 'trend'],
+    },
+    icon: { type: SchemaType.STRING },
+    title: { type: SchemaType.STRING },
+    short_description: { type: SchemaType.STRING },
+  },
+  required: ['type', 'icon', 'title', 'short_description'],
+};
+
+const summarySchema: Schema = {
+  type: SchemaType.ARRAY,
+  items: highlightSchema,
+};
+
+const insightProModel = genAI.getGenerativeModel({
   model: 'gemini-3.1-pro-preview',
-  generationConfig: { responseMimeType: 'application/json' },
+  generationConfig: {
+    responseMimeType: 'application/json',
+    responseSchema: insightSchema,
+  },
 });
-// Use Gemini 3 Flash for fast fallback with high intelligence
-const flashModel = genAI.getGenerativeModel({
+
+const insightFlashModel = genAI.getGenerativeModel({
   model: 'gemini-3-flash-preview',
-  generationConfig: { responseMimeType: 'application/json' },
+  generationConfig: {
+    responseMimeType: 'application/json',
+    responseSchema: insightSchema,
+  },
 });
+
+const summaryFlashModel = genAI.getGenerativeModel({
+  model: 'gemini-3-flash-preview',
+  generationConfig: {
+    responseMimeType: 'application/json',
+    responseSchema: summarySchema,
+  },
+});
+
 // For plain-text generation (e.g. chat dialogues and text summaries)
 const textFlashModel = genAI.getGenerativeModel({
   model: 'gemini-3-flash-preview',
@@ -104,7 +156,7 @@ export async function generateClusterAIInsight(
   );
 
   try {
-    const result = await proModel.generateContent(prompt);
+    const result = await insightProModel.generateContent(prompt);
     const text = result.response.text();
     const parsed = parseAIJson<{
       assessment: string;
@@ -117,6 +169,15 @@ export async function generateClusterAIInsight(
       quick_log_suggestions: [],
       initial_prompt: '',
     });
+
+    if (
+      !parsed ||
+      !parsed.assessment ||
+      parsed.assessment === 'Failed to parse assessment.' ||
+      !parsed.reflection_for_doctor
+    ) {
+      throw new Error('Pro model returned invalid or fallback JSON structure');
+    }
 
     console.log(`[Gemini] Pro model success for ${cluster.id}`);
     return {
@@ -136,7 +197,7 @@ export async function generateClusterAIInsight(
       `[Gemini] Attempting Flash model fallback for ${cluster.id}...`,
     );
     try {
-      const result = await flashModel.generateContent(prompt);
+      const result = await insightFlashModel.generateContent(prompt);
       const text = result.response.text();
       const parsed = parseAIJson<{
         assessment: string;
@@ -149,6 +210,17 @@ export async function generateClusterAIInsight(
         quick_log_suggestions: [],
         initial_prompt: '',
       });
+
+      if (
+        !parsed ||
+        !parsed.assessment ||
+        parsed.assessment === 'Failed to parse assessment.' ||
+        !parsed.reflection_for_doctor
+      ) {
+        throw new Error(
+          'Flash model returned invalid or fallback JSON structure',
+        );
+      }
 
       console.log(`[Gemini] Flash fallback success for ${cluster.id}`);
       return {
@@ -184,6 +256,7 @@ export async function generateExecutiveSummary(
     stability: number;
   } | null,
   preferredUnits: GlucoseUnit,
+  patterns?: string[],
 ): Promise<Highlight[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return [];
@@ -192,14 +265,44 @@ export async function generateExecutiveSummary(
     currentStats,
     previousStats,
     preferredUnits,
+    patterns || [],
   );
 
   try {
     // Re-getting model just to be sure config is applied if needed,
     // although flashModel should already have it.
-    const result = await flashModel.generateContent(prompt);
+    const result = await summaryFlashModel.generateContent(prompt);
     const text = result.response.text();
-    return parseAIJson<Highlight[]>(text, []);
+    const highlights = parseAIJson<Highlight[]>(text, []);
+
+    // Clinical Hypo Rule Override: If TBR > 4%, ensure Box 1 (index 0) addresses the lows.
+    if (currentStats.lowPercentage > 4 && highlights.length > 0) {
+      const isFirstHypo =
+        highlights[0].type === 'warn' ||
+        highlights[0].type === 'focus' ||
+        highlights[0].type === 'opportunity';
+      if (!isFirstHypo) {
+        const hypoIdx = highlights.findIndex(
+          (h) =>
+            h.type === 'warn' || h.type === 'focus' || h.type === 'opportunity',
+        );
+        if (hypoIdx !== -1) {
+          // Move the hypo card to the first slot
+          const [hypoCard] = highlights.splice(hypoIdx, 1);
+          highlights.unshift(hypoCard);
+        } else {
+          // Convert the first card to an opportunity card addressing the low range
+          highlights[0] = {
+            type: 'opportunity',
+            icon: '⚠️',
+            title: 'Lows Focus Opportunity',
+            short_description: `Your Time Below Range was ${Math.round(currentStats.lowPercentage)}% this week, which is above the 4% safety threshold. Focus on reducing these lows first.`,
+          };
+        }
+      }
+    }
+
+    return highlights;
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[Gemini] Executive Summary failed: ${errorMessage}`);

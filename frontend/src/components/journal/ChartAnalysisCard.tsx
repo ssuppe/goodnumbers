@@ -195,6 +195,10 @@ export function ChartAnalysisCard({
                   %
                 </span>
               </div>
+              <span className="text-[11px] text-emerald-700 font-medium mt-1">
+                Includes {formatValue(scoreCardData.timeInTightRange, true)}% in
+                Tight Range
+              </span>
             </div>
 
             {/* 3. Stability */}
@@ -203,7 +207,7 @@ export function ChartAnalysisCard({
               className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex flex-col items-center justify-center text-center"
             >
               <span className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-1">
-                Stability
+                Stability (CV)
               </span>
               <div className="flex items-baseline space-x-1">
                 <span
@@ -218,22 +222,22 @@ export function ChartAnalysisCard({
               </div>
             </div>
 
-            {/* 4. GMI (Est. A1c) */}
+            {/* 4. Time Below Range (TBR) */}
             <div
-              data-testid="metric-card-gmi"
-              className="bg-purple-50 p-3 rounded-lg border border-purple-100 flex flex-col items-center justify-center text-center"
+              data-testid="metric-card-tbr"
+              className="bg-rose-50 p-3 rounded-lg border border-rose-100 flex flex-col items-center justify-center text-center"
             >
-              <span className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-1">
-                Est. GMI
+              <span className="text-xs font-bold text-rose-700 uppercase tracking-wider mb-1">
+                Time Below Range
               </span>
               <div className="flex items-baseline space-x-1">
                 <span
-                  data-testid="metric-value-gmi"
-                  className="text-2xl font-black text-purple-900"
+                  data-testid="metric-value-tbr"
+                  className="text-2xl font-black text-rose-900"
                 >
-                  {gmiValue}
+                  {formatValue(scoreCardData.timeBelowRange, true)}
                 </span>
-                <span className="text-[10px] font-bold text-purple-600 uppercase">
+                <span className="text-[10px] font-bold text-rose-600 uppercase">
                   %
                 </span>
               </div>
@@ -277,14 +281,23 @@ export function ChartAnalysisCard({
                 />
 
                 <UnifiedInsightRow
-                  label="Stability"
+                  label="Stability (CV)"
                   value={formatValue(scoreCardData.stability, true)}
                   unit="%"
                   icon="🌊"
                   iconColor="text-mesa-secondary"
+                  insight="Measures your glycemic variability (Coefficient of Variation). A lower CV indicates more stable glucose and fewer swings."
+                />
+
+                <UnifiedInsightRow
+                  label="Time Below Range"
+                  value={formatValue(scoreCardData.timeBelowRange, true)}
+                  unit="%"
+                  icon="⚠️"
+                  iconColor="text-rose-600"
                   insight={
                     matchedInsights.hypo?.note ||
-                    "Measures how often your glucose levels were changing slowly."
+                    "Percentage of time spent below target range (< 70 mg/dL)."
                   }
                 />
 

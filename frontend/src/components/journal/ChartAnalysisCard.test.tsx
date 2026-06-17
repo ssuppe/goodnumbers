@@ -48,6 +48,7 @@ const MOCK_SCORECARD = {
   stability: 85,
   timeInRange: 75,
   timeInTightRange: 40,
+  timeBelowRange: 15,
 };
 
 describe("ChartAnalysisCard", () => {
@@ -80,14 +81,15 @@ describe("ChartAnalysisCard", () => {
     expect(screen.getByTestId("metric-card-avg")).toBeInTheDocument();
     expect(screen.getByTestId("metric-card-tir")).toBeInTheDocument();
     expect(screen.getByTestId("metric-card-stability")).toBeInTheDocument();
-    expect(screen.getByTestId("metric-card-gmi")).toBeInTheDocument();
+    expect(screen.getByTestId("metric-card-tbr")).toBeInTheDocument();
 
     expect(screen.getByTestId("metric-value-avg").textContent).toBe("150");
     expect(screen.getByTestId("metric-value-tir").textContent).toBe("75");
     expect(screen.getByTestId("metric-value-stability").textContent).toBe("85");
+    expect(screen.getByTestId("metric-value-tbr").textContent).toBe("15");
   });
 
-  it("renders GMI value when GMI insight is present", () => {
+  it("renders GMI value in detailed analysis when GMI insight is present", () => {
     render(
       <ChartAnalysisCard
         title="Test"
@@ -103,10 +105,15 @@ describe("ChartAnalysisCard", () => {
       />,
     );
 
-    expect(screen.getByTestId("metric-value-gmi").textContent).toBe("6.8");
+    // Expand
+    fireEvent.click(screen.getByText("View Detailed Analysis"));
+
+    expect(
+      screen.getByTestId("insight-row-gmi-(est.-a1c)"),
+    ).toBeInTheDocument();
   });
 
-  it("renders '--' for GMI when no insight is present", () => {
+  it("does not render GMI row in detailed analysis when no GMI insight is present", () => {
     render(
       <ChartAnalysisCard
         title="Test"
@@ -117,7 +124,12 @@ describe("ChartAnalysisCard", () => {
       />,
     );
 
-    expect(screen.getByTestId("metric-value-gmi").textContent).toBe("--");
+    // Expand
+    fireEvent.click(screen.getByText("View Detailed Analysis"));
+
+    expect(
+      screen.queryByTestId("insight-row-gmi-(est.-a1c)"),
+    ).not.toBeInTheDocument();
   });
 
   it("toggles the Detailed Analysis section when clicked", () => {

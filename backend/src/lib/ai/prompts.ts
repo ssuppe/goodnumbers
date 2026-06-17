@@ -86,16 +86,23 @@ export const EXECUTIVE_SUMMARY_PROMPT = (
     stability: number;
   } | null,
   preferredUnits: GlucoseUnit,
+  patterns: string[] = [],
 ) => {
   const unitsLabel = preferredUnits === GlucoseUnit.MMOL ? 'mmol/L' : 'mg/dL';
+  const patternsSection =
+    patterns.length > 0
+      ? `\nDETECTED PATTERNS & HOTSPOTS (Use these for specific highlights instead of repeating raw averages):\n${patterns.map((p) => `- ${p}`).join('\n')}`
+      : '';
+
   return `
-You are a helpful diabetes coach. Based on the weekly glucose statistics below, generate exactly 3 executive summary highlight cards.
+You are a helpful diabetes coach. Based on the weekly glucose statistics and patterns below, generate exactly 3 executive summary highlight cards.
 
 CURRENT WEEK STATS:
 - Avg Glucose: ${u(currentStats.avgGlucose, preferredUnits)} ${unitsLabel}
 - Time In Range (TIR): ${Math.round(currentStats.timeInRange)}%
 - Stability (CV): ${Math.round(currentStats.stability)}%
 - Time Below Range (TBR): ${Math.round(currentStats.lowPercentage)}%
+${patternsSection}
 
 ${
   previousStats
@@ -111,21 +118,23 @@ PREVIOUS WEEK STATS:
 INSTRUCTIONS:
 Generate exactly 3 highlights. Each highlight must be one of these types:
 1. "win" - Something positive to celebrate.
-2. "warn" - Something that needs attention or is a potential risk.
+2. "warn" / "focus" / "opportunity" - Something that needs attention or represents a potential risk, framed as a supportive focus or adjustment opportunity rather than a scolding failure.
 3. "trend" - A noticeable change or a steady pattern.
 
 Format your response as a JSON array of exactly 3 objects with this schema:
 [
   {
-    "type": "win" | "warn" | "trend",
+    "type": "win" | "warn" | "focus" | "opportunity" | "trend",
     "icon": "string (a single emoji)",
     "title": "string (short, 2-4 words)",
     "short_description": "string (one short sentence explaining the insight)"
   }
 ]
 
-CONSTRAINTS:
-- Use only the provided data.
+CLINICAL & TONE CONSTRAINTS:
+- Use only the provided data and patterns. Do not invent facts.
+- CLINICAL HYPO OVERRIDE: If Time Below Range (TBR) is greater than 4%, the FIRST highlight card (index 0) MUST be a "warn" / "focus" / "opportunity" card addressing these low blood sugar events to prioritize safety. Do not celebrate wins in the first highlight card under this condition.
+- COOPERATIVE TONE: Frame warn/focus/opportunity cards as constructive, supportive opportunities for adjustment rather than punitive scolding/failures. (e.g., instead of "High Blood Sugar Warning", use "Post-Meal Opportunity" or "Overnight Focus Window").
 - Icons should be relevant emojis.
 - Be supportive and clear.
 - Do not use conversational filler.

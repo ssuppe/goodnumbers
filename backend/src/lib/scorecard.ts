@@ -10,12 +10,24 @@ export function calculateMetrics(
   entries: GlucoseEntry[],
 ): Omit<ScoreCardData, 'trends'> {
   if (!entries.length)
-    return { avgGlucose: 0, stability: 0, timeInRange: 0, timeInTightRange: 0 };
+    return {
+      avgGlucose: 0,
+      stability: 0,
+      timeInRange: 0,
+      timeInTightRange: 0,
+      timeBelowRange: 0,
+    };
 
   // Filter out invalid SGVs immediately
   const validEntries = entries.filter((e) => Number.isFinite(e.sgv));
   if (!validEntries.length)
-    return { avgGlucose: 0, stability: 0, timeInRange: 0, timeInTightRange: 0 };
+    return {
+      avgGlucose: 0,
+      stability: 0,
+      timeInRange: 0,
+      timeInTightRange: 0,
+      timeBelowRange: 0,
+    };
 
   const total = validEntries.length;
   const sum = validEntries.reduce((acc, e) => acc + e.sgv, 0);
@@ -23,37 +35,20 @@ export function calculateMetrics(
     (e) => e.sgv >= 70 && e.sgv <= 180,
   ).length;
   const tight = validEntries.filter((e) => e.sgv >= 70 && e.sgv <= 140).length;
+  const belowRange = validEntries.filter((e) => e.sgv < 70).length;
 
-  let stableIntervals = 0;
-  let totalIntervals = 0;
-
-  // Sort by date to ensure correct ROC calculation
-  const sorted = [...validEntries].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-  );
-
-  for (let i = 1; i < sorted.length; i++) {
-    const curr = sorted[i];
-    const prev = sorted[i - 1];
-    const timeDiffMin =
-      (new Date(curr.date).getTime() - new Date(prev.date).getTime()) / 60000;
-
-    // Only calculate ROC if readings are close enough (<= 15 mins)
-    if (timeDiffMin > 0 && timeDiffMin <= 15) {
-      const roc = Math.abs(curr.sgv - prev.sgv) / timeDiffMin;
-      if (roc < 1.5) stableIntervals++;
-      totalIntervals++;
-    }
-  }
+  const mean = sum / total;
+  const variance =
+    validEntries.reduce((acc, e) => acc + Math.pow(e.sgv - mean, 2), 0) / total;
+  const stdDev = Math.sqrt(variance);
+  const cv = mean > 0 ? (stdDev / mean) * 100 : 0;
 
   return {
-    avgGlucose: safeRound(sum / total),
+    avgGlucose: safeRound(mean),
     timeInRange: safeRound((inRange / total) * 100),
     timeInTightRange: safeRound((tight / total) * 100),
-    stability:
-      totalIntervals > 0
-        ? safeRound((stableIntervals / totalIntervals) * 100)
-        : 0,
+    timeBelowRange: safeRound((belowRange / total) * 100),
+    stability: safeRound(cv),
   };
 }
 
@@ -69,5 +64,6 @@ export function calculateTrends(
     timeInTightRange: safeRound(
       current.timeInTightRange - previous.timeInTightRange,
     ),
+    timeBelowRange: safeRound(current.timeBelowRange - previous.timeBelowRange),
   };
 }

@@ -16,14 +16,18 @@ export default function ExecutiveSummary({
         const bgClass =
           h.type === "win"
             ? "bg-emerald-50 border-emerald-100"
-            : h.type === "warn"
+            : h.type === "warn" ||
+                h.type === "focus" ||
+                h.type === "opportunity"
               ? "bg-amber-50 border-amber-100"
               : "bg-blue-50 border-blue-100";
 
         const textClass =
           h.type === "win"
             ? "text-emerald-800"
-            : h.type === "warn"
+            : h.type === "warn" ||
+                h.type === "focus" ||
+                h.type === "opportunity"
               ? "text-amber-800"
               : "text-blue-800";
 

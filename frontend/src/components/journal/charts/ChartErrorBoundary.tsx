@@ -18,12 +18,17 @@ export class ChartErrorBoundary extends Component<Props, State> {
     hasError: false,
   };
 
-  public static getDerivedStateFromError(_: Error): State {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public static getDerivedStateFromError(_error: Error): State {
     return { hasError: true };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("[ChartErrorBoundary] Visual map or rendering error:", error, errorInfo);
+    console.error(
+      "[ChartErrorBoundary] Visual map or rendering error:",
+      error,
+      errorInfo,
+    );
   }
 
   public render() {
@@ -34,10 +39,10 @@ export class ChartErrorBoundary extends Component<Props, State> {
             <div className="text-3xl mb-2">📊</div>
             <h3 className="text-slate-600 font-medium">Visualization Error</h3>
             <p className="text-sm mt-1">
-              Some of your data points could not be rendered in this specific chart. 
-              The rest of your journal is still safe to use.
+              Some of your data points could not be rendered in this specific
+              chart. The rest of your journal is still safe to use.
             </p>
-            <button 
+            <button
               onClick={() => this.setState({ hasError: false })}
               className="mt-4 text-xs bg-white border px-3 py-1 rounded-md hover:bg-white/80 transition-colors shadow-sm"
             >

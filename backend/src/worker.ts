@@ -12,6 +12,7 @@ import { calculateAgp } from './lib/agp/calculateAgp.js';
 import { calculateMetrics, calculateTrends } from './lib/scorecard.js';
 import { ScoreCardDataSchema, type ScoreCardData } from '@goodnumbers/schemas';
 import { HotspotDetector } from './lib/analysis/HotspotDetector.js';
+import { calculatePatternStats } from './lib/analysis/patterns.js';
 import { z } from 'zod';
 import { NightscoutTreatment } from './lib/nightscout/types.js';
 import { generateAggregateInsights } from './lib/insights/aggregate.js';
@@ -21,7 +22,7 @@ import {
   generateExecutiveSummary,
 } from './lib/ai/gemini.js';
 import { InsightArraySchema } from '@goodnumbers/schemas';
-import { GlucoseUnit, GlycemicCluster } from '@goodnumbers/types';
+import { GlucoseUnit, GlycemicCluster, Highlight } from '@goodnumbers/types';
 
 // --- Sanitization Logic ---
 const StoredTreatmentSchema = z.object({
@@ -224,6 +225,7 @@ export async function processJournalJob(job: Job) {
         stability: 0,
         timeInRange: 0,
         timeInTightRange: 0,
+        timeBelowRange: 0,
       };
     }
 
@@ -263,10 +265,8 @@ export async function processJournalJob(job: Job) {
 
     const scoreCardData = { ...scoreCardMetrics, trends };
 
-    // --- Executive Summary Generation ---
-    console.log(
-      `[Worker] Generating Executive Summary for Journal ${journalId}...`,
-    );
+    // --- Executive Summary Initialization ---
+    let executiveSummary: Highlight[] = [];
 
     await prisma.journal.update({
       where: { id: journalId },
@@ -275,20 +275,6 @@ export async function processJournalJob(job: Job) {
         statusMessage: 'Using AI for better insights and explanations',
       },
     });
-
-    const executiveSummary = await generateExecutiveSummary(
-      {
-        avgGlucose: scoreCardMetrics.avgGlucose,
-        timeInRange: scoreCardMetrics.timeInRange,
-        stability: scoreCardMetrics.stability,
-        lowPercentage:
-          entries.length > 0
-            ? (entries.filter((e) => e.sgv < 70).length / entries.length) * 100
-            : 0,
-      },
-      previousJournal?.scoreCardData as unknown as ScoreCardData,
-      journal.user.preferredUnits as GlucoseUnit,
-    );
 
     // --- Hotspot Engine Execution ---
     console.log(
@@ -423,6 +409,55 @@ export async function processJournalJob(job: Job) {
         userNotes: preservedNote,
       });
     }
+
+    // --- Executive Summary Generation ---
+    console.log(
+      `[Worker] Generating Executive Summary for Journal ${journalId}...`,
+    );
+
+    const patternStats = calculatePatternStats(glucoseEntries, userTimezone);
+    const patterns: string[] = [];
+    if (patternStats.largestVarianceBlock) {
+      patterns.push(
+        `Largest positive variance: ${patternStats.largestVarianceBlock}`,
+      );
+    }
+    if (patternStats.mostFrequentHigh) {
+      patterns.push(`Most frequent high: ${patternStats.mostFrequentHigh}`);
+    }
+    if (patternStats.mostFrequentLow) {
+      patterns.push(`Most frequent low: ${patternStats.mostFrequentLow}`);
+    }
+
+    allClusters.forEach((c) => {
+      const startHour = Math.floor(c.avgStartMinute / 60);
+      const startMin = Math.round(c.avgStartMinute % 60);
+      const ampm = startHour >= 12 ? 'PM' : 'AM';
+      const displayHour = startHour % 12 === 0 ? 12 : startHour % 12;
+      const timeStr = `${displayHour}:${startMin.toString().padStart(2, '0')} ${ampm}`;
+
+      let period = 'Post-Dinner';
+      if (startHour >= 23 || startHour < 7) period = 'Overnight';
+      else if (startHour >= 7 && startHour < 11) period = 'Morning';
+      else if (startHour >= 11 && startHour < 17) period = 'Afternoon';
+      else period = 'Evening';
+
+      patterns.push(
+        `Recurring ${c.type === 'hyper' ? 'highs' : 'lows'} around ${timeStr} (${period}), occurring ${c.eventCount} times this week.`,
+      );
+    });
+
+    executiveSummary = await generateExecutiveSummary(
+      {
+        avgGlucose: scoreCardMetrics.avgGlucose,
+        timeInRange: scoreCardMetrics.timeInRange,
+        stability: scoreCardMetrics.stability,
+        lowPercentage: scoreCardMetrics.timeBelowRange,
+      },
+      previousJournal?.scoreCardData as unknown as ScoreCardData,
+      journal.user.preferredUnits as GlucoseUnit,
+      patterns,
+    );
 
     // 5. Atomic Persistence (Delete Old + Save New)
     await prisma.journal.update({

@@ -22,6 +22,18 @@ describe("ExecutiveSummary", () => {
       title: "Trend Title",
       short_description: "Trend description",
     },
+    {
+      type: "focus",
+      icon: "🎯",
+      title: "Focus Title",
+      short_description: "Focus description",
+    },
+    {
+      type: "opportunity",
+      icon: "💡",
+      title: "Opportunity Title",
+      short_description: "Opportunity description",
+    },
   ];
 
   it("renders null when highlights are empty", () => {
@@ -43,6 +55,14 @@ describe("ExecutiveSummary", () => {
     expect(screen.getByText("Trend Title")).toBeInTheDocument();
     expect(screen.getByText("Trend description")).toBeInTheDocument();
     expect(screen.getByText("📈")).toBeInTheDocument();
+
+    expect(screen.getByText("Focus Title")).toBeInTheDocument();
+    expect(screen.getByText("Focus description")).toBeInTheDocument();
+    expect(screen.getByText("🎯")).toBeInTheDocument();
+
+    expect(screen.getByText("Opportunity Title")).toBeInTheDocument();
+    expect(screen.getByText("Opportunity description")).toBeInTheDocument();
+    expect(screen.getByText("💡")).toBeInTheDocument();
   });
 
   it("applies correct classes based on highlight type", () => {
@@ -53,6 +73,14 @@ describe("ExecutiveSummary", () => {
 
     const warnCard = screen.getByText("Warn Title").closest("div.rounded-xl");
     expect(warnCard).toHaveClass("bg-amber-50");
+
+    const focusCard = screen.getByText("Focus Title").closest("div.rounded-xl");
+    expect(focusCard).toHaveClass("bg-amber-50");
+
+    const opportunityCard = screen
+      .getByText("Opportunity Title")
+      .closest("div.rounded-xl");
+    expect(opportunityCard).toHaveClass("bg-amber-50");
 
     const trendCard = screen.getByText("Trend Title").closest("div.rounded-xl");
     expect(trendCard).toHaveClass("bg-blue-50");
