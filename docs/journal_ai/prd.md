@@ -1,7 +1,7 @@
 # PRD: Journal Overhaul — Collaborative AI Chat Insights
 
-**Status:** Approved Draft (Refined with user feedback)
-**Date:** June 16, 2026
+**Status:** Approved Draft (Refined with right-panel UX feedback)
+**Date:** June 17, 2026
 
 ## 1. Overview & Objectives
 
@@ -9,11 +9,12 @@ Currently, the weekly health journal generates static AI assessments for each gl
 
 We want to transform this passive reflection into an active, collaborative, and conversational experience:
 
-1. **Hybrid Note Entry:** Default to the standard notes text area (so users can quickly type notes manually). Add a **"💡 Help me reflect"** button that activates the AI chat assistant.
-2. **Context-Specific Prompts:** When activated, the AI assistant initiates the chat with a dynamically generated question tailored specifically to the data in that cluster (e.g., instead of a generic "how can you improve?", it might ask, "I notice spikes around 8:00 AM on school days, but not weekends. Does your school day breakfast or commute affect your insulin timing?").{>>Rather than a specific diagnostic question, it should be more exploratory? ie, "Why do you think that...?"<<}
-3. **Coaching/Interviewing Agent:** The agent acts as an empathetic, collaborative professional diabetes healthcare professional BUT NEVER CLAIMS TO BE ONE, helping the user dissect the trend through a back-and-forth dialogue.
-4. **Structured "Save as Insight" Synthesis:** Once the user is satisfied, they click a "Save as Insight" button. The AI synthesizes the chat into a structured reflection written from the patient's POV, along with actionable resolutions/action items, and populates this text directly into the standard notes text area, saving to the database.
-5. The user can edit the note at any time.
+1. **Hybrid Note Entry with Right-Side Chat Panel:** Keep the standard notes text area (`CollapsingNoteArea`) visible and editable directly on the cluster card. Add a **"💡 Help me reflect"** button underneath the text area.
+2. **Persistent Side Panel Chat Drawer:** Clicking the button opens a right-side flyout panel (reminiscent of an old-school instant messenger chat window) rather than replacing the notes box on the card itself.
+3. **Context-Specific Prompts:** When activated, the AI assistant in the right panel initiates the chat with a dynamically generated question tailored specifically to the data in that cluster.
+4. **Coaching/Interviewing Agent:** The agent acts as an empathetic, collaborative professional diabetes coach, helping the user dissect the trend through a back-and-forth dialogue.
+5. **Summarize my notes:** A button in the right-side panel compiles the conversation history, sends it to Gemini for synthesis, and automatically inserts (pastes) the resulting first-person POV summary and action items directly into the notes text box of the active cluster.
+6. **Dynamic Context Switching:** If the user clicks on a "💡 Help me reflect" button for a _different_ cluster while the panel is open, the right panel automatically switches focus, resetting the chat session for the new cluster and targeting the new cluster's notes box.
 
 ---
 
@@ -22,13 +23,15 @@ We want to transform this passive reflection into an active, collaborative, and 
 ```mermaid
 graph TD
     A[User opens Event Cluster Card] --> B[Sees Standard Notes Text Area]
-    B -->|Option 1: Manual| C[Type notes manually and save]
+    B -->|Option 1: Manual| C[Type notes manually on the card]
     B -->|Option 2: Chat| D[Click 'Help me reflect']
-    D --> E[Gemini generates custom starting prompt based on cluster data]
-    E --> F[Chat replaces text area; User chats with AI Coach]
-    F --> G[User clicks 'Save as Insight']
-    G --> H[Gemini generates POV Summary & Action Items]
-    H --> I[Synthesized insight populates text area; Chat interface closes]
+    D --> E[Right-Side AIM-Style Chat Panel Slides Out]
+    E --> F[Gemini generates custom starting prompt based on cluster data]
+    F --> G[User chats with AI Coach in Right Panel]
+    G --> H[User clicks 'Summarize my notes']
+    H --> I[Gemini generates POV Summary & Action Items]
+    I --> J[Synthesized insight is pasted into the active cluster's notes area]
+    J --> K[User can edit notes manually or save the journal]
 ```
 
 ### Phase A: Default Manual State
@@ -37,25 +40,26 @@ graph TD
 - Below the assessment, a standard text area (`CollapsingNoteArea`) is visible for manual note-taking.
 - A prominent button **"💡 Help me reflect"** is displayed next to or below the text area.
 
-### Phase B: Activating Collaborative Interviewing
+### Phase B: Activating Right-Side Chat Panel
 
-- Clicking **"Help me reflect"** replaces the text area with an **Interactive Chat Pane**.
-- The client sends a request to the backend to generate a **Dynamic Starting Prompt** based on the cluster details (timing, event count, timezone, deterministic insights).{>>We should include the data as well?<<}
+- Clicking **"Help me reflect"** opens a drawer/side-panel sliding from the right edge of the screen. The text area on the card remains visible and unchanged.
+- The right panel shows the **AI Reflection Coach** chat layout.
+- The client sends a request to the backend to generate a **Dynamic Starting Prompt** based on the cluster details (timing, event count, timezone, deterministic insights) if the chat for this cluster is starting.
 - The AI coach starts the chat with this prompt.
 - The user and AI engage in dialogue. The chat history is kept in **temporary client-side memory** (or temporary session state) for simplicity and privacy.
-- The AI coach:
-  - Remains encouraging, non-judgmental, and medically safe (never prescribing medication/doses).
-  - Asks clarifying questions (e.g., "Did you dose before or after the meal?", "How did that exercise session feel?").
-  - Guides the user toward articulating their own insights.
+- If the user clicks "💡 Help me reflect" on a _new_ cluster card:
+  - The right-side chat panel updates to reference the new cluster.
+  - The chat history is reset/cleared for the new session, and a new dynamic starting prompt is loaded.
 
 ### Phase C: Insight Synthesis & Persistence
 
-- A **"Save as Insight"** button is displayed in the chat pane.
+- A **"Summarize my notes"** button is displayed at the bottom of the chat panel.
 - When clicked, the chat history is sent to Gemini to synthesize:
   - **POV Summary:** A 1-2 sentence recap from the patient's perspective.
   - **Action Items / Resolutions:** A list of 1-3 concrete adjustments.
-- The backend returns this synthesized text as a single formatted markdown string (e.g., combining the summary and action items).
-- The client-side application populates this string directly into the `userNotes` text area, updates the state, saves it to the database, and closes the chat pane (returning to the standard text area view).
+- The backend returns this synthesized text as a single formatted markdown string.
+- The client-side application inserts this text directly into the `userNotes` text area of the _active_ cluster card, updating the parent form state.
+- The user can make manual edits to the notes box or close the chat drawer when finished.
 
 ---
 
@@ -63,21 +67,16 @@ graph TD
 
 ### 3.1 Data Model (Prisma Schema)
 
-Because the chat history is transient and the final insight is saved back into the existing `userNotes` column on `GlycemicEventCluster`, **no database migrations or schema modifications are required.** This drastically simplifies implementation and maintains 100% backward compatibility with all downstream features (e.g. podcasts, historical views).
+No database migrations or schema modifications are required. The transient chat history exists purely in the frontend React state, and the resulting summary is saved into the existing `userNotes` column in `GlycemicEventCluster`.
 
 ### 3.2 API Endpoints
 
-1. **`POST /api/journals/:id/clusters/:clusterId/start-prompt`**
-   - **Request:** None
-   - **Operation:** Calls Gemini to generate a context-specific starting question based on the cluster data.
-   - **Response:** `{ prompt: string }`
-
-2. **`POST /api/journals/:id/clusters/:clusterId/chat`**
+1. **`POST /api/journals/:id/clusters/:clusterId/chat`**
    - **Request:** `{ message: string, chatHistory: Message[] }` (client passes transient chat history)
    - **Operation:** Calls Gemini with cluster data + current chat history to generate the next response.
    - **Response:** `{ reply: string }`
 
-3. **`POST /api/journals/:id/clusters/:clusterId/save-insight`**
+2. **`POST /api/journals/:id/clusters/:clusterId/save-insight`**
    - **Request:** `{ chatHistory: Message[] }`
    - **Operation:** Calls Gemini to synthesize the chat history into a formatted POV summary and action items.
    - **Response:** `{ synthesizedInsight: string }`
@@ -88,7 +87,11 @@ Because the chat history is transient and the final insight is saved back into t
 
 Following our **Rich Aesthetics** principles:
 
-- **Chat Transition:** Clicking "Help me reflect" should smoothly slide/morph the text area into the chat panel with a subtle micro-animation.
-- **Chat Bubbles:** Soft, warm colors adhering to the Mesa theme (e.g., `#F4F1EA` for patient bubbles, light Petrol Blue borders for AI coach messages).
-- **Loading States:** A clean, pulsing typing indicator when waiting for AI replies.
-- **Success Animation:** A green checkmark fading out when the synthesized insight is populated back into the text area.
+- **Sidebar Drawer Layout:** A fixed right-side panel (`w-[380px] sm:w-[420px] h-screen fixed right-0 top-0 shadow-2xl bg-white border-l border-gray-200 z-50 transition-transform duration-300`).
+- **AIM-style Messaging Feed:**
+  - Balloons bubble on top of the text entry.
+  - AI messages: Left-aligned, light Petrol Blue background (`bg-blue-50/70` / `border-blue-100`).
+  - User messages: Right-aligned, solid `bg-mesa-primary` (Terracotta) with `text-white`.
+- **Active Context Highlighting:** When a cluster's chat is active, the corresponding card on the page can have a subtle highlight border (e.g., pulsing border) to clearly show which card is currently being updated.
+- **Pulsing Loading State:** A clean, pulsing typing indicator when waiting for AI responses.
+- **Insert Flash:** When clicking "Summarize my notes", the summary text is populated into the note textarea, and the textarea performs a brief green outline pulse/flash to confirm the insert.

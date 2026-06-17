@@ -54,15 +54,55 @@ vi.mock("../components/journal/EventClusterCard", () => ({
     cluster,
     userNote,
     onNoteChange,
+    onHelpReflect,
+    isChatActive,
   }: {
     cluster: { id: string };
     userNote: string;
     onNoteChange: (n: string) => void;
+    onHelpReflect?: () => void;
+    isChatActive?: boolean;
   }) => (
-    <div data-testid={`cluster-card-${cluster.id}`}>
+    <div
+      data-testid={`cluster-card-${cluster.id}`}
+      className={isChatActive ? "active-chat" : ""}
+    >
       <span data-testid={`cluster-note-${cluster.id}`}>{userNote}</span>
       <button onClick={() => onNoteChange("Updated Cluster Note")}>
         Update Note
+      </button>
+      {onHelpReflect && (
+        <button
+          onClick={onHelpReflect}
+          data-testid={`help-reflect-${cluster.id}`}
+        >
+          Help me reflect
+        </button>
+      )}
+    </div>
+  ),
+}));
+
+vi.mock("../components/journal/ClusterChatInterface", () => ({
+  default: ({
+    clusterId,
+    onSaveInsight,
+    onClose,
+  }: {
+    clusterId: string;
+    onSaveInsight: (note: string) => void;
+    onClose: () => void;
+  }) => (
+    <div data-testid="mock-chat-drawer">
+      <span data-testid="chat-cluster-id">{clusterId}</span>
+      <button
+        onClick={() => onSaveInsight("Synthesized Summary Note")}
+        data-testid="chat-drawer-save"
+      >
+        Mock Summarize
+      </button>
+      <button onClick={onClose} data-testid="chat-drawer-close">
+        Mock Close
       </button>
     </div>
   ),
@@ -211,5 +251,90 @@ describe("JournalPage", () => {
 
     expect(confirmSpy).toHaveBeenCalled();
     expect(deleteJournal).toHaveBeenCalledWith(mockJournalForView.id);
+  });
+
+  describe("AI Chat Drawer Integration", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      vi.mocked(api.get).mockResolvedValue({ data: mockJournalForView });
+    });
+
+    it("opens the chat drawer on help reflect click, highlights active card, and updates note on save", async () => {
+      renderComponent(mockJournalForView.id);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("cluster-card-cluster-1"),
+        ).toBeInTheDocument();
+      });
+
+      // Confirm drawer is not visible initially
+      expect(screen.queryByTestId("mock-chat-drawer")).not.toBeInTheDocument();
+
+      // Click "Help me reflect" on Cluster 1
+      fireEvent.click(screen.getByTestId("help-reflect-cluster-1"));
+
+      // Drawer should be open, bound to cluster-1
+      expect(screen.getByTestId("mock-chat-drawer")).toBeInTheDocument();
+      expect(screen.getByTestId("chat-cluster-id")).toHaveTextContent(
+        "cluster-1",
+      );
+
+      // Active card should have active highlight class
+      const clusterCard1 = screen.getByTestId("cluster-card-cluster-1");
+      expect(clusterCard1).toHaveClass("active-chat");
+
+      // Click mock summarize inside the drawer
+      fireEvent.click(screen.getByTestId("chat-drawer-save"));
+
+      // Note text box on Cluster 1 card should be updated with synthesized summary
+      expect(screen.getByTestId("cluster-note-cluster-1")).toHaveTextContent(
+        "Synthesized Summary Note",
+      );
+
+      // Drawer should close
+      expect(screen.queryByTestId("mock-chat-drawer")).not.toBeInTheDocument();
+      expect(clusterCard1).not.toHaveClass("active-chat");
+    });
+
+    it("switches context and resets drawer when a new cluster help reflect button is clicked", async () => {
+      renderComponent(mockJournalForView.id);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("cluster-card-cluster-1"),
+        ).toBeInTheDocument();
+      });
+
+      // Click "Help me reflect" on Cluster 1
+      fireEvent.click(screen.getByTestId("help-reflect-cluster-1"));
+      expect(screen.getByTestId("chat-cluster-id")).toHaveTextContent(
+        "cluster-1",
+      );
+
+      const clusterCard1 = screen.getByTestId("cluster-card-cluster-1");
+      expect(clusterCard1).toHaveClass("active-chat");
+
+      // Click "Help me reflect" on Cluster 2 (mockJournalForView has multiple clusters, let's check its id, e.g. mockJournalForView.clusters[1].id is cluster-2 or similar)
+      const secondClusterId = mockJournalForView.clusters[1]?.id || "cluster-2";
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(`cluster-card-${secondClusterId}`),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId(`help-reflect-${secondClusterId}`));
+
+      // Drawer context should switch to second cluster
+      expect(screen.getByTestId("chat-cluster-id")).toHaveTextContent(
+        secondClusterId,
+      );
+
+      // Highlight should move to second cluster
+      expect(clusterCard1).not.toHaveClass("active-chat");
+      expect(screen.getByTestId(`cluster-card-${secondClusterId}`)).toHaveClass(
+        "active-chat",
+      );
+    });
   });
 });

@@ -286,7 +286,7 @@ describe("EventClusterCard", () => {
   });
 
   describe("Hybrid Notes / AI Coach Flow", () => {
-    it("renders the 'Help me reflect' button by default", () => {
+    it("does not render the 'Help me reflect' button if onHelpReflect is not provided", () => {
       render(
         <EventClusterCard
           cluster={mockCluster}
@@ -295,66 +295,81 @@ describe("EventClusterCard", () => {
         />,
       );
       expect(
-        screen.getByRole("button", { name: /help me reflect/i }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByTestId("mock-chat-interface"),
+        screen.queryByRole("button", { name: /help me reflect/i }),
       ).not.toBeInTheDocument();
     });
 
-    it("toggles to the AI Coach chat interface when 'Help me reflect' is clicked, and back on close", () => {
+    it("renders the 'Help me reflect' button and triggers onHelpReflect on click", () => {
+      const onHelpReflectMock = vi.fn();
       render(
         <EventClusterCard
           cluster={mockCluster}
           userNote=""
           onNoteChange={mockOnNoteChange}
+          onHelpReflect={onHelpReflectMock}
         />,
       );
 
-      // Verify notes label is visible initially
-      expect(screen.getByText("Your Notes")).toBeInTheDocument();
+      const reflectBtn = screen.getByRole("button", {
+        name: /help me reflect/i,
+      });
+      expect(reflectBtn).toBeInTheDocument();
 
-      // Click "Help me reflect"
-      fireEvent.click(screen.getByRole("button", { name: /help me reflect/i }));
-
-      // Notes label should be replaced by the chat interface
-      expect(screen.queryByText("Your Notes")).not.toBeInTheDocument();
-      expect(screen.getByTestId("mock-chat-interface")).toBeInTheDocument();
-
-      // Click mock close button inside the chat interface
-      fireEvent.click(screen.getByTestId("mock-close-chat"));
-
-      // Standard notes view should return
-      expect(screen.getByText("Your Notes")).toBeInTheDocument();
-      expect(
-        screen.queryByTestId("mock-chat-interface"),
-      ).not.toBeInTheDocument();
+      fireEvent.click(reflectBtn);
+      expect(onHelpReflectMock).toHaveBeenCalledOnce();
     });
 
-    it("saves the synthesized insight and returns to manual note view on save", () => {
-      const onNoteChangeMock = vi.fn();
-      render(
+    it("applies active border ring highlighting and button active style when isChatActive is true", () => {
+      const { container } = render(
         <EventClusterCard
           cluster={mockCluster}
           userNote=""
-          onNoteChange={onNoteChangeMock}
+          onNoteChange={mockOnNoteChange}
+          onHelpReflect={vi.fn()}
+          isChatActive={true}
         />,
       );
 
-      // Open coach chat
-      fireEvent.click(screen.getByRole("button", { name: /help me reflect/i }));
+      // Card container has ring-mesa-primary class
+      const cardContainer = container.firstChild;
+      expect(cardContainer).toHaveClass("ring-2");
+      expect(cardContainer).toHaveClass("ring-mesa-primary");
 
-      // Click mock save button inside chat interface
-      fireEvent.click(screen.getByTestId("mock-save-insight"));
+      // Button has active bg-mesa-primary style
+      const reflectBtn = screen.getByRole("button", {
+        name: /help me reflect/i,
+      });
+      expect(reflectBtn).toHaveClass("bg-mesa-primary");
+    });
 
-      // Verify callback was triggered with the synthesized text
-      expect(onNoteChangeMock).toHaveBeenCalledWith("synthesized note");
+    it("applies green flash border on CollapsingNoteArea when note updates with synthesized quote", () => {
+      const { rerender } = render(
+        <EventClusterCard
+          cluster={mockCluster}
+          userNote=""
+          onNoteChange={mockOnNoteChange}
+          onHelpReflect={vi.fn()}
+        />,
+      );
 
-      // Verify the chat interface closed and returned to notes view
-      expect(screen.getByText("Your Notes")).toBeInTheDocument();
-      expect(
-        screen.queryByTestId("mock-chat-interface"),
-      ).not.toBeInTheDocument();
+      // Trigger userNote change to synthesized text (starts with '>')
+      rerender(
+        <EventClusterCard
+          cluster={mockCluster}
+          userNote='> "I ate pizza."\n* **Resolution:** Adjust bolus.'
+          onNoteChange={mockOnNoteChange}
+          onHelpReflect={vi.fn()}
+        />,
+      );
+
+      // Underneath, the CollapsingNoteArea container should get the ring-green-500 style
+      const textarea = screen.getByPlaceholderText(
+        /Why do you think this happened?/i,
+      );
+      // The parent container of the textarea (from CollapsingNoteArea) has the custom class
+      const collapsingNoteAreaContainer = textarea.parentElement?.parentElement;
+      expect(collapsingNoteAreaContainer).toHaveClass("ring-2");
+      expect(collapsingNoteAreaContainer).toHaveClass("ring-green-500");
     });
   });
 });

@@ -6,7 +6,6 @@ import type {
 } from "@goodnumbers/types";
 import { ClusterEventsChart } from "./charts/ClusterEventsChart";
 import CollapsingNoteArea from "./CollapsingNoteArea";
-import ClusterChatInterface from "./ClusterChatInterface";
 import { type GlucoseUnit, type Treatment } from "../../lib/agpUtils";
 import { ChevronDown, ChevronRight, Copy, Check, Sparkles } from "lucide-react";
 
@@ -18,6 +17,8 @@ interface EventClusterCardProps {
   treatments?: Treatment[];
   insights?: Insight[];
   showTimezone?: boolean;
+  isChatActive?: boolean;
+  onHelpReflect?: () => void;
 }
 
 export interface AiInsight {
@@ -235,6 +236,8 @@ export default function EventClusterCard({
   treatments,
   insights,
   showTimezone,
+  isChatActive = false,
+  onHelpReflect,
 }: EventClusterCardProps) {
   // Safe parsing of the JSON blob
   const clusterData = useMemo(() => {
@@ -348,7 +351,20 @@ export default function EventClusterCard({
   const [isAnalysisExpanded, setIsAnalysisExpanded] = useState(false);
   const [isAiExpanded, setIsAiExpanded] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-  const [isChatActive, setIsChatActive] = useState(false);
+  const [shouldFlash, setShouldFlash] = useState(false);
+  const prevNoteRef = React.useRef(userNote);
+
+  React.useEffect(() => {
+    if (userNote !== prevNoteRef.current) {
+      if (userNote && userNote.trim().startsWith(">")) {
+        setShouldFlash(true);
+        const timer = setTimeout(() => setShouldFlash(false), 1000);
+        prevNoteRef.current = userNote;
+        return () => clearTimeout(timer);
+      }
+      prevNoteRef.current = userNote;
+    }
+  }, [userNote]);
 
   // Use insights prop if provided, otherwise fallback to cluster.insights if it matches the shape
   const displayInsights =
@@ -445,7 +461,13 @@ export default function EventClusterCard({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
+    <div
+      className={`bg-white rounded-xl overflow-hidden transition-all duration-300 ${
+        isChatActive
+          ? "ring-2 ring-mesa-primary shadow-lg border-transparent"
+          : "shadow-md border border-gray-200"
+      }`}
+    >
       {/* Top Section: Title and Chart */}
       <div className="p-4 pb-2">
         <div className="flex justify-between items-start mb-4">
@@ -576,44 +598,37 @@ export default function EventClusterCard({
       {onNoteChange && (
         <div className="px-4 pb-6 pt-2">
           <div className="mt-2 pt-4 border-t border-gray-100">
-            {isChatActive ? (
-              <ClusterChatInterface
-                journalId={cluster.journalId}
-                clusterId={cluster.id}
-                initialPrompt={
-                  parsedAiInsight?.initialPrompt ||
-                  "Hi! I'm your AI Reflection Coach. How do you think we can improve this in the future?"
-                }
-                onSaveInsight={(synthesizedText) => {
-                  onNoteChange(synthesizedText);
-                  setIsChatActive(false);
-                }}
-                onClose={() => setIsChatActive(false)}
-              />
-            ) : (
-              <>
-                <label
-                  htmlFor={`cluster-note-${cluster.id}`}
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Your Notes
-                </label>
-                <CollapsingNoteArea
-                  value={userNote || ""}
-                  onChange={onNoteChange}
-                  placeholder="Why do you think this happened? Leave some notes on what you think the issue is, or how you can improve next week. If you don’t know, that's ok! Leave it blank."
-                  maxLength={1000}
-                  rows={3}
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsChatActive(true)}
-                  className="flex items-center space-x-1.5 px-3 py-1.5 mt-2 bg-transparent text-brand border border-mesa-primary hover:bg-primary-hover hover:text-white rounded-lg transition-colors text-xs font-bold uppercase tracking-wider cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Help me reflect</span>
-                </button>
-              </>
+            <label
+              htmlFor={`cluster-note-${cluster.id}`}
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Your Notes
+            </label>
+            <CollapsingNoteArea
+              value={userNote || ""}
+              onChange={onNoteChange}
+              placeholder="Why do you think this happened? Leave some notes on what you think the issue is, or how you can improve next week. If you don’t know, that's ok! Leave it blank."
+              maxLength={1000}
+              rows={3}
+              className={
+                shouldFlash
+                  ? "ring-2 ring-green-500 rounded-lg transition-all duration-300"
+                  : ""
+              }
+            />
+            {onHelpReflect && (
+              <button
+                type="button"
+                onClick={onHelpReflect}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 mt-2 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider cursor-pointer ${
+                  isChatActive
+                    ? "bg-mesa-primary text-white border border-mesa-primary animate-pulse"
+                    : "bg-transparent text-brand border border-mesa-primary hover:bg-primary-hover hover:text-white"
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Help me reflect</span>
+              </button>
             )}
           </div>
         </div>

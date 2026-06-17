@@ -33,7 +33,7 @@ describe("ClusterChatInterface Component", () => {
 
   it("calls onClose when close button is clicked", () => {
     render(<ClusterChatInterface {...defaultProps} />);
-    const closeBtn = screen.getByTitle("Exit chat and return to manual entry");
+    const closeBtn = screen.getByTitle("Close chat drawer");
     fireEvent.click(closeBtn);
     expect(defaultProps.onClose).toHaveBeenCalledOnce();
   });
@@ -112,7 +112,9 @@ describe("ClusterChatInterface Component", () => {
 
     render(<ClusterChatInterface {...defaultProps} />);
 
-    const saveButton = screen.getByRole("button", { name: "Save as Insight" });
+    const saveButton = screen.getByRole("button", {
+      name: "Summarize my notes",
+    });
     fireEvent.click(saveButton);
 
     // Shows loading synthesis overlay

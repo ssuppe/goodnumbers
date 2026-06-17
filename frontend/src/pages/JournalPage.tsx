@@ -25,6 +25,7 @@ import StickyActionBar from "../components/journal/StickyActionBar";
 import ExecutiveSummary from "../components/journal/ExecutiveSummary";
 import { type Highlight } from "@goodnumbers/types";
 import { PencilLine } from "lucide-react";
+import ClusterChatInterface from "../components/journal/ClusterChatInterface";
 
 import { format } from "date-fns";
 
@@ -51,6 +52,9 @@ export default function JournalPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [activeChatClusterId, setActiveChatClusterId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -139,6 +143,23 @@ export default function JournalPage() {
         : [],
     [journal?.agpChartData, user?.preferredUnits],
   );
+
+  const activeCluster = useMemo(() => {
+    if (!activeChatClusterId || !journal) return null;
+    return journal.clusters.find((c) => c.id === activeChatClusterId) || null;
+  }, [activeChatClusterId, journal]);
+
+  const activeClusterInitialPrompt = useMemo(() => {
+    if (!activeCluster) return "";
+    try {
+      if (!activeCluster.aiInsight) return "";
+      if (typeof activeCluster.aiInsight === "string") return "";
+      const insight = activeCluster.aiInsight as { initialPrompt?: string };
+      return insight.initialPrompt || "";
+    } catch {
+      return "";
+    }
+  }, [activeCluster]);
 
   const getRangeLabel = () => {
     if (journal?.startDate && journal?.endDate) {
@@ -259,6 +280,8 @@ export default function JournalPage() {
               units={user?.preferredUnits || "MGDL"}
               treatments={journal.treatments}
               showTimezone={hasMultipleTimezones}
+              isChatActive={activeChatClusterId === cluster.id}
+              onHelpReflect={() => setActiveChatClusterId(cluster.id)}
             />
           </ChartErrorBoundary>
         );
@@ -298,6 +321,29 @@ export default function JournalPage() {
         isLoading={isSaving}
         error={saveError}
       />
+
+      {activeChatClusterId && (
+        <ClusterChatInterface
+          key={activeChatClusterId}
+          journalId={id!}
+          clusterId={activeChatClusterId}
+          initialPrompt={
+            activeClusterInitialPrompt ||
+            "Hi! I'm your AI Reflection Coach. How do you think we can improve this in the future?"
+          }
+          onSaveInsight={(synthesizedText) => {
+            setFormData((prev) => ({
+              ...prev!,
+              clusterNotes: {
+                ...prev!.clusterNotes,
+                [activeChatClusterId]: synthesizedText,
+              },
+            }));
+            setActiveChatClusterId(null);
+          }}
+          onClose={() => setActiveChatClusterId(null)}
+        />
+      )}
     </div>
   );
 }
