@@ -153,7 +153,7 @@ const ClusterChatInterface: React.FC<ClusterChatInterfaceProps> = ({
               key={idx}
               className={`flex flex-col p-3 rounded-xl max-w-[85%] text-sm shadow-sm transition-all duration-150 animate-in fade-in duration-200 ${
                 m.role === "model"
-                  ? "bg-white text-gray-800 border border-gray-150 self-start"
+                  ? "bg-blue-50/70 text-gray-800 border border-blue-100 self-start"
                   : "bg-mesa-primary text-white self-end"
               }`}
             >
