@@ -69,8 +69,11 @@ vi.mock('../../../src/lib/analysis/HotspotDetector.js', () => ({
 
 // 5. Mock Gemini AI
 const MOCK_AI_ASSESSMENT = {
-  assessment: 'Mocked AI Assessment: Dawn Phenomenon suspected.',
-  reflectionForDoctor: 'Check basal rates between 3 AM and 5 AM.',
+  observation: 'Mocked AI Observation: Dawn Phenomenon suspected.',
+  probableDriver: 'Dawn phenomenon.',
+  systemImpact: 'Pump increases correction activity.',
+  lifestyleExperiment: 'Drink a glass of water.',
+  reflectionForDoctor: '- Check basal rates between 3 AM and 5 AM.',
   quickLogSuggestions: ['Late snack', 'Adjust basal', 'Dawn phenomenon'],
   initialPrompt: 'Mocked initial prompt?',
 };

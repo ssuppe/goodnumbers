@@ -22,7 +22,10 @@ interface EventClusterCardProps {
 }
 
 export interface AiInsight {
-  assessment: string;
+  observation?: string;
+  probableDriver?: string;
+  systemImpact?: string;
+  lifestyleExperiment?: string;
   reflectionForDoctor?: string;
   quickLogSuggestions?: string[];
   initialPrompt?: string;
@@ -54,16 +57,19 @@ export function getColloquialEventName(type: string): string {
 
 // Sub-component to parse and render structured AI insights
 function AiAssessmentDisplay({
-  assessment,
+  observation,
+  probableDriver,
+  systemImpact,
+  lifestyleExperiment,
   reflectionForDoctor,
 }: {
-  assessment?: string;
+  observation?: string;
+  probableDriver?: string;
+  systemImpact?: string;
+  lifestyleExperiment?: string;
   reflectionForDoctor?: string;
 }) {
   const [isCopied, setIsCopied] = useState(false);
-
-  // Handle assessment text
-  const textContent = assessment || "";
 
   const handleCopyDoctorNote = async () => {
     if (!reflectionForDoctor) return;
@@ -76,54 +82,50 @@ function AiAssessmentDisplay({
     }
   };
 
-  // Split legacy/structured assessment text by the known headers
-  const renderStructuredText = (text: string) => {
-    const parts = text.split(
-      /(Key takeaway or observation:|Recommendation:|In detail:)/gi,
-    );
-    const sections: React.ReactNode[] = [];
-
-    for (let i = 1; i < parts.length; i += 2) {
-      const header = parts[i].trim();
-      const content = parts[i + 1]?.trim();
-
-      if (content) {
-        sections.push(
-          <div key={header} className="space-y-1">
-            <p className="font-bold text-blue-800 text-[10px] uppercase tracking-wider">
-              {header.replace(":", "")}
-            </p>
-            <div className="text-gray-900 leading-relaxed">
-              {header.includes("Recommendation") ? (
-                <ul className="list-disc ml-4 space-y-1">
-                  {content.split("\n").map((line, idx) => {
-                    const cleanLine = line.replace(/^[*-]\s*/, "").trim();
-                    return cleanLine ? <li key={idx}>{cleanLine}</li> : null;
-                  })}
-                </ul>
-              ) : (
-                <p>{content}</p>
-              )}
-            </div>
-          </div>,
-        );
-      }
-    }
-
-    if (sections.length === 0) {
-      return <div className="whitespace-pre-wrap">{text}</div>;
-    }
-    return <div className="space-y-4">{sections}</div>;
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Primary Assessment */}
-      <div className="assessment-body">{renderStructuredText(textContent)}</div>
+    <div className="space-y-4">
+      {/* Observation */}
+      {observation && (
+        <div className="space-y-1">
+          <p className="font-bold text-blue-800 text-[10px] uppercase tracking-wider">
+            Observation
+          </p>
+          <p className="text-gray-900 leading-relaxed font-semibold">
+            {observation}
+          </p>
+        </div>
+      )}
 
-      {/* Doctor Reflection Section (Stage 2) */}
+      {/* Probable Driver (The 'Why') */}
+      {(probableDriver || systemImpact) && (
+        <div className="space-y-1">
+          <p className="font-bold text-blue-800 text-[10px] uppercase tracking-wider">
+            The &apos;Why&apos;
+          </p>
+          <div className="text-gray-900 leading-relaxed space-y-1.5 text-[13px]">
+            {probableDriver && <p>{probableDriver}</p>}
+            {systemImpact && (
+              <p className="text-xs text-gray-500 italic">{systemImpact}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Lifestyle Experiment (Try This) */}
+      {lifestyleExperiment && (
+        <div className="space-y-1 p-2.5 bg-blue-100/40 rounded-md border border-blue-100">
+          <p className="font-bold text-blue-800 text-[10px] uppercase tracking-wider">
+            Try This
+          </p>
+          <p className="text-gray-900 leading-relaxed text-[13px]">
+            {lifestyleExperiment}
+          </p>
+        </div>
+      )}
+
+      {/* Doctor Reflection Section */}
       {reflectionForDoctor && (
-        <div className="mt-4 p-4 bg-white border border-blue-200 rounded-lg shadow-sm">
+        <div className="mt-3 p-3 bg-white border border-blue-200 rounded-lg shadow-sm">
           <div className="flex justify-between items-center mb-2">
             <p className="font-bold text-blue-800 text-[10px] uppercase tracking-wider">
               For your Doctor
@@ -142,14 +144,14 @@ function AiAssessmentDisplay({
               ) : (
                 <>
                   <Copy className="w-3 h-3" />
-                  <span>Copy for Doctor</span>
+                  <span>Copy Note</span>
                 </>
               )}
             </button>
           </div>
-          <p className="text-gray-700 italic border-l-2 border-blue-200 pl-3 py-1">
+          <div className="text-gray-700 leading-relaxed text-xs whitespace-pre-line">
             {reflectionForDoctor}
-          </p>
+          </div>
         </div>
       )}
     </div>
@@ -262,10 +264,33 @@ export default function EventClusterCard({
     try {
       if (!cluster.aiInsight) return null;
       if (typeof cluster.aiInsight === "string") {
-        return { assessment: cluster.aiInsight, reflectionForDoctor: "" };
+        return {
+          observation: cluster.aiInsight,
+          probableDriver: "",
+          systemImpact: "",
+          lifestyleExperiment: "",
+          reflectionForDoctor: "",
+        };
       }
-      // Cast through unknown to the refined interface
-      return cluster.aiInsight as unknown as AiInsight;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = cluster.aiInsight as any;
+      // Adaptation logic for legacy journals (assessment string)
+      if (
+        raw.assessment &&
+        typeof raw.assessment === "string" &&
+        !raw.observation
+      ) {
+        return {
+          observation: raw.assessment,
+          probableDriver: "",
+          systemImpact: "",
+          lifestyleExperiment: raw.lifestyleExperiment || "",
+          reflectionForDoctor: raw.reflectionForDoctor || "",
+          quickLogSuggestions: raw.quickLogSuggestions || [],
+          initialPrompt: raw.initialPrompt || "",
+        };
+      }
+      return raw as AiInsight;
     } catch (e) {
       console.error("Failed to parse aiInsight", e);
       return null;
@@ -565,7 +590,10 @@ export default function EventClusterCard({
               {isAiExpanded && (
                 <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-gray-800 leading-relaxed shadow-sm transition-all animate-in fade-in slide-in-from-top-1">
                   <AiAssessmentDisplay
-                    assessment={parsedAiInsight?.assessment}
+                    observation={parsedAiInsight?.observation}
+                    probableDriver={parsedAiInsight?.probableDriver}
+                    systemImpact={parsedAiInsight?.systemImpact}
+                    lifestyleExperiment={parsedAiInsight?.lifestyleExperiment}
                     reflectionForDoctor={parsedAiInsight?.reflectionForDoctor}
                   />
 

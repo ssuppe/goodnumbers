@@ -222,7 +222,10 @@ describe("EventClusterCard", () => {
 
   it("renders structured AI Co-pilot hypothesis and reflections for the doctor", () => {
     const aiInsight: AiInsight = {
-      assessment: "Test AI Assessment",
+      observation: "Test AI Observation",
+      probableDriver: "Test AI Driver",
+      systemImpact: "Test AI Impact",
+      lifestyleExperiment: "Test AI Experiment",
       reflectionForDoctor: "Specific discussion point for doctor",
       quickLogSuggestions: ["Suggestion 1"],
     };
@@ -241,13 +244,15 @@ describe("EventClusterCard", () => {
     );
 
     // Initially hidden
-    expect(screen.queryByText("Test AI Assessment")).not.toBeInTheDocument();
+    expect(screen.queryByText("Test AI Observation")).not.toBeInTheDocument();
 
     // Click to expand
     const toggle = screen.getByText("AI Co-pilot Hypothesis");
     fireEvent.click(toggle);
 
-    expect(screen.getByText("Test AI Assessment")).toBeInTheDocument();
+    expect(screen.getByText("Test AI Observation")).toBeInTheDocument();
+    expect(screen.getByText("Test AI Driver")).toBeInTheDocument();
+    expect(screen.getByText("Test AI Experiment")).toBeInTheDocument();
     expect(screen.getByText("For your Doctor")).toBeInTheDocument();
     expect(
       screen.getByText("Specific discussion point for doctor"),
@@ -257,7 +262,7 @@ describe("EventClusterCard", () => {
 
   it("appends quick log suggestion to existing note", () => {
     const aiInsight: AiInsight = {
-      assessment: "Test AI Assessment",
+      observation: "Test AI Observation",
       reflectionForDoctor: "Reflection",
       quickLogSuggestions: ["Suggestion 1"],
     };

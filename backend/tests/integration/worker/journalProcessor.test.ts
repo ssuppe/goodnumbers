@@ -72,7 +72,11 @@ vi.mock('../../../src/lib/analysis/HotspotDetector.js', () => ({
 // 5. Mock Gemini AI
 vi.mock('../../../src/lib/ai/gemini.js', () => ({
   generateClusterAIInsight: vi.fn().mockResolvedValue({
-    assessment: 'Mocked AI Insight',
+    observation: 'Mocked AI Insight',
+    probableDriver: 'Mocked Driver',
+    systemImpact: 'Mocked Impact',
+    lifestyleExperiment: 'Mocked Experiment',
+    reflectionForDoctor: '- Mocked reflection',
     quickLogSuggestions: ['Suggestion 1', 'Suggestion 2'],
   }),
   generateExecutiveSummary: vi.fn().mockResolvedValue([

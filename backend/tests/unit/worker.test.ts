@@ -57,8 +57,11 @@ vi.mock('@src/lib/ai/gemini.js', () => ({
     .fn()
     .mockResolvedValue([{ title: 'Win', note: 'Good job!' }]),
   generateClusterAIInsight: vi.fn().mockResolvedValue({
-    assessment: 'Lookin good',
-    reflectionForDoctor: 'Patient is stable',
+    observation: 'Lookin good',
+    probableDriver: 'Stable trend',
+    systemImpact: 'Active control',
+    lifestyleExperiment: 'Track macros',
+    reflectionForDoctor: '- Patient is stable',
     quickLogSuggestions: ['Test Suggestion'],
   }),
 }));

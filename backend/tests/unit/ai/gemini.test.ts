@@ -65,7 +65,10 @@ describe('Gemini AI Service', () => {
         response: {
           text: () =>
             JSON.stringify({
-              assessment: 'Pro model assessment.',
+              observation: 'Pro model observation.',
+              probable_driver: 'Pro driver.',
+              system_impact: 'Pro impact.',
+              lifestyle_experiment: 'Pro lifestyle.',
               reflection_for_doctor: 'Pro reflection.',
               quick_log_suggestions: ['Hint 1', 'Hint 2'],
               initial_prompt:
@@ -84,7 +87,10 @@ describe('Gemini AI Service', () => {
         ['Diet:FatProtein'],
       );
 
-      expect(result.assessment).toBe('Pro model assessment.');
+      expect(result.observation).toBe('Pro model observation.');
+      expect(result.probableDriver).toBe('Pro driver.');
+      expect(result.systemImpact).toBe('Pro impact.');
+      expect(result.lifestyleExperiment).toBe('Pro lifestyle.');
       expect(result.reflectionForDoctor).toBe('Pro reflection.');
       expect(result.quickLogSuggestions).toEqual(['Hint 1', 'Hint 2']);
       expect(result.initialPrompt).toBe(
@@ -101,7 +107,10 @@ describe('Gemini AI Service', () => {
           response: {
             text: () =>
               JSON.stringify({
-                assessment: 'Flash model assessment.',
+                observation: 'Flash model observation.',
+                probable_driver: 'Flash driver.',
+                system_impact: 'Flash impact.',
+                lifestyle_experiment: 'Flash lifestyle.',
                 reflection_for_doctor: 'Flash reflection.',
                 quick_log_suggestions: ['Flash Hint'],
                 initial_prompt: 'Flash initial question?',
@@ -119,8 +128,11 @@ describe('Gemini AI Service', () => {
         [],
       );
 
-      expect(result.assessment).toContain('Flash model assessment.');
-      expect(result.assessment).toContain('fallback model');
+      expect(result.observation).toContain('Flash model observation.');
+      expect(result.observation).toContain('fallback model');
+      expect(result.probableDriver).toBe('Flash driver.');
+      expect(result.systemImpact).toBe('Flash impact.');
+      expect(result.lifestyleExperiment).toBe('Flash lifestyle.');
       expect(result.reflectionForDoctor).toBe('Flash reflection.');
       expect(result.initialPrompt).toBe('Flash initial question?');
       expect(mockGenerateContent).toHaveBeenCalledTimes(2);
@@ -139,7 +151,7 @@ describe('Gemini AI Service', () => {
         [],
       );
 
-      expect(result.assessment).toBe('AI assessment unavailable.');
+      expect(result.observation).toBe('AI assessment unavailable.');
       expect(mockGenerateContent).toHaveBeenCalledTimes(2);
     });
 
@@ -155,7 +167,7 @@ describe('Gemini AI Service', () => {
         null,
         [],
       );
-      expect(result.assessment).toContain('API Key missing');
+      expect(result.observation).toContain('API Key missing');
     });
   });
 

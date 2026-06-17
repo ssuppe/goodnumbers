@@ -105,7 +105,10 @@ describe('AI Prompt Generation', () => {
     );
 
     expect(prompt).toContain('OUTPUT STRUCTURE:');
-    expect(prompt).toContain('"assessment":');
+    expect(prompt).toContain('"observation":');
+    expect(prompt).toContain('"probable_driver":');
+    expect(prompt).toContain('"system_impact":');
+    expect(prompt).toContain('"lifestyle_experiment":');
     expect(prompt).toContain('"reflection_for_doctor":');
     expect(prompt).toContain('"quick_log_suggestions":');
     expect(prompt).toContain('ANALYSIS FRAMEWORK:');

@@ -19,7 +19,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'dummy-key');
 const insightSchema: Schema = {
   type: SchemaType.OBJECT,
   properties: {
-    assessment: { type: SchemaType.STRING },
+    observation: { type: SchemaType.STRING },
+    probable_driver: { type: SchemaType.STRING },
+    system_impact: { type: SchemaType.STRING },
+    lifestyle_experiment: { type: SchemaType.STRING },
     reflection_for_doctor: { type: SchemaType.STRING },
     quick_log_suggestions: {
       type: SchemaType.ARRAY,
@@ -28,7 +31,10 @@ const insightSchema: Schema = {
     initial_prompt: { type: SchemaType.STRING },
   },
   required: [
-    'assessment',
+    'observation',
+    'probable_driver',
+    'system_impact',
+    'lifestyle_experiment',
     'reflection_for_doctor',
     'quick_log_suggestions',
     'initial_prompt',
@@ -91,7 +97,10 @@ export interface TreatmentContext {
 }
 
 export interface ClusterAIResult {
-  assessment: string;
+  observation: string;
+  probableDriver: string;
+  systemImpact: string;
+  lifestyleExperiment: string;
   reflectionForDoctor: string;
   quickLogSuggestions: string[];
   initialPrompt?: string;
@@ -123,7 +132,10 @@ export async function generateClusterAIInsight(
   influencingFactors: string[] | null | undefined,
 ): Promise<ClusterAIResult> {
   const defaultResult: ClusterAIResult = {
-    assessment: 'AI assessment unavailable.',
+    observation: 'AI assessment unavailable.',
+    probableDriver: '',
+    systemImpact: '',
+    lifestyleExperiment: '',
     reflectionForDoctor: '',
     quickLogSuggestions: [],
     initialPrompt: '',
@@ -135,7 +147,7 @@ export async function generateClusterAIInsight(
     console.warn('[Gemini] Missing API Key. Skipping AI insight generation.');
     return {
       ...defaultResult,
-      assessment: 'AI assessment unavailable (API Key missing).',
+      observation: 'AI assessment unavailable (API Key missing).',
     };
   }
 
@@ -159,12 +171,18 @@ export async function generateClusterAIInsight(
     const result = await insightProModel.generateContent(prompt);
     const text = result.response.text();
     const parsed = parseAIJson<{
-      assessment: string;
+      observation: string;
+      probable_driver: string;
+      system_impact: string;
+      lifestyle_experiment: string;
       reflection_for_doctor: string;
       quick_log_suggestions: string[];
       initial_prompt?: string;
     }>(text, {
-      assessment: 'Failed to parse assessment.',
+      observation: 'Failed to parse assessment.',
+      probable_driver: '',
+      system_impact: '',
+      lifestyle_experiment: '',
       reflection_for_doctor: '',
       quick_log_suggestions: [],
       initial_prompt: '',
@@ -172,8 +190,9 @@ export async function generateClusterAIInsight(
 
     if (
       !parsed ||
-      !parsed.assessment ||
-      parsed.assessment === 'Failed to parse assessment.' ||
+      !parsed.observation ||
+      parsed.observation === 'Failed to parse assessment.' ||
+      !parsed.probable_driver ||
       !parsed.reflection_for_doctor
     ) {
       throw new Error('Pro model returned invalid or fallback JSON structure');
@@ -181,7 +200,10 @@ export async function generateClusterAIInsight(
 
     console.log(`[Gemini] Pro model success for ${cluster.id}`);
     return {
-      assessment: parsed.assessment,
+      observation: parsed.observation,
+      probableDriver: parsed.probable_driver,
+      systemImpact: parsed.system_impact,
+      lifestyleExperiment: parsed.lifestyle_experiment,
       reflectionForDoctor: parsed.reflection_for_doctor,
       quickLogSuggestions: parsed.quick_log_suggestions,
       initialPrompt: parsed.initial_prompt || '',
@@ -200,12 +222,18 @@ export async function generateClusterAIInsight(
       const result = await insightFlashModel.generateContent(prompt);
       const text = result.response.text();
       const parsed = parseAIJson<{
-        assessment: string;
+        observation: string;
+        probable_driver: string;
+        system_impact: string;
+        lifestyle_experiment: string;
         reflection_for_doctor: string;
         quick_log_suggestions: string[];
         initial_prompt?: string;
       }>(text, {
-        assessment: 'Failed to parse assessment.',
+        observation: 'Failed to parse assessment.',
+        probable_driver: '',
+        system_impact: '',
+        lifestyle_experiment: '',
         reflection_for_doctor: '',
         quick_log_suggestions: [],
         initial_prompt: '',
@@ -213,8 +241,9 @@ export async function generateClusterAIInsight(
 
       if (
         !parsed ||
-        !parsed.assessment ||
-        parsed.assessment === 'Failed to parse assessment.' ||
+        !parsed.observation ||
+        parsed.observation === 'Failed to parse assessment.' ||
+        !parsed.probable_driver ||
         !parsed.reflection_for_doctor
       ) {
         throw new Error(
@@ -224,7 +253,10 @@ export async function generateClusterAIInsight(
 
       console.log(`[Gemini] Flash fallback success for ${cluster.id}`);
       return {
-        assessment: `${parsed.assessment}\n\n(Note: Generated using fallback model)`,
+        observation: `${parsed.observation}\n\n(Note: Generated using fallback model)`,
+        probableDriver: parsed.probable_driver,
+        systemImpact: parsed.system_impact,
+        lifestyleExperiment: parsed.lifestyle_experiment,
         reflectionForDoctor: parsed.reflection_for_doctor,
         quickLogSuggestions: parsed.quick_log_suggestions,
         initialPrompt: parsed.initial_prompt || '',
