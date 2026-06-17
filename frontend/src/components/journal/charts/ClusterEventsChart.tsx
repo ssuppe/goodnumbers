@@ -139,7 +139,6 @@ export function ClusterEventsChart({
       if (!cluster.events.length) return null;
       const isMmol = units === "MMOL";
       const normalizedUnits = (isMmol ? "MMOL" : "MGDL") as GlucoseUnit;
-      const thresholds = getClinicalThresholds(normalizedUnits);
 
       const validEvents = [...cluster.events]
         .filter((e) => e.readings && e.readings.length >= 2)
@@ -255,12 +254,12 @@ export function ClusterEventsChart({
         // --- VALUE SCAN: Identify every dot above High or below Low ---
         const thresholds = getClinicalThresholds(normalizedUnits);
         let excursionStart: number | null = null;
-        
+
         seriesData.forEach((point, i) => {
           const val = point.value[1];
           const time = point.value[0];
           const isOut = val >= thresholds.high || val <= thresholds.low;
-          
+
           if (isOut) {
             if (excursionStart === null) excursionStart = time;
           } else {
@@ -342,6 +341,7 @@ export function ClusterEventsChart({
         series.push({
           name: dayName,
           type: "line",
+          color: color,
           xAxisIndex: 0,
           yAxisIndex: 0,
           data: seriesData,
@@ -403,7 +403,10 @@ export function ClusterEventsChart({
 
         const eventStart = new Date(event.startTime).getTime();
         const eventEnd = new Date(event.endTime).getTime();
-        const normalizedStartTime = normalizeTime(event.startTime, boundaryHour);
+        const normalizedStartTime = normalizeTime(
+          event.startTime,
+          boundaryHour,
+        );
         const searchStart = eventStart - TREATMENT_BUFFER_MINUTES * 60000;
         const searchEnd = eventEnd + TREATMENT_BUFFER_MINUTES * 60000;
 
@@ -594,23 +597,35 @@ export function ClusterEventsChart({
 
             let content = `<div style="font-weight: bold; border-bottom: 1px solid #eee; margin-bottom: 5px; padding-bottom: 2px;">${timeStr}</div>`;
 
-            pArray.forEach((p: any) => {
-              if (!p.data) return;
-              const color = p.color;
-              content += `<div style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">`;
-              content += `<span><span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color:${color};"></span>${p.seriesName}</span>`;
+            pArray.forEach(
+              (p: {
+                color: string;
+                seriesName: string;
+                seriesType: string;
+                data?: {
+                  value: [number, number];
+                  treatmentType?: "carbs" | "insulin";
+                  originalValue?: number;
+                  originalDate?: string;
+                };
+              }) => {
+                if (!p.data) return;
+                const color = p.color;
+                content += `<div style="display: flex; align-items: center; justify-content: space-between; gap: 20px;">`;
+                content += `<span><span style="display:inline-block;margin-right:5px;border-radius:10px;width:9px;height:9px;background-color:${color};"></span>${p.seriesName}</span>`;
 
-              if (p.seriesType === "line") {
-                const val = p.data.value[1];
-                content += `<strong>${val}</strong>`;
-              } else {
-                const label =
-                  p.data.treatmentType === "carbs" ? "Carbs" : "Insulin";
-                const unit = p.data.treatmentType === "carbs" ? "g" : "u";
-                content += `<span>${label}: <strong>${p.data.originalValue}${unit}</strong></span>`;
-              }
-              content += `</div>`;
-            });
+                if (p.seriesType === "line") {
+                  const val = p.data.value[1];
+                  content += `<strong>${val}</strong>`;
+                } else {
+                  const label =
+                    p.data.treatmentType === "carbs" ? "Carbs" : "Insulin";
+                  const unit = p.data.treatmentType === "carbs" ? "g" : "u";
+                  content += `<span>${label}: <strong>${p.data.originalValue}${unit}</strong></span>`;
+                }
+                content += `</div>`;
+              },
+            );
             return content;
           },
         },
