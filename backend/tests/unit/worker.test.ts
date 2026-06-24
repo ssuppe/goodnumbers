@@ -159,7 +159,7 @@ describe('Worker Job Processing (Real Logic)', () => {
       (call) => call[0].data.statusMessage,
     );
     expect(statusMessages).toContain(
-      'Collecting Nightscout blood sugar levels, insulin, and mealtime data',
+      "Collecting Nightscout blood sugar levels, insulin, and mealtime data. We'll then run non-AI, good old statistical analysis to identify trends.",
     );
     expect(statusMessages).toContain(
       'Running non-AI, old-fashioned statistical analysis to identify problem areas and find trends',

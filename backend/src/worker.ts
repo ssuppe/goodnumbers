@@ -102,7 +102,7 @@ export async function processJournalJob(job: Job) {
         status: 'ANALYZING_DATA',
         progress: 15,
         statusMessage:
-          'Collecting Nightscout blood sugar levels, insulin, and mealtime data',
+          "Collecting Nightscout blood sugar levels, insulin, and mealtime data. We'll then run non-AI, good old statistical analysis to identify trends.",
       },
     });
 
