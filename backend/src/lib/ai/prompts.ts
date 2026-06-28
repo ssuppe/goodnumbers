@@ -4,6 +4,7 @@ import { GlycemicCluster, Insight, GlucoseUnit } from '@goodnumbers/types';
 import { DateTime } from 'luxon';
 import { u } from '../../utils/text.js';
 import { TreatmentContext } from './gemini.js';
+import { formatInfluencingFactors } from './utils.js';
 
 /**
  * Builds a chronological text representation of blood sugar and treatments
@@ -301,5 +302,91 @@ CONSTRAINTS:
 - Write the summary strictly from the patient's POV ("I").
 - Keep it highly practical and medically safe.
 - Mention blood sugar values in ${unitsLabel} if any are referenced.
+`;
+};
+
+export interface JournalTitleContext {
+  scoreCardData: {
+    avgGlucose: number;
+    stability: number;
+    timeInRange: number;
+    timeInTightRange: number;
+    timeBelowRange: number;
+  } | null;
+  executiveSummary: Array<{ type: string; title: string; short_description: string }> | null;
+  clusters: Array<{
+    eventType: string;
+    eventCount: number;
+    meanTimeMinutes: number;
+    userNotes: string | null;
+  }>;
+  weeklyVibe: string | null;
+  influencingFactors: string[] | null;
+  preferredUnits: GlucoseUnit;
+}
+
+export const JOURNAL_TITLE_PROMPT = (ctx: JournalTitleContext) => {
+  const unitsLabel = ctx.preferredUnits === GlucoseUnit.MMOL ? 'mmol/L' : 'mg/dL';
+
+  const scoreSection = ctx.scoreCardData
+    ? `
+SCORECARD METRICS:
+- Avg Blood Sugar: ${u(ctx.scoreCardData.avgGlucose, ctx.preferredUnits)} ${unitsLabel}
+- Time In Range (TIR): ${Math.round(ctx.scoreCardData.timeInRange)}%
+- Time In Tight Range: ${Math.round(ctx.scoreCardData.timeInTightRange)}%
+- Stability (CV): ${Math.round(ctx.scoreCardData.stability)}%
+- Time Below Range (TBR): ${Math.round(ctx.scoreCardData.timeBelowRange)}%`
+    : 'SCORECARD METRICS: Not available.';
+
+  const summarySection =
+    ctx.executiveSummary && ctx.executiveSummary.length > 0
+      ? `
+EXECUTIVE SUMMARY HIGHLIGHTS:
+${ctx.executiveSummary.map((h) => `- [${h.type}] ${h.title}: ${h.short_description}`).join('\n')}`
+      : '';
+
+  const clusterSection =
+    ctx.clusters.length > 0
+      ? `
+CLUSTER SUMMARIES:
+${ctx.clusters
+  .map((c) => {
+    const hours = Math.floor(c.meanTimeMinutes / 60);
+    const minutes = (c.meanTimeMinutes % 60).toString().padStart(2, '0');
+    const typeLabel = c.eventType === 'hyper' ? 'High Blood Sugar' : 'Low Blood Sugar';
+    const notesLabel = c.userNotes ? ` | User notes: "${c.userNotes}"` : '';
+    return `- ${typeLabel} around ${hours}:${minutes}, occurred ${c.eventCount} time(s)${notesLabel}`;
+  })
+  .join('\n')}`
+      : '';
+
+  const vibeSection = ctx.weeklyVibe ? `\nWEEKLY VIBE: ${ctx.weeklyVibe}` : '';
+  const factorsSection = `\nINFLUENCING FACTORS: ${formatInfluencingFactors(ctx.influencingFactors)}`;
+
+  return `
+You are a supportive diabetes journal assistant. Based on the weekly data below, generate a short, evocative journal title and a brief description that captures the main story of the week.
+
+${scoreSection}
+${summarySection}
+${clusterSection}
+${vibeSection}
+${factorsSection}
+
+OUTPUT FORMAT:
+Respond with a JSON object:
+{
+  "title": "string (3-7 words, capturing the week's main theme)",
+  "description": "string (1-2 sentences highlighting the main behavioral pattern and its potential root cause)"
+}
+
+CONSTRAINTS:
+- The title should be evocative, concise (3-7 words), and capture the dominant theme of the week.
+- The description should be 1-2 sentences that highlight the main behavioral pattern and its potential root cause.
+- Use "blood sugar" instead of "glucose."
+- Use ${unitsLabel} for any blood sugar values mentioned.
+- Do not use medical prescriptions language. Frame observations supportively.
+- Use a supportive, empathetic tone.
+- Do not use conversational filler.
+- Ensure the output is valid JSON.
 `;
 };

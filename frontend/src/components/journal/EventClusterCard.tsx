@@ -391,9 +391,24 @@ export default function EventClusterCard({
     }
   }, [userNote]);
 
-  // Use insights prop if provided, otherwise fallback to cluster.insights if it matches the shape
-  const displayInsights =
-    insights || (cluster.insights as unknown as Insight[]);
+  // Safe parsing of the insights JSON
+  const parsedInsights = useMemo((): Insight[] => {
+    try {
+      if (!cluster.insights) return [];
+      if (typeof cluster.insights === "string") {
+        return JSON.parse(cluster.insights) as Insight[];
+      }
+      if (Array.isArray(cluster.insights)) {
+        return cluster.insights as unknown as Insight[];
+      }
+    } catch (e) {
+      console.error("Failed to parse cluster insights", e);
+    }
+    return [];
+  }, [cluster.insights]);
+
+  // Use insights prop if provided, otherwise fallback to parsed insights
+  const displayInsights = insights || parsedInsights;
 
   // Calculate the maximum evidence window across all insights to adjust the chart Zoom
   const maxEvidenceWindow = useMemo(() => {

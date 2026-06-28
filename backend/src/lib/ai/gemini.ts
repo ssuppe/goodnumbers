@@ -10,6 +10,7 @@ import {
   CLUSTER_AI_INSIGHT_PROMPT,
   CLUSTER_AI_CHAT_PROMPT,
   CLUSTER_AI_SYNTHESIS_PROMPT,
+  JOURNAL_TITLE_PROMPT,
   type ChatMessage,
 } from './prompts.js';
 import { formatInfluencingFactors } from './utils.js';
@@ -82,6 +83,23 @@ const summaryFlashModel = genAI.getGenerativeModel({
   generationConfig: {
     responseMimeType: 'application/json',
     responseSchema: summarySchema,
+  },
+});
+
+const titleSchema: Schema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    title: { type: SchemaType.STRING },
+    description: { type: SchemaType.STRING },
+  },
+  required: ['title', 'description'],
+};
+
+const titleFlashModel = genAI.getGenerativeModel({
+  model: 'gemini-3-flash-preview',
+  generationConfig: {
+    responseMimeType: 'application/json',
+    responseSchema: titleSchema,
   },
 });
 
