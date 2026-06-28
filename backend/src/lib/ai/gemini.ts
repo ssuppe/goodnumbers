@@ -12,6 +12,7 @@ import {
   CLUSTER_AI_SYNTHESIS_PROMPT,
   JOURNAL_TITLE_PROMPT,
   type ChatMessage,
+  type JournalTitleContext,
 } from './prompts.js';
 import { formatInfluencingFactors } from './utils.js';
 
@@ -417,5 +418,48 @@ export async function synthesizeChatInsight(
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[Gemini] Chat synthesis failed: ${errorMessage}`);
     return "I'm sorry, I was unable to synthesize the notes at this time.";
+  }
+}
+
+export interface JournalTitleResult {
+  title: string | null;
+  description: string | null;
+}
+
+/**
+ * Generates a short evocative journal title and brief description for the week.
+ */
+export async function generateJournalTitle(
+  ctx: JournalTitleContext,
+): Promise<JournalTitleResult> {
+  const defaultResult: JournalTitleResult = { title: null, description: null };
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.warn(
+      '[Gemini] Missing API Key. Skipping journal title generation.',
+    );
+    return defaultResult;
+  }
+
+  const prompt = JOURNAL_TITLE_PROMPT(ctx);
+
+  try {
+    const result = await titleFlashModel.generateContent(prompt);
+    const text = result.response.text();
+    const parsed = parseAIJson<{ title: string; description: string }>(text, {
+      title: '',
+      description: '',
+    });
+
+    if (!parsed.title || !parsed.description) {
+      return defaultResult;
+    }
+
+    return { title: parsed.title, description: parsed.description };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`[Gemini] Journal title generation failed: ${errorMessage}`);
+    return defaultResult;
   }
 }
