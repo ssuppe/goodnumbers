@@ -24,6 +24,15 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  clarity:
+    image: nightscout-clarity:latest
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   caddy:
     image: caddy:2-alpine
     # Ports are defined in overlays (local vs prod)

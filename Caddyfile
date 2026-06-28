@@ -9,6 +9,9 @@
     # 2. Chess Tutor: Proxy /chess to the chess container
     # reverse_proxy /chess* chess:3050
 
-    # 3. Frontend: Proxy all other requests to the frontend container (Nginx)
+    # 3. Nightscout Lucid: Proxy /clarity to the clarity container
+    reverse_proxy /clarity* clarity:80
+
+    # 4. Frontend: Proxy all other requests to the frontend container (Nginx)
     reverse_proxy * frontend:80
 }
