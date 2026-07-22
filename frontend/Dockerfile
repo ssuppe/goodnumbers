@@ -2,22 +2,29 @@
 FROM node:20-slim AS build
 WORKDIR /app
 
-# 1. Install openssl
+# 1. Install system deps
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
-# 2. Copy the entire pre-built source
-COPY . .
+# 2. Copy ONLY package manifests first so npm install is cached
+#    unless dependencies actually change.
+COPY package*.json ./
+COPY backend/package*.json ./backend/
+COPY frontend/package*.json ./frontend/
+COPY packages/ ./packages/
 
-# 3. Install ALL dependencies (needed for build tools like tsc and vite)
+# 3. Install dependencies (cached layer — only re-runs on package.json changes)
 RUN npm install --legacy-peer-deps --ignore-scripts
 
-# 4. Generate Prisma and Build the frontend
+# 4. Copy the rest of the source
+COPY . .
+
+# 5. Generate Prisma and Build the frontend
 WORKDIR /app/backend
 RUN npx prisma@6 generate
 WORKDIR /app/frontend
 RUN npm run build
 
-# 5. Serve stage with Nginx
+# 6. Serve stage with Nginx
 FROM nginx:alpine
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 RUN echo 'server { \

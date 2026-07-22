@@ -11,4 +11,10 @@ services:
       - "80:80"
       - "443:443"
 
+  clarity:
+    environment:
+      - NURSE_ACCESS_CODE
+      - NURSE_NIGHTSCOUT_URL
+      - NURSE_NIGHTSCOUT_TOKEN
+
   # Add any other production-only overrides here (e.g. scale, healthchecks)

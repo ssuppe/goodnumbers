@@ -7,11 +7,22 @@
     reverse_proxy /auth/* backend:4000
 
     # 2. Chess Tutor: Proxy /chess to the chess container
-    # reverse_proxy /chess* chess:3050
+    reverse_proxy /chess* chess:3050
 
     # 3. Nightscout Lucid: Proxy /clarity to the clarity container
     reverse_proxy /clarity* clarity:80
 
     # 4. Frontend: Proxy all other requests to the frontend container (Nginx)
     reverse_proxy * frontend:80
+}
+
+# KOReader Sync Server — deployed from a separate compose project (koreadersync/).
+# DNS: sync.suppeinthelife.com A record → this VPS IP.
+# Caddy auto-provisions TLS. Container reachable via shared caddy-proxy network.
+sync.suppeinthelife.com {
+    reverse_proxy kosync:7200 {
+        transport http {
+            tls_insecure_skip_verify  # kosync container uses a self-signed cert on port 7200
+        }
+    }
 }

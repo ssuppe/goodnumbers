@@ -2,6 +2,9 @@
 # This is the master command runner for the Goodnumbers monorepo.
 # All commands should be run from the project root.
 
+# Automatically load variables from .env into the environment
+set dotenv-load
+
 # --- DEPLOYMENT CONFIG (Override in .env or shell) ---
 SERVER_IP           := env_var_or_default("DEPLOY_SERVER_IP", "your-server-ip")
 SERVER_USER         := env_var_or_default("DEPLOY_SERVER_USER", "your-username")
@@ -68,17 +71,22 @@ deploy: build-local _db-deploy-prompt package-local push-all
         cp .env.production .env && \
         if [ -f \"deploy-artifacts/dev.db\" ]; then \
             echo '--- Overwriting Production Database with Local Copy ---' && \
-            mv deploy-artifacts/dev.db backend/prisma/dev.db; \
+            sudo cp -f deploy-artifacts/dev.db backend/prisma/dev.db && rm deploy-artifacts/dev.db; \
         fi && \
         echo '--- Loading Backend Image ---' && \
         ((pv deploy-artifacts/backend.tar.gz 2>/dev/null || cat deploy-artifacts/backend.tar.gz) | docker load) || (rm -rf deploy-artifacts/*.tar.gz && exit 1) && \
         echo '--- Loading Frontend Image ---' && \
         ((pv deploy-artifacts/frontend.tar.gz 2>/dev/null || cat deploy-artifacts/frontend.tar.gz) | docker load) || (rm -rf deploy-artifacts/*.tar.gz && exit 1) && \
+        if ! docker image inspect nightscout-clarity:latest >/dev/null 2>&1; then \
+            echo '--- Creating dummy nightscout-clarity image to prevent compose failure ---' && \
+            docker pull alpine:latest && \
+            docker tag alpine:latest nightscout-clarity:latest; \
+        fi && \
         echo '--- Stopping Stack for Update ---' && \
         GCP_KEY_PATH_SERVER={{GCP_KEY_PATH_SERVER}} docker compose -f docker-compose.yml -f docker-compose.prod.yml down && \
         if [ -f \"deploy-artifacts/dev.db\" ]; then \
             echo '--- Overwriting Production Database with Local Copy ---' && \
-            mv deploy-artifacts/dev.db backend/prisma/dev.db; \
+            sudo cp -f deploy-artifacts/dev.db backend/prisma/dev.db && rm deploy-artifacts/dev.db; \
         fi && \
         echo '--- Restarting Containers (Production Mode) ---' && \
         GCP_KEY_PATH_SERVER={{GCP_KEY_PATH_SERVER}} docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d && \
@@ -168,12 +176,12 @@ build-local: generate _build-backend _build-frontend
 _package-backend:
     @echo "Packaging Backend..."
     mkdir -p {{ARTIFACT_DIR}}
-    docker save goodnumbers-backend:latest | gzip --rsyncable > {{ARTIFACT_DIR}}/backend.tar.gz
+    docker save goodnumbers-backend:latest | pigz -p 2 > {{ARTIFACT_DIR}}/backend.tar.gz
 
 _package-frontend:
     @echo "Packaging Frontend..."
     mkdir -p {{ARTIFACT_DIR}}
-    docker save goodnumbers-frontend:latest | gzip --rsyncable > {{ARTIFACT_DIR}}/frontend.tar.gz
+    docker save goodnumbers-frontend:latest | pigz -p 2 > {{ARTIFACT_DIR}}/frontend.tar.gz
 
 [parallel]
 package-local: _package-backend _package-frontend
@@ -187,7 +195,7 @@ push-all:
     @if [ -f "{{GCP_KEY_LOCAL}}" ]; then \
         scp {{GCP_KEY_LOCAL}} {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/secrets/gcp-key.json; \
     fi
-    rsync -avzhP {{ARTIFACT_DIR}}/ {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/app/deploy-artifacts/
+    rsync -avhP {{ARTIFACT_DIR}}/ {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/app/deploy-artifacts/
     scp docker-compose.yml docker-compose.prod.yml Caddyfile {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/app/
 
 logs-prod:

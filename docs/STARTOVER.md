@@ -1,1 +1,0 @@
-- Phase 2, Task 4 involves adding an agreements signed bit to the user model. This could be added to the user model at the beginning, so there's no need to change it and migrate at this point.
