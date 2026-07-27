@@ -26,3 +26,13 @@ sync.suppeinthelife.com {
         }
     }
 }
+
+stanfordeld26.suppeinthelife.com {
+    # Secure the feed with classmate:stanford2026
+    basic_auth {
+        classmate $2a$14$jl9EgIgvhvRQhTa7W95jTOWX8XSDQIjvsAcL00xY2V38CRac6AmVu
+    }
+    
+    root * /var/www/stanfordeld26
+    file_server
+}

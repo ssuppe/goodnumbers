@@ -41,6 +41,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
+      - /home/ssuppe/stanfordeld26:/var/www/stanfordeld26
     depends_on:
       - backend
       - frontend
