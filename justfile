@@ -204,6 +204,16 @@ logs-prod:
 db-reset-prod:
     ssh {{SERVER_USER}}@{{SERVER_IP}} "docker exec app-backend-1 npx prisma db push --force-reset"
 
+freetier:
+    ssh {{SERVER_USER}}@{{SERVER_IP}} "/usr/local/bin/check-freetier.sh"
+
+freetier-setup:
+    @echo "Deploying check-freetier.sh and installing vnstat on {{SERVER_IP}}..."
+    @scp scripts/check-freetier.sh {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/check-freetier.sh
+    @ssh {{SERVER_USER}}@{{SERVER_IP}} "sudo cp /home/{{SERVER_USER}}/check-freetier.sh /usr/local/bin/check-freetier.sh && sudo chmod +x /usr/local/bin/check-freetier.sh && sudo apt-get update && sudo apt-get install -y vnstat && sudo systemctl enable --now vnstat"
+    @echo "✨ GCP Free Tier monitoring agent setup complete!"
+
+
 # --- TESTING ---
 test:
     @echo "Running all tests..."
