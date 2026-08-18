@@ -104,9 +104,9 @@ deploy: build-local _db-deploy-prompt package-local push-all
 
 
 _db-deploy-prompt:
-
     #!/usr/bin/env bash
     mkdir -p {{ARTIFACT_DIR}}
+
     rm -f {{ARTIFACT_DIR}}/.reset_db
     if [ -t 0 ]; then
         echo "🚀 Production Database handling:"
@@ -198,7 +198,8 @@ push-all:
         scp {{GCP_KEY_LOCAL}} {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/secrets/gcp-key.json; \
     fi
     rsync -avhP {{ARTIFACT_DIR}}/ {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/app/deploy-artifacts/
-    scp docker-compose.yml docker-compose.prod.yml Caddyfile {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/app/
+    scp docker-compose.yml docker-compose.prod.yml {{SERVER_USER}}@{{SERVER_IP}}:/home/{{SERVER_USER}}/app/
+
 
 logs-prod:
     ssh {{SERVER_USER}}@{{SERVER_IP}} "cd app && docker compose logs -f"
