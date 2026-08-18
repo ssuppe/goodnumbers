@@ -9,6 +9,11 @@ services:
     restart: unless-stopped
     depends_on:
       - redis
+    networks:
+      default:
+      caddy-proxy:
+        aliases:
+          - goodnumbers-backend
     logging:
       driver: "json-file"
       options:
@@ -18,6 +23,11 @@ services:
   frontend:
     image: goodnumbers-frontend:latest
     restart: unless-stopped
+    networks:
+      default:
+      caddy-proxy:
+        aliases:
+          - goodnumbers-frontend
     logging:
       driver: "json-file"
       options:
@@ -28,27 +38,11 @@ services:
     image: nightscout-clarity:latest
     pull_policy: never   # locally-built image, deployed separately from nightscout-lucid/
     restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  caddy:
-    image: caddy:2-alpine
-    # Ports are defined in overlays (local vs prod)
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-      - /home/ssuppe/stanfordeld26:/var/www/stanfordeld26
-    depends_on:
-      - backend
-      - frontend
     networks:
-      - default
-      - caddy-proxy  # shared external network so Caddy can reach services in other compose projects
-    restart: unless-stopped
+      default:
+      caddy-proxy:
+        aliases:
+          - clarity
     logging:
       driver: "json-file"
       options:
@@ -67,27 +61,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  chess:
-    image: chess-tutor:latest
-    container_name: chess-tutor
-    restart: unless-stopped
-    volumes:
-      - ./chess-wikipedia-cache:/app/public/wikipedia
-      - ./chess-fixtures-tactics:/app/fixtures/tactics
-    environment:
-      - PORT=3050
-      - NEXT_PUBLIC_BASE_PATH=/chess
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-volumes:
-  caddy_data:
-  caddy_config:
-
 networks:
   caddy-proxy:
     external: true  # created once on the server: docker network create caddy-proxy
+

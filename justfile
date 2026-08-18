@@ -102,7 +102,9 @@ deploy: build-local _db-deploy-prompt package-local push-all
         rm -rf deploy-artifacts/*.tar.gz && \
         docker image prune -f"
 
+
 _db-deploy-prompt:
+
     #!/usr/bin/env bash
     mkdir -p {{ARTIFACT_DIR}}
     rm -f {{ARTIFACT_DIR}}/.reset_db
