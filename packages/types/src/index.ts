@@ -40,8 +40,29 @@ export interface GlycemicCluster {
   eventCount: number;
   activeDays: number[]; // 1=Mon, 7=Sun
   events: GlycemicEvent[];
+  isPrimaryFocus?: boolean;
   timezone?: string; // e.g. "America/New_York"
   utcOffset?: number; // e.g. -240
+}
+
+// --- Quick Coach Story Types ---
+export type AnimationCueAction =
+  | "DRAW_MEAN"
+  | "DRAW_DAY"
+  | "DRAW_TREATMENTS"
+  | "HIGHLIGHT_WINDOW";
+
+export interface AnimationCue {
+  time_ms: number;
+  action: AnimationCueAction;
+  day_index?: number;
+  label?: string;
+}
+
+export interface QuickCoachStory {
+  audio_script: string;
+  animation_cues: AnimationCue[];
+  audio_url?: string;
 }
 
 // --- Insights Types ---

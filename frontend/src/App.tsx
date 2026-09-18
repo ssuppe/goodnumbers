@@ -12,6 +12,7 @@ import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import QuickCoachPage from "./pages/QuickCoachPage";
 
 const router = createBrowserRouter([
   {
@@ -67,6 +68,15 @@ const router = createBrowserRouter([
           },
           // Add other protected routes here
         ],
+      },
+    ],
+  },
+  {
+    element: <ProtectedRoute />,
+    children: [
+      {
+        path: "coach/:journalId",
+        element: <QuickCoachPage />,
       },
     ],
   },

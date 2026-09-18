@@ -100,6 +100,12 @@ const MOCK_EXECUTIVE_SUMMARY = [
 vi.mock('../../../src/lib/ai/gemini.js', () => ({
   generateClusterAIInsight: vi.fn().mockResolvedValue(MOCK_AI_ASSESSMENT),
   generateExecutiveSummary: vi.fn().mockResolvedValue(MOCK_EXECUTIVE_SUMMARY),
+  generateQuickCoachStory: vi.fn().mockResolvedValue({
+    audio_script: 'Mocked Quick Coach Story',
+    animation_cues: [
+      { time_ms: 0, action: 'DRAW_MEAN', label: 'Average Trend' },
+    ],
+  }),
 }));
 
 // Mock other libs to avoid side effects
@@ -169,8 +175,9 @@ describe('Journal AI Insights Integration', () => {
     expect(clustersSaved).toHaveLength(2);
 
     // Verify AI assessment is present in the saved cluster data
-    expect(clustersSaved[0]).toHaveProperty('aiInsight', MOCK_AI_ASSESSMENT);
-    expect(clustersSaved[1]).toHaveProperty('aiInsight', MOCK_AI_ASSESSMENT);
+    expect(clustersSaved[0].aiInsight).toMatchObject(MOCK_AI_ASSESSMENT);
+    expect(clustersSaved[0].aiInsight).toHaveProperty('quickCoachStory');
+    expect(clustersSaved[1].aiInsight).toMatchObject(MOCK_AI_ASSESSMENT);
     expect(clustersSaved[0]).toHaveProperty(
       'quickLogSuggestions',
       MOCK_AI_ASSESSMENT.quickLogSuggestions,

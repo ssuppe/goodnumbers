@@ -60,6 +60,7 @@ model GlycemicEventCluster {
   eventType           String
   eventCount          Int
   meanTimeMinutes     Int
+  isPrimaryFocus      Boolean @default(false)
   clusterDataJson     Json
   userNotes           String?
   insights            Json?

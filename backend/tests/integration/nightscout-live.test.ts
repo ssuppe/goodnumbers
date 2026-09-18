@@ -4,8 +4,11 @@ import { NightscoutClient } from '../../src/lib/nightscout/client.js';
 const liveUrl = process.env.TEST_NIGHTSCOUT_URL;
 const liveToken = process.env.TEST_NIGHTSCOUT_TOKEN;
 
-// We skip this suite entirely if the environment variables are not set.
-const runLiveTests = liveUrl && liveToken ? describe : describe.skip;
+// We skip this suite unless RUN_LIVE_TESTS is explicitly set and credentials exist.
+const runLiveTests =
+  process.env.RUN_LIVE_TESTS === 'true' && liveUrl && liveToken
+    ? describe
+    : describe.skip;
 
 runLiveTests('NightscoutClient Live Integration', { timeout: 30000 }, () => {
   let client: NightscoutClient;

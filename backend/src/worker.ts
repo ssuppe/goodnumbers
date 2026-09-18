@@ -13,6 +13,8 @@ import { calculateMetrics, calculateTrends } from './lib/scorecard.js';
 import { ScoreCardDataSchema, type ScoreCardData } from '@goodnumbers/schemas';
 import { HotspotDetector } from './lib/analysis/HotspotDetector.js';
 import { calculatePatternStats } from './lib/analysis/patterns.js';
+import { triageClusters } from './lib/analysis/ClusterTriage.js';
+import { sendCoachNotificationWebhook } from './lib/notifications/webhook.js';
 import { z } from 'zod';
 import { NightscoutTreatment } from './lib/nightscout/types.js';
 import { generateAggregateInsights } from './lib/insights/aggregate.js';
@@ -20,6 +22,7 @@ import { generateClusterInsights } from './lib/insights/cluster.js';
 import {
   generateClusterAIInsight,
   generateExecutiveSummary,
+  generateQuickCoachStory,
 } from './lib/ai/gemini.js';
 import { InsightArraySchema } from '@goodnumbers/schemas';
 import { GlucoseUnit, GlycemicCluster, Highlight } from '@goodnumbers/types';
@@ -310,13 +313,14 @@ export async function processJournalJob(job: Job) {
       `[Worker] Detected ${hyperEvents.length} hyper events and ${hypoEvents.length} hypo events.`,
     );
 
-    // 4. Find Clusters
+    // 4. Find & Triage Clusters
     const hyperClusters = detector.findClusters(hyperEvents);
     const hypoClusters = detector.findClusters(hypoEvents);
     const allClusters = [...hyperClusters, ...hypoClusters];
+    const triagedClusters = triageClusters(allClusters);
 
     console.log(
-      `[Worker] Identified ${allClusters.length} recurring clusters. Timezone: ${userTimezone}`,
+      `[Worker] Identified ${triagedClusters.length} recurring clusters. Timezone: ${userTimezone}`,
     );
 
     // --- Insights Generation ---
@@ -335,7 +339,7 @@ export async function processJournalJob(job: Job) {
     treatments.sort((a, b) => a.date - b.date);
 
     console.log(
-      `[Worker] Generating AI insights for ${allClusters.length} clusters...`,
+      `[Worker] Generating AI insights for ${triagedClusters.length} clusters...`,
     );
 
     // Fetch existing clusters to preserve userNotes if they exist
@@ -351,10 +355,10 @@ export async function processJournalJob(job: Job) {
     const clusterData = [];
     let currentIdx = 0;
 
-    for (const c of allClusters) {
+    for (const c of triagedClusters) {
       currentIdx++;
       const progress = Math.min(
-        60 + (currentIdx / allClusters.length) * 35,
+        60 + (currentIdx / triagedClusters.length) * 35,
         95,
       );
 
@@ -362,7 +366,7 @@ export async function processJournalJob(job: Job) {
         where: { id: journalId },
         data: {
           progress: Math.floor(progress),
-          statusMessage: `Using AI for better insights and explanations (${currentIdx} out of ${allClusters.length})`,
+          statusMessage: `Using AI for better insights and explanations (${currentIdx} out of ${triagedClusters.length})`,
         },
       });
 
@@ -384,6 +388,19 @@ export async function processJournalJob(job: Job) {
         journal.influencingFactors as string[] | null,
       );
 
+      // Step C: Quick Coach Audio-Visual Story (for primary focus cluster)
+      let quickCoachStory = null;
+      if (c.isPrimaryFocus) {
+        quickCoachStory = await generateQuickCoachStory(
+          c as unknown as GlycemicCluster,
+          deterministicInsights,
+          journal.user.preferredUnits as GlucoseUnit,
+          userTimezone,
+          journal.weeklyVibe,
+          journal.influencingFactors as string[] | null,
+        );
+      }
+
       // SECURITY: Validate deterministic insights before DB write
       const safeInsights = InsightArraySchema.safeParse(deterministicInsights);
       if (!safeInsights.success) {
@@ -394,16 +411,22 @@ export async function processJournalJob(job: Job) {
       const signature = `${c.type}-${c.avgStartMinute}`;
       const preservedNote = existingNotesMap.get(signature) || null;
 
+      const aiInsightWithStory = {
+        ...aiAssessment,
+        ...(quickCoachStory ? { quickCoachStory } : {}),
+      };
+
       clusterData.push({
         journalId,
         eventType: c.type,
         eventCount: c.eventCount,
         meanTimeMinutes: c.avgStartMinute,
+        isPrimaryFocus: Boolean(c.isPrimaryFocus),
         clusterDataJson: c as unknown as Prisma.InputJsonValue,
         insights: safeInsights.success
           ? (safeInsights.data as unknown as Prisma.InputJsonValue)
           : [],
-        aiInsight: aiAssessment as unknown as Prisma.InputJsonValue,
+        aiInsight: aiInsightWithStory as unknown as Prisma.InputJsonValue,
         quickLogSuggestions:
           aiAssessment.quickLogSuggestions as unknown as Prisma.InputJsonValue,
         userNotes: preservedNote,
@@ -497,6 +520,17 @@ export async function processJournalJob(job: Job) {
         treatments: treatments as unknown as Prisma.InputJsonValue,
         analysisInsights: analysisInsights as unknown as Prisma.InputJsonValue,
       },
+    });
+
+    // Notify user via webhook (Telegram / Pushover / Webhook)
+    const primary = triagedClusters.find((c) => c.isPrimaryFocus);
+    const primaryTitle = primary
+      ? `${primary.type === 'hyper' ? 'High blood sugar' : 'Low blood sugar'} pattern around ${Math.floor(primary.avgStartMinute / 60)}:${(primary.avgStartMinute % 60).toString().padStart(2, '0')}`
+      : undefined;
+
+    await sendCoachNotificationWebhook({
+      journalId,
+      primaryClusterTitle: primaryTitle,
     });
 
     console.log(`[Worker] Finished job ${job.id}`);

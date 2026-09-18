@@ -4,6 +4,7 @@ import {
   Insight,
   GlucoseUnit,
   Highlight,
+  QuickCoachStory,
 } from '@goodnumbers/types';
 import {
   EXECUTIVE_SUMMARY_PROMPT,
@@ -11,6 +12,7 @@ import {
   CLUSTER_AI_CHAT_PROMPT,
   CLUSTER_AI_SYNTHESIS_PROMPT,
   JOURNAL_TITLE_PROMPT,
+  QUICK_COACH_STORY_PROMPT,
   type ChatMessage,
   type JournalTitleContext,
 } from './prompts.js';
@@ -101,6 +103,44 @@ const titleFlashModel = genAI.getGenerativeModel({
   generationConfig: {
     responseMimeType: 'application/json',
     responseSchema: titleSchema,
+  },
+});
+
+const quickCoachStorySchema: Schema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    audio_script: { type: SchemaType.STRING },
+    animation_cues: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          time_ms: { type: SchemaType.INTEGER },
+          action: {
+            type: SchemaType.STRING,
+            format: 'enum',
+            enum: [
+              'DRAW_MEAN',
+              'DRAW_DAY',
+              'DRAW_TREATMENTS',
+              'HIGHLIGHT_WINDOW',
+            ],
+          },
+          day_index: { type: SchemaType.INTEGER },
+          label: { type: SchemaType.STRING },
+        },
+        required: ['time_ms', 'action'],
+      },
+    },
+  },
+  required: ['audio_script', 'animation_cues'],
+};
+
+const storyFlashModel = genAI.getGenerativeModel({
+  model: 'gemini-3-flash-preview',
+  generationConfig: {
+    responseMimeType: 'application/json',
+    responseSchema: quickCoachStorySchema,
   },
 });
 
@@ -461,5 +501,65 @@ export async function generateJournalTitle(
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[Gemini] Journal title generation failed: ${errorMessage}`);
     return defaultResult;
+  }
+}
+
+/**
+ * Generates an audio-visual narration story synchronized with chart animation cues.
+ */
+export async function generateQuickCoachStory(
+  cluster: GlycemicCluster,
+  deterministicInsights: Insight[],
+  preferredUnits: GlucoseUnit,
+  timezone: string,
+  weeklyVibe?: string | null,
+  influencingFactors?: string[] | null,
+): Promise<QuickCoachStory> {
+  const startHour = Math.floor(cluster.avgStartMinute / 60);
+  const startMin = (cluster.avgStartMinute % 60).toString().padStart(2, '0');
+  const defaultStory: QuickCoachStory = {
+    audio_script: `Let's look at your post-meal trends this week. We noticed recurring ${cluster.type === 'hyper' ? 'highs' : 'lows'} around ${startHour}:${startMin}.`,
+    animation_cues: [
+      { time_ms: 0, action: 'DRAW_MEAN', label: 'Average Trend' },
+      { time_ms: 3000, action: 'DRAW_DAY', day_index: 0, label: 'Day 1' },
+      {
+        time_ms: 6000,
+        action: 'DRAW_TREATMENTS',
+        day_index: 0,
+        label: 'Treatments',
+      },
+    ],
+  };
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return defaultStory;
+  }
+
+  const prompt = QUICK_COACH_STORY_PROMPT(
+    cluster,
+    deterministicInsights,
+    preferredUnits,
+    timezone,
+    weeklyVibe,
+    influencingFactors,
+  );
+
+  try {
+    const result = await storyFlashModel.generateContent(prompt);
+    const text = result.response.text();
+    const parsed = parseAIJson<QuickCoachStory>(text, defaultStory);
+
+    if (!parsed.audio_script || !Array.isArray(parsed.animation_cues)) {
+      return defaultStory;
+    }
+
+    return parsed;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(
+      `[Gemini] Quick Coach story generation failed: ${errorMessage}`,
+    );
+    return defaultStory;
   }
 }

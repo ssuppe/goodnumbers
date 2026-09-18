@@ -313,7 +313,11 @@ export interface JournalTitleContext {
     timeInTightRange: number;
     timeBelowRange: number;
   } | null;
-  executiveSummary: Array<{ type: string; title: string; short_description: string }> | null;
+  executiveSummary: Array<{
+    type: string;
+    title: string;
+    short_description: string;
+  }> | null;
   clusters: Array<{
     eventType: string;
     eventCount: number;
@@ -326,7 +330,8 @@ export interface JournalTitleContext {
 }
 
 export const JOURNAL_TITLE_PROMPT = (ctx: JournalTitleContext) => {
-  const unitsLabel = ctx.preferredUnits === GlucoseUnit.MMOL ? 'mmol/L' : 'mg/dL';
+  const unitsLabel =
+    ctx.preferredUnits === GlucoseUnit.MMOL ? 'mmol/L' : 'mg/dL';
 
   const scoreSection = ctx.scoreCardData
     ? `
@@ -353,7 +358,8 @@ ${ctx.clusters
   .map((c) => {
     const hours = Math.floor(c.meanTimeMinutes / 60);
     const minutes = (c.meanTimeMinutes % 60).toString().padStart(2, '0');
-    const typeLabel = c.eventType === 'hyper' ? 'High Blood Sugar' : 'Low Blood Sugar';
+    const typeLabel =
+      c.eventType === 'hyper' ? 'High Blood Sugar' : 'Low Blood Sugar';
     const notesLabel = c.userNotes ? ` | User notes: "${c.userNotes}"` : '';
     return `- ${typeLabel} around ${hours}:${minutes}, occurred ${c.eventCount} time(s)${notesLabel}`;
   })
@@ -388,5 +394,68 @@ CONSTRAINTS:
 - Use a supportive, empathetic tone.
 - Do not use conversational filler.
 - Ensure the output is valid JSON.
+`;
+};
+
+export const QUICK_COACH_STORY_PROMPT = (
+  cluster: GlycemicCluster,
+  deterministicInsights: Insight[],
+  preferredUnits: GlucoseUnit,
+  timezone: string,
+  weeklyVibe?: string | null,
+  influencingFactors?: string[] | null,
+) => {
+  const unitsLabel = preferredUnits === GlucoseUnit.MMOL ? 'mmol/L' : 'mg/dL';
+  const startHour = Math.floor(cluster.avgStartMinute / 60);
+  const startMin = (cluster.avgStartMinute % 60).toString().padStart(2, '0');
+  const timeStr = `${startHour}:${startMin}`;
+  const patternType =
+    cluster.type === 'hyper' ? 'High Blood Sugar' : 'Low Blood Sugar';
+  const insightsList = deterministicInsights
+    .map((i) => `- ${i.note}`)
+    .join('\n');
+  const vibeSection = weeklyVibe ? `\nWeekly Vibe: ${weeklyVibe}` : '';
+  const factorsSection =
+    influencingFactors && influencingFactors.length > 0
+      ? `\nInfluencing Factors: ${influencingFactors.join(', ')}`
+      : '';
+
+  return `
+You are an empathetic, concise diabetes data coach narrating an animated visual data story for a mobile patient.
+The patient is viewing a dynamic ECharts chart showing their single most important glycemic cluster of the week.
+
+CLUSTER METRICS:
+- Pattern: ${patternType} around ${timeStr}
+- Frequency: Occurred ${cluster.eventCount} times this week
+- Timezone: ${timezone}
+- Units: ${unitsLabel}
+${vibeSection}
+${factorsSection}
+
+DETERMINISTIC HEURISTICS:
+${insightsList || '- No specific heuristic triggers.'}
+
+TASK:
+1. Write a short, empathetic spoken audio narration script (45-60 words max, approx. 20-30 seconds of speech) breaking down this specific pattern.
+2. Synchronize visual animation cues with timestamps (in milliseconds) that tell the frontend when to draw the mean trendline, individual daily traces, and treatment markers.
+
+OUTPUT FORMAT:
+Respond strictly with a valid JSON object matching this structure:
+{
+  "audio_script": "Let's look at your post-lunch numbers this week. Around 1:30 PM, we noticed consistent highs across several afternoons. Notice how the trend rises steadily after meals, even on days with timely boluses.",
+  "animation_cues": [
+    { "time_ms": 0, "action": "DRAW_MEAN", "label": "Average Trend" },
+    { "time_ms": 4500, "action": "DRAW_DAY", "day_index": 0, "label": "Monday Trace" },
+    { "time_ms": 8000, "action": "DRAW_TREATMENTS", "day_index": 0, "label": "Meal Bolus" },
+    { "time_ms": 12000, "action": "DRAW_DAY", "day_index": 1, "label": "Wednesday Trace" }
+  ]
+}
+
+CONSTRAINTS:
+- Keep the narration conversational, supportive, and non-judgmental.
+- Use "blood sugar" instead of "glucose".
+- Action names must strictly be one of: "DRAW_MEAN", "DRAW_DAY", "DRAW_TREATMENTS", "HIGHLIGHT_WINDOW".
+- Timestamps (time_ms) must start at 0 and increase chronologically.
+- Return ONLY valid JSON with no markdown wrapping.
 `;
 };

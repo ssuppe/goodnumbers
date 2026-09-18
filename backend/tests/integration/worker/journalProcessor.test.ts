@@ -99,6 +99,12 @@ vi.mock('../../../src/lib/ai/gemini.js', () => ({
       short_description: 'Mock desc',
     },
   ]),
+  generateQuickCoachStory: vi.fn().mockResolvedValue({
+    audio_script: 'Mocked Quick Coach story script',
+    animation_cues: [
+      { time_ms: 0, action: 'DRAW_MEAN', label: 'Average Trend' },
+    ],
+  }),
 }));
 
 // Mock other libs to avoid side effects
@@ -268,11 +274,12 @@ describe('Journal Processor Worker', () => {
     expect(analysisInsights.length).toBeGreaterThan(0);
     expect(analysisInsights[0].note).toContain('estimated GMI');
 
-    // Verification 4: Cluster Insights
+    // Verification 4: Cluster Insights & Primary Focus Flag
     const createManyCall = mockPrismaCreateMany.mock.calls[0] as [
       { data: Array<Partial<GlycemicEventCluster>> },
     ];
     expect(createManyCall).toBeDefined();
     expect(createManyCall[0].data[0]).toHaveProperty('insights');
+    expect(createManyCall[0].data[0]).toHaveProperty('isPrimaryFocus', true);
   });
 });

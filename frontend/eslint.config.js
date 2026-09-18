@@ -7,7 +7,14 @@ import reactRefresh from "eslint-plugin-react-refresh";
 
 export default tseslint.config(
   {
-    ignores: ["dist/"],
+    ignores: [
+      "dist/**",
+      "**/dist/**",
+      "e2e/**",
+      "**/e2e/**",
+      "playwright.config.ts",
+      "**/playwright.config.ts",
+    ],
   },
 
   // Apply basic rules that are not type-aware
@@ -24,7 +31,12 @@ export default tseslint.config(
           // This is the definitive fix for the new error.
           // It tells the service to allow linting of config files
           // that aren't explicitly in a tsconfig.
-          allowDefaultProject: ["./eslint.config.js"],
+          allowDefaultProject: [
+            "./eslint.config.js",
+            "frontend/eslint.config.js",
+            "./playwright.config.ts",
+            "frontend/playwright.config.ts",
+          ],
         },
         tsconfigRootDir: import.meta.dirname,
       },

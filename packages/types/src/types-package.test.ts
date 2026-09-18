@@ -11,4 +11,19 @@ describe("Types Package", () => {
     expect(GlucoseUnit).toBeDefined();
     expect(GlucoseUnit?.MGDL).toBe("MGDL");
   });
+
+  it("should support QuickCoachStory interface structure", async () => {
+    const { GlucoseUnit } = await import("./index");
+    const story = {
+      audio_script: "Let's review your post-lunch data.",
+      animation_cues: [
+        { time_ms: 0, action: "DRAW_MEAN" as const },
+        { time_ms: 3000, action: "DRAW_DAY" as const, day_index: 0 },
+        { time_ms: 6000, action: "DRAW_TREATMENTS" as const, day_index: 0 },
+      ],
+    };
+    expect(story.audio_script).toBe("Let's review your post-lunch data.");
+    expect(story.animation_cues).toHaveLength(3);
+    expect(story.animation_cues[0].action).toBe("DRAW_MEAN");
+  });
 });
