@@ -8,6 +8,9 @@ import React, {
 import ReactECharts from "echarts-for-react";
 import {
   type GlycemicEventCluster,
+  type GlycemicCluster,
+  type GlycemicEvent,
+  type GlucoseReading,
   type QuickCoachStory,
 } from "@goodnumbers/types";
 import {
@@ -97,23 +100,15 @@ export default function QuickCoachStoryPlayer({
   const isHyper = cluster.eventType === "hyper";
 
   // 1. Process Cluster Events and Treatments into Organized Days
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const {
-    days,
-    boundaryHour: _boundaryHour,
-    meanTrendline,
-    commonDomain,
-  } = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const clusterObj = cluster.clusterDataJson as any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rawEvents: any[] = clusterObj?.events || [];
+  const { days, meanTrendline, commonDomain } = useMemo(() => {
+    // clusterDataJson is Prisma Json but is shaped as GlycemicCluster
+    const clusterObj = cluster.clusterDataJson as unknown as GlycemicCluster;
+    const rawEvents: GlycemicEvent[] = clusterObj?.events ?? [];
 
     const validEvents = rawEvents
       .filter((e) => e.readings && e.readings.length >= 2)
       .sort(
         (a, b) =>
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
           new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
       );
 
@@ -121,9 +116,7 @@ export default function QuickCoachStoryPlayer({
     const relevantTreatmentTimestamps: string[] = [];
     if (treatments.length > 0 && validEvents.length > 0) {
       validEvents.forEach((ev) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const start = new Date(ev.startTime).getTime();
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const end = new Date(ev.endTime).getTime();
         treatments.forEach((t) => {
           const tTime = new Date(t.date).getTime();
@@ -142,19 +135,13 @@ export default function QuickCoachStoryPlayer({
       });
     }
 
-    const bHour = getBoundaryHour(
-      { ...clusterObj, events: validEvents } as Parameters<
-        typeof getBoundaryHour
-      >[0],
-      relevantTreatmentTimestamps,
-    );
+    const bHour = getBoundaryHour(clusterObj, relevantTreatmentTimestamps);
 
     // Group Events by Day
     const dayMap = new Map<string, DayData>();
     let dayCounter = 0;
 
-    validEvents.forEach((event) => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    validEvents.forEach((event: GlycemicEvent) => {
       const wallDate = getLocalWallClockDate(event.startTime);
       const dayName = format(wallDate, "EEEE");
       const dateStr = format(wallDate, "EEE, MMM d");
@@ -164,9 +151,7 @@ export default function QuickCoachStoryPlayer({
         const color = eventColors[dayCounter % eventColors.length];
         dayCounter++;
 
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const startLocal = getLocalWallClockDate(event.startTime);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const endLocal = getLocalWallClockDate(event.endTime);
 
         dayMap.set(key, {
@@ -183,21 +168,15 @@ export default function QuickCoachStoryPlayer({
       }
 
       const dayRecord = dayMap.get(key)!;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       const normalizedStartTime = normalizeTime(event.startTime, bHour);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       const eventStartMs = new Date(event.startTime).getTime();
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       const eventEndMs = new Date(event.endTime).getTime();
 
       // Readings
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      event.readings?.forEach((r: any) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      event.readings?.forEach((r: GlucoseReading) => {
         const rTime = new Date(r.timestamp).getTime();
         const offset = rTime - eventStartMs;
         const normTime = normalizedStartTime + offset;
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const val = convertGlucose(r.value, normalizedUnits);
         if (!isNaN(normTime) && !isNaN(val)) {
           dayRecord.glucoseData.push([normTime, val]);
