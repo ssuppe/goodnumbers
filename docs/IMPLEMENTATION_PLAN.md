@@ -72,6 +72,16 @@ This document tracks the phased implementation of the Goodnumbers project. It se
   - **Status:** **COMPLETE**. Implemented Value-Based Scanning for solid peak highlighting.
   - **Status:** **COMPLETE**. Implemented Timezone-Aware cluster splitting and human-friendly city mapping (e.g., "London / Paris").
 
+### **Phase 11: Quick Coach MVP** - COMPLETE
+
+- [x] **Task 1: Schema & Types** — Added `isPrimaryFocus`, `aiInsight`, and `quickLogSuggestions` to `GlycemicEventCluster`. Exported `AnimationCue` and `QuickCoachStory` types from `@goodnumbers/types`.
+- [x] **Task 2: Triage Engine & Webhook** — Implemented `triageClusters()` (`ClusterTriage.ts`) with clinical severity scoring. Implemented `sendCoachNotificationWebhook()` dispatch with magic link.
+- [x] **Task 3: AI Story Generator** — Implemented `generateQuickCoachStory()` via `QUICK_COACH_STORY_PROMPT` in Gemini integration. Stores `{ audio_script, animation_cues }` JSON in `cluster.aiInsight`.
+- [x] **Task 4: Route & Shell** — Registered `/coach/:journalId` route in `App.tsx`. Implemented `QuickCoachPage.tsx` with distraction-free mobile layout.
+- [x] **Task 5: Multistep Story Player** — Implemented `QuickCoachStoryPlayer.tsx` with 3-tier ECharts grid (glucose 50%, carbs 18%, insulin 18%), day-by-day step navigation, and `window.speechSynthesis` narration.
+- [x] **Task 6: Voice Negotiation** — Implemented `QuickCoachVoiceNegotiation.tsx` with Web Speech API push-to-talk, text fallback, and Gemini-backed cluster chat endpoint.
+- [x] **Task 7: Goal Persistence & Celebration** — Implemented sticky "Accept & Save Goal" bar calling `PUT /api/journals/:id`. Added celebration modal with `WeeklyVibe` emojis.
+
 ### **Phase 8: Future Work & Polish**
 
 - [ ] **Task 1: Podcast Audio:** Implement TTS generation for the weekly summary.

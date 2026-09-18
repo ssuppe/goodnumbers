@@ -207,3 +207,4 @@ This page displays the generated report and serves as the primary interface for 
   - **Goals:** Text area for next week's goals.
 
 - **Sticky Action Bar:** For saving or discarding changes.
+- **Quick Coach Mobile Experience (`/coach/:journalId`):** A standalone, distraction-free mobile route focused on the single most clinically significant glycemic cluster of the week. Features a 3-tier synchronized ECharts chart (mean glucose, carbs, insulin), a multistep day-by-day animated audio-visual story, push-to-talk voice negotiation for weekly micro-habits, and a single-tap handshake saving directly into the journal.

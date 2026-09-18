@@ -132,9 +132,12 @@ model GlycemicEventCluster {
   eventType           String
   eventCount          Int
   meanTimeMinutes     Int
+  isPrimaryFocus      Boolean   @default(false) // Set by triage engine for Quick Coach
   clusterDataJson     Json      // Full cluster data + Timezone/Offset metadata
   userNotes           String?
   insights            Json?     // Statistical insights (Zod validated)
+  aiInsight           Json?     // Quick Coach story payload { audio_script, animation_cues }
+  quickLogSuggestions Json?     // AI-generated one-tap journaling suggestions
 }
 ```
 
@@ -163,6 +166,7 @@ All endpoints require authentication (`protect`) and CSRF protection.
 - **`GET /api/journals/:id`**: Fetches full journal data.
 - **`PUT /api/journals/:id`**: Updates user inputs (vibe, goals, notes).
 - **`DELETE /api/journals/:id`**: Deletes a journal.
+- **`POST /api/journals/:id/clusters/:clusterId/chat`**: Multi-turn AI conversation for Quick Coach voice negotiation. Returns an empathetic response and synthesized micro-habit proposal.
 
 - **`PUT /api/user/settings`**: Updates Nightscout credentials and units.
 

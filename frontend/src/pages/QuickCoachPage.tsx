@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api, updateJournal } from "../lib/api";
 import { type Journal, type GlycemicEventCluster } from "@goodnumbers/types";
@@ -6,6 +6,8 @@ import { Loader2, AlertTriangle, Sparkles, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import QuickCoachStoryPlayer from "../components/coach/QuickCoachStoryPlayer";
 import QuickCoachVoiceNegotiation from "../components/coach/QuickCoachVoiceNegotiation";
+import { AuthContext } from "../contexts/AuthContextDefinition";
+import type { Treatment, GlucoseUnit } from "../lib/agpUtils";
 
 type JournalResponse = Journal & {
   clusters: GlycemicEventCluster[];
@@ -13,6 +15,8 @@ type JournalResponse = Journal & {
 
 export default function QuickCoachPage() {
   const { journalId } = useParams<{ journalId: string }>();
+  const authContext = useContext(AuthContext);
+  const user = authContext?.user;
   const [journal, setJournal] = useState<JournalResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,9 +33,6 @@ export default function QuickCoachPage() {
         setError(null);
         const res = await api.get<JournalResponse>(`/journals/${journalId}`);
         setJournal(res.data);
-        if (res.data.goalsForNextWeek) {
-          setAgreedGoal(res.data.goalsForNextWeek);
-        }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Unknown error";
         setError(msg);
@@ -42,6 +43,15 @@ export default function QuickCoachPage() {
 
     void fetchJournal();
   }, [journalId]);
+
+  useEffect(() => {
+    if (storyFinished) {
+      const el = document.getElementById("habit-negotiation-section");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  }, [storyFinished]);
 
   const handleSaveGoal = async () => {
     if (!journalId || !agreedGoal.trim()) return;
@@ -64,8 +74,8 @@ export default function QuickCoachPage() {
         data-testid="loading-spinner"
         className="min-h-screen bg-[#FBF9F5] flex flex-col items-center justify-center p-4"
       >
-        <Loader2 className="w-10 h-10 animate-spin text-[#D9775B]" />
-        <p className="mt-4 text-sm font-medium text-gray-600">
+        <Loader2 className="w-8 h-8 animate-spin text-[#D9775B] mb-2" />
+        <p className="text-sm font-medium text-gray-600">
           Preparing your Quick Coach session...
         </p>
       </div>
@@ -75,27 +85,26 @@ export default function QuickCoachPage() {
   if (error || !journal) {
     return (
       <div className="min-h-screen bg-[#FBF9F5] flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-4">
-          <AlertTriangle className="w-6 h-6" />
+        <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-3">
+          <AlertTriangle className="w-6 h-6 text-red-600" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">
+        <h2 className="text-base font-bold text-gray-900 mb-1">
           Unable to load coaching session
         </h2>
-        <p className="text-sm text-gray-600 max-w-md mb-6">
+        <p className="text-xs text-gray-600 mb-6 max-w-xs">
           {error || "We could not find the requested journal data."}
         </p>
         <Link
-          to="/dashboard"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#2C4C5B] text-white text-sm font-semibold hover:bg-[#233c48] transition-colors"
+          to="/"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2C4C5B] text-white text-xs font-semibold hover:bg-[#233c48] transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" /> Return to Dashboard
+          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </Link>
       </div>
     );
   }
 
-  const primaryCluster =
-    journal.clusters.find((c) => c.isPrimaryFocus) || journal.clusters[0];
+  const primaryCluster = journal.clusters.find((c) => c.isPrimaryFocus);
 
   const dateRangeLabel =
     journal.startDate && journal.endDate
@@ -111,18 +120,18 @@ export default function QuickCoachPage() {
   const patternTimeStr = `${startHour}:${startMin}`;
 
   return (
-    <div className="min-h-screen bg-[#FBF9F5] text-gray-900 flex flex-col justify-between max-w-lg mx-auto pb-24 shadow-sm">
+    <div className="min-h-screen bg-[#FBF9F5] text-gray-900 flex flex-col justify-between max-w-lg mx-auto pb-8 shadow-sm">
       {/* Header */}
-      <header className="px-4 pt-6 pb-3 flex items-center justify-between border-b border-[#E8E1D9]">
+      <header className="px-4 py-2.5 flex items-center justify-between border-b border-[#E8E1D9] bg-white/70 sticky top-0 z-30 backdrop-blur-sm">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[#D9775B] text-white shadow-sm">
+          <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[#D9775B] text-white shadow-sm text-sm">
             ⚡
           </span>
           <div>
-            <h1 className="text-base font-bold tracking-tight text-[#2C4C5B]">
+            <h1 className="text-sm font-bold tracking-tight text-[#2C4C5B] leading-tight">
               Quick Coach
             </h1>
-            <p className="text-xs text-gray-500 font-medium">
+            <p className="text-[10px] text-gray-500 font-medium">
               {dateRangeLabel}
             </p>
           </div>
@@ -130,7 +139,7 @@ export default function QuickCoachPage() {
 
         <Link
           to={`/journal/${journal.id}`}
-          className="text-xs font-semibold text-gray-500 hover:text-gray-800 bg-white/70 px-2.5 py-1.5 rounded-lg border border-[#E8E1D9] transition-colors"
+          className="text-xs font-semibold text-gray-500 hover:text-gray-800 bg-white/80 px-2.5 py-1 rounded-lg border border-[#E8E1D9] transition-colors"
         >
           Full Journal
         </Link>
@@ -138,41 +147,44 @@ export default function QuickCoachPage() {
 
       {/* Main Focus Banner or Empty State */}
       {primaryCluster ? (
-        <main className="flex-1 px-4 py-4 space-y-4">
-          <div className="bg-white rounded-2xl p-4 border border-[#E8E1D9] shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#D9775B]/10 text-[#D9775B]">
-                <Sparkles className="w-3.5 h-3.5" /> Primary Weekly Hotspot
+        <main className="flex-1 px-3 sm:px-4 py-2.5 space-y-2.5">
+          {/* Compact Hotspot Banner */}
+          <div className="bg-white rounded-xl px-3.5 py-2 border border-[#E8E1D9] shadow-sm flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#D9775B]/10 text-[#D9775B] whitespace-nowrap">
+                <Sparkles className="w-3 h-3" /> Primary Weekly Hotspot
               </span>
-              <span className="text-xs font-bold text-gray-500">
-                Occurred {primaryCluster.eventCount}x
+              <span className="text-xs font-bold text-gray-900 truncate">
+                {primaryCluster.eventType === "hyper"
+                  ? "High Blood Sugar Pattern"
+                  : "Low Blood Sugar Pattern"}
               </span>
             </div>
-            <h2 className="text-lg font-bold text-gray-900">
-              {primaryCluster.eventType === "hyper"
-                ? "High Blood Sugar Pattern"
-                : "Low Blood Sugar Pattern"}
-            </h2>
-            <p className="text-xs text-gray-600 mt-0.5">
-              Typical onset around{" "}
-              <span className="font-semibold">{patternTimeStr}</span>
-            </p>
+            <div className="text-right whitespace-nowrap">
+              <span className="text-[11px] font-semibold text-gray-500">
+                Onset ~{patternTimeStr} • Occurred {primaryCluster.eventCount}x
+              </span>
+            </div>
           </div>
 
           {/* Animated Story Player */}
           <QuickCoachStoryPlayer
             cluster={primaryCluster}
+            treatments={(journal.treatments as unknown as Treatment[]) || []}
+            units={(user?.preferredUnits as GlucoseUnit) || "MMOL"}
             onStoryEnd={() => setStoryFinished(true)}
           />
 
           {/* Voice Reflection & Negotiation Section */}
-          <QuickCoachVoiceNegotiation
-            journalId={journal.id}
-            clusterId={primaryCluster.id}
-            isStoryFinished={storyFinished}
-            initialGoal={agreedGoal}
-            onGoalAgreed={(goal) => setAgreedGoal(goal)}
-          />
+          <div id="habit-negotiation-section">
+            <QuickCoachVoiceNegotiation
+              journalId={journal.id}
+              clusterId={primaryCluster.id}
+              isStoryFinished={storyFinished}
+              initialGoal={agreedGoal}
+              onGoalAgreed={(goal) => setAgreedGoal(goal)}
+            />
+          </div>
         </main>
       ) : (
         <main className="flex-1 px-4 py-8 text-center space-y-4">
@@ -199,7 +211,7 @@ export default function QuickCoachPage() {
 
       {/* Sticky Bottom Action Bar for Handshake */}
       {agreedGoal && !saveSuccess && (
-        <div className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto p-4 bg-white/95 backdrop-blur-md border-t border-[#E8E1D9] flex items-center justify-between gap-3 shadow-lg z-40">
+        <div className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto p-4 bg-white/95 backdrop-blur-md border-t border-[#E8E1D9] flex items-center justify-between gap-3 shadow-lg z-40 animate-fade-in">
           <div className="flex-1 truncate">
             <p className="text-[10px] uppercase font-bold tracking-wider text-gray-400">
               Agreed Micro-Habit

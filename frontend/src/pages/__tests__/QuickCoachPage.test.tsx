@@ -10,10 +10,13 @@ vi.mock("../../contexts/AuthContext", () => ({
   }),
 }));
 
+vi.mock("echarts-for-react", () => ({
+  default: () => <div data-testid="mock-echarts" />,
+}));
+
 vi.mock("../../lib/api", () => ({
   api: {
     get: vi.fn(),
-    put: vi.fn(),
   },
   updateJournal: vi.fn(),
 }));

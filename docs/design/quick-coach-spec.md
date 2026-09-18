@@ -20,17 +20,20 @@
 
 ```
 +------------------------------------------------------+
-| ⚡ Quick Coach              [Sep 8 – Sep 14] [Full]  |  <- Minimal Header
+| ⚡ Quick Coach              [Sep 8 – Sep 14] [Full]  |  <- Compact Header
 +------------------------------------------------------+
-| ✨ Primary Weekly Hotspot             Occurred 5x    |
-| High Blood Sugar Pattern (13:00)                     |  <- Hotspot Summary Card
+| ✨ Primary Weekly Hotspot  High Blood Sugar Pattern  |
+| Onset ~13:30 • Occurred 3x                           |  <- Compact Hotspot Banner (~36px)
 +------------------------------------------------------+
-| 🔊 Audio-Visual Data Story                           |
+| 🔊 Multistep Story Player                            |
 | [==================================================] |
-| [        ECharts Animated Spline Canvas            ] |  <- Story Player (ECharts)
+| | Top Grid: Blood Glucose Time Series (with Target) | |  <- 3-Tier Synchronized
+| | Middle Grid: Carbs (g) Bars                      | |     ECharts Canvas (260px)
+| | Bottom Grid: Insulin (u) Bars                    | |
 | [==================================================] |
-| Subtitle: "Notice the sharp peak after lunch..."     |
-| [ ▶ Play ] [ ↺ Replay ]    ● 0:14 / 0:24             |
+| Subtitle: "Notice the sharp peak after lunch..."     |  <- Dynamic Narration Subtitle
+| [Step 1: Mean] [Step 2: Tue] [Step 3: Wed] [Step 4]  |  <- Step Pill Navigation
+| [ ◀ Prev ] [ ▶ Play ] [ Next ▶ ] [ ↺ Restart ]       |  <- Accessible Step Controls
 +------------------------------------------------------+
 | ✨ Voice Habit Negotiation         AI Coach Active   |
 | Coach: "What is one small micro-habit to test?"      |
@@ -58,15 +61,20 @@
   - `error`: Displays red alert triangle and "Return to Dashboard" link.
   - `emptyClusters`: Displays celebratory empty state (_"No Recurring Patterns Detected!"_) if the weekly CGM had no recurring clusters.
   - `saveSuccess`: Opens fullscreen celebration modal with confetti emojis and dashboard exit links.
+- **Viewport Optimization:** Clean mobile-optimized height budget (< 500px for above-the-fold content) so the header, compact hotspot banner, 260px chart canvas, and controls fit neatly without auto-scroll clipping on mobile viewports.
 
-### 3.2 `QuickCoachStoryPlayer` (Audio-Visual Player)
+### 3.2 `QuickCoachStoryPlayer` (Multistep Audio-Visual Player)
 
-- **Canvas:** `echarts-for-react` responsive spline chart with target glucose shading (`70 – 180 mg/dL`).
-- **Timecode Synchronizer:** Drives animation states via `VisibleCues`:
-  - `DRAW_MEAN`: Renders bold smooth spline for average trend (`#D9775B` for high, `#8A4F7D` for low).
-  - `DRAW_DAY`: Sequentially stacks dashed individual daily traces.
-  - `DRAW_TREATMENTS`: Draws meal bolus pins (`4.5u`) and carb pins (`50g`).
-- **Speech Playback:** Native browser `window.speechSynthesis` with pause/resume synchronization.
+- **Layout:** 3-tier synchronized ECharts grid visually matching the journal cluster graph:
+  - **Top Grid (50%)**: Blood glucose time series with target range background shading (70–180 mg/dL or 3.9–10.0 mmol/L). Includes dynamic Y-axis min/max scaling clamped to 2.0 mmol/L or 40 mg/dL.
+  - **Middle Grid (18%)**: Aligned Carbs bar chart (amber `#E09F3E`) synchronized to the common time domain.
+  - **Bottom Grid (18%)**: Aligned Insulin bar chart (teal `#3D8B96`) synchronized to the common time domain.
+- **Multistep Day-by-Day Progression:**
+  - **Step 1 (The Big Picture / Mean Trend):** Highlights the bold average glucose curve alone across all event days without carb/insulin noise.
+  - **Steps 2..N (Day by Day):** Walks through each day chronologically (e.g., Tuesday, Wednesday, Friday), dynamically animating in that day's glucose trace, meal bolus bars, carb entries, and narration.
+  - **Final Step (Wrap-up):** Summarizes the full picture with all days combined and displays the _"Ready for reflection"_ indicator.
+- **Navigation Controls:** Accessible Step Pills, Prev/Next buttons, Play/Pause toggle, and Restart button. Automatically pins chart into viewport via `window.scrollTo` on step transition.
+- **Speech Playback:** Native browser `window.speechSynthesis` synchronized with step progression and fallback text subtitle box.
 
 ### 3.3 `QuickCoachVoiceNegotiation` (Interactive Coach)
 
