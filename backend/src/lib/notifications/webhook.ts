@@ -24,10 +24,18 @@ export async function sendCoachNotificationWebhook(
     return { sent: false, reason: 'COACH_WEBHOOK_URL not configured' };
   }
 
-  const baseUrl =
-    process.env.APP_BASE_URL ||
-    process.env.BETTER_AUTH_URL ||
-    'http://localhost:3000';
+  let baseUrl = process.env.APP_BASE_URL;
+  if (!baseUrl && process.env.BETTER_AUTH_URL) {
+    try {
+      baseUrl = new URL(process.env.BETTER_AUTH_URL).origin;
+    } catch {
+      baseUrl = process.env.BETTER_AUTH_URL.replace(/\/api\/auth\/?$/, '');
+    }
+  }
+  if (!baseUrl) {
+    baseUrl = 'http://localhost:5173';
+  }
+
   const coachUrl = `${baseUrl.replace(/\/$/, '')}/coach/${payload.journalId}`;
 
   const message = payload.primaryClusterTitle

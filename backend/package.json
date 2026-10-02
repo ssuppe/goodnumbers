@@ -18,7 +18,8 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "lint": "eslint .",
-    "prettier": "prettier --write ."
+    "prettier": "prettier --write .",
+    "trigger:coaching": "npx --yes tsx scripts/trigger-coaching.ts"
   },
   "keywords": [],
   "type": "module",

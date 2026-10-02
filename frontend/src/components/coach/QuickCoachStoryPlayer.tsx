@@ -58,7 +58,6 @@ const eventColors = [
 ];
 
 const TREATMENT_BUFFER_MINUTES = 180;
-const STEP_AUTO_ADVANCE_MS = 3500;
 
 interface DayData {
   dayName: string;
@@ -576,18 +575,26 @@ export default function QuickCoachStoryPlayer({
     isMmol,
   ]);
 
-  // 4. Voice Narration Trigger
-  const speakCurrentNarration = useCallback((text: string) => {
-    if (
-      "speechSynthesis" in window &&
-      typeof window.SpeechSynthesisUtterance !== "undefined"
-    ) {
-      window.speechSynthesis.cancel();
-      const utterance = new window.SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      window.speechSynthesis.speak(utterance);
-    }
-  }, []);
+  // 4. Voice Narration Trigger & Dynamic Audio Duration Helper
+  const speakCurrentNarration = useCallback(
+    (text: string, onEnded?: () => void) => {
+      if (
+        "speechSynthesis" in window &&
+        typeof window.SpeechSynthesisUtterance !== "undefined"
+      ) {
+        window.speechSynthesis.cancel();
+        const utterance = new window.SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        if (onEnded) {
+          utterance.onend = () => {
+            onEnded();
+          };
+        }
+        window.speechSynthesis.speak(utterance);
+      }
+    },
+    [],
+  );
 
   // Step Transition
   const goToStep = useCallback(
@@ -625,6 +632,7 @@ export default function QuickCoachStoryPlayer({
     if (isPlaying) {
       setIsPlaying(false);
       if (autoPlayTimerRef.current) clearTimeout(autoPlayTimerRef.current);
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     } else {
       setIsPlaying(true);
       if (currentStepIndex === steps.length - 1) {
@@ -641,14 +649,32 @@ export default function QuickCoachStoryPlayer({
     if (autoPlayTimerRef.current) clearTimeout(autoPlayTimerRef.current);
   };
 
-  // 5. Auto-advance steps when playing
+  // 5. Auto-advance steps when playing, synchronized with full speech duration
   useEffect(() => {
     if (!isPlaying) return;
 
     if (currentStepIndex < steps.length - 1) {
-      autoPlayTimerRef.current = window.setTimeout(() => {
-        goToStep(currentStepIndex + 1);
-      }, STEP_AUTO_ADVANCE_MS);
+      const narrationText = steps[currentStepIndex]?.narration || "";
+      const wordCount = narrationText.split(/\s+/).filter(Boolean).length;
+      // Calculate realistic speech duration (~380ms per word + 1.2s padding) with a minimum of 5.5 seconds per slide
+      const calculatedDurationMs = Math.max(5500, wordCount * 380 + 1200);
+
+      let stepAdvanced = false;
+      const advanceToNext = () => {
+        if (!stepAdvanced) {
+          stepAdvanced = true;
+          goToStep(currentStepIndex + 1);
+        }
+      };
+
+      // Bind speech synthesis onend callback
+      speakCurrentNarration(narrationText, advanceToNext);
+
+      // Fallback timer in case speech synthesis is un-triggered or silent
+      autoPlayTimerRef.current = window.setTimeout(
+        advanceToNext,
+        calculatedDurationMs,
+      );
     } else {
       setIsPlaying(false);
     }
@@ -656,7 +682,7 @@ export default function QuickCoachStoryPlayer({
     return () => {
       if (autoPlayTimerRef.current) clearTimeout(autoPlayTimerRef.current);
     };
-  }, [isPlaying, currentStepIndex, steps.length, goToStep]);
+  }, [isPlaying, currentStepIndex, steps, goToStep, speakCurrentNarration]);
 
   return (
     <div

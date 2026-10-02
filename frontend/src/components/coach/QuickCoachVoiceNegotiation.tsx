@@ -8,6 +8,7 @@ import {
   Check,
   Loader2,
   Volume2,
+  Target,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -20,6 +21,7 @@ interface QuickCoachVoiceNegotiationProps {
   clusterId: string;
   isStoryFinished: boolean;
   initialGoal?: string;
+  initialPrompt?: string;
   onGoalAgreed: (goal: string) => void;
 }
 
@@ -48,12 +50,14 @@ export default function QuickCoachVoiceNegotiation({
   clusterId,
   isStoryFinished,
   initialGoal,
+  initialPrompt,
   onGoalAgreed,
 }: QuickCoachVoiceNegotiationProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDraftingGoal, setIsDraftingGoal] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<string>(initialGoal || "");
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const handleSendMessageRef = useRef<(text?: string) => Promise<void>>(
@@ -67,15 +71,17 @@ export default function QuickCoachVoiceNegotiation({
 
     if (SpeechRecognitionClass) {
       const recognition = new SpeechRecognitionClass();
-      recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.continuous = true;
+      recognition.interimResults = true;
       recognition.lang = "en-US";
 
       recognition.onresult = (event) => {
-        const transcript = event.results[0]?.[0]?.transcript;
-        if (transcript) {
-          setInputText(transcript);
-          void handleSendMessageRef.current(transcript);
+        let transcript = "";
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i]?.[0]?.transcript || "";
+        }
+        if (transcript.trim()) {
+          setInputText(transcript.trim());
         }
       };
 
@@ -120,7 +126,9 @@ export default function QuickCoachVoiceNegotiation({
       typeof window.SpeechSynthesisUtterance !== "undefined"
     ) {
       window.speechSynthesis.cancel();
-      const cleanText = text.replace(/[*#_]/g, "");
+      const cleanText = text
+        .replace(/[*#_]/g, "")
+        .replace(/(\d+(?:\.\d+)?)\s*(?:mmol\/L|mg\/dL)/gi, "$1");
       const utterance = new window.SpeechSynthesisUtterance(cleanText);
       utterance.rate = 1.05;
       window.speechSynthesis.speak(utterance);
@@ -142,14 +150,13 @@ export default function QuickCoachVoiceNegotiation({
         `/journals/${journalId}/clusters/${clusterId}/chat`,
         {
           message: messageContent,
-          history: updatedHistory.slice(-6),
+          chatHistory: updatedHistory.slice(-6),
         },
       );
 
       const aiReply = res.data.reply;
       setMessages([...updatedHistory, { role: "model", content: aiReply }]);
       speakReply(aiReply);
-      setSelectedGoal(aiReply);
     } catch (err: unknown) {
       console.error("Chat error:", err);
       const fallbackReply =
@@ -158,12 +165,38 @@ export default function QuickCoachVoiceNegotiation({
         ...updatedHistory,
         { role: "model", content: fallbackReply },
       ]);
-      setSelectedGoal(fallbackReply);
     } finally {
       setIsLoading(false);
     }
   };
   handleSendMessageRef.current = handleSendMessage;
+
+  const handleDraftGoal = async () => {
+    if (messages.length === 0 || isDraftingGoal) return;
+    try {
+      setIsDraftingGoal(true);
+      const res = await api.post<{
+        synthesizedInsight?: string;
+        reply?: string;
+      }>(`/journals/${journalId}/clusters/${clusterId}/save-insight`, {
+        chatHistory: messages,
+      });
+      const rawDraft =
+        res.data.synthesizedInsight ||
+        res.data.reply ||
+        "Take a 10-15 minute walk after meals.";
+      const cleanDraft = rawDraft
+        .replace(/^[\s>*-]+/, "")
+        .replace(/^"(.*)"$/, "$1")
+        .trim();
+      setSelectedGoal(cleanDraft);
+    } catch (err: unknown) {
+      console.error("Failed to draft micro-goal:", err);
+      setSelectedGoal("Focus on post-meal walking and bolus timing next week.");
+    } finally {
+      setIsDraftingGoal(false);
+    }
+  };
 
   const handleSelectGoal = (goalText: string) => {
     setSelectedGoal(goalText);
@@ -189,9 +222,11 @@ export default function QuickCoachVoiceNegotiation({
       {/* Starting Coach Prompt */}
       <div className="bg-[#FBF9F5] p-3 rounded-xl border border-[#E8E1D9]/70 text-xs text-gray-700 leading-relaxed">
         <p className="font-semibold text-gray-900 mb-1">Coach Reflection:</p>
-        {isStoryFinished
-          ? "Now that you've watched the data story, what is one small, realistic micro-habit you'd like to test next week? Speak or type your thought."
-          : "What is one small, realistic micro-habit you'd like to test for this pattern next week? Speak or type your thought."}
+        {initialPrompt
+          ? initialPrompt
+          : isStoryFinished
+            ? "Now that you've watched the data story, what is one small, realistic micro-habit you'd like to test next week? Speak or type your thought."
+            : "What is one small, realistic micro-habit you'd like to test for this pattern next week? Speak or type your thought."}
       </div>
 
       {/* Message Feed */}
@@ -230,12 +265,36 @@ export default function QuickCoachVoiceNegotiation({
         </div>
       )}
 
-      {/* Proposed Goal Card if AI replied */}
+      {/* Action Button to Draft Goal from Conversation */}
+      {messages.length > 0 && (
+        <div className="flex justify-center pt-1">
+          <button
+            type="button"
+            onClick={() => void handleDraftGoal()}
+            disabled={isDraftingGoal || isLoading}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#D9775B] bg-[#D9775B]/10 hover:bg-[#D9775B]/20 border border-[#D9775B]/30 px-3.5 py-2 rounded-xl transition-all shadow-sm disabled:opacity-50"
+          >
+            {isDraftingGoal ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-[#D9775B]" />
+                <span>Drafting Micro-Goal...</span>
+              </>
+            ) : (
+              <>
+                <Target className="w-3.5 h-3.5 text-[#D9775B]" />
+                <span>Draft Micro-Goal from Conversation</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Proposed Goal Card if Goal is Drafted */}
       {selectedGoal && (
         <div className="bg-[#54A67A]/10 border border-[#54A67A]/30 rounded-xl p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-[#2C4C5B] uppercase tracking-wider">
-              Proposed Weekly Micro-Habit
+              Drafted Weekly Micro-Habit
             </span>
             <Check className="w-3.5 h-3.5 text-[#54A67A]" />
           </div>

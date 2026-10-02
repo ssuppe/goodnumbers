@@ -27,6 +27,9 @@
     "check:cycles": "./scripts/check-cycles.sh",
     "check:security": "./scripts/security-check.sh",
     "lint": "npm run lint -ws --if-present",
+    "trigger:coaching": "npm run trigger:coaching -w backend --",
+    "redis:start": "docker compose up -d redis",
+    "redis:stop": "docker compose stop redis",
     "prepare": "husky"
   },
   "devDependencies": {

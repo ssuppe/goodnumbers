@@ -91,20 +91,38 @@ describe("QuickCoachFlow Integration", () => {
       target: { value: "Pre-bolus 15 minutes before lunch" },
     });
 
-    // Mock chat response returning a proposed goal
-    vi.mocked(api.post).mockResolvedValueOnce({
-      data: {
-        reply: "Pre-bolus 15 minutes before lunch",
-      },
-    });
+    // Mock chat response and synthesis response
+    vi.mocked(api.post)
+      .mockResolvedValueOnce({
+        data: {
+          reply: "Pre-bolusing 15 minutes before lunch is a great approach.",
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          synthesizedInsight: "Pre-bolus 15 minutes before lunch",
+        },
+      });
 
     const sendBtn = screen.getByRole("button", { name: /Send Message/i });
     fireEvent.click(sendBtn);
 
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Pre-bolusing 15 minutes before lunch/i),
+      ).toBeInTheDocument();
+    });
+
+    // Click "Draft Micro-Goal from Conversation"
+    const draftBtn = screen.getByRole("button", {
+      name: /Draft Micro-Goal/i,
+    });
+    fireEvent.click(draftBtn);
+
     // 3. Wait for the goal proposal card to appear
     await waitFor(() => {
       expect(
-        screen.getByText(/Proposed Weekly Micro-Habit/i),
+        screen.getByText(/Drafted Weekly Micro-Habit/i),
       ).toBeInTheDocument();
     });
 

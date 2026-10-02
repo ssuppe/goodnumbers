@@ -182,6 +182,10 @@ export default function QuickCoachPage() {
               clusterId={primaryCluster.id}
               isStoryFinished={storyFinished}
               initialGoal={agreedGoal}
+              initialPrompt={
+                ((primaryCluster.aiInsight as Record<string, unknown> | null)
+                  ?.initialPrompt as string) || undefined
+              }
               onGoalAgreed={(goal) => setAgreedGoal(goal)}
             />
           </div>

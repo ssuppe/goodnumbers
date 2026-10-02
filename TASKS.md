@@ -70,7 +70,36 @@ We follow a strict TDD (Red/Green/Refactor) workflow. Each task requires passing
   - [x] **6.2 (TDD Green):** Implement `frontend/src/components/coach/QuickCoachVoiceNegotiation.tsx` with Push-to-Talk / Web Speech API.
   - **Verification Gate:** `npx vitest frontend/src/components/coach/__tests__/QuickCoachVoiceNegotiation.test.tsx` passes. (PASSED)
 
-- [x] **Task 7: Goal Handshake, Persistence & Celebration**
-  - [x] **7.1 (TDD Red):** Create integration tests in `frontend/src/pages/__tests__/QuickCoachFlow.integration.test.tsx`.
-  - [x] **7.2 (TDD Green):** Implement `StickyActionBar` save integration and celebration view with `WeeklyVibe`.
+- [x] **Task 7: Goal Handshake & End-to-End Persistence**
+  - [x] **7.1 (TDD Red):** Create integration tests in `frontend/src/pages/__tests__/QuickCoachFlow.integration.test.tsx` testing full flow from story play to saving `goalsForNextWeek` and rendering celebration.
+  - [x] **7.2 (TDD Green):** Implement `StickyActionBar` integration in `QuickCoachPage.tsx` with "Accept & Save Goal" button calling `PUT /api/journals/:id`.
+  - [x] **7.3 (TDD Green):** Implement celebration modal/view with `WeeklyVibe` emojis, motivational copy, and quick exit to dashboard.
   - **Verification Gate:** `frontend/src/pages/__tests__/QuickCoachFlow.integration.test.tsx` and all unit/integration tests pass. (PASSED)
+
+---
+
+# Roadmap: Quick Coach Weekly Automation & Manual Triggering
+
+_(Full detailed breakdown in [`docs/quick_coach/automation_tasks.md`](file:///home/clark/dev/goodnumbers-clean/docs/quick_coach/automation_tasks.md))_
+
+- [x] **Task 1: CLI Script & Crontab Engine for User-Specific Trigger (`scripts/trigger-coaching.ts`)**
+  - [x] **1.1 (TDD Red):** Unit tests in `backend/tests/unit/scripts/trigger_coaching.test.ts` for argument parsing (`--username`, `--email`, `--all`) and Prisma user lookup.
+  - [x] **1.2 (TDD Green):** Implement `backend/src/lib/cli/triggerCoaching.ts` and CLI entrypoint `backend/scripts/trigger-coaching.ts`.
+  - [x] **1.3:** Register `"trigger:coaching"` script in `backend/package.json` and install Friday 9:00 AM system `crontab` entry with PM2 background worker (`ecosystem.config.cjs`).
+  - [x] **1.4 (Quick Coach UX Polish):** Multi-turn chat feed, transcript goal synthesis (`🎯 Draft Micro-Goal from Conversation`), and unit-free TTS speech synthesis.
+  - **Verification Gate:** `npm run trigger:coaching -- --email=goodnumbersmain@gmail.com` triggers processing and sends Discord magic link notification. (PASSED)
+
+- [ ] **Task 2: On-Demand API Endpoint (`POST /api/journals/trigger-now`)**
+  - [ ] **2.1 (TDD Red):** Integration test in `backend/tests/integration/journalTriggerRoute.test.ts`.
+  - [ ] **2.2 (TDD Green):** Implement `POST /trigger-now` route in `backend/src/routes/journal.ts`.
+  - **Verification Gate:** Authenticated `POST /api/journals/trigger-now` creates journal and enqueues BullMQ job.
+
+- [ ] **Task 3: Dashboard UI "Send Coaching Now" Component**
+  - [ ] **3.1 (TDD Red):** Component tests in `frontend/src/components/journal/__tests__/SendCoachingButton.test.tsx`.
+  - [ ] **3.2 (TDD Green):** Implement `SendCoachingButton.tsx` and integrate into `Dashboard.tsx`.
+  - **Verification Gate:** Clicking button triggers coaching pipeline and displays live progress notification.
+
+- [ ] **Task 4: BullMQ Repeatable Weekly Scheduler in Worker**
+  - [ ] **4.1 (TDD Red):** Unit tests in `backend/tests/unit/worker/scheduler.test.ts`.
+  - [ ] **4.2 (TDD Green):** Implement `setupWeeklyScheduler()` in `backend/src/worker.ts` with `WEEKLY_COACH_CRON`.
+  - **Verification Gate:** Worker automatically triggers Friday 4:00 PM cron schedule for active users.

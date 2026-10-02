@@ -3,6 +3,7 @@ module.exports = {
   apps: [
     {
       name: 'goodnumbers-web',
+      cwd: __dirname,
       script: './dist/server.js',
       exec_mode: 'fork',
       watch: false, // <-- CRITICAL: Turn this off
@@ -15,6 +16,7 @@ module.exports = {
     },
     {
       name: 'goodnumbers-worker',
+      cwd: __dirname,
       script: './dist/worker.js',
       exec_mode: 'fork',
       watch: false, // <-- CRITICAL: Turn this off

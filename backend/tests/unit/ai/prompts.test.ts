@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   CLUSTER_AI_INSIGHT_PROMPT,
   EXECUTIVE_SUMMARY_PROMPT,
-} from '@src/lib/ai/prompts';
+  CLUSTER_AI_CHAT_PROMPT,
+} from '../../../src/lib/ai/prompts.js';
 import {
   GlucoseUnit,
   type GlycemicCluster,
@@ -163,6 +164,21 @@ describe('AI Prompt Generation', () => {
     expect(prompt).toContain('0.2u insulin (Automated Correction/SMB)');
     expect(prompt).toContain('8u insulin');
     expect(prompt).not.toContain('8u insulin (Automated Correction/SMB)');
+  });
+
+  it('enforces expert medical healthcare professional persona in chat prompt', () => {
+    const prompt = CLUSTER_AI_CHAT_PROMPT(
+      mockCluster,
+      deterministicInsights,
+      GlucoseUnit.MGDL,
+      { vibe: 'Sprouting', factors: 'None' },
+      [],
+      'Hello coach',
+    );
+
+    expect(prompt).toContain(
+      'friendly, expert medical healthcare professional who is an expert in type 1 diabetes management',
+    );
   });
 
   it('does NOT flag small insulin doses as SMB if carbs are present', () => {

@@ -53,7 +53,7 @@ describe("QuickCoachVoiceNegotiation", () => {
     ).toBeInTheDocument();
   });
 
-  it("sends reflection message to chat API and receives AI response", async () => {
+  it("sends reflection message to chat API and receives AI response without auto-setting goal widget", async () => {
     vi.mocked(api.post).mockResolvedValueOnce({
       data: {
         reply:
@@ -84,25 +84,89 @@ describe("QuickCoachVoiceNegotiation", () => {
         "/journals/journal-1/clusters/cluster-1/chat",
         expect.objectContaining({
           message: "I want to walk after lunch",
+          chatHistory: expect.any(Array),
         }),
       );
     });
 
-    // AI message should be visible
+    // AI message should be visible in chat feed
     await waitFor(() => {
       expect(
         screen.getAllByText(/walk 15 minutes right after lunch/i).length,
       ).toBeGreaterThan(0);
     });
 
-    // Propose goal button should be available
+    // Proposed goal card should NOT appear automatically on simple chat message
+    expect(
+      screen.queryByRole("button", { name: /Set as Weekly Micro-Habit/i }),
+    ).not.toBeInTheDocument();
+    expect(onGoalAgreed).not.toHaveBeenCalled();
+  });
+
+  it("drafts micro-goal from conversation transcript on button click", async () => {
+    vi.mocked(api.post)
+      .mockResolvedValueOnce({
+        data: {
+          reply:
+            "Walking for 10-15 minutes after lunch helps blunt post-meal spikes.",
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          synthesizedInsight: "Take a 15-minute walk right after lunch on weekdays.",
+        },
+      });
+
+    const onGoalAgreed = vi.fn();
+    render(
+      <QuickCoachVoiceNegotiation
+        journalId="journal-1"
+        clusterId="cluster-1"
+        isStoryFinished={true}
+        onGoalAgreed={onGoalAgreed}
+      />,
+    );
+
+    // Send a message first
+    const input = screen.getByPlaceholderText(/10 minute walk after lunch/i);
+    fireEvent.change(input, { target: { value: "I will try walking after lunch" } });
+    fireEvent.click(screen.getByRole("button", { name: /Send Message/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/blunt post-meal spikes/i)).toBeInTheDocument();
+    });
+
+    // Click 'Draft Micro-Goal from Conversation' button
+    const draftBtn = screen.getByRole("button", {
+      name: /Draft Micro-Goal/i,
+    });
+    fireEvent.click(draftBtn);
+
+    // Should call save-insight endpoint with chat history
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledWith(
+        "/journals/journal-1/clusters/cluster-1/save-insight",
+        expect.objectContaining({
+          chatHistory: expect.any(Array),
+        }),
+      );
+    });
+
+    // Synthesized micro-goal card appears
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Take a 15-minute walk right after lunch/i),
+      ).toBeInTheDocument();
+    });
+
+    // Click 'Set as Weekly Micro-Habit'
     const setGoalBtn = screen.getByRole("button", {
       name: /Set as Weekly Micro-Habit/i,
     });
     fireEvent.click(setGoalBtn);
 
     expect(onGoalAgreed).toHaveBeenCalledWith(
-      expect.stringContaining("walk 15 minutes right after lunch"),
+      "Take a 15-minute walk right after lunch on weekdays.",
     );
   });
 
@@ -139,6 +203,40 @@ describe("QuickCoachVoiceNegotiation", () => {
     });
     fireEvent.click(replayVoiceBtn);
     expect(window.speechSynthesis.speak).toHaveBeenCalled();
+  });
+
+  it("strips unit suffixes from speech synthesis utterances", async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({
+      data: {
+        reply: "Your blood sugar spiked to 9.5 mmol/L around 140 mg/dL.",
+      },
+    });
+
+    render(
+      <QuickCoachVoiceNegotiation
+        journalId="journal-1"
+        clusterId="cluster-1"
+        isStoryFinished={true}
+        onGoalAgreed={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByPlaceholderText(/10 minute walk after lunch/i);
+    fireEvent.change(input, { target: { value: "How high did it get?" } });
+    fireEvent.click(screen.getByRole("button", { name: /Send Message/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/spiked to 9.5 mmol\/L/i)).toBeInTheDocument();
+    });
+
+    const replayVoiceBtn = screen.getByRole("button", {
+      name: /Replay Voice/i,
+    });
+    fireEvent.click(replayVoiceBtn);
+
+    expect(window.SpeechSynthesisUtterance).toHaveBeenCalledWith(
+      expect.not.stringMatching(/mmol\/L|mg\/dL/i),
+    );
   });
 
   it("supports speech recognition push-to-talk lifecycle", async () => {
@@ -184,17 +282,32 @@ describe("QuickCoachVoiceNegotiation", () => {
     // Start listening
     fireEvent.click(micBtn);
     expect(mockInstance.start).toHaveBeenCalled();
+    expect(mockInstance.continuous).toBe(true);
+    expect(mockInstance.interimResults).toBe(true);
 
     // Simulate transcript result
     mockInstance.onresult({
       results: [[{ transcript: "I will walk for 10 minutes" }]],
     });
 
+    // Live transcript populates input box
+    await waitFor(() => {
+      const input = screen.getByPlaceholderText(
+        /10 minute walk after lunch/i,
+      );
+      expect(input.value).toBe("I will walk for 10 minutes");
+    });
+
+    // Send the transcribed message
+    const sendBtn = screen.getByRole("button", { name: /Send Message/i });
+    fireEvent.click(sendBtn);
+
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith(
         "/journals/journal-1/clusters/cluster-1/chat",
         expect.objectContaining({
           message: "I will walk for 10 minutes",
+          chatHistory: expect.any(Array),
         }),
       );
     });

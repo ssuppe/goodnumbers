@@ -99,7 +99,7 @@ describe("QuickCoachStoryPlayer", () => {
     ).toBeInTheDocument();
   });
 
-  it("plays narration and triggers animation cues over time", () => {
+  it("plays narration and triggers animation cues synchronized with speech completion", () => {
     const onEnd = vi.fn();
     render(<QuickCoachStoryPlayer cluster={mockCluster} onStoryEnd={onEnd} />);
 
@@ -111,16 +111,16 @@ describe("QuickCoachStoryPlayer", () => {
     // Initial state at t=0 has DRAW_MEAN
     expect(capturedOption).toBeDefined();
 
-    // Fast-forward 3600ms to advance to Step 1 (Monday: Trace & Treatments)
+    // Fast-forward speech duration (e.g. 8000ms for full sentence narration)
     act(() => {
-      vi.advanceTimersByTime(3600);
+      vi.advanceTimersByTime(8500);
     });
 
     expect(screen.getByText(/Monday: Trace/i)).toBeInTheDocument();
 
     // Fast-forward remaining steps to trigger onStoryEnd
     act(() => {
-      vi.advanceTimersByTime(8000);
+      vi.advanceTimersByTime(20000);
     });
 
     expect(onEnd).toHaveBeenCalled();

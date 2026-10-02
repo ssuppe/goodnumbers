@@ -74,14 +74,19 @@
   - **Steps 2..N (Day by Day):** Walks through each day chronologically (e.g., Tuesday, Wednesday, Friday), dynamically animating in that day's glucose trace, meal bolus bars, carb entries, and narration.
   - **Final Step (Wrap-up):** Summarizes the full picture with all days combined and displays the _"Ready for reflection"_ indicator.
 - **Navigation Controls:** Accessible Step Pills, Prev/Next buttons, Play/Pause toggle, and Restart button. Automatically pins chart into viewport via `window.scrollTo` on step transition.
-- **Speech Playback:** Native browser `window.speechSynthesis` synchronized with step progression and fallback text subtitle box.
+- **Speech Playback & Auto-Advance Synchronization:** Native browser `window.speechSynthesis` synchronized with step progression. Auto-advance steps dynamically wait for speech completion (`SpeechSynthesisUtterance.onend`) and text length (~380ms/word with 5.5s minimum window) to prevent audio cut-offs.
+- **Fallback Subtitle Drawer:** Dynamic narration subtitle box displaying spoken text in real-time.
 
 ### 3.3 `QuickCoachVoiceNegotiation` (Interactive Coach)
 
-- **Push-to-Talk:** Browser `SpeechRecognition` / `webkitSpeechRecognition` with pulsing red microphone indicator.
-- **Text Fallback:** Keyboard-accessible input box with Enter key submission.
-- **Aloud AI Replies:** Automatically speaks Gemini coach reflections back aloud.
-- **Habit Selection Card:** Highlights the extracted micro-habit in target forest green (`#54A67A`) with a single-tap button to lock it into the sticky action bar.
+- **AI Coach Persona:** Friendly, expert medical healthcare professional specializing in Type 1 Diabetes management.
+- **Dynamic Initial Prompt:** Displays Gemini's personalized `initialPrompt` extracted from the cluster analysis, providing data-driven reflection questions tailored to the user's specific pattern.
+- **Push-to-Talk & Real-time STT:** Browser `SpeechRecognition` / `webkitSpeechRecognition` configured with `continuous = true` and `interimResults = true`, populating speech text live in real-time as the user speaks (optimized for Chrome on Android / Desktop).
+- **Text Fallback:** Keyboard-accessible input box with Enter key submission and Send button.
+- **Fluid Multi-Turn Chat Feed:** Conversational chat interface displaying user and model bubbles naturally without popping proposed goal cards automatically after every turn.
+- **Transcript Micro-Goal Synthesis:** Features a dedicated `🎯 Draft Micro-Goal from Conversation` button. When clicked, it sends the full `chatHistory` transcript to `POST /api/journals/:id/clusters/:clusterId/save-insight` for Gemini to synthesize a single, actionable 1-sentence micro-habit based on the conversation's conclusion.
+- **Unit-Free Spoken Audio:** Speech synthesis (`speakReply`) and LLM prompt guidelines (`CLUSTER_AI_CHAT_PROMPT`) explicitly omit unit suffixes (e.g. `mmol/L` or `mg/dL`) when reading blood sugar values out loud for clean, natural-sounding voice playback.
+- **Habit Review & Handshake Card:** Displays the drafted micro-habit in target forest green (`#54A67A`) with a single-tap `Set as Weekly Micro-Habit` button to lock it into the sticky action bar and trigger celebration.
 
 ---
 
