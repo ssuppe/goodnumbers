@@ -17,6 +17,12 @@ import {
   type Insight,
   type GlycemicCluster,
 } from '@goodnumbers/types';
+import { decrypt } from '../lib/encryption.js';
+import { NightscoutClient } from '../lib/nightscout/client.js';
+import {
+  ToolExecutionContext,
+  LocalGlucosePoint,
+} from '../lib/ai/tools/dispatcher.js';
 
 const router = Router();
 
@@ -168,8 +174,7 @@ router.put('/:id', async (req, res, next) => {
         journalUpdates.influencingFactors === null
           ? Prisma.DbNull
           : ((journalUpdates.influencingFactors ?? undefined) as
-              | Prisma.InputJsonValue
-              | undefined),
+              Prisma.InputJsonValue | undefined),
     };
 
     // 1. Update the Journal fields
@@ -274,6 +279,62 @@ router.post('/:id/clusters/:clusterId/chat', async (req, res, next) => {
       ? (journal.influencingFactors as string[]).join(', ')
       : '';
 
+    let timezone = 'UTC';
+    try {
+      const clusterData =
+        typeof cluster.clusterDataJson === 'string'
+          ? JSON.parse(cluster.clusterDataJson)
+          : cluster.clusterDataJson;
+      if (
+        clusterData &&
+        typeof clusterData === 'object' &&
+        'timezone' in clusterData &&
+        typeof (clusterData as Record<string, unknown>).timezone === 'string'
+      ) {
+        timezone = (clusterData as Record<string, unknown>).timezone as string;
+      }
+    } catch {
+      timezone = 'UTC';
+    }
+
+    let nsClient: NightscoutClient | undefined;
+    if (req.user?.nightscoutUrl) {
+      try {
+        const rawToken = req.user.nightscoutToken || '';
+        let token = rawToken;
+        if (rawToken) {
+          try {
+            token = decrypt(rawToken);
+          } catch {
+            token = rawToken;
+          }
+        }
+        nsClient = new NightscoutClient(req.user.nightscoutUrl, token);
+      } catch (err) {
+        console.warn(
+          '[JournalChatRoute] Could not instantiate NightscoutClient:',
+          err,
+        );
+      }
+    }
+
+    const userContext: ToolExecutionContext = {
+      userId,
+      preferredUnits: req.user!.preferredUnits === 'MMOL' ? 'mmol/L' : 'mg/dL',
+      timezone,
+      nsClient: nsClient!,
+      localJournalData: {
+        bloodGlucose: Array.isArray(journal.bloodGlucose)
+          ? (journal.bloodGlucose as unknown as LocalGlucosePoint[])
+          : undefined,
+        treatments: Array.isArray(journal.treatments)
+          ? (journal.treatments as unknown as Array<Record<string, unknown>>)
+          : undefined,
+        startDate: journal.startDate,
+        endDate: journal.endDate,
+      },
+    };
+
     const reply = await generateChatResponse(
       cluster.clusterDataJson as unknown as GlycemicCluster,
       (cluster.insights as unknown as Insight[]) || [],
@@ -281,6 +342,7 @@ router.post('/:id/clusters/:clusterId/chat', async (req, res, next) => {
       { vibe, factors },
       chatHistory,
       message,
+      userContext,
     );
 
     res.status(200).json({ reply });

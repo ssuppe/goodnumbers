@@ -15,6 +15,7 @@ import { HotspotDetector } from './lib/analysis/HotspotDetector.js';
 import { calculatePatternStats } from './lib/analysis/patterns.js';
 import { triageClusters } from './lib/analysis/ClusterTriage.js';
 import { sendCoachNotificationWebhook } from './lib/notifications/webhook.js';
+import { trimGlucoseEntriesForPersistence } from './lib/agp/trimGlucose.js';
 import { z } from 'zod';
 import { NightscoutTreatment } from './lib/nightscout/types.js';
 import { generateAggregateInsights } from './lib/insights/aggregate.js';
@@ -518,6 +519,9 @@ export async function processJournalJob(job: Job) {
           finalPayload.scoreCardData as unknown as Prisma.InputJsonValue,
         executiveSummary: executiveSummary as unknown as Prisma.InputJsonValue,
         treatments: treatments as unknown as Prisma.InputJsonValue,
+        bloodGlucose: trimGlucoseEntriesForPersistence(
+          entries,
+        ) as unknown as Prisma.InputJsonValue,
         analysisInsights: analysisInsights as unknown as Prisma.InputJsonValue,
       },
     });

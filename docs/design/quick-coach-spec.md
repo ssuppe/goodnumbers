@@ -85,6 +85,7 @@
 - **Text Fallback:** Keyboard-accessible input box with Enter key submission and Send button.
 - **Fluid Multi-Turn Chat Feed:** Conversational chat interface displaying user and model bubbles naturally without popping proposed goal cards automatically after every turn.
 - **Transcript Micro-Goal Synthesis:** Features a dedicated `🎯 Draft Micro-Goal from Conversation` button. When clicked, it sends the full `chatHistory` transcript to `POST /api/journals/:id/clusters/:clusterId/save-insight` for Gemini to synthesize a single, actionable 1-sentence micro-habit based on the conversation's conclusion.
+- **Investigative Tool Calling:** Equipped with 10 server-side function calling tools (comparing recurring daily windows, profile switch history, successful benchmark days, post-meal peaks, treatment notes, automated loop delivery, and prior context) executed locally via `dispatcher.ts` with sub-second cached responses.
 - **Unit-Free Spoken Audio:** Speech synthesis (`speakReply`) and LLM prompt guidelines (`CLUSTER_AI_CHAT_PROMPT`) explicitly omit unit suffixes (e.g. `mmol/L` or `mg/dL`) when reading blood sugar values out loud for clean, natural-sounding voice playback.
 - **Habit Review & Handshake Card:** Displays the drafted micro-habit in target forest green (`#54A67A`) with a single-tap `Set as Weekly Micro-Habit` button to lock it into the sticky action bar and trigger celebration.
 

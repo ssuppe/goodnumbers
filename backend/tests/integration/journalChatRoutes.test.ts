@@ -127,6 +127,33 @@ describe('Journal Chat and Synthesis API Routes', () => {
       expect(res.body.reply).toBe('Mocked AI coach response.');
       expect(mockGenerateChatResponse).toHaveBeenCalledTimes(1);
     });
+
+    it('passes tool userContext with timezone and Nightscout context to generateChatResponse', async () => {
+      mockGenerateChatResponse.mockResolvedValue('Mocked AI tool response.');
+
+      await agent
+        .post(`/api/journals/${journal.id}/clusters/${cluster.id}/chat`)
+        .set('x-test-user-id', user.id)
+        .send({
+          message: 'How did my mornings look this week?',
+          chatHistory: [],
+          _csrf: csrfToken,
+        });
+
+      expect(mockGenerateChatResponse).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        'How did my mornings look this week?',
+        expect.objectContaining({
+          userId: user.id,
+          timezone: expect.any(String),
+          preferredUnits: expect.any(String),
+        }),
+      );
+    });
   });
 
   describe('POST /api/journals/:id/clusters/:clusterId/save-insight', () => {

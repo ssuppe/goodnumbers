@@ -68,6 +68,7 @@ model Journal {
   agpChartData         Json?
   analysisInsights     Json?
   treatments           Json?     // Normalized treatment data for the week
+  bloodGlucose         Json?     // Compact raw CGM readings for the week [{ date, sgv, direction }]
 
   // Voyager Scorecards Data
   scoreCardData        Json?

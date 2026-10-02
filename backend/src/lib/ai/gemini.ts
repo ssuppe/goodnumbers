@@ -17,6 +17,11 @@ import {
   type JournalTitleContext,
 } from './prompts.js';
 import { formatInfluencingFactors } from './utils.js';
+import {
+  COACH_INVESTIGATIVE_TOOLS,
+  dispatchToolCall,
+  ToolExecutionContext,
+} from './tools/index.js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'dummy-key');
 
@@ -408,6 +413,7 @@ export async function generateChatResponse(
   weeklyContext: { vibe: string | null; factors: string },
   chatHistory: ChatMessage[],
   newMessage: string,
+  userContext?: ToolExecutionContext,
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -424,6 +430,54 @@ export async function generateChatResponse(
   );
 
   try {
+    if (userContext?.nsClient) {
+      const modelWithTools = genAI.getGenerativeModel({
+        model: 'gemini-3-flash-preview',
+        tools: [{ functionDeclarations: COACH_INVESTIGATIVE_TOOLS }],
+      });
+
+      const chat = modelWithTools.startChat();
+      let response = await chat.sendMessage(prompt);
+      let iterations = 0;
+      const MAX_TOOL_ITERATIONS = 3;
+
+      while (
+        response.response.functionCalls()?.length &&
+        iterations < MAX_TOOL_ITERATIONS
+      ) {
+        iterations++;
+        const functionCalls = response.response.functionCalls()!;
+        const functionResponses = [];
+
+        for (const call of functionCalls) {
+          try {
+            const toolResult = await dispatchToolCall(
+              call.name,
+              call.args as Record<string, unknown>,
+              userContext,
+            );
+            functionResponses.push({
+              functionResponse: {
+                name: call.name,
+                response: toolResult,
+              },
+            });
+          } catch (err) {
+            functionResponses.push({
+              functionResponse: {
+                name: call.name,
+                response: { error: (err as Error).message },
+              },
+            });
+          }
+        }
+
+        response = await chat.sendMessage(functionResponses);
+      }
+
+      return response.response.text().trim();
+    }
+
     const result = await textFlashModel.generateContent(prompt);
     return result.response.text().trim();
   } catch (error: unknown) {

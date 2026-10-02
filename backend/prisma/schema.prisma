@@ -50,6 +50,7 @@ model Journal {
   scoreCardData      Json?
   executiveSummary   Json?
   treatments         Json?
+  bloodGlucose       Json?
   clusters           GlycemicEventCluster[]
   user               User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
