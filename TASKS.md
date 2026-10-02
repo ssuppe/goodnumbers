@@ -103,3 +103,20 @@ _(Full detailed breakdown in [`docs/quick_coach/automation_tasks.md`](file:///ho
   - [ ] **4.1 (TDD Red):** Unit tests in `backend/tests/unit/worker/scheduler.test.ts`.
   - [ ] **4.2 (TDD Green):** Implement `setupWeeklyScheduler()` in `backend/src/worker.ts` with `WEEKLY_COACH_CRON`.
   - **Verification Gate:** Worker automatically triggers Friday 4:00 PM cron schedule for active users.
+
+---
+
+# Roadmap: Quick Coach Investigative Tool Calling (Gemini Function Calling)
+
+_(Full technical design in [`docs/design/quick-coach-investigative-tools-prd.md`](docs/design/quick-coach-investigative-tools-prd.md))_
+
+- [ ] **Task 1: Tool Declarations and Dispatcher Infrastructure**
+  - [ ] **1.1 (TDD Red):** Unit tests in `backend/tests/unit/ai/tools/declarations.test.ts` verifying Gemini `FunctionDeclaration` schemas for all 10 tools.
+  - [ ] **1.2 (TDD Green):** Implement `backend/src/lib/ai/tools/declarations.ts` and dispatcher in `backend/src/lib/ai/tools/dispatcher.ts`.
+- [ ] **Task 2: Implement Core Tool Handlers**
+  - [ ] **2.1 (TDD Red/Green):** Implement handlers for time slicing & profile inspection (`compareTimeWindow`, `profileOverrides`, `referenceDays`).
+  - [ ] **2.2 (TDD Red/Green):** Implement handlers for treatments, patterns, and peaks (`recurringTreatments`, `dayOfWeekPattern`, `postMealPeaks`).
+  - [ ] **2.3 (TDD Red/Green):** Implement handlers for notes, temp basals, insulin trends, and context (`searchNotes`, `tempBasals`, `insulinCarbTrends`, `priorContext`).
+- [ ] **Task 3: Integrate Tool Loop into `generateChatResponse`**
+  - [ ] **3.1 (TDD Red/Green):** Multi-turn function call execution loop in `backend/src/lib/ai/gemini.ts` with timeout & iteration safety guards.
+  - **Verification Gate:** Integration tests pass and Quick Coach conversational negotiation dynamically executes tools for historical context.

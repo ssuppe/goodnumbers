@@ -114,3 +114,9 @@ sequenceDiagram
 1. **Completion Rate:** $>85\%$ of users who open the `/coach/:id` link complete the goal handshake.
 2. **Time to Complete:** Average session duration $< 150$ seconds.
 3. **Data Integrity:** $100\%$ consistency between Quick Coach saved goals and standard `/journal/:id` view.
+
+---
+
+## 7. Related Specifications
+
+- [Quick Coach Investigative Tool Calling PRD](../design/quick-coach-investigative-tools-prd.md): Comprehensive specification for Gemini function calling to query historical Nightscout data during conversational negotiation.
