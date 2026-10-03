@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useApiForm } from "../hooks/useApiForm";
 import StartJournalCard from "../components/dashboard/StartJournalCard";
+import QuickCoachBannerCard from "../components/dashboard/QuickCoachBannerCard";
 import PastJournalsList from "../components/dashboard/PastJournalsList";
 import { type JournalSummary } from "../types/dashboard";
 import { Loader2 } from "lucide-react";
@@ -30,15 +31,17 @@ export default function DashboardPage() {
     void fetchJournals();
   }, []);
 
-  // Identify if any journal is currently processing (PENDING status)
+  // Identify if any journal is currently processing (non-terminal status)
   const pendingJournal = useMemo(
-    () => journals.find((j) => j.status === "PENDING"),
+    () =>
+      journals.find((j) => j.status !== "COMPLETE" && j.status !== "FAILED"),
     [journals],
   );
 
   // Filter out pending journals from the history list to keep the UI clean
   const historyJournals = useMemo(
-    () => journals.filter((j) => j.status !== "PENDING"),
+    () =>
+      journals.filter((j) => j.status === "COMPLETE" || j.status === "FAILED"),
     [journals],
   );
 
@@ -99,6 +102,7 @@ export default function DashboardPage() {
           void handleStartJournal(data);
         }}
       />
+      <QuickCoachBannerCard isProcessing={!!pendingJournal} />
       <PastJournalsList
         journals={historyJournals}
         onDelete={(id) => {

@@ -11,6 +11,7 @@ GoodNumbers is an **experimental, non-commercial, open-source project** designed
 GoodNumbers is a weekly journal that combines traditional statistical analysis with modern AI to help you identify trends and patterns in your diabetes management.
 
 - **Statistical Analysis**: Automatically identify "hotspots" and troublesome trends in your blood glucose data.
+- **Quick Coach**: On-demand and automated 3-minute audio-visual debriefs with conversational voice negotiation to settle on weekly micro-habits.
 - **AI-Powered Reflection**: Leverage AI to reflect on strategies, celebrate wins, and find blind spots.
 - **Weekly Practice**: A dedicated pause in your week to look back, learn, and improve for the next seven days.
 - **Motivation without Judgment**: Designed to be a positive, motivating tool for a challenging daily job.
@@ -26,7 +27,7 @@ https://github.com/user-attachments/assets/4ec7fa7b-3743-47a6-aac8-22760a915135
 - **Frontend**: React (Vite), TypeScript, Tailwind CSS, Refine (v5)
 - **Backend**: Node.js, Express, Prisma, Auth.js (NextAuth for Express)
 - **Data**: SQLite (Standardized on absolute pathing for both Dev and Production), Redis (for background jobs)
-- **AI**: Gemini 3.1 Pro (via Google AI Studio) for deep clinical reasoning
+- **AI**: Gemini 3.1 Pro & Gemini 3.8 Flash (via Google AI Studio) for deep clinical reasoning and investigative tool calling
 
 ---
 

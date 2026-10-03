@@ -164,6 +164,13 @@ The Demo Page serves as an initial touchpoint for potential users to understand 
 - **Functionality:** The "Start Journal" button initiates the background generation process.
 - **Visual Hierarchy:** This card is styled as a "hero" component.
 
+### "Quick Coach: 3-Minute Glycemic Debrief" Card (On-Demand Audio & Voice)
+
+- **Functionality:** Initiates an instant on-demand Quick Coach session for the last 7 days of CGM data via `POST /api/coach/sessions`.
+- **Concurrency Protection:** Guarded against duplicate concurrent triggers (`409 Conflict` if another session is actively processing).
+- **Prerequisite Validation:** Validates Nightscout configuration before queueing, rendering an actionable direct link to `/setup` if credentials are missing.
+- **Visual Hierarchy:** Prominently positioned directly above "Past weeks" with a warm gradient background, `Zap` badge, and accessible `aria-busy` feedback.
+
 ### "Past weeks" Section (Historical Journals)
 
 - **Ordering:** Historical Journals are shown in reverse chronological order (newest first).
@@ -173,11 +180,14 @@ The Demo Page serves as an initial touchpoint for potential users to understand 
 
 ### Journal Generation Process
 
-This section describes the process that occurs after a user clicks "Start Journal".
+This section describes the process that occurs after a user clicks "Start Journal" or "Start Quick Coach".
 
 #### User Experience (Loading Screen)
 
-Upon clicking "Start Journal," the user is navigated to a dedicated loading page that displays a progress bar and descriptive text to keep them informed. It polls the backend for status updates.
+Upon clicking "Start Journal" or "Start Quick Coach", the user is navigated to a dedicated loading page (`/journal/:id/loading` or `/journal/:id/loading?target=coach`) that displays a progress bar (`DATA -> STATS -> AI`) and descriptive text to keep them informed. It polls the backend for status updates.
+
+- If initiated from Quick Coach (`target=coach`), the loading screen displays tailored copy (_"Preparing Your Coaching Session..."_) and automatically redirects straight into the audio-visual player at `/coach/:journalId` upon completion (`replace: true`).
+- If an error occurs, it displays actionable error details along with a "Return to Dashboard" recovery button.
 
 #### Backend Process
 

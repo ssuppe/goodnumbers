@@ -13,6 +13,7 @@ import { escapeHtml } from './lib/utils.js';
 import { prisma } from './lib/prisma.js';
 import type { GlucoseUnit } from '@goodnumbers/types';
 import journalRoutes from './routes/journal.js';
+import coachRoutes from './routes/coach.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import userRoutes from './routes/user.js';
 import { protect } from './middleware/auth.js';
@@ -97,6 +98,14 @@ export function createApp() {
     enforceAgreements, // First, authorize API access
     enforceAccountSetup, // Then, handle UI flow
     journalRoutes,
+  );
+  // Apply secure middleware chain to coach API
+  app.use(
+    '/api/coach',
+    protect,
+    csrfProtection,
+    enforceAgreements,
+    coachRoutes,
   );
 
   // --- Health Check and other routes ---

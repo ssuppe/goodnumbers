@@ -24,6 +24,14 @@ vi.mock("../components/dashboard/StartJournalCard", () => ({
   )),
 }));
 
+vi.mock("../components/dashboard/QuickCoachBannerCard", () => ({
+  default: vi.fn(({ isProcessing }: { isProcessing: boolean }) => (
+    <div data-testid="quick-coach-banner-card">
+      QuickCoachBannerCard Mock (isProcessing: {String(isProcessing)})
+    </div>
+  )),
+}));
+
 // Update PastJournalsList mock to include delete button simulation
 vi.mock("../components/dashboard/PastJournalsList", () => ({
   default: vi.fn((props) => (
@@ -91,6 +99,72 @@ describe("DashboardPage", () => {
     await waitFor(() => {
       expect(global.confirm).toHaveBeenCalled();
       expect(api.delete).toHaveBeenCalledWith("/journals/1");
+    });
+  });
+
+  it("renders QuickCoachBannerCard with isProcessing=false when no pending journals", async () => {
+    // @ts-expect-error: Mocked API call
+    (api.get as vi.Mock).mockResolvedValueOnce({ data: [] });
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quick-coach-banner-card")).toBeInTheDocument();
+      expect(screen.getByText(/isProcessing: false/i)).toBeInTheDocument();
+    });
+  });
+
+  it("renders QuickCoachBannerCard with isProcessing=true when a pending journal exists", async () => {
+    const pendingJournal: JournalSummary = {
+      id: "pending-1",
+      createdAt: new Date().toISOString(),
+      podcastTitle: "In Progress",
+      podcastDescription: "Analyzing...",
+      weeklyVibe: "Sprouting",
+      status: "PENDING",
+    };
+
+    // @ts-expect-error: Mocked API call
+    (api.get as vi.Mock).mockResolvedValueOnce({ data: [pendingJournal] });
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quick-coach-banner-card")).toBeInTheDocument();
+      expect(screen.getByText(/isProcessing: true/i)).toBeInTheDocument();
+    });
+  });
+
+  it("renders QuickCoachBannerCard with isProcessing=true when an active processing journal (ANALYZING_DATA) exists", async () => {
+    const processingJournal: JournalSummary = {
+      id: "proc-1",
+      createdAt: new Date().toISOString(),
+      podcastTitle: "In Progress",
+      podcastDescription: "Analyzing...",
+      weeklyVibe: "Sprouting",
+      status: "ANALYZING_DATA",
+    };
+
+    // @ts-expect-error: Mocked API call
+    (api.get as vi.Mock).mockResolvedValueOnce({ data: [processingJournal] });
+
+    render(
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("quick-coach-banner-card")).toBeInTheDocument();
+      expect(screen.getByText(/isProcessing: true/i)).toBeInTheDocument();
     });
   });
 });

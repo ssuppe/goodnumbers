@@ -53,6 +53,14 @@ This document provides a comprehensive technical specification for the Goodnumbe
 #### 2.1.4. Quick Coach Experience & Investigative Tools
 
 - **Target Route:** `/coach/:journalId` (Standalone, distraction-free mobile-first container).
+- **On-Demand Trigger Endpoint (`POST /api/coach/sessions`):**
+  - **Authentication & CSRF:** Protected with `protect`, `csrfProtection`, and `enforceAgreements` middleware chain.
+  - **Prerequisite Validation:** Early validation of user's encrypted Nightscout credentials; returns `400 Bad Request` with `{ code: 'NIGHTSCOUT_REQUIRED' }` if missing.
+  - **Concurrency Guard (409 Conflict):** Queries for any active session in a non-terminal status (`status NOT IN ('COMPLETE', 'FAILED')`) to eliminate race conditions and double-triggers.
+  - **Rate Limiting:** Guarded with `express-rate-limit` (max 10 requests / 15 minutes per IP/user).
+  - **Transactional Rollback:** Creates a 7-day lookback `Journal` record (`now - 7 days` to `now`) with status `PENDING`. If BullMQ job enqueue fails, immediately deletes the created DB record.
+  - **Response:** Returns `201 Created` with `{ journalId: string, status: "PENDING" }`.
+- **Target Redirection Hand-off (`JournalLoadingPage`):** Supports `?target=coach` query parameter. Displays tailored copy (_"Preparing Your Coaching Session..."_), polls status, and on completion automatically redirects to `/coach/:journalId` using `{ replace: true }` to keep browser history clean.
 - **Triage Engine:** Evaluates detected glycemic clusters and deterministically marks the single highest-urgency pattern as `isPrimaryFocus: true` (Severe Hypo > Frequent Hypo > Rebound Hyper > Post-Meal Hyper).
 - **Audio-Visual Data Story:** Synchronizes speech narration with a 3-tier ECharts canvas animating the mean trendline, daily glycemic traces, and meal boluses/carbs.
 - **Voice Negotiation:** Low-friction push-to-talk voice/text chat powered by Gemini 2.5 Flash to negotiate a weekly micro-habit, with automatic transcript synthesis into `Journal.goalsForNextWeek`.

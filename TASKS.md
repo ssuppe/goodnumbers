@@ -80,7 +80,7 @@ We follow a strict TDD (Red/Green/Refactor) workflow. Each task requires passing
 
 # Roadmap: Quick Coach Weekly Automation & Manual Triggering
 
-_(Full detailed breakdown in [`docs/quick_coach/automation_tasks.md`](file:///home/clark/dev/goodnumbers-clean/docs/quick_coach/automation_tasks.md))_
+_(Full detailed breakdown in [`docs/quick_coach/automation_tasks.md`](file:///home/clark/dev/goodnumbers-clean/docs/quick_coach/automation_tasks.md) and [`docs/quick_coach/dashboard_trigger_plan.md`](file:///home/clark/dev/goodnumbers-clean/docs/quick_coach/dashboard_trigger_plan.md))_
 
 - [x] **Task 1: CLI Script & Crontab Engine for User-Specific Trigger (`scripts/trigger-coaching.ts`)**
   - [x] **1.1 (TDD Red):** Unit tests in `backend/tests/unit/scripts/trigger_coaching.test.ts` for argument parsing (`--username`, `--email`, `--all`) and Prisma user lookup.
@@ -89,15 +89,40 @@ _(Full detailed breakdown in [`docs/quick_coach/automation_tasks.md`](file:///ho
   - [x] **1.4 (Quick Coach UX Polish):** Multi-turn chat feed, transcript goal synthesis (`🎯 Draft Micro-Goal from Conversation`), and unit-free TTS speech synthesis.
   - **Verification Gate:** `npm run trigger:coaching -- --email=goodnumbersmain@gmail.com` triggers processing and sends Discord magic link notification. (PASSED)
 
-- [ ] **Task 2: On-Demand API Endpoint (`POST /api/journals/trigger-now`)**
-  - [ ] **2.1 (TDD Red):** Integration test in `backend/tests/integration/journalTriggerRoute.test.ts`.
-  - [ ] **2.2 (TDD Green):** Implement `POST /trigger-now` route in `backend/src/routes/journal.ts`.
-  - **Verification Gate:** Authenticated `POST /api/journals/trigger-now` creates journal and enqueues BullMQ job.
+- [x] **Task 2: On-Demand API Endpoint (`POST /api/coach/sessions`)**
+  - [x] **2.1 (TDD Red):** Integration test in `backend/tests/integration/coachSessionsRoute.test.ts`.
+  - [x] **2.2 (TDD Green):** Implement `POST /sessions` route in `backend/src/routes/coach.ts` and mount in `backend/src/index.ts`.
+  - **Verification Gate:** Authenticated `POST /api/coach/sessions` creates journal and enqueues BullMQ job. (PASSED)
 
-- [ ] **Task 3: Dashboard UI "Send Coaching Now" Component**
-  - [ ] **3.1 (TDD Red):** Component tests in `frontend/src/components/journal/__tests__/SendCoachingButton.test.tsx`.
-  - [ ] **3.2 (TDD Green):** Implement `SendCoachingButton.tsx` and integrate into `Dashboard.tsx`.
-  - **Verification Gate:** Clicking button triggers coaching pipeline and displays live progress notification.
+- [x] **Task 3: Dashboard UI "Quick Coach" Component & Routing**
+  - [x] **3.1 (TDD Red/Green):** Add `?target=coach` redirection support to `JournalLoadingPage.tsx` with unit tests.
+  - [x] **3.2 (TDD Red):** Component tests in `frontend/src/components/dashboard/__tests__/QuickCoachBannerCard.test.tsx`.
+  - [x] **3.3 (TDD Green):** Implement `QuickCoachBannerCard.tsx` and integrate into `DashboardPage.tsx`.
+  - **Verification Gate:** Clicking button triggers coaching pipeline, shows loading state, and redirects to `/coach/:id`. (PASSED)
+
+---
+
+# Roadmap: Quick Coach High-Reasoning AI & UX Resilience (TDD)
+
+- [x] **Task 1: AI Model Decoupling & Flagship Reasoning for Quick Coach**
+  - [x] **1.1 (TDD Red):** Add unit tests in `backend/tests/unit/ai/gemini_models.test.ts` asserting model exports (`GEMINI_REASONING_MODEL` defaulting to `gemini-3.1-pro-preview`, `GEMINI_FLASH_MODEL` defaulting to `gemini-3.8-flash`), environment overrides, and ensuring `generateQuickCoachStory`, `generateChatResponse`, and `synthesizeChatInsight` use the reasoning model. (PASSED)
+  - [x] **1.2 (TDD Green):** Implement decoupled model configuration and assign the flagship reasoning model to Quick Coach stories, negotiation tool loop, and goal synthesis in `backend/src/lib/ai/gemini.ts`. (PASSED)
+  - **Verification Gate:** `npx vitest backend/tests/unit/ai/gemini_models.test.ts` passes. (PASSED)
+
+- [x] **Task 2: Interactive Chat Tool Loop Optimization & Fallback Circuit Breaker**
+  - [x] **2.1 (TDD Red):** Add tests in `backend/tests/unit/ai/gemini_tool_loop_resilience.test.ts` verifying tool loop is capped at 2 iterations for interactive latency control, and falls back to flash if reasoning model fails. (PASSED)
+  - [x] **2.2 (TDD Green):** Implement iteration cap and automatic flash fallback in `generateChatResponse()` in `backend/src/lib/ai/gemini.ts`. (PASSED)
+  - **Verification Gate:** `npx vitest backend/tests/unit/ai/gemini_tool_loop_resilience.test.ts` passes. (PASSED)
+
+- [x] **Task 3: Quick Coach Voice Negotiation UX - Progressive Thinking & Retry**
+  - [x] **3.1 (TDD Red):** Add unit tests in `frontend/src/components/coach/__tests__/QuickCoachVoiceNegotiation.test.tsx` for progressive loading indicators ("Reviewing your pattern...", "Investigating past treatments...") and user-facing retry UI on network/timeout failure. (PASSED)
+  - [x] **3.2 (TDD Green):** Implement progressive thinking states and retry button in `frontend/src/components/coach/QuickCoachVoiceNegotiation.tsx`. (PASSED)
+  - **Verification Gate:** `npm --prefix frontend test src/components/coach/__tests__/QuickCoachVoiceNegotiation.test.tsx` passes. (PASSED)
+
+- [x] **Task 4: Documentation Sync & Full Verification**
+  - [x] **4.1:** Update `docs/eng/AI_MODELS.md` and `docs/PRD.md`. (PASSED)
+  - [x] **4.2:** Run full backend (`npm run test:ai`) and frontend test suites. (PASSED)
+  - **Verification Gate:** All test suites pass. (PASSED)
 
 - [ ] **Task 4: BullMQ Repeatable Weekly Scheduler in Worker**
   - [ ] **4.1 (TDD Red):** Unit tests in `backend/tests/unit/worker/scheduler.test.ts`.

@@ -1,19 +1,23 @@
 import { useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useJournalStatus } from "../hooks/useJournalStatus";
 import { Loader2, AlertTriangle } from "lucide-react";
 
 export default function JournalLoadingPage() {
   const { journalId } = useParams<{ journalId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { status, progress, statusMessage, error } =
     useJournalStatus(journalId);
 
   useEffect(() => {
     if (status === "COMPLETE") {
-      navigate(`/journal/${journalId}`, { replace: true });
+      const target = searchParams.get("target");
+      const destination =
+        target === "coach" ? `/coach/${journalId}` : `/journal/${journalId}`;
+      navigate(destination, { replace: true });
     }
-  }, [status, journalId, navigate]);
+  }, [status, journalId, navigate, searchParams]);
 
   const isFailed = status === "FAILED";
 
@@ -25,7 +29,11 @@ export default function JournalLoadingPage() {
         <Loader2 className="animate-spin w-16 h-16 text-mesa-primary mb-4" />
       )}
       <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
-        {isFailed ? "Generation Failed" : "Generating Your Journal..."}
+        {isFailed
+          ? "Generation Failed"
+          : searchParams.get("target") === "coach"
+            ? "Preparing Your Coaching Session..."
+            : "Generating Your Journal..."}
       </h1>
 
       {!isFailed && progress > 0 && (
@@ -71,6 +79,15 @@ export default function JournalLoadingPage() {
       >
         {error || statusMessage || "Please wait a moment."}
       </p>
+
+      {isFailed && (
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+        >
+          Return to Dashboard
+        </button>
+      )}
 
       {!isFailed && (
         <div className="w-full max-w-md">

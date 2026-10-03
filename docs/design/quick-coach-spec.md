@@ -1,9 +1,13 @@
-# Component Specification: Quick Coach Mobile Experience
+# Component Specification: Quick Coach Experience & Dashboard Ingress
 
-**Component Name:** `QuickCoachPage`, `QuickCoachStoryPlayer`, `QuickCoachVoiceNegotiation`  
-**Route:** `/coach/:journalId` (Standalone mobile route outside global desktop layout)  
-**Tech Stack:** React (Functional), TypeScript, Tailwind CSS, ECharts (`echarts-for-react`), Web Speech API (`SpeechSynthesis`, `SpeechRecognition`)  
-**Design Tokens:** Mesa Palette (Primary Terracotta `#D9775B`, Petrol Blue `#2C4C5B`, Canvas Warm `#FBF9F5`, Sand `#E8E1D9`, Target Forest `#54A67A`)
+**Component Name:** `QuickCoachBannerCard`, `QuickCoachPage`, `QuickCoachStoryPlayer`, `QuickCoachVoiceNegotiation`  
+**Routes:**
+
+- `/dashboard` (Dashboard with on-demand `QuickCoachBannerCard`)
+- `/journal/:journalId/loading?target=coach` (Dedicated loading & hand-off transition)
+- `/coach/:journalId` (Standalone mobile route outside global desktop layout)  
+  **Tech Stack:** React (Functional), TypeScript, Tailwind CSS, ECharts (`echarts-for-react`), Web Speech API (`SpeechSynthesis`, `SpeechRecognition`)  
+  **Design Tokens:** Mesa Palette (Primary Terracotta `#D9775B`, Petrol Blue `#2C4C5B`, Canvas Warm `#FBF9F5`, Sand `#E8E1D9`, Target Forest `#54A67A`)
 
 ---
 
@@ -52,6 +56,24 @@
 ---
 
 ## 3. Component Breakdown
+
+### 3.0 `QuickCoachBannerCard` (Dashboard Ingress & On-Demand Trigger)
+
+- **Location:** Embedded in `DashboardPage.tsx` above the `Past weeks` section.
+- **Visual Presentation:**
+  - Warm gradient container (`from-orange-50 via-amber-50/40 to-white`) with rounded corners (`rounded-xl`), soft shadow (`shadow-md`), and subtle warm border (`border-orange-200/80`).
+  - Left icon badge: `w-14 h-14 bg-orange-100` housing a solid filled `Zap` icon in Mesa terracotta (`#D9775B`).
+  - Category pill: `Audio & Voice` in uppercase bold tracking.
+  - Headline: _"Quick Coach: 3-Minute Glycemic Debrief"_ (`text-xl font-bold text-gray-900`).
+  - Copy: _"Distill your last 7 days of CGM data into a single high-impact pattern with an audio breakdown and micro-habit negotiation."_
+- **Action Button (`⚡ Start Quick Coach (3 min)`):**
+  - Styled with primary terracotta (`bg-mesa-primary hover:bg-primary-hover text-white font-semibold`).
+  - Submitting state: Disabled, `aria-busy={true}`, renders spinning `Loader2` and text _"Preparing..."_.
+  - Disabled state: When parent dashboard reports an active in-progress session (`isProcessing={true}`), disabled with label _"Session in progress..."_.
+- **Error & Recovery UI:**
+  - Accessible `role="alert"` and `aria-live="polite"` error container.
+  - If rejected with `code === "NIGHTSCOUT_REQUIRED"` (missing CGM credentials), renders an actionable recovery link: `Configure Nightscout in Settings →` pointing directly to `/setup`.
+- **Target Redirection:** Dispatches `POST /api/coach/sessions` and upon receiving 201 Created immediately redirects to `/journal/:id/loading?target=coach`.
 
 ### 3.1 `QuickCoachPage` (Shell Container)
 

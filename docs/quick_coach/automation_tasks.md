@@ -36,31 +36,36 @@ This task set implements weekly automatic execution and manual instant triggers 
 
 ---
 
-## Phase 2: On-Demand API Endpoint (`POST /api/journals/trigger-now`)
+## Phase 2: On-Demand API Endpoint (`POST /api/coach/sessions`)
 
-- [ ] **Task 2: API Route Integration**
-  - [ ] **2.1 (TDD Red):** Create integration test in `backend/tests/integration/journalTriggerRoute.test.ts`:
-    - Assert `POST /api/journals/trigger-now` requires authentication (401 if unauthenticated).
+_(See detailed step-by-step TDD playbook in [`docs/quick_coach/dashboard_trigger_plan.md`](file:///home/clark/dev/goodnumbers-clean/docs/quick_coach/dashboard_trigger_plan.md))_
+
+- [x] **Task 2: API Route Integration**
+  - [x] **2.1 (TDD Red):** Create integration test in `backend/tests/integration/coachSessionsRoute.test.ts`:
+    - Assert `POST /api/coach/sessions` requires authentication (401 if unauthenticated).
     - Assert missing Nightscout credentials return 400 Bad Request with actionable message.
-    - Assert successful request creates `PENDING` journal and enqueues BullMQ job.
-    - Assert double-click / rate limit protection (prevents triggering duplicate jobs if a journal is currently processing).
-  - [ ] **2.2 (TDD Green):** Add `POST /trigger-now` endpoint to `backend/src/routes/journal.ts`.
-  - **Automated Verification Gate:** `npx vitest backend/tests/integration/journalTriggerRoute.test.ts` passes.
-  - **Manual Verification Gate:** Use Postman/cURL with session cookie to `POST /api/journals/trigger-now`; verify 201 response and job appearing in BullMQ queue.
+    - Assert double-click / rate limit protection: returns 409 Conflict if a journal is currently `PENDING`.
+    - Assert successful request creates `PENDING` journal (7-day window) and enqueues BullMQ job.
+    - Assert rollback on queue failure: deletes orphaned journal record.
+  - [x] **2.2 (TDD Green):** Create `POST /sessions` route in `backend/src/routes/coach.ts` and mount under `/api/coach` in `backend/src/index.ts`.
+  - **Automated Verification Gate:** `npx vitest backend/tests/integration/coachSessionsRoute.test.ts` passes. (PASSED)
+  - **Manual Verification Gate:** Use cURL with session cookie to `POST /api/coach/sessions`; verify 201 response and job appearing in BullMQ queue. (PASSED)
 
 ---
 
-## Phase 3: Frontend Dashboard Trigger Button
+## Phase 3: Frontend Dashboard Trigger Card & Routing
 
-- [ ] **Task 3: Dashboard UI "Send Coaching Now" Component**
-  - [ ] **3.1 (TDD Red):** Create component tests in `frontend/src/components/journal/__tests__/SendCoachingButton.test.tsx`:
-    - Test initial idle state ("⚡ Send Coaching Now").
-    - Test click handler dispatching API request to `/api/journals/trigger-now`.
-    - Test loading state (spinner / progress message) and success notification with link to `/coach/:journalId`.
-  - [ ] **3.2 (TDD Green):** Create `frontend/src/components/journal/SendCoachingButton.tsx`.
-  - [ ] **3.3:** Integrate `SendCoachingButton` into `frontend/src/pages/Dashboard.tsx` or Header bar.
-  - **Automated Verification Gate:** `npx vitest frontend/src/components/journal/__tests__/SendCoachingButton.test.tsx` passes.
-  - **Manual Verification Gate:** Click "Send Coaching Now" on dashboard UI; observe loading indicator turn into a ready notification with direct link to standalone coach player.
+- [x] **Task 3: Dashboard UI "Quick Coach" Component & Seamless Routing**
+  - [x] **3.1 (TDD Red/Green):** Update `JournalLoadingPage.tsx` with test in `frontend/src/pages/__tests__/JournalLoadingPage.test.tsx` to redirect to `/coach/:journalId` when `?target=coach`.
+  - [x] **3.2 (TDD Red):** Create component tests in `frontend/src/components/dashboard/__tests__/QuickCoachBannerCard.test.tsx`:
+    - Test initial idle state ("⚡ Start Quick Coach (3 min)").
+    - Test click handler dispatching API request to `/api/coach/sessions`.
+    - Test loading/disabled state while in flight or when an existing session is in progress (`isProcessing`).
+    - Test error banner on failure.
+  - [x] **3.3 (TDD Green):** Create `frontend/src/components/dashboard/QuickCoachBannerCard.tsx`.
+  - [x] **3.4:** Integrate `QuickCoachBannerCard` into `frontend/src/pages/DashboardPage.tsx` above `PastJournalsList`.
+  - **Automated Verification Gate:** `npx vitest frontend/src/components/dashboard/__tests__/QuickCoachBannerCard.test.tsx frontend/src/pages/DashboardPage.test.tsx` passes. (PASSED)
+  - **Manual Verification Gate:** Click "⚡ Start Quick Coach" on dashboard UI; observe loading indicator turn into loading progress screen and automatically transition into the standalone coach player. (PASSED)
 
 ---
 

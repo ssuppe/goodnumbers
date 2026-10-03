@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import JournalLoadingPage from "./JournalLoadingPage";
@@ -21,6 +21,10 @@ vi.mock("react-router-dom", async (importOriginal) => {
 });
 
 describe("JournalLoadingPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("displays the progress, status message, and step indicators from the hook", () => {
     mockedUseJournalStatus.mockReturnValue({
       status: "ANALYZING_DATA",
@@ -101,6 +105,32 @@ describe("JournalLoadingPage", () => {
     });
   });
 
+  it("navigates to the coach page when status is COMPLETE and target=coach is present", async () => {
+    mockedUseJournalStatus.mockReturnValue({
+      status: "COMPLETE",
+      progress: 100,
+      statusMessage: "Your journal is ready.",
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/journal/test-id/loading?target=coach"]}>
+        <Routes>
+          <Route
+            path="/journal/:journalId/loading"
+            element={<JournalLoadingPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/coach/test-id", {
+        replace: true,
+      });
+    });
+  });
+
   it("displays an error message when the hook reports an error", () => {
     mockedUseJournalStatus.mockReturnValue({
       status: "FAILED",
@@ -117,5 +147,36 @@ describe("JournalLoadingPage", () => {
 
     expect(screen.getByText("Generation Failed")).toBeInTheDocument();
     expect(screen.getByText("API connection failed")).toBeInTheDocument();
+
+    const returnBtn = screen.getByRole("button", {
+      name: /Return to Dashboard/i,
+    });
+    expect(returnBtn).toBeInTheDocument();
+    fireEvent.click(returnBtn);
+    expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("displays 'Preparing Your Coaching Session...' when target=coach", () => {
+    mockedUseJournalStatus.mockReturnValue({
+      status: "ANALYZING_DATA",
+      progress: 30,
+      statusMessage: "Analyzing data...",
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/journal/test-id/loading?target=coach"]}>
+        <Routes>
+          <Route
+            path="/journal/:journalId/loading"
+            element={<JournalLoadingPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText("Preparing Your Coaching Session..."),
+    ).toBeInTheDocument();
   });
 });
