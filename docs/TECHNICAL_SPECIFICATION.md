@@ -50,6 +50,28 @@ This document provides a comprehensive technical specification for the Goodnumbe
 - **Majority Logic:** A tier is achieved if $\ge$ 70% of overnight readings fall within the range.
 - **Copy:** Includes a multi-metric transparency string `(X% Normal, Y% Tight, Z% Standard)` and actionable targets for the next level of stability.
 
+#### 2.1.4. Quick Coach Experience & Investigative Tools
+
+- **Target Route:** `/coach/:journalId` (Standalone, distraction-free mobile-first container).
+- **Triage Engine:** Evaluates detected glycemic clusters and deterministically marks the single highest-urgency pattern as `isPrimaryFocus: true` (Severe Hypo > Frequent Hypo > Rebound Hyper > Post-Meal Hyper).
+- **Audio-Visual Data Story:** Synchronizes speech narration with a 3-tier ECharts canvas animating the mean trendline, daily glycemic traces, and meal boluses/carbs.
+- **Voice Negotiation:** Low-friction push-to-talk voice/text chat powered by Gemini 2.5 Flash to negotiate a weekly micro-habit, with automatic transcript synthesis into `Journal.goalsForNextWeek`.
+- **Investigative Function Calling:** Gemini is equipped with 10 server-side tool handlers to query historical context dynamically during conversation:
+  - CGM slicing & recurring comparison (`compare_recurring_time_window`)
+  - Basal profile and temp override inspection (`get_profile_and_override_history`)
+  - Benchmark successful days search (`find_successful_reference_days`)
+  - Window treatment aggregations (`get_treatments_for_recurring_window`)
+  - Weekday vs weekend routine comparisons (`check_day_of_week_pattern`)
+  - Post-meal excursion peak calculations (`get_post_meal_peak_trends`)
+  - Note keyword search (`search_treatment_notes`)
+  - Automated pump suspends and temp basals (`get_temp_basal_and_suspends`)
+  - Daily TDD and carb ratio trends (`get_daily_insulin_and_carb_trends`)
+  - Pre-event prior context inspections (`inspect_prior_context`)
+- **Caching & Performance Guarantees:**
+  - **Tier 1 (Local Fast Path):** Serves queries within the analyzed journal week directly from `Journal.bloodGlucose` with 0ms network latency.
+  - **Tier 2 (In-Memory Cache):** 60-second TTL cache for cross-day queries to eliminate duplicate upstream Nightscout calls.
+  - **Circuit Breaker:** 8,000ms hard timeout per tool execution to protect conversational responsiveness.
+
 ## 3. Architecture
 
 - **Web Server:** Express.js.
@@ -57,6 +79,7 @@ This document provides a comprehensive technical specification for the Goodnumbe
 - **Queue:** Redis.
 - **Database:** SQLite with Prisma ORM.
 - **Visualization Engine:** **Apache ECharts** using the **Canvas renderer** for industrial-grade stability and complex piecewise highlighting.
+- **AI & Investigative Engine:** Google Gemini 2.5 Flash with server-side function calling, 8,000ms circuit breaker timeout, and 2-tier caching (0ms local SQLite snapshot fast-path + 60s in-memory TTL map).
 - **Shared Packages:** Strictly layered unidirectional flow:
   - `@goodnumbers/types`: Pure TS interfaces/enums (Zero dependencies).
   - `@goodnumbers/schemas`: Zod validation definitions (Depends on `types`).
@@ -118,6 +141,7 @@ model Journal {
   agpChartData         Json?
   analysisInsights     Json?
   treatments           Json?     // Stored treatments for the week
+  bloodGlucose         Json?     // Compact raw CGM readings for the week [{ date, sgv, direction }]
   scoreCardData        Json?     // Voyager metrics (TIR, GMI, etc.)
 
   // Relation to detailed analysis
