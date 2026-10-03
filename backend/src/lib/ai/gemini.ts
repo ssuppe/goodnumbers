@@ -70,8 +70,14 @@ const summarySchema: Schema = {
   items: highlightSchema,
 };
 
+export const GEMINI_REASONING_MODEL =
+  process.env.GEMINI_REASONING_MODEL || 'gemini-3.1-pro-preview';
+
+export const GEMINI_FLASH_MODEL =
+  process.env.GEMINI_FLASH_MODEL || 'gemini-3.8-flash';
+
 const insightProModel = genAI.getGenerativeModel({
-  model: 'gemini-3.1-pro-preview',
+  model: GEMINI_REASONING_MODEL,
   generationConfig: {
     responseMimeType: 'application/json',
     responseSchema: insightSchema,
@@ -79,7 +85,7 @@ const insightProModel = genAI.getGenerativeModel({
 });
 
 const insightFlashModel = genAI.getGenerativeModel({
-  model: 'gemini-3-flash-preview',
+  model: GEMINI_FLASH_MODEL,
   generationConfig: {
     responseMimeType: 'application/json',
     responseSchema: insightSchema,
@@ -87,7 +93,7 @@ const insightFlashModel = genAI.getGenerativeModel({
 });
 
 const summaryFlashModel = genAI.getGenerativeModel({
-  model: 'gemini-3-flash-preview',
+  model: GEMINI_FLASH_MODEL,
   generationConfig: {
     responseMimeType: 'application/json',
     responseSchema: summarySchema,
@@ -104,7 +110,7 @@ const titleSchema: Schema = {
 };
 
 const titleFlashModel = genAI.getGenerativeModel({
-  model: 'gemini-3-flash-preview',
+  model: GEMINI_FLASH_MODEL,
   generationConfig: {
     responseMimeType: 'application/json',
     responseSchema: titleSchema,
@@ -141,8 +147,16 @@ const quickCoachStorySchema: Schema = {
   required: ['audio_script', 'animation_cues'],
 };
 
+const storyProModel = genAI.getGenerativeModel({
+  model: GEMINI_REASONING_MODEL,
+  generationConfig: {
+    responseMimeType: 'application/json',
+    responseSchema: quickCoachStorySchema,
+  },
+});
+
 const storyFlashModel = genAI.getGenerativeModel({
-  model: 'gemini-3-flash-preview',
+  model: GEMINI_FLASH_MODEL,
   generationConfig: {
     responseMimeType: 'application/json',
     responseSchema: quickCoachStorySchema,
@@ -150,8 +164,8 @@ const storyFlashModel = genAI.getGenerativeModel({
 });
 
 // For plain-text generation (e.g. chat dialogues and text summaries)
-const textFlashModel = genAI.getGenerativeModel({
-  model: 'gemini-3-flash-preview',
+const textProModel = genAI.getGenerativeModel({
+  model: GEMINI_REASONING_MODEL,
 });
 
 export interface TreatmentContext {
@@ -431,54 +445,68 @@ export async function generateChatResponse(
 
   try {
     if (userContext?.nsClient) {
-      const modelWithTools = genAI.getGenerativeModel({
-        model: 'gemini-3-flash-preview',
-        tools: [{ functionDeclarations: COACH_INVESTIGATIVE_TOOLS }],
-      });
+      const executeToolChat = async (modelName: string): Promise<string> => {
+        const modelWithTools = genAI.getGenerativeModel({
+          model: modelName,
+          tools: [{ functionDeclarations: COACH_INVESTIGATIVE_TOOLS }],
+        });
 
-      const chat = modelWithTools.startChat();
-      let response = await chat.sendMessage(prompt);
-      let iterations = 0;
-      const MAX_TOOL_ITERATIONS = 3;
+        const chat = modelWithTools.startChat();
+        let response = await chat.sendMessage(prompt);
+        let iterations = 0;
+        const MAX_TOOL_ITERATIONS = 3;
 
-      while (
-        response.response.functionCalls()?.length &&
-        iterations < MAX_TOOL_ITERATIONS
-      ) {
-        iterations++;
-        const functionCalls = response.response.functionCalls()!;
-        const functionResponses = [];
+        while (
+          response.response.functionCalls()?.length &&
+          iterations < MAX_TOOL_ITERATIONS
+        ) {
+          iterations++;
+          const functionCalls = response.response.functionCalls()!;
+          const functionResponses = [];
 
-        for (const call of functionCalls) {
-          try {
-            const toolResult = await dispatchToolCall(
-              call.name,
-              call.args as Record<string, unknown>,
-              userContext,
-            );
-            functionResponses.push({
-              functionResponse: {
-                name: call.name,
-                response: toolResult,
-              },
-            });
-          } catch (err) {
-            functionResponses.push({
-              functionResponse: {
-                name: call.name,
-                response: { error: (err as Error).message },
-              },
-            });
+          for (const call of functionCalls) {
+            try {
+              const toolResult = await dispatchToolCall(
+                call.name,
+                call.args as Record<string, unknown>,
+                userContext,
+              );
+              functionResponses.push({
+                functionResponse: {
+                  name: call.name,
+                  response: toolResult,
+                },
+              });
+            } catch (err) {
+              functionResponses.push({
+                functionResponse: {
+                  name: call.name,
+                  response: { error: (err as Error).message },
+                },
+              });
+            }
           }
+
+          response = await chat.sendMessage(functionResponses);
         }
 
-        response = await chat.sendMessage(functionResponses);
-      }
+        return response.response.text().trim();
+      };
 
-      return response.response.text().trim();
+      try {
+        return await executeToolChat(GEMINI_REASONING_MODEL);
+      } catch (reasoningErr) {
+        if (GEMINI_REASONING_MODEL !== GEMINI_FLASH_MODEL) {
+          console.warn(
+            `[Gemini] Reasoning model tool chat failed, falling back to flash model: ${reasoningErr}`,
+          );
+          return await executeToolChat(GEMINI_FLASH_MODEL);
+        }
+        throw reasoningErr;
+      }
     }
 
-    const result = await textFlashModel.generateContent(prompt);
+    const result = await textProModel.generateContent(prompt);
     return result.response.text().trim();
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -506,7 +534,7 @@ export async function synthesizeChatInsight(
   );
 
   try {
-    const result = await textFlashModel.generateContent(prompt);
+    const result = await textProModel.generateContent(prompt);
     return result.response.text().trim();
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -600,7 +628,15 @@ export async function generateQuickCoachStory(
   );
 
   try {
-    const result = await storyFlashModel.generateContent(prompt);
+    let result;
+    try {
+      result = await storyProModel.generateContent(prompt);
+    } catch (proError) {
+      console.warn(
+        `[Gemini] Quick Coach storyProModel failed, falling back to storyFlashModel: ${proError}`,
+      );
+      result = await storyFlashModel.generateContent(prompt);
+    }
     const text = result.response.text();
     const parsed = parseAIJson<QuickCoachStory>(text, defaultStory);
 

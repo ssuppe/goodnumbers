@@ -113,7 +113,8 @@ describe("QuickCoachVoiceNegotiation", () => {
       })
       .mockResolvedValueOnce({
         data: {
-          synthesizedInsight: "Take a 15-minute walk right after lunch on weekdays.",
+          synthesizedInsight:
+            "Take a 15-minute walk right after lunch on weekdays.",
         },
       });
 
@@ -129,7 +130,9 @@ describe("QuickCoachVoiceNegotiation", () => {
 
     // Send a message first
     const input = screen.getByPlaceholderText(/10 minute walk after lunch/i);
-    fireEvent.change(input, { target: { value: "I will try walking after lunch" } });
+    fireEvent.change(input, {
+      target: { value: "I will try walking after lunch" },
+    });
     fireEvent.click(screen.getByRole("button", { name: /Send Message/i }));
 
     await waitFor(() => {
@@ -292,9 +295,7 @@ describe("QuickCoachVoiceNegotiation", () => {
 
     // Live transcript populates input box
     await waitFor(() => {
-      const input = screen.getByPlaceholderText(
-        /10 minute walk after lunch/i,
-      );
+      const input = screen.getByPlaceholderText(/10 minute walk after lunch/i);
       expect(input.value).toBe("I will walk for 10 minutes");
     });
 
@@ -315,5 +316,67 @@ describe("QuickCoachVoiceNegotiation", () => {
     // Simulate error and end callbacks
     mockInstance.onerror({ error: "network" });
     mockInstance.onend();
+  });
+
+  it("displays progressive thinking status indicator while waiting for response", async () => {
+    let resolvePost: ((value: unknown) => void) | undefined;
+    vi.mocked(api.post).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePost = resolve;
+        }),
+    );
+
+    render(
+      <QuickCoachVoiceNegotiation
+        journalId="journal-1"
+        clusterId="cluster-1"
+        isStoryFinished={true}
+        onGoalAgreed={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByPlaceholderText(/10 minute walk after lunch/i);
+    fireEvent.change(input, { target: { value: "Thinking test" } });
+    fireEvent.click(screen.getByRole("button", { name: /Send Message/i }));
+
+    const statusEl = await screen.findByTestId("thinking-status");
+    expect(statusEl).toBeInTheDocument();
+    expect(statusEl.textContent).toMatch(
+      /analyzing|investigating|synthesizing|thinking/i,
+    );
+
+    resolvePost({ data: { reply: "Done thinking" } });
+  });
+
+  it("provides a retry button upon failure so the user can re-trigger reasoning without retyping", async () => {
+    vi.mocked(api.post)
+      .mockRejectedValueOnce(new Error("Timeout"))
+      .mockResolvedValueOnce({
+        data: { reply: "Retried and succeeded!" },
+      });
+
+    render(
+      <QuickCoachVoiceNegotiation
+        journalId="journal-1"
+        clusterId="cluster-1"
+        isStoryFinished={true}
+        onGoalAgreed={vi.fn()}
+      />,
+    );
+
+    const input = screen.getByPlaceholderText(/10 minute walk after lunch/i);
+    fireEvent.change(input, { target: { value: "Need advice" } });
+    fireEvent.click(screen.getByRole("button", { name: /Send Message/i }));
+
+    const retryBtn = await screen.findByRole("button", { name: /retry/i });
+    expect(retryBtn).toBeInTheDocument();
+
+    fireEvent.click(retryBtn);
+
+    await waitFor(() => {
+      expect(api.post).toHaveBeenCalledTimes(2);
+      expect(screen.getByText("Retried and succeeded!")).toBeInTheDocument();
+    });
   });
 });

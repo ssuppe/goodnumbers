@@ -9,6 +9,7 @@ import {
   Loader2,
   Volume2,
   Target,
+  RotateCcw,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -59,10 +60,37 @@ export default function QuickCoachVoiceNegotiation({
   const [isLoading, setIsLoading] = useState(false);
   const [isDraftingGoal, setIsDraftingGoal] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<string>(initialGoal || "");
+  const [thinkingPhase, setThinkingPhase] = useState("Analyzing pattern...");
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(
+    null,
+  );
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const handleSendMessageRef = useRef<(text?: string) => Promise<void>>(
     async () => {},
   );
+
+  // Progressive thinking status for high-reasoning models
+  useEffect(() => {
+    if (!isLoading) {
+      setThinkingPhase("Analyzing pattern...");
+      return;
+    }
+
+    const phases = [
+      "Analyzing pattern...",
+      "Investigating historical data...",
+      "Synthesizing clinical coaching...",
+    ];
+    let idx = 0;
+    setThinkingPhase(phases[0]);
+
+    const timer = setInterval(() => {
+      idx = (idx + 1) % phases.length;
+      setThinkingPhase(phases[idx]);
+    }, 2500);
+
+    return () => clearInterval(timer);
+  }, [isLoading]);
 
   // Initialize Speech Recognition if supported
   useEffect(() => {
@@ -144,6 +172,7 @@ export default function QuickCoachVoiceNegotiation({
     setMessages(updatedHistory);
     setInputText("");
     setIsLoading(true);
+    setLastFailedMessage(null);
 
     try {
       const res = await api.post<{ reply: string }>(
@@ -159,6 +188,7 @@ export default function QuickCoachVoiceNegotiation({
       speakReply(aiReply);
     } catch (err: unknown) {
       console.error("Chat error:", err);
+      setLastFailedMessage(messageContent);
       const fallbackReply =
         "Let's focus on taking a short 10-15 minute walk or adjusting meal bolus timing next week.";
       setMessages([
@@ -257,9 +287,26 @@ export default function QuickCoachVoiceNegotiation({
             </div>
           ))}
           {isLoading && (
-            <div className="flex items-center gap-1.5 text-xs text-gray-400 pl-2">
+            <div
+              data-testid="thinking-status"
+              className="flex items-center gap-1.5 text-xs text-gray-500 pl-2 py-1 animate-pulse"
+            >
               <Loader2 className="w-3.5 h-3.5 animate-spin text-[#D9775B]" />
-              <span>Thinking...</span>
+              <span>{thinkingPhase}</span>
+            </div>
+          )}
+          {lastFailedMessage && !isLoading && (
+            <div className="flex items-center justify-between bg-amber-50 border border-amber-200/80 rounded-xl px-3 py-2 text-xs text-amber-900 mt-1">
+              <span className="text-[11px]">
+                Coaching connection interrupted.
+              </span>
+              <button
+                type="button"
+                onClick={() => void handleSendMessage(lastFailedMessage)}
+                className="inline-flex items-center gap-1 font-bold text-xs text-[#D9775B] hover:text-[#b85b42] cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" /> Retry
+              </button>
             </div>
           )}
         </div>
